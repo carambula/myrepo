@@ -12,10 +12,19 @@ struct PodcastListView: View {
     @AppStorage("layoutMode") private var layoutMode = "grid"
     @AppStorage("glassComponentStyle") private var glassStyle = "premium"
     @AppStorage("tapInteraction") private var tapInteraction = "bounce"
+    @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = "floating"
 
     @State private var followedPodcasts: [Podcast] = []
     @State private var latestEpisodes: [String: Episode] = [:]
     @State private var isLoading = false
+    
+    private var bottomPadding: CGFloat {
+        if miniPlayerDockMode == "docked" {
+            return 70
+        } else {
+            return 120
+        }
+    }
 
     private var columns: [GridItem] {
         let size = artworkSize
@@ -73,7 +82,7 @@ struct PodcastListView: View {
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.top, DesignSystem.Spacing.md)
-        .padding(.bottom, 120) // Space for toolbar + mini player
+        .padding(.bottom, bottomPadding)
     }
 
     private func podcastGridItem(_ podcast: Podcast) -> some View {
@@ -123,7 +132,7 @@ struct PodcastListView: View {
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.top, DesignSystem.Spacing.md)
-        .padding(.bottom, 120)
+        .padding(.bottom, bottomPadding)
     }
 
     // MARK: - Empty State
@@ -161,7 +170,7 @@ struct PodcastListView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, 120)
+        .padding(.bottom, bottomPadding)
     }
 
     // MARK: - Toolbar

@@ -5,25 +5,40 @@ struct ContentView: View {
     @Environment(PlaybackService.self) private var playbackService
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = "floating"
+    
     @State private var showAccountSheet = false
     @State private var showSearch = false
     @State private var selectedPodcast: Podcast?
     @State private var selectedEpisode: Episode?
     @State private var showFullPlayer = false
+    
+    private var isDocked: Bool {
+        miniPlayerDockMode == "docked"
+    }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: isDocked ? .top : .bottom) {
             if hasCompletedOnboarding {
-                PodcastListView(
-                    showAccountSheet: $showAccountSheet,
-                    showSearch: $showSearch,
-                    selectedPodcast: $selectedPodcast
-                )
-
                 VStack(spacing: 0) {
-                    if playbackService.state.currentEpisode != nil {
+                    if isDocked && playbackService.state.currentEpisode != nil {
                         MiniPlayerView(showFullPlayer: $showFullPlayer)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    
+                    PodcastListView(
+                        showAccountSheet: $showAccountSheet,
+                        showSearch: $showSearch,
+                        selectedPodcast: $selectedPodcast
+                    )
+                }
+
+                if !isDocked {
+                    VStack(spacing: 0) {
+                        if playbackService.state.currentEpisode != nil {
+                            MiniPlayerView(showFullPlayer: $showFullPlayer)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
                 }
             } else {

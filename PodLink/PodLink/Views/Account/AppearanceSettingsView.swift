@@ -9,6 +9,8 @@ struct AppearanceSettingsView: View {
     @AppStorage("tapInteraction") private var tapInteraction = "bounce"
     @AppStorage("layoutMode") private var layoutMode = "grid"
     @AppStorage("posterSize") private var posterSize = "plus60"
+    @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = "floating"
+    @AppStorage("miniPlayerSize") private var miniPlayerSize = "slim"
 
     var body: some View {
         List {
@@ -93,6 +95,38 @@ struct AppearanceSettingsView: View {
                     Text("+20%").tag("plus20")
                     Text("+40%").tag("plus40")
                     Text("+60%").tag("plus60")
+                }
+            }
+            
+            Section("Mini Player") {
+                ForEach(MiniPlayerDockMode.allCases, id: \.self) { mode in
+                    Button {
+                        miniPlayerDockMode = mode.rawValue
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(mode.displayName)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                                Text(mode.description)
+                                    .font(DesignSystem.Typography.caption())
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                            }
+                            Spacer()
+                            if miniPlayerDockMode == mode.rawValue {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(themeManager.currentTheme.accentColor)
+                            }
+                        }
+                    }
+                }
+                
+                if miniPlayerDockMode == "docked" {
+                    Picker("Docked Size", selection: $miniPlayerSize) {
+                        ForEach(MiniPlayerSize.allCases, id: \.self) { size in
+                            Text(size.displayName).tag(size.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
             }
         }

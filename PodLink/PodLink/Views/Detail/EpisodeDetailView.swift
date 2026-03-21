@@ -11,6 +11,11 @@ struct EpisodeDetailView: View {
     @State private var isLoadingLinks = false
     @State private var showFullNotes = false
     @State private var transcript: String?
+    @State private var fullTranscript: FullTranscript?
+    @State private var isLoadingTranscript = false
+    @State private var showFullTranscript = false
+    @State private var transcriptSearchText = ""
+    @State private var showTranscriptViewer = false
 
     var body: some View {
         ScrollView {
@@ -33,6 +38,13 @@ struct EpisodeDetailView: View {
         }
         .background(themeManager.currentTheme.backgroundTint.opacity(0.3))
         .bottomSheetPullToDismiss()
+        .sheet(isPresented: $showTranscriptViewer) {
+            if let fullTranscript {
+                TranscriptView(fullTranscript: fullTranscript) { timestamp in
+                    playbackService.seek(to: timestamp)
+                }
+            }
+        }
         .task {
             await loadMediaLinks()
             await loadTranscript()
@@ -226,19 +238,146 @@ struct EpisodeDetailView: View {
 
     private var transcriptSection: some View {
         Group {
-            if let transcript, !transcript.isEmpty {
+            if isLoadingTranscript {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                     Text("Transcript")
                         .font(DesignSystem.Typography.headlineMedium())
                         .foregroundColor(DesignSystem.Colors.headlineColor)
-
-                    Text(transcript)
-                        .font(DesignSystem.Typography.bodySmall())
-                        .foregroundColor(DesignSystem.Colors.textSecondary)
-                        .lineLimit(20)
+                    
+                    HStack {
+                        ProgressView()
+                        Text("Loading transcript...")
+                            .font(DesignSystem.Typography.bodySmall())
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DesignSystem.Spacing.lg)
                 }
                 .padding(.horizontal, DesignSystem.Spacing.lg)
                 .padding(.vertical, DesignSystem.Spacing.md)
+            } else if let fullTranscript, !fullTranscript.text.isEmpty {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                    HStack {
+                        Text("Transcript")
+                            .font(DesignSystem.Typography.headlineMedium())
+                            .foregroundColor(DesignSystem.Colors.headlineColor)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: DesignSystem.Spacing.xs) {
+                            Button {
+                                showTranscriptViewer = true
+                            } label: {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(themeManager.currentTheme.accentColor)
+                            }
+                            
+                            Menu {
+                                Button {
+                                    UIPasteboard.general.string = fullTranscript.text
+                                } label: {
+                                    Label("Copy All", systemImage: "doc.on.doc")
+                                }
+                                
+                                Button {
+                                    showFullTranscript.toggle()
+                                } label: {
+                                    Label(showFullTranscript ? "Show Less" : "Show More", 
+                                          systemImage: showFullTranscript ? "chevron.up" : "chevron.down")
+                                }
+                                
+                                Button {
+                                    showTranscriptViewer = true
+                                } label: {
+                                    Label("Open Full View", systemImage: "arrow.up.left.and.arrow.down.right")
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                            }
+                        }
+                    }
+                    
+                    if let metadata = fullTranscript.metadata {
+                        HStack(spacing: DesignSystem.Spacing.xs) {
+                            Label(metadata.source.rawValue, systemImage: "text.bubble")
+                            Text("•")
+                            Text("\(metadata.wordCount) words")
+                            
+                            if metadata.hasSpeakerLabels {
+                                Text("•")
+                                Label("Speakers", systemImage: "person.2")
+                            }
+                        }
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                    
+                    if fullTranscript.segments != nil && !showFullTranscript {
+                        segmentedTranscriptView
+                    } else {
+                        plainTranscriptView
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.vertical, DesignSystem.Spacing.md)
+            }
+        }
+    }
+    
+    private var plainTranscriptView: some View {
+        Button {
+            withAnimation { showFullTranscript.toggle() }
+        } label: {
+            Text(fullTranscript?.text ?? "")
+                .font(DesignSystem.Typography.bodySmall())
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+                .lineLimit(showFullTranscript ? nil : 20)
+                .multilineTextAlignment(.leading)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var segmentedTranscriptView: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            if let segments = fullTranscript?.segments {
+                let displaySegments = showFullTranscript ? segments : Array(segments.prefix(10))
+                
+                ForEach(Array(displaySegments.enumerated()), id: \.offset) { index, segment in
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        HStack(spacing: DesignSystem.Spacing.xs) {
+                            if let speaker = segment.speaker {
+                                Text(speaker)
+                                    .font(DesignSystem.Typography.caption().weight(.semibold))
+                                    .foregroundColor(themeManager.currentTheme.accentColor)
+                            }
+                            
+                            if let startTime = segment.startTime {
+                                Text(formatTime(startTime))
+                                    .font(DesignSystem.Typography.caption())
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                            }
+                        }
+                        
+                        Text(segment.text)
+                            .font(DesignSystem.Typography.bodySmall())
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                    .padding(.vertical, DesignSystem.Spacing.xs)
+                }
+                
+                if !showFullTranscript && segments.count > 10 {
+                    Button {
+                        withAnimation { showFullTranscript = true }
+                    } label: {
+                        Text("Show \(segments.count - 10) more segments...")
+                            .font(DesignSystem.Typography.bodySmall())
+                            .foregroundColor(themeManager.currentTheme.accentColor)
+                    }
+                    .padding(.top, DesignSystem.Spacing.xs)
+                }
             }
         }
     }
@@ -252,7 +391,10 @@ struct EpisodeDetailView: View {
     }
 
     private func loadTranscript() async {
-        transcript = await TranscriptService.shared.getTranscript(for: episode)
+        isLoadingTranscript = true
+        fullTranscript = await TranscriptService.shared.getFullTranscript(for: episode)
+        transcript = fullTranscript?.text
+        isLoadingTranscript = false
     }
 
     private func formatTime(_ time: TimeInterval) -> String {

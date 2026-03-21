@@ -22,8 +22,15 @@ actor MediaLinkingService {
         let titleLinks = parseTitle(episode.title)
         allReferences.append(contentsOf: titleLinks)
 
-        // Step 3: Parse transcript if available
-        if let transcript = episode.transcript {
+        // Step 3: Parse transcript if available (from Episode model or fetch fresh)
+        let transcriptText: String?
+        if let existingTranscript = episode.transcript {
+            transcriptText = existingTranscript
+        } else {
+            transcriptText = await TranscriptService.shared.getTranscript(for: episode)
+        }
+        
+        if let transcript = transcriptText {
             let transcriptLinks = parseTranscriptText(transcript)
             allReferences.append(contentsOf: transcriptLinks)
         }

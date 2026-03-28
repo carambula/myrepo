@@ -1,0 +1,31 @@
+{
+  "name": "@min-apps/design-system",
+  "version": "1.0.0",
+  "description": "Unified design system for the min apps suite (WatchedIt, podlink, yourtube, Cyclismo guide)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch"
+  },
+  "keywords": [
+    "design-system",
+    "tokens",
+    "components",
+    "theming"
+  ],
+  "author": "carambula",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "devDependencies": {},
+  "exports": {
+    ".": "./src/index.js",
+    "./tokens": "./src/tokens/index.js",
+    "./themes": "./src/themes/index.js",
+    "./components": "./src/components/index.js",
+    "./layouts": "./src/layouts/index.js",
+    "./styles.css": "./dist/styles.css"
+  }
+}

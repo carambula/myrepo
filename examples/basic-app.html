@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Min Apps Design System - Example</title>
+  <style>
+    /* Import design system base styles */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Light theme colors (default) */
+      --color-background-primary: #FFFFFF;
+      --color-background-secondary: #FAFAFA;
+      --color-surface-primary: #FFFFFF;
+      --color-text-primary: #212121;
+      --color-text-secondary: #616161;
+      --color-text-tertiary: #757575;
+      --color-border-primary: #E0E0E0;
+      --color-border-focus: #2196F3;
+      --color-primary-main: #1E88E5;
+      --color-primary-dark: #1976D2;
+      --color-primary-contrast: #FFFFFF;
+      --color-hover-primary: #F5F5F5;
+      --color-active-primary: #EEEEEE;
+    }
+
+    [data-theme="dark"] {
+      --color-background-primary: #212121;
+      --color-background-secondary: #424242;
+      --color-surface-primary: #424242;
+      --color-text-primary: #FAFAFA;
+      --color-text-secondary: #E0E0E0;
+      --color-text-tertiary: #BDBDBD;
+      --color-border-primary: #616161;
+      --color-border-focus: #42A5F5;
+      --color-primary-main: #42A5F5;
+      --color-primary-dark: #64B5F6;
+      --color-primary-contrast: #212121;
+      --color-hover-primary: #424242;
+      --color-active-primary: #616161;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--color-background-primary);
+      color: var(--color-text-primary);
+      transition: background-color 250ms ease-in-out, color 250ms ease-in-out;
+    }
+
+    /* HomeLayout styles */
+    .min-home-layout {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 16px;
+    }
+
+    .min-home-layout__header {
+      margin-top: 32px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .min-home-layout__logo {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 16px;
+    }
+
+    .min-home-layout__title {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .min-home-layout__subtitle {
+      font-size: 18px;
+      color: var(--color-text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .min-home-layout__content {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* Button styles */
+    .min-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 250ms ease-in-out;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .min-button--primary {
+      background-color: var(--color-primary-main);
+      color: var(--color-primary-contrast);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .min-button--primary:hover {
+      background-color: var(--color-primary-dark);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .min-button--outline {
+      background-color: transparent;
+      color: var(--color-primary-main);
+      border: 2px solid var(--color-primary-main);
+    }
+
+    .min-button--outline:hover {
+      background-color: var(--color-primary-main);
+      color: var(--color-primary-contrast);
+    }
+
+    /* ListItem styles */
+    .min-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background-color: var(--color-surface-primary);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 250ms ease-in-out;
+    }
+
+    .min-list-item:hover {
+      background-color: var(--color-hover-primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .min-list-item__image {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .min-list-item__content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .min-list-item__title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .min-list-item__subtitle {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Theme toggle */
+    .min-theme-toggle {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      width: 40px;
+      height: 40px;
+      background-color: var(--color-surface-primary);
+      border: 1px solid var(--color-border-primary);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 250ms ease-in-out;
+    }
+
+    .min-theme-toggle:hover {
+      background-color: var(--color-hover-primary);
+      transform: scale(1.05);
+    }
+
+    .min-theme-toggle svg {
+      width: 20px;
+      height: 20px;
+      color: var(--color-text-primary);
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="min-theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg id="sunIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+    <svg id="moonIcon" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- Home Layout -->
+  <div class="min-home-layout">
+    <div class="min-home-layout__header">
+      <svg class="min-home-layout__logo" viewBox="0 0 120 120" fill="none">
+        <circle cx="60" cy="60" r="50" fill="currentColor" opacity="0.1"/>
+        <circle cx="60" cy="60" r="40" stroke="currentColor" stroke-width="4"/>
+        <path d="M60 30 L60 60 L80 70" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <h1 class="min-home-layout__title">Min App</h1>
+      <p class="min-home-layout__subtitle">A minimal, beautiful application</p>
+    </div>
+
+    <div class="min-home-layout__content">
+      <button class="min-button min-button--primary">Get Started</button>
+      <button class="min-button min-button--outline">Learn More</button>
+
+      <div style="margin-top: 32px;">
+        <div class="min-list-item">
+          <div class="min-list-item__image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+          <div class="min-list-item__content">
+            <h3 class="min-list-item__title">Example Item 1</h3>
+            <p class="min-list-item__subtitle">Description of the first item</p>
+          </div>
+        </div>
+
+        <div class="min-list-item">
+          <div class="min-list-item__image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+          <div class="min-list-item__content">
+            <h3 class="min-list-item__title">Example Item 2</h3>
+            <p class="min-list-item__subtitle">Description of the second item</p>
+          </div>
+        </div>
+
+        <div class="min-list-item">
+          <div class="min-list-item__image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+          <div class="min-list-item__content">
+            <h3 class="min-list-item__title">Example Item 3</h3>
+            <p class="min-list-item__subtitle">Description of the third item</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme management
+    const themeToggle = document.getElementById('themeToggle');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+    const html = document.documentElement;
+
+    // Get saved theme or system preference
+    function getSavedTheme() {
+      return localStorage.getItem('min-apps-theme') || 
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+
+    // Apply theme
+    function applyTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      localStorage.setItem('min-apps-theme', theme);
+      
+      if (theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    // Toggle theme
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = html.getAttribute('data-theme') || 'light';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      applyTheme(newTheme);
+    });
+
+    // Initialize theme
+    applyTheme(getSavedTheme());
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('min-apps-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  </script>
+</body>
+</html>

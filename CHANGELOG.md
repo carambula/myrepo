@@ -21,6 +21,8 @@ All notable changes to the min apps design system will be documented in this fil
 ### Changed
 - Fixed `EpisodeList` example in `examples/deep-linking/podlink-integration.jsx` to use proper tap areas
 - Updated Podlink integration documentation to emphasize separate tap areas for episode lists
+- Updated YourTube integration documentation with correct video list tap behavior
+- Updated WatchedIt integration documentation with correct movie list tap behavior
 
 ## [1.3.0] - 2026-04-02
 

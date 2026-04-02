@@ -86,7 +86,7 @@ YourTube is a video app for browsing and watching videos. The integration should
 
 For list view:
   ```javascript
-  import { List, ListItem } from '@min-apps/design-system/components';
+  import { List, ListItem, Button } from '@min-apps/design-system/components';
   
   <List spacing="default">
     {videos.map(video => (
@@ -95,16 +95,31 @@ For list view:
         image={video.thumbnailUrl}
         title={video.title}
         subtitle={`${video.channelName} · ${video.views} views`}
-        onClick={() => playVideo(video.id)}
+        // Clicking thumbnail/title opens video detail/player view
+        onClick={() => openVideoPlayer(video.id)}
         action={
-          <Button variant="ghost" size="sm">
-            Watch →
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              // CRITICAL: stopPropagation prevents row click
+              e.stopPropagation();
+              playVideoImmediately(video.id);
+            }}
+          >
+            {video.isPlaying ? '⏸' : '▶'}
           </Button>
         }
       />
     ))}
   </List>
   ```
+
+**IMPORTANT - Tap Behavior**: Video lists should have separate tap areas:
+- **Thumbnail and title**: Opens video detail/player view
+- **Play button**: Plays the video immediately
+
+See `docs/list-tap-behavior.md` for complete guidelines.
 
 ### 3. Home Screen
 

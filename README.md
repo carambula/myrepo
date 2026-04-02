@@ -8,6 +8,7 @@ This design system harmonizes the visual and interface language across all min a
 
 - **Design Tokens**: Centralized color, spacing, typography, and other design values
 - **Theming System**: Interchangeable themes that work across all apps
+- **Font Override System**: Custom font selection from the Rotina family with per-tier customization
 - **Shared Components**: Common UI components with consistent styling
 - **Layout Patterns**: Standardized margins, positioning, and spacing
 - **Templates**: Pre-built page layouts and component compositions
@@ -46,6 +47,30 @@ import { AppLayout, ContentContainer } from '@min-apps/design-system/layouts';
 
 ```javascript
 import '@min-apps/design-system/styles.css';
+```
+
+### Use Font Override System
+
+```javascript
+import { 
+  FontOverrideSettings,
+  enableFontOverride,
+  FONT_TIERS,
+  ROTINA_WEIGHTS 
+} from '@min-apps/design-system';
+import '@min-apps/design-system/src/assets/fonts/rotina/rotina.css';
+
+// Add font override settings UI to your appearance page
+<FontOverrideSettings />
+
+// Or programmatically enable with custom configuration
+enableFontOverride({
+  [FONT_TIERS.DISPLAY]: ROTINA_WEIGHTS.BOLD,
+  [FONT_TIERS.HEADING]: ROTINA_WEIGHTS.SEMIBOLD,
+  [FONT_TIERS.BODY]: ROTINA_WEIGHTS.REGULAR,
+  [FONT_TIERS.UI]: ROTINA_WEIGHTS.MEDIUM,
+  [FONT_TIERS.CAPTION]: ROTINA_WEIGHTS.REGULAR,
+});
 ```
 
 ### Use Notification System
@@ -140,6 +165,8 @@ All components follow WCAG 2.1 AA standards with:
 src/
 ├── tokens/           # Design tokens (colors, spacing, typography, etc.)
 ├── themes/           # Theme configurations
+├── appearance/       # Font override and appearance customization
+├── assets/           # Font files and other assets
 ├── components/       # Shared UI components
 ├── layouts/          # Layout components and templates
 ├── notifications/    # Notification preferences and scheduling
@@ -155,9 +182,11 @@ See the `/docs` folder for detailed documentation on:
 - Component API documentation
 - Theming guide
 - Migration guide for existing apps
+- **Font override system guide** (NEW)
+- **Font override integration guide** (NEW)
 - Notification system guide
 - Onboarding system guide
-- **Deep linking system guide** (NEW)
+- Deep linking system guide
 - Best practices
 
 ## License

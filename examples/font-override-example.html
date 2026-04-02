@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font Override Example - Min Apps Design System</title>
+  
+  <style>
+    /* Simulated @font-face declarations for Rotina */
+    /* In production, these come from rotina.css */
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      line-height: 1.6;
+      color: var(--color-text-primary, #1f2937);
+      background-color: var(--color-background-primary, #ffffff);
+      padding: 40px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Font tier application */
+    h1, h2 {
+      font-family: var(--font-display, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
+      font-weight: var(--font-weight-display, 700);
+    }
+
+    h3, h4, h5, h6 {
+      font-family: var(--font-heading, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
+      font-weight: var(--font-weight-heading, 600);
+    }
+
+    p {
+      font-family: var(--font-body);
+      font-weight: var(--font-weight-body, 400);
+    }
+
+    button {
+      font-family: var(--font-ui, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
+      font-weight: var(--font-weight-ui, 500);
+    }
+
+    .caption {
+      font-family: var(--font-caption, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
+      font-weight: var(--font-weight-caption, 400);
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    /* Styling */
+    header {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 36px;
+      margin: 32px 0 16px;
+    }
+
+    h3 {
+      font-size: 24px;
+      margin: 24px 0 12px;
+    }
+
+    .controls {
+      background: #f3f4f6;
+      padding: 24px;
+      border-radius: 8px;
+      margin-bottom: 32px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 12px 24px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      background: #6d28d9;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #1f2937;
+    }
+
+    button.secondary:hover {
+      background: #d1d5db;
+    }
+
+    .preview-section {
+      margin-bottom: 40px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    .preview-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .tier-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #ddd6fe;
+      color: #5b21b6;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .status.active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Font Override Example</h1>
+    <p class="caption">Min Apps Design System - Rotina Font Family Integration</p>
+  </header>
+
+  <section class="controls">
+    <h2>Font Override Controls</h2>
+    
+    <div class="control-group">
+      <button id="toggleBtn" onclick="toggleFontOverride()">Enable Font Override</button>
+      <button class="secondary" onclick="resetToDefaults()">Reset to Defaults</button>
+    </div>
+
+    <div id="fontSelectors" style="display: none;">
+      <div class="control-group">
+        <label for="displayFont">Display Font (H1, H2)</label>
+        <select id="displayFont" onchange="updateFontTier('display', this.value)">
+          <option value="">System Default</option>
+          <option value="200">Rotina ExtraThin (200)</option>
+          <option value="250">Rotina Thin (250)</option>
+          <option value="300">Rotina Light (300)</option>
+          <option value="400">Rotina Regular (400)</option>
+          <option value="500">Rotina Medium (500)</option>
+          <option value="600">Rotina SemiBold (600)</option>
+          <option value="700" selected>Rotina Bold (700)</option>
+          <option value="800">Rotina ExtraBold (800)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="headingFont">Heading Font (H3-H6)</label>
+        <select id="headingFont" onchange="updateFontTier('heading', this.value)">
+          <option value="">System Default</option>
+          <option value="200">Rotina ExtraThin (200)</option>
+          <option value="250">Rotina Thin (250)</option>
+          <option value="300">Rotina Light (300)</option>
+          <option value="400">Rotina Regular (400)</option>
+          <option value="500">Rotina Medium (500)</option>
+          <option value="600" selected>Rotina SemiBold (600)</option>
+          <option value="700">Rotina Bold (700)</option>
+          <option value="800">Rotina ExtraBold (800)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="bodyFont">Body Font (Paragraphs)</label>
+        <select id="bodyFont" onchange="updateFontTier('body', this.value)">
+          <option value="">System Default</option>
+          <option value="200">Rotina ExtraThin (200)</option>
+          <option value="250">Rotina Thin (250)</option>
+          <option value="300">Rotina Light (300)</option>
+          <option value="400" selected>Rotina Regular (400)</option>
+          <option value="500">Rotina Medium (500)</option>
+          <option value="600">Rotina SemiBold (600)</option>
+          <option value="700">Rotina Bold (700)</option>
+          <option value="800">Rotina ExtraBold (800)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="uiFont">UI Font (Buttons, Controls)</label>
+        <select id="uiFont" onchange="updateFontTier('ui', this.value)">
+          <option value="">System Default</option>
+          <option value="200">Rotina ExtraThin (200)</option>
+          <option value="250">Rotina Thin (250)</option>
+          <option value="300">Rotina Light (300)</option>
+          <option value="400">Rotina Regular (400)</option>
+          <option value="500" selected>Rotina Medium (500)</option>
+          <option value="600">Rotina SemiBold (600)</option>
+          <option value="700">Rotina Bold (700)</option>
+          <option value="800">Rotina ExtraBold (800)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="captionFont">Caption Font (Small Text)</label>
+        <select id="captionFont" onchange="updateFontTier('caption', this.value)">
+          <option value="">System Default</option>
+          <option value="200">Rotina ExtraThin (200)</option>
+          <option value="250">Rotina Thin (250)</option>
+          <option value="300">Rotina Light (300)</option>
+          <option value="400" selected>Rotina Regular (400)</option>
+          <option value="500">Rotina Medium (500)</option>
+          <option value="600">Rotina SemiBold (600)</option>
+          <option value="700">Rotina Bold (700)</option>
+          <option value="800">Rotina ExtraBold (800)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="status" class="status inactive">
+      Font Override: <strong>Disabled</strong> (using system fonts)
+    </div>
+  </section>
+
+  <section class="preview-section">
+    <h2>Typography Preview</h2>
+    <p>See how different font weights affect the visual hierarchy</p>
+
+    <div class="preview-grid">
+      <div class="preview-card">
+        <span class="tier-badge">Display</span>
+        <h1 style="font-size: 36px;">The Great Gatsby</h1>
+        <p class="caption">Large headings (H1, H2)</p>
+      </div>
+
+      <div class="preview-card">
+        <span class="tier-badge">Heading</span>
+        <h3>Chapter 1: Introduction</h3>
+        <p class="caption">Section headings (H3-H6)</p>
+      </div>
+
+      <div class="preview-card">
+        <span class="tier-badge">Body</span>
+        <p>The quick brown fox jumps over the lazy dog. Typography is the art and technique of arranging type to make written language legible, readable, and appealing.</p>
+        <p class="caption">Body text and paragraphs</p>
+      </div>
+
+      <div class="preview-card">
+        <span class="tier-badge">UI</span>
+        <button>Add to Watchlist</button>
+        <button class="secondary">Share</button>
+        <p class="caption">Buttons and UI controls</p>
+      </div>
+
+      <div class="preview-card">
+        <span class="tier-badge">Caption</span>
+        <p class="caption">Released: 2013 • Runtime: 143 min • Rating: PG-13</p>
+        <p class="caption">Small text, metadata, timestamps</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="preview-section">
+    <h2>Full Page Example</h2>
+    
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 32px; margin-top: 16px;">
+      <h1 style="font-size: 42px; margin-bottom: 8px;">The Shawshank Redemption</h1>
+      <p class="caption" style="margin-bottom: 24px;">Drama • 1994 • 142 min</p>
+      
+      <h3>Overview</h3>
+      <p style="margin-bottom: 16px;">
+        Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency. This timeless classic explores themes of hope, friendship, and the human spirit.
+      </p>
+
+      <h3>Cast</h3>
+      <p style="margin-bottom: 16px;">
+        Tim Robbins, Morgan Freeman, Bob Gunton, William Sadler
+      </p>
+
+      <div style="margin-top: 24px;">
+        <button>Add to Watchlist</button>
+        <button class="secondary">Mark as Watched</button>
+        <button class="secondary">Share</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    let fontOverrideEnabled = false;
+
+    function toggleFontOverride() {
+      fontOverrideEnabled = !fontOverrideEnabled;
+      const btn = document.getElementById('toggleBtn');
+      const selectors = document.getElementById('fontSelectors');
+      const status = document.getElementById('status');
+
+      if (fontOverrideEnabled) {
+        btn.textContent = 'Disable Font Override';
+        selectors.style.display = 'block';
+        status.className = 'status active';
+        status.innerHTML = 'Font Override: <strong>Enabled</strong> (using Rotina fonts)';
+        applyFontOverride();
+      } else {
+        btn.textContent = 'Enable Font Override';
+        selectors.style.display = 'none';
+        status.className = 'status inactive';
+        status.innerHTML = 'Font Override: <strong>Disabled</strong> (using system fonts)';
+        removeFontOverride();
+      }
+    }
+
+    function updateFontTier(tier, weight) {
+      if (!fontOverrideEnabled) return;
+      
+      if (weight) {
+        document.documentElement.style.setProperty(
+          `--font-${tier}`,
+          `'Rotina', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        );
+        document.documentElement.style.setProperty(`--font-weight-${tier}`, weight);
+      } else {
+        document.documentElement.style.removeProperty(`--font-${tier}`);
+        document.documentElement.style.removeProperty(`--font-weight-${tier}`);
+      }
+    }
+
+    function applyFontOverride() {
+      // Apply default Rotina weights
+      updateFontTier('display', '700');
+      updateFontTier('heading', '600');
+      updateFontTier('body', '400');
+      updateFontTier('ui', '500');
+      updateFontTier('caption', '400');
+    }
+
+    function removeFontOverride() {
+      // Remove all font override CSS variables
+      document.documentElement.style.removeProperty('--font-display');
+      document.documentElement.style.removeProperty('--font-weight-display');
+      document.documentElement.style.removeProperty('--font-heading');
+      document.documentElement.style.removeProperty('--font-weight-heading');
+      document.documentElement.style.removeProperty('--font-body');
+      document.documentElement.style.removeProperty('--font-weight-body');
+      document.documentElement.style.removeProperty('--font-ui');
+      document.documentElement.style.removeProperty('--font-weight-ui');
+      document.documentElement.style.removeProperty('--font-caption');
+      document.documentElement.style.removeProperty('--font-weight-caption');
+    }
+
+    function resetToDefaults() {
+      if (!fontOverrideEnabled) return;
+
+      document.getElementById('displayFont').value = '700';
+      document.getElementById('headingFont').value = '600';
+      document.getElementById('bodyFont').value = '400';
+      document.getElementById('uiFont').value = '500';
+      document.getElementById('captionFont').value = '400';
+
+      applyFontOverride();
+    }
+  </script>
+</body>
+</html>

@@ -12,6 +12,7 @@ This design system harmonizes the visual and interface language across all min a
 - **Layout Patterns**: Standardized margins, positioning, and spacing
 - **Templates**: Pre-built page layouts and component compositions
 - **Notification System**: Unified notification preferences and background job scheduling
+- **Onboarding System**: Consistent, beautiful first-run experiences for all apps
 
 ## Installation
 
@@ -62,6 +63,30 @@ import {
 const preferences = loadNotificationPreferences(APP_IDS.CYCLISMO);
 ```
 
+### Use Onboarding System
+
+```javascript
+import {
+  OnboardingContainer,
+  cyclismoOnboardingConfig,
+  OnboardingManager,
+} from '@min-apps/design-system/onboarding';
+
+// Check if onboarding should be shown
+if (OnboardingManager.shouldShowOnboarding('cyclismo')) {
+  // Render onboarding
+  <OnboardingContainer
+    config={cyclismoOnboardingConfig}
+    onComplete={(settings) => {
+      // Apply default settings and navigate to app
+    }}
+    onRequestNotifications={async () => {
+      const permission = await Notification.requestPermission();
+    }}
+  />
+}
+```
+
 ## Design Principles
 
 ### Consistency
@@ -96,6 +121,7 @@ src/
 ├── components/       # Shared UI components
 ├── layouts/          # Layout components and templates
 ├── notifications/    # Notification preferences and scheduling
+├── onboarding/       # Onboarding flows and configurations
 └── utils/            # Utility functions and helpers
 ```
 
@@ -107,6 +133,7 @@ See the `/docs` folder for detailed documentation on:
 - Theming guide
 - Migration guide for existing apps
 - Notification system guide
+- **Onboarding system guide** (NEW)
 - Best practices
 
 ## License

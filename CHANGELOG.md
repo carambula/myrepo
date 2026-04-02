@@ -2,6 +2,93 @@
 
 All notable changes to the min apps design system will be documented in this file.
 
+## [1.2.0] - 2026-04-02
+
+### Added
+
+#### Deep Linking System
+- Comprehensive deep linking system with bias towards opening content in min apps
+- URL scheme definitions and parsers for all supported external services:
+  - **Movies/TV**: TMDB, IMDb
+  - **Podcasts**: Apple Podcasts, Spotify, Overcast, Pocket Casts
+  - **Videos**: YouTube (videos, channels, playlists)
+  - **Cycling**: ProCyclingStats, CyclingNews
+- Content type mapping system for accurate routing between services
+- User preference management for choosing preferred apps per content type
+- Link opening utilities that respect user preferences and attempt deep links first
+- Automatic fallback to web when min app is not installed
+- React hooks for deep linking:
+  - `useOpenLink` - Open links with deep linking support
+  - `useDeepLinkPreferences` - Access and manage user preferences
+  - `useLinkPreview` - Preview link behavior before opening
+  - `useUrlParser` - Parse URLs to extract content information
+  - `useShareableLink` - Create shareable universal links
+  - `usePreferredApp` - Get user's preferred app for content type
+  - `useDeepLinkAnalytics` - Track deep link usage
+- React components for easy integration:
+  - `DeepLink` - Automatic deep linking for any URL
+  - `LinkPreview` - Show preview of link behavior
+  - `SmartLink` - Link with hover preview
+  - `ContentButton` - Open specific content by ID
+  - `ShareButton` - Share content via deep link
+  - `AppPreferenceSelector` - UI for selecting preferred app
+  - `DeepLinkPreferencesPanel` - Complete preference management UI
+  - `DeepLinkProvider` - Context provider for configuration
+- Platform integration support (iOS, Android, Web)
+- Content ID extraction and mapping utilities
+- Shareable universal link generation
+- Comprehensive documentation in `/docs/deep-linking.md`
+- Integration examples for all four apps in `/examples/deep-linking/`:
+  - WatchedIt integration examples
+  - Podlink integration examples
+  - Yourtube integration examples
+  - Cyclismo Guide integration examples
+
+#### Deep Linking Features
+- **Bias towards min apps**: Always attempts to open in a min app first
+- **User preference support**: Respects user's chosen apps for different content types
+- **Graceful fallbacks**: Falls back to web when app isn't installed
+- **Consistent API**: Same API across all platforms and apps
+- **URL parsing**: Automatically detects content type from URLs
+- **Content mapping**: Maps between different ID systems (TMDB, IMDb, etc.)
+- **Batch operations**: Open multiple links efficiently
+- **Preview mode**: Preview what will happen before opening
+- **Analytics tracking**: Built-in usage tracking
+- **Preference persistence**: User preferences saved to localStorage
+- **Import/Export**: Backup and sync preferences
+
+#### Deep Linking by App
+
+**WatchedIt**
+- Deep links from TMDB and IMDb URLs
+- Movie, TV show, and person page deep linking
+- Share movies with universal links
+- Parse movie links in user-generated content
+
+**Podlink**
+- Deep links from Apple Podcasts, Spotify, Overcast, Pocket Casts
+- Podcast and episode deep linking
+- Smart queue building from multiple sources
+- RSS feed import with deep linking
+
+**Yourtube**
+- Deep links from YouTube URLs (youtube.com and youtu.be)
+- Video, channel, and playlist deep linking
+- Distraction-free mode integration
+- Comment parsing for video links
+
+**Cyclismo Guide**
+- Deep links from ProCyclingStats and CyclingNews
+- Race, rider, team, and stage deep linking
+- Live race tracking with deep links
+- Grand Tour stage tracking
+
+### Changed
+- Updated package exports to include deep linking module
+- Updated README with deep linking system usage
+- Updated main index to export deep linking utilities
+- Enhanced overall link handling across all apps
+
 ## [1.1.0] - 2026-04-02
 
 ### Added

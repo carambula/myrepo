@@ -13,6 +13,7 @@ This design system harmonizes the visual and interface language across all min a
 - **Templates**: Pre-built page layouts and component compositions
 - **Notification System**: Unified notification preferences and background job scheduling
 - **Onboarding System**: Consistent, beautiful first-run experiences for all apps
+- **Deep Linking System**: Comprehensive deep linking with bias towards min apps and user preference support
 
 ## Installation
 
@@ -87,6 +88,27 @@ if (OnboardingManager.shouldShowOnboarding('cyclismo')) {
 }
 ```
 
+### Use Deep Linking System
+
+```javascript
+import { 
+  DeepLink,
+  openLink,
+  DeepLinkPreferencesPanel 
+} from '@min-apps/design-system/deepLinking';
+
+// Use DeepLink component for automatic deep linking
+<DeepLink href="https://www.themoviedb.org/movie/550">
+  Check out Fight Club
+</DeepLink>
+
+// Open links programmatically
+await openLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+// Add preferences UI to settings
+<DeepLinkPreferencesPanel title="Link Preferences" />
+```
+
 ## Design Principles
 
 ### Consistency
@@ -122,6 +144,7 @@ src/
 ├── layouts/          # Layout components and templates
 ├── notifications/    # Notification preferences and scheduling
 ├── onboarding/       # Onboarding flows and configurations
+├── deepLinking/      # Deep linking system with min app bias
 └── utils/            # Utility functions and helpers
 ```
 
@@ -133,7 +156,8 @@ See the `/docs` folder for detailed documentation on:
 - Theming guide
 - Migration guide for existing apps
 - Notification system guide
-- **Onboarding system guide** (NEW)
+- Onboarding system guide
+- **Deep linking system guide** (NEW)
 - Best practices
 
 ## License

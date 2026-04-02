@@ -11,6 +11,7 @@ This design system harmonizes the visual and interface language across all min a
 - **Shared Components**: Common UI components with consistent styling
 - **Layout Patterns**: Standardized margins, positioning, and spacing
 - **Templates**: Pre-built page layouts and component compositions
+- **Notification System**: Unified notification preferences and background job scheduling
 
 ## Installation
 
@@ -43,6 +44,22 @@ import { AppLayout, ContentContainer } from '@min-apps/design-system/layouts';
 
 ```javascript
 import '@min-apps/design-system/styles.css';
+```
+
+### Use Notification System
+
+```javascript
+import { 
+  NotificationSettingsPage,
+  loadNotificationPreferences,
+  APP_IDS 
+} from '@min-apps/design-system/notifications';
+
+// Render notification settings page
+<NotificationSettingsPage appId={APP_IDS.CYCLISMO} />
+
+// Load preferences programmatically
+const preferences = loadNotificationPreferences(APP_IDS.CYCLISMO);
 ```
 
 ## Design Principles
@@ -78,6 +95,7 @@ src/
 ├── themes/           # Theme configurations
 ├── components/       # Shared UI components
 ├── layouts/          # Layout components and templates
+├── notifications/    # Notification preferences and scheduling
 └── utils/            # Utility functions and helpers
 ```
 
@@ -88,6 +106,7 @@ See the `/docs` folder for detailed documentation on:
 - Component API documentation
 - Theming guide
 - Migration guide for existing apps
+- Notification system guide
 - Best practices
 
 ## License

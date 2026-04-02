@@ -26,6 +26,7 @@
     "./themes": "./src/themes/index.js",
     "./components": "./src/components/index.js",
     "./layouts": "./src/layouts/index.js",
+    "./notifications": "./src/notifications/index.js",
     "./styles.css": "./dist/styles.css"
   }
 }

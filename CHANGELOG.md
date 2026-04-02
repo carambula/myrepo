@@ -2,6 +2,26 @@
 
 All notable changes to the min apps design system will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+#### Episode List Interaction Pattern
+- New `EpisodeListItem` component with proper tap behavior:
+  - Art and title open episode detail/player view
+  - Play button plays/pauses episode immediately
+  - Automatic `e.stopPropagation()` handling on play button
+  - Consistent styling with design system tokens
+  - Proper accessibility labels
+- Comprehensive tap behavior documentation (`docs/list-tap-behavior.md`)
+- Episode list template (`integration-tools/templates/episode-list-view.jsx`)
+- Updated Podlink integration guide with correct tap behavior
+- Updated list-view template with improved comments about `stopPropagation()`
+
+### Changed
+- Fixed `EpisodeList` example in `examples/deep-linking/podlink-integration.jsx` to use proper tap areas
+- Updated Podlink integration documentation to emphasize separate tap areas for episode lists
+
 ## [1.3.0] - 2026-04-02
 
 ### Added

@@ -4,6 +4,7 @@
 
 export { Button } from './Button.js';
 export { ListItem } from './ListItem.js';
+export { EpisodeListItem } from './EpisodeListItem.js';
 export { AppHeader } from './AppHeader.js';
 export { Card } from './Card.js';
 export { Input } from './Input.js';
@@ -27,6 +28,7 @@ export { FontOverrideSettings } from './FontOverrideSettings.js';
 export default {
   Button,
   ListItem,
+  EpisodeListItem,
   AppHeader,
   Card,
   Input,

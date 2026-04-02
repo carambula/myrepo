@@ -2,6 +2,69 @@
 
 All notable changes to the min apps design system will be documented in this file.
 
+## [1.2.0] - 2026-04-02
+
+### Added
+
+#### Safe Data Storage & Update System
+
+- **Data Storage Module** - Safe, namespaced storage for user data and reference data
+  - `DataStorage` class with separate namespaces (USER, REFERENCE, SYSTEM)
+  - `createDataStorage(appId)` - Factory function for storage instances
+  - Prevents user data loss during database updates
+  - Automatic timestamping and version tracking
+  - Export/import functionality for user data backups
+
+- **Data Update Utilities** - Version-controlled reference data updates
+  - `DataUpdater` class for safe reference data updates
+  - `createDataUpdater(appId)` - Factory function for updater instances
+  - Semantic version comparison and tracking
+  - Automatic backup creation before updates
+  - Rollback support with restore from backup
+  - Migration hooks for data transformations
+  - Update status tracking (not_needed, available, in_progress, completed, failed, rolled_back)
+
+- **App Initialization System** - Promoted, user-friendly data updates
+  - `AppInitializer` class for app startup and updates
+  - `createAppInitializer(appId, options)` - Factory with custom options
+  - `quickInit(appId, data, version, options)` - Simple initialization helper
+  - Multiple update prompt strategies (silent, notify, prompt, manual)
+  - Lifecycle callbacks (onUpdateAvailable, onUpdateStart, onUpdateComplete, onUpdateError)
+  - Check for updates without applying them
+  - Manual update trigger for settings pages
+  - First-time setup detection and handling
+
+- **WatchedIt Integration Updates**
+  - Updated `EpisodeTracker` to use safe storage utilities
+  - Migrated from raw localStorage to namespaced storage
+  - Prevents notification tracking data from being lost during updates
+
+- **Comprehensive Documentation**
+  - `/docs/safe-data-updates.md` - Complete usage guide with examples
+  - `/integration-tools/app-specific/watchedit-data-safety.md` - WatchedIt-specific integration guide
+  - `/examples/watchedit-safe-updates.js` - 8 practical examples and complete app template
+  - Migration guide for existing apps
+  - Troubleshooting section
+  - Best practices and testing strategies
+
+#### Key Features
+
+- **Data Separation**: User data (watchlists, ratings) separated from reference data (movies, Oscars)
+- **Automatic Backups**: User data backed up before every reference data update
+- **Version Control**: Track reference data versions with semantic versioning
+- **Rollback Support**: Restore previous state if updates fail
+- **Zero Data Loss**: User data preserved across all database updates
+- **Flexible Updates**: Silent, notify, prompt, or manual update strategies
+- **Migration Hooks**: Transform data during version updates
+- **Export/Import**: User data portability for backups and device transfers
+
+### Fixed
+
+- **Issue #4085**: User data being wiped when updating movie database from bootstrap
+  - Root cause: No separation between user data and reference data
+  - Solution: Implemented namespaced storage with automatic backup/restore
+  - Impact: Users can now safely update Oscars data without losing watchlists and ratings
+
 ## [1.1.0] - 2026-04-02
 
 ### Added

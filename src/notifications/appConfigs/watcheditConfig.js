@@ -5,6 +5,7 @@
 
 import { WATCHEDIT_NOTIFICATION_TYPES } from '../notificationTypes.js';
 import { createNewEpisodesNotification } from '../notificationScheduler.js';
+import { createDataStorage } from '../../storage/index.js';
 
 /**
  * Background job handlers for WatchedIt
@@ -61,14 +62,25 @@ export function getWatcheditScheduleConfig(preferences) {
 /**
  * Episode checking helper
  * Utilities for tracking and detecting new episodes
+ * 
+ * UPDATED: Now uses safe storage utilities to protect user data
  */
 export const EpisodeTracker = {
+  _storage: null,
+
+  _getStorage() {
+    if (!this._storage) {
+      this._storage = createDataStorage('watchedit');
+    }
+    return this._storage;
+  },
+
   /**
    * Get last check timestamp
    */
   getLastCheckTime() {
-    if (typeof localStorage === 'undefined') return null;
-    const timestamp = localStorage.getItem('watchedit-last-episode-check');
+    const storage = this._getStorage();
+    const timestamp = storage.getSystemData('last-episode-check');
     return timestamp ? new Date(timestamp) : null;
   },
 
@@ -76,8 +88,8 @@ export const EpisodeTracker = {
    * Set last check timestamp
    */
   setLastCheckTime(time = new Date()) {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem('watchedit-last-episode-check', time.toISOString());
+    const storage = this._getStorage();
+    storage.saveSystemData('last-episode-check', time.toISOString());
   },
 
   /**
@@ -97,34 +109,28 @@ export const EpisodeTracker = {
    * Mark episodes as notified
    */
   markEpisodesNotified(episodeIds) {
-    if (typeof localStorage === 'undefined') return;
-    
+    const storage = this._getStorage();
     const notified = this.getNotifiedEpisodes();
     const updated = [...new Set([...notified, ...episodeIds])];
-    
-    localStorage.setItem('watchedit-notified-episodes', JSON.stringify(updated));
+    storage.saveSystemData('notified-episodes', updated);
   },
 
   /**
    * Get list of notified episode IDs
    */
   getNotifiedEpisodes() {
-    if (typeof localStorage === 'undefined') return [];
-    
-    const stored = localStorage.getItem('watchedit-notified-episodes');
-    return stored ? JSON.parse(stored) : [];
+    const storage = this._getStorage();
+    return storage.getSystemData('notified-episodes', []);
   },
 
   /**
    * Clear old notified episodes (older than 30 days)
    */
   cleanupOldNotifications() {
-    if (typeof localStorage === 'undefined') return;
-    
+    const storage = this._getStorage();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    localStorage.setItem('watchedit-last-cleanup', thirtyDaysAgo.toISOString());
+    storage.saveSystemData('last-cleanup', thirtyDaysAgo.toISOString());
   }
 };
 

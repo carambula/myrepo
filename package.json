@@ -28,6 +28,7 @@
     "./layouts": "./src/layouts/index.js",
     "./notifications": "./src/notifications/index.js",
     "./onboarding": "./src/onboarding/index.js",
+    "./storage": "./src/storage/index.js",
     "./styles.css": "./dist/styles.css"
   }
 }

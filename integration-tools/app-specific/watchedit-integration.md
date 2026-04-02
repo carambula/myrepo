@@ -45,13 +45,18 @@ WatchedIt is the most mature and hardened of the min apps. The integration shoul
 
 **Current State**: Custom list components for movies, watchlist, etc.
 
+**IMPORTANT - Tap Behavior**: Movie lists should have separate tap areas:
+- **Poster and title**: Opens movie detail view
+- **Action button**: Performs immediate action (add to watchlist, play trailer, etc.)
+
 **Migration Steps**:
 
 - [ ] Wrap lists in `<List>` component
 - [ ] Use `<ListItem>` for each movie entry
-- [ ] Apply standard list spacing:
+- [ ] Apply standard list spacing
+- [ ] **CRITICAL**: Use `e.stopPropagation()` on action buttons to prevent triggering row click
   ```javascript
-  import { List, ListItem } from '@min-apps/design-system/components';
+  import { List, ListItem, Button } from '@min-apps/design-system/components';
   
   <List spacing="default">
     {movies.map(movie => (
@@ -60,12 +65,27 @@ WatchedIt is the most mature and hardened of the min apps. The integration shoul
         image={movie.posterUrl}
         title={movie.title}
         subtitle={`${movie.year} · ${movie.rating}`}
+        // Clicking poster/title opens movie detail view
         onClick={() => navigateToMovie(movie.id)}
-        action={<Button variant="ghost" size="sm">Add</Button>}
+        action={
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              // CRITICAL: stopPropagation prevents row click
+              e.stopPropagation();
+              addToWatchlist(movie.id);
+            }}
+          >
+            Add
+          </Button>
+        }
       />
     ))}
   </List>
   ```
+
+See `docs/list-tap-behavior.md` for complete guidelines.
 
 ### 3. Home Screen
 

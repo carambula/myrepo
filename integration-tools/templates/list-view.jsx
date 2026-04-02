@@ -39,7 +39,9 @@ function ListView() {
   };
 
   const handleAction = (item, e) => {
-    e.stopPropagation(); // Prevent item click
+    // CRITICAL: stopPropagation prevents the row onClick from firing
+    // This allows separate tap areas: row click vs action button click
+    e.stopPropagation();
     console.log('Action for:', item);
   };
 
@@ -80,11 +82,14 @@ function ListView() {
               image={item.imageUrl}
               title={item.title}
               subtitle={item.subtitle}
+              // Row click - opens detail view
               onClick={() => handleItemClick(item)}
               action={
                 <Button 
                   variant="ghost" 
                   size="sm"
+                  // Action click - performs secondary action
+                  // stopPropagation prevents row onClick from firing
                   onClick={(e) => handleAction(item, e)}
                 >
                   Action

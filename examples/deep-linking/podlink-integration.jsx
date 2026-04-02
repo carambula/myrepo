@@ -14,6 +14,7 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
+import { EpisodeListItem, List } from '@min-apps/design-system';
 
 /**
  * Example: Podcast List Component
@@ -56,32 +57,46 @@ function PodcastList({ podcasts }) {
 
 /**
  * Example: Episode List
- * Shows how to handle episode deep linking
+ * Shows how to handle episode interaction with proper tap behavior:
+ * - Art and title open the episode detail/player view
+ * - Play button plays the episode
+ * 
+ * See docs/list-tap-behavior.md for complete guidelines
  */
 function EpisodeList({ episodes }) {
   const { open } = useOpenLink();
+  const [playingId, setPlayingId] = React.useState(null);
+  
+  const openEpisodePlayer = (episode) => {
+    console.log('Opening episode player for:', episode.title);
+    if (episode.spotifyUrl) {
+      open(episode.spotifyUrl);
+    } else if (episode.applePodcastsUrl) {
+      open(episode.applePodcastsUrl);
+    }
+  };
+  
+  const playEpisode = (episode) => {
+    console.log('Playing episode:', episode.title);
+    setPlayingId(episode.id === playingId ? null : episode.id);
+  };
   
   return (
-    <div className="episode-list">
+    <List spacing="default">
       {episodes.map(episode => (
-        <div 
-          key={episode.id} 
-          className="episode-item"
-          onClick={() => {
-            // Open episode in Podlink
-            if (episode.spotifyUrl) {
-              open(episode.spotifyUrl);
-            } else if (episode.applePodcastsUrl) {
-              open(episode.applePodcastsUrl);
-            }
-          }}
-        >
-          <h4>{episode.title}</h4>
-          <p>{episode.description}</p>
-          <span>{episode.duration}</span>
-        </div>
+        <EpisodeListItem
+          key={episode.id}
+          artwork={episode.artwork || '/placeholder-episode.jpg'}
+          artworkAlt={episode.title}
+          title={episode.title}
+          subtitle={episode.description}
+          duration={episode.duration}
+          isPlaying={episode.id === playingId}
+          onEpisodeClick={() => openEpisodePlayer(episode)}
+          onPlayClick={() => playEpisode(episode)}
+        />
       ))}
-    </div>
+    </List>
   );
 }
 

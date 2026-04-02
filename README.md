@@ -184,6 +184,7 @@ See the `/docs` folder for detailed documentation on:
 - Migration guide for existing apps
 - **Font override system guide** (NEW)
 - **Font override integration guide** (NEW)
+- **List tap behavior guidelines** (NEW)
 - Notification system guide
 - Onboarding system guide
 - Deep linking system guide

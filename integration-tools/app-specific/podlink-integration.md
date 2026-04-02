@@ -49,13 +49,18 @@ PodLink is a podcast app that allows users to follow, unlock, and listen to podc
 
 **Current State**: Custom list components for episodes, shows, etc.
 
+**IMPORTANT - Tap Behavior**: Episode lists must have separate tap areas:
+- **Art and title**: Opens the episode detail/player view
+- **Play button**: Plays/pauses the episode
+
 **Migration Steps**:
 
 - [ ] Wrap lists in `<List>` component
 - [ ] Use `<ListItem>` for each episode entry
-- [ ] Apply standard list spacing:
+- [ ] Apply standard list spacing
+- [ ] **CRITICAL**: Use `e.stopPropagation()` on the play button to prevent triggering the row click
   ```javascript
-  import { List, ListItem } from '@min-apps/design-system/components';
+  import { List, ListItem, Button } from '@min-apps/design-system/components';
   
   <List spacing="comfortable">
     {episodes.map(episode => (
@@ -64,16 +69,36 @@ PodLink is a podcast app that allows users to follow, unlock, and listen to podc
         image={episode.artworkUrl}
         title={episode.title}
         subtitle={`${episode.podcastName} · ${episode.duration}`}
-        onClick={() => playEpisode(episode.id)}
+        onClick={() => openEpisodePlayer(episode.id)}
         action={
-          <Button variant="ghost" size="sm">
-            {episode.isPlayed ? '✓ Played' : 'Play'}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              playEpisode(episode.id);
+            }}
+          >
+            {episode.isPlaying ? '⏸' : '▶'}
           </Button>
         }
       />
     ))}
   </List>
   ```
+
+**Example handlers**:
+```javascript
+const openEpisodePlayer = (episodeId) => {
+  // Navigate to episode detail/player view
+  navigate(`/episode/${episodeId}`);
+};
+
+const playEpisode = (episodeId) => {
+  // Play the episode immediately
+  audioPlayer.play(episodeId);
+};
+```
 
 ### 3. Home Screen
 

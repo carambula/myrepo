@@ -2,6 +2,55 @@
 
 All notable changes to the min apps design system will be documented in this file.
 
+## [1.2.0] - 2026-04-02
+
+### Added
+
+#### Onboarding System
+- Complete onboarding flow system with step navigation and progress tracking
+- Core onboarding components:
+  - `OnboardingFlow` - Main flow container with progress bar and step management
+  - `OnboardingStep` - Generic step component with title, description, and navigation
+  - `OnboardingNotificationStep` - Pre-configured notification preferences step
+- State management utilities:
+  - `useOnboardingState` hook for managing completion status
+  - `isOnboardingCompleted`, `setOnboardingCompleted`, `resetOnboarding` functions
+  - Automatic localStorage persistence of onboarding status
+- Pre-configured onboarding flows for all apps:
+  - Cyclismo Guide: Welcome, Features, Notification Settings
+  - Podlink: Welcome, Features, Notification Settings
+  - WatchedIt: Welcome, Features, Notification Settings
+  - Yourtube: Welcome, Features, Notification Settings
+- App-specific content and messaging for each onboarding flow
+- `getDefaultOnboardingSteps` utility for retrieving default flows
+- `createOnboardingSteps` utility for custom flow creation
+- Comprehensive documentation in `/docs/onboarding.md`
+- Interactive HTML example in `/examples/onboarding-example.html`
+- Full notification system integration in onboarding flow
+
+#### Onboarding Features by App
+
+**All Apps**
+- 3-step onboarding flow with welcome, features, and notifications
+- Progress bar showing current step
+- Skip onboarding option
+- Back/next navigation
+- Responsive mobile-optimized design
+- Automatic state persistence
+
+**Notification Integration**
+- Seamless integration with notification preferences system
+- App-specific notification settings during onboarding
+- Validation and error handling
+- Preferences saved automatically
+- Permission request guidance for iOS/Android/Web
+
+### Changed
+- Updated package exports to include onboarding module
+- Updated README with onboarding system usage
+- Updated component exports to include onboarding components
+- Enhanced documentation structure
+
 ## [1.1.0] - 2026-04-02
 
 ### Added

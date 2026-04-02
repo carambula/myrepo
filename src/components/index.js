@@ -17,6 +17,9 @@ export { PodlinkNotificationSettings } from './PodlinkNotificationSettings.js';
 export { WatcheditNotificationSettings } from './WatcheditNotificationSettings.js';
 export { YourtubeNotificationSettings } from './YourtubeNotificationSettings.js';
 export { NotificationSettingsPage } from './NotificationSettingsPage.js';
+export { OnboardingFlow } from './OnboardingFlow.js';
+export { OnboardingStep } from './OnboardingStep.js';
+export { OnboardingNotificationStep } from './OnboardingNotificationStep.js';
 
 export default {
   Button,
@@ -34,4 +37,7 @@ export default {
   WatcheditNotificationSettings,
   YourtubeNotificationSettings,
   NotificationSettingsPage,
+  OnboardingFlow,
+  OnboardingStep,
+  OnboardingNotificationStep,
 };

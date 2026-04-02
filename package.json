@@ -27,6 +27,7 @@
     "./components": "./src/components/index.js",
     "./layouts": "./src/layouts/index.js",
     "./notifications": "./src/notifications/index.js",
+    "./onboarding": "./src/onboarding/index.js",
     "./styles.css": "./dist/styles.css"
   }
 }

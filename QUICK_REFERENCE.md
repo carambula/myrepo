@@ -217,6 +217,57 @@ background-color: var(--color-background-primary);
 <Button variant="primary">Click</Button>
 ```
 
+## Onboarding System
+
+```javascript
+import {
+  OnboardingContainer,
+  OnboardingManager,
+  cyclismoOnboardingConfig,
+} from '@min-apps/design-system/onboarding';
+
+// Check if onboarding should show
+if (OnboardingManager.shouldShowOnboarding('cyclismo')) {
+  <OnboardingContainer
+    config={cyclismoOnboardingConfig}
+    onComplete={(settings) => console.log('Done!', settings)}
+    onSkip={() => console.log('Skipped')}
+    onRequestNotifications={async () => {
+      await Notification.requestPermission();
+    }}
+  />
+}
+
+// Reset onboarding (for testing)
+OnboardingManager.resetOnboarding('cyclismo');
+
+// Available configs:
+// - cyclismoOnboardingConfig
+// - podlinkOnboardingConfig  
+// - yourtubeOnboardingConfig
+// - watcheditOnboardingConfig
+```
+
+## Notification System
+
+```javascript
+import {
+  NotificationSettingsPage,
+  loadNotificationPreferences,
+  saveNotificationPreferences,
+  APP_IDS
+} from '@min-apps/design-system/notifications';
+
+// Render notification settings
+<NotificationSettingsPage appId={APP_IDS.CYCLISMO} />
+
+// Load preferences
+const prefs = loadNotificationPreferences(APP_IDS.CYCLISMO);
+
+// Save preferences
+saveNotificationPreferences(APP_IDS.CYCLISMO, newPrefs);
+```
+
 ## Documentation Links
 
 - **[Getting Started](./docs/getting-started.md)** - Setup guide
@@ -226,6 +277,8 @@ background-color: var(--color-background-primary);
 - **[Tokens](./docs/tokens.md)** - Token reference
 - **[Components](./docs/components.md)** - Component API
 - **[Theming](./docs/theming.md)** - Theme guide
+- **[Onboarding Guide](./docs/onboarding.md)** - Onboarding system
+- **[Onboarding Quick Start](./docs/onboarding-quick-start.md)** - 5-min setup
 - **[Best Practices](./docs/best-practices.md)** - Guidelines
 - **[Architecture](./docs/architecture.md)** - System design
 

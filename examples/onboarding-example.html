@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Min Apps Onboarding Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Light theme colors */
+      --color-background-primary: #FFFFFF;
+      --color-background-secondary: #F5F5F5;
+      --color-surface-primary: #FFFFFF;
+      --color-text-primary: #1A1A1A;
+      --color-text-secondary: #666666;
+      --color-border-primary: #E0E0E0;
+      --color-primary-main: #4CAF50;
+      --color-primary-light: #66BB6A;
+      --color-primary-dark: #388E3C;
+      --color-primary-contrast: #FFFFFF;
+      --color-secondary-main: #009688;
+      --color-secondary-dark: #00796B;
+      --color-secondary-contrast: #FFFFFF;
+      --color-hover-primary: rgba(0, 0, 0, 0.04);
+      --color-success-main: #4CAF50;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--color-background-primary);
+      color: var(--color-text-primary);
+    }
+
+    /* Demo Controls */
+    .demo-controls {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .demo-controls h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .demo-controls select,
+    .demo-controls button {
+      padding: 8px 12px;
+      border: 1px solid var(--color-border-primary);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .demo-controls button {
+      background: var(--color-primary-main);
+      color: white;
+      border: none;
+    }
+
+    .demo-controls button:hover {
+      background: var(--color-primary-dark);
+    }
+
+    /* Onboarding Flow Styles */
+    .onboarding-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: var(--color-background-primary);
+    }
+
+    .onboarding-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .onboarding-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .step-progress {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 48px;
+    }
+
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--color-border-primary);
+      transition: background-color 0.3s ease;
+    }
+
+    .progress-dot.active {
+      background-color: var(--color-primary-main);
+    }
+
+    .step-icon-container {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--color-primary-main), var(--color-primary-dark));
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-icon {
+      width: 60px;
+      height: 60px;
+      color: white;
+    }
+
+    .step-title {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--color-text-primary);
+    }
+
+    .step-description {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+      margin-bottom: 32px;
+      max-width: 400px;
+    }
+
+    .features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      margin-top: 24px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      background-color: var(--color-surface-primary);
+      border-radius: 12px;
+      border: 1px solid var(--color-border-primary);
+      text-align: left;
+      transition: all 0.3s ease;
+    }
+
+    .feature-item:hover {
+      background-color: var(--color-hover-primary);
+      border-color: var(--color-primary-main);
+    }
+
+    .feature-icon-container {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-main));
+      border-radius: 8px;
+    }
+
+    .feature-icon {
+      width: 24px;
+      height: 24px;
+      color: white;
+    }
+
+    .feature-content h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--color-text-primary);
+    }
+
+    .feature-content p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+
+    .permission-request {
+      background-color: var(--color-surface-primary);
+      border-radius: 16px;
+      border: 1px solid var(--color-border-primary);
+      padding: 32px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+    }
+
+    .benefits-list {
+      list-style: none;
+      margin: 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background-color: var(--color-background-secondary);
+      border-radius: 8px;
+      text-align: left;
+    }
+
+    .benefit-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--color-success-main);
+      font-weight: bold;
+    }
+
+    /* Navigation */
+    .onboarding-navigation {
+      display: flex;
+      gap: 16px;
+      padding: 24px;
+      border-top: 1px solid var(--color-border-primary);
+      background-color: var(--color-background-secondary);
+    }
+
+    .button-group {
+      flex: 1;
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--color-primary-main);
+      color: var(--color-primary-contrast);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: var(--color-secondary-main);
+      color: var(--color-secondary-contrast);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--color-secondary-dark);
+    }
+
+    .btn-skip {
+      background: transparent;
+      color: var(--color-text-secondary);
+      padding: 12px 24px;
+    }
+
+    .btn-skip:hover {
+      color: var(--color-text-primary);
+    }
+
+    /* App selector */
+    .app-info {
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--color-primary-main), var(--color-primary-dark));
+      color: white;
+    }
+
+    @media (max-width: 767px) {
+      .demo-controls {
+        position: static;
+        margin: 16px;
+      }
+
+      .onboarding-content {
+        padding: 24px 16px;
+      }
+
+      .step-icon-container {
+        width: 100px;
+        height: 100px;
+      }
+
+      .step-icon {
+        width: 50px;
+        height: 50px;
+      }
+
+      .step-title {
+        font-size: 24px;
+      }
+
+      .onboarding-navigation {
+        flex-direction: column-reverse;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-controls">
+    <h3>Demo Controls</h3>
+    <select id="appSelector">
+      <option value="cyclismo">Cyclismo Guide</option>
+      <option value="podlink">Podlink</option>
+      <option value="yourtube">Yourtube</option>
+      <option value="watchedit">WatchedIt</option>
+    </select>
+    <button onclick="resetOnboarding()">Reset Onboarding</button>
+  </div>
+
+  <div id="app"></div>
+
+  <script>
+    // App configurations
+    const appConfigs = {
+      cyclismo: {
+        name: 'Cyclismo Guide',
+        primaryColor: '#4CAF50',
+        secondaryColor: '#009688',
+        steps: [
+          {
+            title: 'Welcome to Cyclismo',
+            description: 'Never miss a moment of professional cycling with real-time race guides and notifications.',
+            features: null,
+          },
+          {
+            title: 'Follow Every Race',
+            description: 'Stay connected to the world of professional cycling.',
+            features: [
+              { title: 'Race Schedule', description: 'View upcoming races with times, routes, and streaming information.' },
+              { title: 'Stream Alerts', description: 'Get notified minutes before races start so you never miss the action.' },
+              { title: 'Race Recaps', description: 'Find podcasts and replay links after each stage or race concludes.' },
+              { title: 'Save Races', description: 'Mark races you care about and get personalized notifications.' },
+            ],
+          },
+          {
+            title: 'Race Day Notifications',
+            description: 'Get timely alerts about races, streams, and recaps.',
+            permission: true,
+            benefits: [
+              'Morning summary of today\'s races',
+              'Pre-race alerts before streams start',
+              'Recap notifications with podcasts and replays',
+              'Customizable timing for all notifications',
+            ],
+          },
+          {
+            title: 'Ready to Race!',
+            description: 'Your personal cycling guide is ready. Enjoy the races!',
+            cta: 'View Races',
+          },
+        ],
+      },
+      podlink: {
+        name: 'Podlink',
+        primaryColor: '#FF9800',
+        secondaryColor: '#FF5722',
+        steps: [
+          {
+            title: 'Welcome to Podlink',
+            description: 'A minimal, focused way to manage your podcast queue and never miss an episode.',
+          },
+          {
+            title: 'Powerful Yet Simple',
+            description: 'Everything you need to manage podcasts, nothing you don\'t.',
+            features: [
+              { title: 'Smart Queue', description: 'Automatically organize episodes in a queue tailored to your listening habits.' },
+              { title: 'Priority Podcasts', description: 'Mark your favorite podcasts for instant notifications when new episodes drop.' },
+              { title: 'Apple Intelligence', description: 'Get AI-powered summaries and insights about your podcast queue.' },
+              { title: 'Minimal Design', description: 'Clean interface that lets you focus on listening, not managing.' },
+            ],
+          },
+          {
+            title: 'Never Miss an Episode',
+            description: 'Get notified about new episodes from your priority podcasts and daily queue summaries.',
+            permission: true,
+            benefits: [
+              'Instant notifications for priority podcasts',
+              'Morning queue summary with Apple Intelligence',
+              'Customizable check intervals',
+              'Stay up to date effortlessly',
+            ],
+          },
+          {
+            title: 'Ready to Listen!',
+            description: 'Your podcast queue is ready. Start listening to what matters.',
+            cta: 'Start Listening',
+          },
+        ],
+      },
+      yourtube: {
+        name: 'Yourtube',
+        primaryColor: '#F44336',
+        secondaryColor: '#E91E63',
+        steps: [
+          {
+            title: 'Welcome to Yourtube',
+            description: 'Cut through the noise and focus on the videos that matter to you.',
+          },
+          {
+            title: 'Watch Intentionally',
+            description: 'Transform how you consume video content with these powerful features.',
+            features: [
+              { title: 'Smart Video Queue', description: 'Automatically organize videos from your subscriptions into a clean queue.' },
+              { title: 'Priority Channels', description: 'Mark important channels to get notified the moment they upload.' },
+              { title: 'Apple Intelligence', description: 'Get AI summaries of your queue to decide what to watch first.' },
+              { title: 'Distraction-Free', description: 'No recommendations, no infinite scroll. Just your queue.' },
+            ],
+          },
+          {
+            title: 'Stay in the Loop',
+            description: 'Get notified about new videos from priority channels and queue updates.',
+            permission: true,
+            benefits: [
+              'Instant alerts for priority channel uploads',
+              'Daily queue summary powered by Apple Intelligence',
+              'Customizable notification frequency',
+              'Never miss important content',
+            ],
+          },
+          {
+            title: 'You\'re Ready!',
+            description: 'Your video queue awaits. Watch with intention.',
+            cta: 'Start Watching',
+          },
+        ],
+      },
+      watchedit: {
+        name: 'WatchedIt',
+        primaryColor: '#9C27B0',
+        secondaryColor: '#2196F3',
+        steps: [
+          {
+            title: 'Welcome to WatchedIt',
+            description: 'Your minimalist companion for tracking movies and discovering what to watch next.',
+          },
+          {
+            title: 'Discover Features',
+            description: 'WatchedIt helps you organize your movie watching experience.',
+            features: [
+              { title: 'Track Movies', description: 'Keep a record of every movie you watch with ratings and notes.' },
+              { title: 'Smart Discovery', description: 'Get personalized movie recommendations based on your taste.' },
+              { title: 'Watchlist', description: 'Save movies you want to watch and never forget them.' },
+              { title: 'Movie Podcasts', description: 'Find and listen to podcasts discussing your favorite movies.' },
+            ],
+          },
+          {
+            title: 'Stay Updated',
+            description: 'Get notified about new episodes of movie podcasts you follow.',
+            permission: true,
+            benefits: [
+              'New episodes from podcasts you follow',
+              'Daily summary of available content',
+              'Never miss a discussion about your favorite movies',
+            ],
+          },
+          {
+            title: 'You\'re All Set!',
+            description: 'Start tracking movies and discover your next favorite film.',
+            cta: 'Start Watching',
+          },
+        ],
+      },
+    };
+
+    let currentApp = 'cyclismo';
+    let currentStep = 0;
+
+    function setAppTheme(appId) {
+      const config = appConfigs[appId];
+      document.documentElement.style.setProperty('--color-primary-main', config.primaryColor);
+      document.documentElement.style.setProperty('--color-secondary-main', config.secondaryColor);
+    }
+
+    function renderOnboarding() {
+      const config = appConfigs[currentApp];
+      const step = config.steps[currentStep];
+      const totalSteps = config.steps.length;
+
+      let content = `
+        <div class="onboarding-container">
+          <div class="app-info">
+            <h2>${config.name}</h2>
+          </div>
+          <div class="onboarding-content">
+            <div class="onboarding-step">
+              <div class="step-progress">
+                ${Array.from({ length: totalSteps }, (_, i) => 
+                  `<div class="progress-dot ${i === currentStep ? 'active' : ''}"></div>`
+                ).join('')}
+              </div>
+              
+              ${!step.features && !step.permission ? `
+                <div class="step-icon-container">
+                  <svg class="step-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path>
+                  </svg>
+                </div>
+              ` : ''}
+              
+              <h1 class="step-title">${step.title}</h1>
+              <p class="step-description">${step.description}</p>
+              
+              ${step.features ? `
+                <div class="features-list">
+                  ${step.features.map(feature => `
+                    <div class="feature-item">
+                      <div class="feature-icon-container">
+                        <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </div>
+                      <div class="feature-content">
+                        <h4>${feature.title}</h4>
+                        <p>${feature.description}</p>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+              
+              ${step.permission ? `
+                <div class="permission-request">
+                  <ul class="benefits-list">
+                    ${step.benefits.map(benefit => `
+                      <li class="benefit-item">
+                        <span class="benefit-icon">✓</span>
+                        <span>${benefit}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          
+          <nav class="onboarding-navigation">
+            <div class="button-group">
+              ${currentStep > 0 ? `
+                <button class="btn-secondary" onclick="previousStep()">Previous</button>
+              ` : ''}
+              <button class="btn-primary" onclick="nextStep()">
+                ${currentStep === totalSteps - 1 ? (step.cta || 'Get Started') : 'Next'}
+              </button>
+            </div>
+            ${currentStep < totalSteps - 1 ? `
+              <button class="btn-skip" onclick="skipOnboarding()">Skip</button>
+            ` : ''}
+          </nav>
+        </div>
+      `;
+
+      document.getElementById('app').innerHTML = content;
+    }
+
+    function nextStep() {
+      const config = appConfigs[currentApp];
+      if (currentStep < config.steps.length - 1) {
+        currentStep++;
+        renderOnboarding();
+      } else {
+        completeOnboarding();
+      }
+    }
+
+    function previousStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        renderOnboarding();
+      }
+    }
+
+    function skipOnboarding() {
+      alert(`Onboarding skipped for ${appConfigs[currentApp].name}`);
+      currentStep = 0;
+      renderOnboarding();
+    }
+
+    function completeOnboarding() {
+      alert(`Onboarding completed for ${appConfigs[currentApp].name}!`);
+      currentStep = 0;
+      renderOnboarding();
+    }
+
+    function resetOnboarding() {
+      currentStep = 0;
+      renderOnboarding();
+    }
+
+    document.getElementById('appSelector').addEventListener('change', (e) => {
+      currentApp = e.target.value;
+      currentStep = 0;
+      setAppTheme(currentApp);
+      renderOnboarding();
+    });
+
+    // Initialize
+    setAppTheme(currentApp);
+    renderOnboarding();
+  </script>
+</body>
+</html>

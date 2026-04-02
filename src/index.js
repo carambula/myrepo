@@ -17,6 +17,9 @@ export * from './layouts/index.js';
 // Export notifications
 export * from './notifications/index.js';
 
+// Export onboarding
+export * from './onboarding/index.js';
+
 // Default export
 export { default as tokens } from './tokens/index.js';
 export { default as themes } from './themes/index.js';

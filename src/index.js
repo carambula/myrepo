@@ -14,6 +14,9 @@ export * from './components/index.js';
 // Export layouts
 export * from './layouts/index.js';
 
+// Export notifications
+export * from './notifications/index.js';
+
 // Default export
 export { default as tokens } from './tokens/index.js';
 export { default as themes } from './themes/index.js';

@@ -14,6 +14,7 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
+import { borders } from '@min-apps/design-system/tokens';
 
 /**
  * Example: Video Queue Component
@@ -24,7 +25,11 @@ function VideoQueue({ videos }) {
     <div className="video-queue">
       {videos.map(video => (
         <div key={video.id} className="video-item">
-          <img src={video.thumbnail} alt={video.title} />
+          <img 
+            src={video.thumbnail} 
+            alt={video.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="video-info">
             <h3>{video.title}</h3>
             <p>{video.channel}</p>
@@ -56,7 +61,11 @@ function ChannelSubscriptions({ channels }) {
     <div className="channel-subscriptions">
       {channels.map(channel => (
         <div key={channel.id} className="channel-item">
-          <img src={channel.avatar} alt={channel.name} />
+          <img 
+            src={channel.avatar} 
+            alt={channel.name}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <h4>{channel.name}</h4>
           
           {/* Support both channel ID and handle formats */}
@@ -94,7 +103,11 @@ function PlaylistManager({ playlists }) {
       <h3>Your Playlists</h3>
       {playlists.map(playlist => (
         <div key={playlist.id} className="playlist-item">
-          <img src={playlist.thumbnail} alt={playlist.title} />
+          <img 
+            src={playlist.thumbnail} 
+            alt={playlist.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="playlist-info">
             <h4>{playlist.title}</h4>
             <span>{playlist.videoCount} videos</span>
@@ -155,7 +168,11 @@ function VideoDiscovery({ recommendations }) {
             href={`https://www.youtube.com/watch?v=${video.id}`}
             className="recommendation-card"
           >
-            <img src={video.thumbnail} alt={video.title} />
+            <img 
+              src={video.thumbnail} 
+              alt={video.title}
+              style={{ borderRadius: borders.radii.artTile }}
+            />
             <h4>{video.title}</h4>
             <p>{video.channel}</p>
             <span>{video.views} views</span>
@@ -339,7 +356,11 @@ function RelatedVideos({ related }) {
             href={`https://www.youtube.com/watch?v=${video.id}`}
             className="related-video"
           >
-            <img src={video.thumbnail} alt={video.title} />
+            <img 
+              src={video.thumbnail} 
+              alt={video.title}
+              style={{ borderRadius: borders.radii.artTile }}
+            />
             <p>{video.title}</p>
             <span>{video.duration}</span>
           </DeepLink>
@@ -381,7 +402,11 @@ function TrendingVideos({ trending }) {
           className="trending-video"
           onClick={() => open(`https://www.youtube.com/watch?v=${video.id}`)}
         >
-          <img src={video.thumbnail} alt={video.title} />
+          <img 
+            src={video.thumbnail} 
+            alt={video.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="video-info">
             <h4>{video.title}</h4>
             <p>{video.channel}</p>

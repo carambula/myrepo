@@ -14,6 +14,7 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
+import { borders } from '@min-apps/design-system/tokens';
 
 /**
  * Example: Movie List Component
@@ -87,7 +88,11 @@ function SearchResults({ results }) {
             open(tmdbUrl);
           }}
         >
-          <img src={result.poster} alt={result.title} />
+          <img 
+            src={result.poster} 
+            alt={result.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <h4>{result.title}</h4>
           <p>{result.overview}</p>
         </div>
@@ -224,7 +229,11 @@ function RelatedContent({ related }) {
             href={`https://www.themoviedb.org/${item.type}/${item.id}`}
             className="related-item"
           >
-            <img src={item.poster} alt={item.title} />
+            <img 
+              src={item.poster} 
+              alt={item.title}
+              style={{ borderRadius: borders.radii.artTile }}
+            />
             <p>{item.title}</p>
           </DeepLink>
         ))}

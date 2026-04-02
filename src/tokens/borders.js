@@ -21,6 +21,12 @@ export const borders = {
     xl: '16px',
     '2xl': '24px',
     full: '9999px',
+    
+    // Primary art tile radius (movie posters, race images, video thumbnails, show art)
+    // This is the ONLY radius that should be used for primary content artwork
+    // across all min apps (WatchedIt, Cyclismo, Yourtube, Podlink)
+    // DO NOT use larger radii (md, lg, xl, etc.) for primary art tiles
+    artTile: '4px',
   },
   
   // Border styles

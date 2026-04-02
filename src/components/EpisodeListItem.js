@@ -46,7 +46,7 @@ export function EpisodeListItem({
   const artworkStyles = `
     width: 64px;
     height: 64px;
-    border-radius: ${borders.radii.sm};
+    border-radius: ${borders.radii.artTile};
     object-fit: cover;
     flex-shrink: 0;
   `;

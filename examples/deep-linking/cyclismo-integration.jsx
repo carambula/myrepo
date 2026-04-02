@@ -14,6 +14,7 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
+import { borders } from '@min-apps/design-system/tokens';
 
 /**
  * Example: Race Calendar Component
@@ -66,7 +67,11 @@ function RiderProfiles({ riders }) {
             }
           }}
         >
-          <img src={rider.photo} alt={rider.name} />
+          <img 
+            src={rider.photo} 
+            alt={rider.name}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <h4>{rider.name}</h4>
           <p>{rider.team}</p>
           <span>{rider.nationality}</span>
@@ -92,7 +97,11 @@ function TeamRosters({ teams }) {
       <h3>Teams</h3>
       {teams.map(team => (
         <div key={team.id} className="team-item">
-          <img src={team.logo} alt={team.name} />
+          <img 
+            src={team.logo} 
+            alt={team.name}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="team-info">
             <h4>{team.name}</h4>
             <span>{team.category}</span>
@@ -329,7 +338,11 @@ function RaceRecaps({ recaps }) {
       <h3>Recent Race Recaps</h3>
       {recaps.map(recap => (
         <div key={recap.id} className="recap-item">
-          <img src={recap.thumbnail} alt={recap.raceName} />
+          <img 
+            src={recap.thumbnail} 
+            alt={recap.raceName}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="recap-info">
             <h4>{recap.raceName}</h4>
             <p>{recap.description}</p>
@@ -382,7 +395,11 @@ function FavoriteRiders({ favoriteRiders }) {
           className="favorite-rider"
           onClick={() => open(rider.pcsUrl)}
         >
-          <img src={rider.photo} alt={rider.name} />
+          <img 
+            src={rider.photo} 
+            alt={rider.name}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="rider-info">
             <h4>{rider.name}</h4>
             <p>{rider.team}</p>

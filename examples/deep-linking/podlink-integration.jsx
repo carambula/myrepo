@@ -15,6 +15,7 @@ import {
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
 import { EpisodeListItem, List } from '@min-apps/design-system';
+import { borders } from '@min-apps/design-system/tokens';
 
 /**
  * Example: Podcast List Component
@@ -25,7 +26,11 @@ function PodcastList({ podcasts }) {
     <div className="podcast-list">
       {podcasts.map(podcast => (
         <div key={podcast.id} className="podcast-item">
-          <img src={podcast.artwork} alt={podcast.title} />
+          <img 
+            src={podcast.artwork} 
+            alt={podcast.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <h3>{podcast.title}</h3>
           <p>{podcast.author}</p>
           
@@ -152,7 +157,11 @@ function PodcastDiscovery({ recommendations }) {
             href={podcast.applePodcastsUrl || podcast.spotifyUrl}
             className="recommendation-card"
           >
-            <img src={podcast.artwork} alt={podcast.title} />
+            <img 
+              src={podcast.artwork} 
+              alt={podcast.title}
+              style={{ borderRadius: borders.radii.artTile }}
+            />
             <h4>{podcast.title}</h4>
             <p>{podcast.category}</p>
           </DeepLink>
@@ -388,7 +397,11 @@ function PodcastSearch({ searchResults }) {
       <h3>Search Results</h3>
       {searchResults.map(result => (
         <div key={result.id} className="search-result">
-          <img src={result.artwork} alt={result.title} />
+          <img 
+            src={result.artwork} 
+            alt={result.title}
+            style={{ borderRadius: borders.radii.artTile }}
+          />
           <div className="result-info">
             <h4>{result.title}</h4>
             <p>{result.author}</p>

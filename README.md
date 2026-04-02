@@ -182,9 +182,10 @@ See the `/docs` folder for detailed documentation on:
 - Component API documentation
 - Theming guide
 - Migration guide for existing apps
-- **Font override system guide** (NEW)
-- **Font override integration guide** (NEW)
-- **List tap behavior guidelines** (NEW)
+- **Art tile guidelines** (NEW) - Standardized radii for primary content artwork
+- **Font override system guide**
+- **Font override integration guide**
+- **List tap behavior guidelines**
 - Notification system guide
 - Onboarding system guide
 - Deep linking system guide

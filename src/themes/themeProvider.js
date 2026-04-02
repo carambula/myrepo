@@ -5,6 +5,7 @@
 
 import { lightTheme } from './lightTheme.js';
 import { darkTheme } from './darkTheme.js';
+import { initFontOverride } from '../appearance/fontOverride.js';
 
 /**
  * Available themes
@@ -91,6 +92,9 @@ export function initTheme() {
   const theme = savedTheme || systemTheme;
   
   applyTheme(theme);
+  
+  // Initialize font override
+  initFontOverride();
   
   // Listen for system theme changes
   if (typeof window !== 'undefined' && window.matchMedia) {

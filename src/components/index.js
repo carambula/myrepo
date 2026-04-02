@@ -22,6 +22,7 @@ export { OnboardingStep } from './OnboardingStep.js';
 export { FeatureHighlight } from './FeatureHighlight.js';
 export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
+export { FontOverrideSettings } from './FontOverrideSettings.js';
 
 export default {
   Button,
@@ -44,4 +45,5 @@ export default {
   FeatureHighlight,
   PermissionRequest,
   OnboardingContainer,
+  FontOverrideSettings,
 };

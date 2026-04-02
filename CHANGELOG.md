@@ -2,6 +2,60 @@
 
 All notable changes to the min apps design system will be documented in this file.
 
+## [1.3.0] - 2026-04-02
+
+### Added
+
+#### Font Override System
+- Custom font override system allowing users to personalize typography across all min apps
+- Complete Rotina font family integration (8 weights: ExtraThin through ExtraBold)
+- Per-tier font customization system with 6 configurable tiers:
+  - **Display**: Large headings (H1, H2)
+  - **Heading**: Section headings (H3-H6)
+  - **Body**: Paragraphs and body text
+  - **UI**: Buttons, labels, and controls
+  - **Caption**: Small text and metadata
+  - **Mono**: Code and monospace (not customizable)
+- `FontOverrideSettings` React component with complete UI for font customization:
+  - Enable/disable toggle
+  - Dropdown selectors for each tier
+  - Live font preview for each weight
+  - Reset to defaults functionality
+  - Helpful instructions for users
+- Programmatic API for font override management:
+  - `enableFontOverride()` - Enable with default or custom configuration
+  - `disableFontOverride()` - Disable and restore system fonts
+  - `updateFontOverride()` - Update specific tiers
+  - `getFontOverrideConfig()` - Get current configuration
+  - `isFontOverrideEnabled()` - Check enabled status
+  - `initFontOverride()` - Auto-initialize on page load
+- CSS custom properties for font tiers:
+  - `--font-display`, `--font-weight-display`
+  - `--font-heading`, `--font-weight-heading`
+  - `--font-body`, `--font-weight-body`
+  - `--font-ui`, `--font-weight-ui`
+  - `--font-caption`, `--font-weight-caption`
+- Automatic font loading with `font-display: swap` for optimal performance
+- LocalStorage persistence for user preferences
+- Complete @font-face declarations for all Rotina weights (Roman and Italic)
+- Comprehensive documentation:
+  - `/docs/font-override.md` - Complete API and usage guide
+  - `/docs/font-override-integration.md` - App-specific integration guides for all four min apps
+- Example implementations:
+  - `/examples/font-override-example.html` - Interactive demo with live controls
+  - App-specific recommendations for WatchedIt, PodLink, YourTube, and Cyclismo Guide
+- Font asset structure at `/src/assets/fonts/rotina/` with README for font file placement
+- Integration with theme system - font override auto-initializes with `initTheme()`
+- Fallback support to system fonts when disabled or fonts unavailable
+
+#### Font Override Features
+- **User control**: Toggle custom fonts on/off at any time
+- **Granular customization**: Select different Rotina weights for each typography tier
+- **Consistent defaults**: Sensible default weight mappings for each tier
+- **Performance optimized**: Fonts only load when feature is enabled
+- **Accessible**: Maintains readability and WCAG contrast standards
+- **Responsive**: Works seamlessly across all devices and screen sizes
+
 ## [1.2.0] - 2026-04-02
 
 ### Added

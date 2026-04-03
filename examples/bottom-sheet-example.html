@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bottom Sheet Example - Min Apps</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --color-background-primary: #FFFFFF;
+      --color-background-secondary: #F5F5F5;
+      --color-surface-primary: #FFFFFF;
+      --color-text-primary: #1A1A1A;
+      --color-text-secondary: #666666;
+      --color-border-primary: #E0E0E0;
+      --color-primary-main: #4CAF50;
+      --color-primary-dark: #388E3C;
+      --color-primary-contrast: #FFFFFF;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-header {
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      color: white;
+    }
+
+    .app-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .app-header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .demo-controls {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .demo-controls h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: var(--color-text-primary);
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: 8px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--color-primary-main);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: var(--color-background-secondary);
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border-primary);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--color-border-primary);
+    }
+
+    .btn-secondary.active {
+      background-color: var(--color-primary-main);
+      color: white;
+      border-color: var(--color-primary-main);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+    }
+
+    .card-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    /* Bottom Sheet Styles */
+    .min-bottom-sheet-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1300;
+      pointer-events: none;
+    }
+
+    .min-bottom-sheet-container--open {
+      pointer-events: auto;
+    }
+
+    .min-bottom-sheet__backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .min-bottom-sheet__backdrop--small {
+      background-color: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+
+    .min-bottom-sheet__backdrop--medium {
+      background-color: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .min-bottom-sheet__backdrop--large {
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .min-bottom-sheet__backdrop--hidden {
+      opacity: 0;
+      backdrop-filter: blur(0);
+      -webkit-backdrop-filter: blur(0);
+    }
+
+    .min-bottom-sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--color-surface-primary);
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .min-bottom-sheet--closed {
+      transform: translateY(100%);
+    }
+
+    .min-bottom-sheet--small {
+      height: 30vh;
+      max-height: 30vh;
+    }
+
+    .min-bottom-sheet--medium {
+      height: 50vh;
+      max-height: 50vh;
+    }
+
+    .min-bottom-sheet--large {
+      height: 90vh;
+      max-height: 90vh;
+    }
+
+    .min-bottom-sheet__handle-container {
+      padding: 12px 0;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: grab;
+    }
+
+    .min-bottom-sheet__handle-container:active {
+      cursor: grabbing;
+    }
+
+    .min-bottom-sheet__handle {
+      width: 36px;
+      height: 4px;
+      background-color: var(--color-border-primary);
+      border-radius: 2px;
+    }
+
+    .min-bottom-sheet__content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 0 16px 24px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sheet-content h2 {
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: var(--color-text-primary);
+    }
+
+    .sheet-content p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .sheet-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .sheet-list-item {
+      padding: 16px;
+      background-color: var(--color-background-secondary);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sheet-list-item-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--color-primary-main), var(--color-primary-dark));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    }
+
+    .sheet-list-item-content h4 {
+      font-size: 16px;
+      color: var(--color-text-primary);
+      margin-bottom: 4px;
+    }
+
+    .sheet-list-item-content p {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-header">
+    <h1>Bottom Sheet Demo</h1>
+    <p>Experience blur and darkening effects based on detent size</p>
+  </div>
+
+  <div class="content-area">
+    <div class="demo-controls">
+      <h2>Controls</h2>
+      
+      <div class="control-group">
+        <label>Open Bottom Sheet</label>
+        <div class="button-group">
+          <button class="btn-primary" onclick="openSheet()">Open Sheet</button>
+          <button class="btn-secondary" onclick="closeSheet()">Close Sheet</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Change Detent Size</label>
+        <div class="button-group">
+          <button class="btn-secondary" id="btn-small" onclick="setDetent('small')">Small</button>
+          <button class="btn-secondary active" id="btn-medium" onclick="setDetent('medium')">Medium</button>
+          <button class="btn-secondary" id="btn-large" onclick="setDetent('large')">Large</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🎬</div>
+        <div class="card-title">WatchedIt</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎧</div>
+        <div class="card-title">Podlink</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📺</div>
+        <div class="card-title">Yourtube</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚴</div>
+        <div class="card-title">Cyclismo</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottomSheet" class="min-bottom-sheet-container">
+    <div id="backdrop" class="min-bottom-sheet__backdrop min-bottom-sheet__backdrop--hidden" onclick="closeSheet()"></div>
+    <div id="sheet" class="min-bottom-sheet min-bottom-sheet--medium min-bottom-sheet--closed">
+      <div class="min-bottom-sheet__handle-container" id="handleContainer">
+        <div class="min-bottom-sheet__handle"></div>
+      </div>
+      <div class="min-bottom-sheet__content">
+        <div class="sheet-content">
+          <h2>Bottom Sheet Content</h2>
+          <p>Notice how the backdrop blur and darkening effects change as you adjust the detent size:</p>
+          <ul style="margin-left: 20px; margin-bottom: 20px; color: var(--color-text-secondary);">
+            <li><strong>Small detent:</strong> Light blur (2px) and minimal darkening (10% opacity)</li>
+            <li><strong>Medium detent:</strong> Moderate blur (8px) and medium darkening (30% opacity)</li>
+            <li><strong>Large detent:</strong> Strong blur (16px) and heavy darkening (50% opacity)</li>
+          </ul>
+
+          <h3 style="margin-top: 24px; margin-bottom: 16px; color: var(--color-text-primary);">Sample List Items</h3>
+          <ul class="sheet-list">
+            <li class="sheet-list-item">
+              <div class="sheet-list-item-icon">🎬</div>
+              <div class="sheet-list-item-content">
+                <h4>Movie Tracking</h4>
+                <p>Keep track of all your watched movies</p>
+              </div>
+            </li>
+            <li class="sheet-list-item">
+              <div class="sheet-list-item-icon">⭐</div>
+              <div class="sheet-list-item-content">
+                <h4>Ratings & Reviews</h4>
+                <p>Rate and review your favorite content</p>
+              </div>
+            </li>
+            <li class="sheet-list-item">
+              <div class="sheet-list-item-icon">📋</div>
+              <div class="sheet-list-item-content">
+                <h4>Watchlist</h4>
+                <p>Save items you want to watch later</p>
+              </div>
+            </li>
+            <li class="sheet-list-item">
+              <div class="sheet-list-item-icon">🔔</div>
+              <div class="sheet-list-item-content">
+                <h4>Notifications</h4>
+                <p>Get notified about new releases</p>
+              </div>
+            </li>
+            <li class="sheet-list-item">
+              <div class="sheet-list-item-icon">🎯</div>
+              <div class="sheet-list-item-content">
+                <h4>Recommendations</h4>
+                <p>Discover new content based on your taste</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isOpen = false;
+    let currentDetent = 'medium';
+
+    const container = document.getElementById('bottomSheet');
+    const backdrop = document.getElementById('backdrop');
+    const sheet = document.getElementById('sheet');
+    const handleContainer = document.getElementById('handleContainer');
+
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    function openSheet() {
+      isOpen = true;
+      container.classList.add('min-bottom-sheet-container--open');
+      sheet.classList.remove('min-bottom-sheet--closed');
+      updateBackdrop();
+    }
+
+    function closeSheet() {
+      isOpen = false;
+      container.classList.remove('min-bottom-sheet-container--open');
+      sheet.classList.add('min-bottom-sheet--closed');
+      backdrop.classList.remove(`min-bottom-sheet__backdrop--${currentDetent}`);
+      backdrop.classList.add('min-bottom-sheet__backdrop--hidden');
+    }
+
+    function setDetent(detent) {
+      currentDetent = detent;
+      
+      ['small', 'medium', 'large'].forEach(d => {
+        sheet.classList.remove(`min-bottom-sheet--${d}`);
+        document.getElementById(`btn-${d}`).classList.remove('active');
+      });
+      
+      sheet.classList.add(`min-bottom-sheet--${detent}`);
+      document.getElementById(`btn-${detent}`).classList.add('active');
+      
+      if (isOpen) {
+        updateBackdrop();
+      }
+    }
+
+    function updateBackdrop() {
+      backdrop.classList.remove('min-bottom-sheet__backdrop--small');
+      backdrop.classList.remove('min-bottom-sheet__backdrop--medium');
+      backdrop.classList.remove('min-bottom-sheet__backdrop--large');
+      backdrop.classList.remove('min-bottom-sheet__backdrop--hidden');
+      backdrop.classList.add(`min-bottom-sheet__backdrop--${currentDetent}`);
+    }
+
+    function handleDragStart(e) {
+      const touch = e.type.includes('touch') ? e.touches[0] : e;
+      startY = touch.clientY;
+      currentY = touch.clientY;
+      isDragging = true;
+      sheet.style.transition = 'none';
+    }
+
+    function handleDragMove(e) {
+      if (!isDragging) return;
+      
+      const touch = e.type.includes('touch') ? e.touches[0] : e;
+      currentY = touch.clientY;
+      
+      const deltaY = currentY - startY;
+      
+      if (deltaY > 0) {
+        sheet.style.transform = `translateY(${deltaY}px)`;
+        
+        const viewportHeight = window.innerHeight;
+        const dragPercentage = deltaY / viewportHeight;
+        
+        const detents = ['small', 'medium', 'large'];
+        const currentDetentIndex = detents.indexOf(currentDetent);
+        
+        if (dragPercentage > 0.1 && currentDetentIndex > 0) {
+          setDetent(detents[currentDetentIndex - 1]);
+        }
+      }
+    }
+
+    function handleDragEnd() {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      sheet.style.transition = '';
+      sheet.style.transform = '';
+      
+      const deltaY = currentY - startY;
+      const viewportHeight = window.innerHeight;
+      
+      if (deltaY > viewportHeight * 0.2) {
+        closeSheet();
+      }
+    }
+
+    handleContainer.addEventListener('mousedown', handleDragStart);
+    handleContainer.addEventListener('touchstart', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('touchmove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
+  </script>
+</body>
+</html>

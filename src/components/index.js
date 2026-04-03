@@ -24,6 +24,7 @@ export { FeatureHighlight } from './FeatureHighlight.js';
 export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
+export { BottomSheet } from './BottomSheet.js';
 
 export default {
   Button,
@@ -48,4 +49,5 @@ export default {
   PermissionRequest,
   OnboardingContainer,
   FontOverrideSettings,
+  BottomSheet,
 };

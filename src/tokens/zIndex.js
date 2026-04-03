@@ -10,6 +10,8 @@ export const zIndex = {
   fixed: 1200,
   modalBackdrop: 1300,
   modal: 1400,
+  bottomSheetBackdrop: 1300,
+  bottomSheet: 1400,
   popover: 1500,
   tooltip: 1600,
   toast: 1700,

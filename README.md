@@ -34,7 +34,7 @@ import { lightTheme, darkTheme } from '@min-apps/design-system/themes';
 ### Import Components
 
 ```javascript
-import { Button, ListItem, AppHeader } from '@min-apps/design-system/components';
+import { Button, ListItem, AppHeader, BottomSheet } from '@min-apps/design-system/components';
 ```
 
 ### Import Layout Components
@@ -132,6 +132,24 @@ await openLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 
 // Add preferences UI to settings
 <DeepLinkPreferencesPanel title="Link Preferences" />
+```
+
+### Use Bottom Sheet Component
+
+```javascript
+import { BottomSheet } from '@min-apps/design-system/components';
+import '@min-apps/design-system/components/BottomSheet.css';
+
+// Use BottomSheet with blur and darkening effects
+<BottomSheet 
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
+  detent="large"
+  onDetentChange={(newDetent) => setDetent(newDetent)}
+>
+  <h2>Sheet Content</h2>
+  <p>The backdrop blur and darkening intensifies as the sheet approaches large detent.</p>
+</BottomSheet>
 ```
 
 ## Design Principles

@@ -10,6 +10,7 @@ export { borders } from './borders.js';
 export { breakpoints } from './breakpoints.js';
 export { transitions } from './transitions.js';
 export { zIndex } from './zIndex.js';
+export { effects } from './effects.js';
 
 // Aggregate export
 export const tokens = {
@@ -21,6 +22,7 @@ export const tokens = {
   breakpoints,
   transitions,
   zIndex,
+  effects,
 };
 
 export default tokens;

@@ -6,6 +6,90 @@ All notable changes to the min apps design system will be documented in this fil
 
 ### Added
 
+#### Show View Dismiss Button Pattern
+- New `DismissButton` component with scroll-based animations:
+  - Slides in from bottom-left when user scrolls past threshold (100px)
+  - Compact size (48px) while scrolling, aligned with microplayer/search button
+  - Expands to larger size (56px) when scrolled near bottom (50px threshold)
+  - Always tappable at any scroll position to dismiss/close the view
+  - Smooth transitions using design system easing functions
+  - Proper z-index layering (1200) to stay above content
+  - Accessible with ARIA labels and keyboard support
+- New `useScrollDismiss` hook for scroll position tracking:
+  - Returns `isScrolled` and `isAtBottom` boolean states
+  - Configurable scroll and bottom thresholds
+  - Performance optimized with `requestAnimationFrame`
+  - Passive event listeners for smooth scrolling
+  - Automatic cleanup on unmount
+- New `hooks` module and package export for React hooks
+- Comprehensive pattern documentation:
+  - Component API reference (`docs/dismiss-button.md`)
+  - Pattern guidelines (`docs/SHOW_VIEW_DISMISS_PATTERN.md`)
+  - Usage examples and best practices
+  - Accessibility and performance notes
+- Interactive HTML demo (`examples/podcast-show-dismiss.html`):
+  - No build step required
+  - Shows all animation states
+  - Includes scroll position indicator
+  - Visual demonstration of behavior
+- Complete template implementation (`integration-tools/templates/podcast-show-view.jsx`):
+  - Full podcast show view with dismiss button
+  - Episode list integration
+  - Search functionality
+  - Minimal implementation alternative
+
+#### Safe Data Storage & Update System
+
+- **Data Storage Module** - Safe, namespaced storage for user data and reference data
+  - `DataStorage` class with separate namespaces (USER, REFERENCE, SYSTEM)
+  - `createDataStorage(appId)` - Factory function for storage instances
+  - Prevents user data loss during database updates
+  - Automatic timestamping and version tracking
+  - Export/import functionality for user data backups
+
+- **Data Update Utilities** - Version-controlled reference data updates
+  - `DataUpdater` class for safe reference data updates
+  - `createDataUpdater(appId)` - Factory function for updater instances
+  - Semantic version comparison and tracking
+  - Automatic backup creation before updates
+  - Rollback support with restore from backup
+  - Migration hooks for data transformations
+  - Update status tracking (not_needed, available, in_progress, completed, failed, rolled_back)
+
+- **App Initialization System** - Promoted, user-friendly data updates
+  - `AppInitializer` class for app startup and updates
+  - `createAppInitializer(appId, options)` - Factory with custom options
+  - `quickInit(appId, data, version, options)` - Simple initialization helper
+  - Multiple update prompt strategies (silent, notify, prompt, manual)
+  - Lifecycle callbacks (onUpdateAvailable, onUpdateStart, onUpdateComplete, onUpdateError)
+  - Check for updates without applying them
+  - Manual update trigger for settings pages
+  - First-time setup detection and handling
+
+- **WatchedIt Integration Updates**
+  - Updated `EpisodeTracker` to use safe storage utilities
+  - Migrated from raw localStorage to namespaced storage
+  - Prevents notification tracking data from being lost during updates
+
+- **Comprehensive Documentation**
+  - `/docs/safe-data-updates.md` - Complete usage guide with examples
+  - `/integration-tools/app-specific/watchedit-data-safety.md` - WatchedIt-specific integration guide
+  - `/examples/watchedit-safe-updates.js` - 8 practical examples and complete app template
+  - Migration guide for existing apps
+  - Troubleshooting section
+  - Best practices and testing strategies
+
+#### Safe Data Storage Key Features
+
+- **Data Separation**: User data (watchlists, ratings) separated from reference data (movies, Oscars)
+- **Automatic Backups**: User data backed up before every reference data update
+- **Version Control**: Track reference data versions with semantic versioning
+- **Rollback Support**: Restore previous state if updates fail
+- **Zero Data Loss**: User data preserved across all database updates
+- **Flexible Updates**: Silent, notify, prompt, or manual update strategies
+- **Migration Hooks**: Transform data during version updates
+- **Export/Import**: User data portability for backups and device transfers
+
 #### Episode List Interaction Pattern
 - New `EpisodeListItem` component with proper tap behavior:
   - Art and title open episode detail/player view
@@ -23,6 +107,13 @@ All notable changes to the min apps design system will be documented in this fil
 - Updated Podlink integration documentation to emphasize separate tap areas for episode lists
 - Updated YourTube integration documentation with correct video list tap behavior
 - Updated WatchedIt integration documentation with correct movie list tap behavior
+
+### Fixed
+
+- **Issue #4085**: User data being wiped when updating movie database from bootstrap
+  - Root cause: No separation between user data and reference data
+  - Solution: Implemented namespaced storage with automatic backup/restore
+  - Impact: Users can now safely update Oscars data without losing watchlists and ratings
 
 ## [1.3.0] - 2026-04-02
 

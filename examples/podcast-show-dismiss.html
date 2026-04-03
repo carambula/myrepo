@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Podcast Show with Dismiss Button - Min Apps Design System</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Light theme colors */
+      --color-background-primary: #ffffff;
+      --color-surface-primary: #f5f5f5;
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: #666666;
+      --color-text-tertiary: #999999;
+      --color-primary-main: #007aff;
+      --color-primary-dark: #0051d5;
+      --color-hover-primary: rgba(0, 122, 255, 0.1);
+      --color-active-primary: rgba(0, 122, 255, 0.2);
+      --color-border-primary: #e0e0e0;
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background-color: var(--color-background-primary);
+      color: var(--color-text-primary);
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-header {
+      padding: 16px;
+      background-color: var(--color-surface-primary);
+      border-bottom: 1px solid var(--color-border-primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .back-button {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--color-primary-main);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    .back-button:hover {
+      background-color: var(--color-hover-primary);
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .podcast-header {
+      padding: 24px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .podcast-artwork {
+      width: 160px;
+      height: 160px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 48px;
+    }
+
+    .podcast-info {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .podcast-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .podcast-author {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .podcast-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--color-text-tertiary);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .podcast-description {
+      line-height: 1.6;
+      margin-bottom: 24px;
+      padding: 0 24px 24px;
+    }
+
+    .episodes-section {
+      border-top: 1px solid var(--color-border-primary);
+      padding: 24px;
+    }
+
+    .episodes-header {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .episode-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .episode-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background-color: var(--color-surface-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .episode-item:hover {
+      background-color: var(--color-hover-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .episode-artwork {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      flex-shrink: 0;
+    }
+
+    .episode-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .episode-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .episode-meta {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+    }
+
+    .play-button {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background-color: var(--color-primary-main);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .play-button:hover {
+      background-color: var(--color-primary-dark);
+      transform: scale(1.05);
+    }
+
+    /* Dismiss Button Styles */
+    .dismiss-button {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: none;
+      background-color: var(--color-surface-primary);
+      color: var(--color-text-primary);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      z-index: 1200;
+      box-shadow: var(--shadow-lg);
+      
+      /* Animation properties */
+      transform: translateY(80px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.25s cubic-bezier(0, 0, 0.2, 1),
+                  opacity 0.25s cubic-bezier(0, 0, 0.2, 1),
+                  width 0.25s cubic-bezier(0, 0, 0.2, 1),
+                  height 0.25s cubic-bezier(0, 0, 0.2, 1),
+                  background-color 0.15s cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    .dismiss-button.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .dismiss-button.expanded {
+      width: 56px;
+      height: 56px;
+    }
+
+    .dismiss-button:hover {
+      background-color: var(--color-hover-primary);
+    }
+
+    .dismiss-button:active {
+      background-color: var(--color-active-primary);
+      transform: translateY(0) scale(0.95);
+    }
+
+    .dismiss-button__icon {
+      font-size: 20px;
+      line-height: 1;
+      transition: font-size 0.25s cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    .dismiss-button.expanded .dismiss-button__icon {
+      font-size: 24px;
+    }
+
+    .dismiss-button__label {
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1;
+      margin: 0;
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1),
+                  max-height 0.25s cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    .dismiss-button.expanded .dismiss-button__label {
+      opacity: 1;
+      max-height: 20px;
+    }
+
+    /* Scroll indicator */
+    .scroll-indicator {
+      position: fixed;
+      top: 64px;
+      right: 16px;
+      padding: 8px 12px;
+      background-color: var(--color-surface-primary);
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      box-shadow: var(--shadow-md);
+      z-index: 1000;
+    }
+
+    /* Instructions */
+    .instructions {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      padding: 16px;
+      background-color: var(--color-surface-primary);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      max-width: 280px;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 1100;
+    }
+
+    .instructions h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .instructions ul {
+      margin-left: 20px;
+    }
+
+    .instructions li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <div class="app-header">
+      <button class="back-button" onclick="goBack()">←</button>
+      <h1 class="header-title">Tech Talks Daily</h1>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="scroll-container" id="scrollContainer">
+      <!-- Podcast Header -->
+      <div class="podcast-header">
+        <div class="podcast-artwork">🎙️</div>
+        <div class="podcast-info">
+          <h1 class="podcast-title">Tech Talks Daily</h1>
+          <p class="podcast-author">The Tech Team</p>
+          <div class="podcast-meta">
+            <span>245 episodes</span>
+            <span>•</span>
+            <span>Technology</span>
+            <span>•</span>
+            <span>English</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="podcast-description">
+        Your daily dose of technology news, interviews, and insights. Join us as we explore 
+        the latest in software development, AI, gadgets, and more.
+      </div>
+
+      <!-- Episodes Section -->
+      <div class="episodes-section">
+        <h2 class="episodes-header">Episodes</h2>
+        <div class="episode-list" id="episodeList"></div>
+      </div>
+    </div>
+
+    <!-- Dismiss Button (initially hidden) -->
+    <button class="dismiss-button" id="dismissButton" onclick="dismissView()">
+      <span class="dismiss-button__icon">↓</span>
+      <span class="dismiss-button__label">Close</span>
+    </button>
+
+    <!-- Scroll Indicator -->
+    <div class="scroll-indicator" id="scrollIndicator">
+      Scroll: 0px | Bottom: No
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions" id="instructions">
+      <h3>📱 Try it out:</h3>
+      <ul>
+        <li>Scroll down to see button appear</li>
+        <li>Button stays compact while scrolling</li>
+        <li>Scroll to bottom to see it expand</li>
+        <li>Click button anytime to dismiss</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Generate sample episodes
+    const episodes = [
+      'The Future of AI in Software Development',
+      'Building Scalable Web Applications',
+      'Interview with React Core Team',
+      'Mobile Development in 2024',
+      'Cybersecurity Essentials for Developers',
+      'The Rise of Edge Computing',
+      'GraphQL vs REST: The Debate Continues',
+      'Database Design Patterns',
+      'Modern CSS Layout Techniques',
+      'Testing Strategies for Large Codebases',
+      'Microservices Architecture Deep Dive',
+      'Performance Optimization Tips',
+      'State Management in React',
+      'TypeScript Best Practices',
+      'Docker and Containerization',
+      'Continuous Integration and Deployment',
+      'API Design Principles',
+      'Web Accessibility Standards',
+      'Progressive Web Apps',
+      'Serverless Computing Explained',
+    ];
+
+    const episodeList = document.getElementById('episodeList');
+    episodes.forEach((title, index) => {
+      const episode = document.createElement('div');
+      episode.className = 'episode-item';
+      episode.innerHTML = `
+        <div class="episode-artwork"></div>
+        <div class="episode-content">
+          <div class="episode-title">${title}</div>
+          <div class="episode-meta">2024-01-${String(20 - index).padStart(2, '0')} • ${40 + index}:${String(index * 3).padStart(2, '0')}</div>
+        </div>
+        <button class="play-button" onclick="event.stopPropagation()">▶</button>
+      `;
+      episodeList.appendChild(episode);
+    });
+
+    // Scroll tracking
+    const scrollContainer = document.getElementById('scrollContainer');
+    const dismissButton = document.getElementById('dismissButton');
+    const scrollIndicator = document.getElementById('scrollIndicator');
+    const instructions = document.getElementById('instructions');
+
+    const SCROLL_THRESHOLD = 100;
+    const BOTTOM_THRESHOLD = 50;
+
+    let ticking = false;
+
+    function updateDismissButton() {
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
+      
+      // Check if scrolled past threshold
+      const isScrolled = scrollTop > SCROLL_THRESHOLD;
+      
+      // Check if near bottom
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+      const isAtBottom = distanceFromBottom <= BOTTOM_THRESHOLD && isScrolled;
+      
+      // Update button state
+      if (isScrolled) {
+        dismissButton.classList.add('visible');
+      } else {
+        dismissButton.classList.remove('visible');
+      }
+      
+      if (isAtBottom) {
+        dismissButton.classList.add('expanded');
+      } else {
+        dismissButton.classList.remove('expanded');
+      }
+      
+      // Update scroll indicator
+      scrollIndicator.textContent = 
+        `Scroll: ${Math.round(scrollTop)}px | Bottom: ${isAtBottom ? 'Yes' : 'No'}`;
+      
+      // Hide instructions after first scroll
+      if (scrollTop > 50) {
+        instructions.style.opacity = '0';
+        instructions.style.pointerEvents = 'none';
+        setTimeout(() => {
+          instructions.style.display = 'none';
+        }, 300);
+      }
+      
+      ticking = false;
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        window.requestAnimationFrame(updateDismissButton);
+        ticking = true;
+      }
+    }
+
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+
+    // Dismiss and back handlers
+    function dismissView() {
+      alert('Dismiss button clicked! In a real app, this would close the show view.');
+      console.log('Dismissing show view');
+    }
+
+    function goBack() {
+      alert('Back button clicked! In a real app, this would navigate back.');
+      console.log('Going back');
+    }
+
+    // Initial state
+    updateDismissButton();
+  </script>
+</body>
+</html>

@@ -25,6 +25,7 @@ export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
 export { BottomSheet } from './BottomSheet.js';
+export { DismissButton } from './DismissButton.js';
 
 export default {
   Button,
@@ -50,4 +51,5 @@ export default {
   OnboardingContainer,
   FontOverrideSettings,
   BottomSheet,
+  DismissButton,
 };

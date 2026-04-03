@@ -15,6 +15,7 @@ This design system harmonizes the visual and interface language across all min a
 - **Notification System**: Unified notification preferences and background job scheduling
 - **Onboarding System**: Consistent, beautiful first-run experiences for all apps
 - **Deep Linking System**: Comprehensive deep linking with bias towards min apps and user preference support
+- **Storage System**: Safe data storage with automatic backups and version-controlled updates
 
 ## Installation
 
@@ -152,6 +153,31 @@ import '@min-apps/design-system/components/BottomSheet.css';
 </BottomSheet>
 ```
 
+### Use Safe Storage System
+
+```javascript
+import { 
+  quickInit,
+  createDataStorage
+} from '@min-apps/design-system/storage';
+
+// Initialize app with safe database updates
+await quickInit('watchedit', movieDatabase, '2024.03.01', {
+  updatePrompt: 'notify',
+  onUpdateComplete: (result) => {
+    console.log('Database updated!', result);
+  }
+});
+
+// Use namespaced storage for user data
+const storage = createDataStorage('watchedit');
+storage.saveUserData('watchlist', [1, 2, 3]);
+storage.saveUserData('ratings', { 1: 5, 2: 4 });
+
+// User data is preserved during reference data updates
+const watchlist = storage.getUserData('watchlist', []);
+```
+
 ## Design Principles
 
 ### Consistency
@@ -190,6 +216,7 @@ src/
 ├── notifications/    # Notification preferences and scheduling
 ├── onboarding/       # Onboarding flows and configurations
 ├── deepLinking/      # Deep linking system with min app bias
+├── storage/          # Safe data storage and update utilities
 └── utils/            # Utility functions and helpers
 ```
 
@@ -207,6 +234,7 @@ See the `/docs` folder for detailed documentation on:
 - Notification system guide
 - Onboarding system guide
 - Deep linking system guide
+- **Safe data updates guide** (NEW) - Prevent user data loss during database updates
 - Best practices
 
 ## License

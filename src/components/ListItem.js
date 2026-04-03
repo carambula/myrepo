@@ -40,7 +40,7 @@ export function ListItem({
   const imageStyles = `
     width: 48px;
     height: 48px;
-    border-radius: ${borders.radii.md};
+    border-radius: ${borders.radii.artTile};
     object-fit: cover;
     flex-shrink: 0;
   `;

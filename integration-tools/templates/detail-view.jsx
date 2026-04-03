@@ -11,7 +11,7 @@
 import React from 'react';
 import { AppLayout, ContentContainer, Grid } from '@min-apps/design-system/layouts';
 import { Button, Card, AppHeader } from '@min-apps/design-system/components';
-import { spacing } from '@min-apps/design-system/tokens';
+import { spacing, borders } from '@min-apps/design-system/tokens';
 
 // Example item data
 const EXAMPLE_ITEM = {
@@ -65,7 +65,7 @@ function DetailView() {
                 alt={item.title}
                 style={{
                   width: '100%',
-                  borderRadius: '8px',
+                  borderRadius: borders.radii.artTile,
                   boxShadow: 'var(--shadow-md)'
                 }}
               />

@@ -6,6 +6,38 @@ All notable changes to the min apps design system will be documented in this fil
 
 ### Added
 
+#### Show View Dismiss Button Pattern
+- New `DismissButton` component with scroll-based animations:
+  - Slides in from bottom-left when user scrolls past threshold (100px)
+  - Compact size (48px) while scrolling, aligned with microplayer/search button
+  - Expands to larger size (56px) when scrolled near bottom (50px threshold)
+  - Always tappable at any scroll position to dismiss/close the view
+  - Smooth transitions using design system easing functions
+  - Proper z-index layering (1200) to stay above content
+  - Accessible with ARIA labels and keyboard support
+- New `useScrollDismiss` hook for scroll position tracking:
+  - Returns `isScrolled` and `isAtBottom` boolean states
+  - Configurable scroll and bottom thresholds
+  - Performance optimized with `requestAnimationFrame`
+  - Passive event listeners for smooth scrolling
+  - Automatic cleanup on unmount
+- New `hooks` module and package export for React hooks
+- Comprehensive pattern documentation:
+  - Component API reference (`docs/dismiss-button.md`)
+  - Pattern guidelines (`docs/SHOW_VIEW_DISMISS_PATTERN.md`)
+  - Usage examples and best practices
+  - Accessibility and performance notes
+- Interactive HTML demo (`examples/podcast-show-dismiss.html`):
+  - No build step required
+  - Shows all animation states
+  - Includes scroll position indicator
+  - Visual demonstration of behavior
+- Complete template implementation (`integration-tools/templates/podcast-show-view.jsx`):
+  - Full podcast show view with dismiss button
+  - Episode list integration
+  - Search functionality
+  - Minimal implementation alternative
+
 #### Episode List Interaction Pattern
 - New `EpisodeListItem` component with proper tap behavior:
   - Art and title open episode detail/player view

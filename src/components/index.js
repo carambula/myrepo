@@ -24,6 +24,7 @@ export { FeatureHighlight } from './FeatureHighlight.js';
 export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
+export { DismissButton } from './DismissButton.js';
 
 export default {
   Button,
@@ -48,4 +49,5 @@ export default {
   PermissionRequest,
   OnboardingContainer,
   FontOverrideSettings,
+  DismissButton,
 };

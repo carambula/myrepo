@@ -58,7 +58,18 @@ export function LinkPreview({ url, showDetails = true }) {
   const { preview, loading } = useLinkPreview(url);
 
   if (loading) {
-    return <div className="deep-link-preview loading">Loading preview...</div>;
+    return (
+      <div className="deep-link-preview">
+        <div
+          className="min-content-status min-content-status--loading"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="min-content-status__spinner" aria-hidden="true" />
+          <span className="min-content-status__label">Loading preview…</span>
+        </div>
+      </div>
+    );
   }
 
   if (!preview) {

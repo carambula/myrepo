@@ -12,6 +12,23 @@ Cyclismo Guide is a cycling race guide app that provides information about cycli
 
 ## App-Specific Considerations
 
+### Main app loading (bootstrap)
+
+Use the **same** main bootstrap loader as **WatchedIt (mov min)** — no Cyclismo-specific spinner, copy, or centering.
+
+- [ ] **Native / React Native:** **[Main app loading — native](../../docs/main-app-loading-native.md)** (`@min-apps/design-system/react-native` or `native/` files).
+- [ ] **Web:** **[Main app loading](../../docs/main-app-loading.md)** (`MAIN_APP_LOADING_CLASSNAME`, `MainAppLoading` from `…/components`).
+
+### Screen titles — match mov min (iOS)
+
+Use the generated SwiftUI views from **`native/MinTitleTypography.swift`** so every title matches WatchedIt:
+
+- [ ] **Race detail title** (race hero): `MinMainContentTitleView(race.name)` — 48pt bold, leading, 16pt bottom. Parent applies `MinPageMargins` horizontal padding.
+- [ ] **Rider detail title**: `MinMainContentTitleView(rider.name)` — same view, same size.
+- [ ] **Home title**: `MinHomeScreenTitleView("Cyclismo Guide")` — 36pt bold (30pt compact), centered.
+- [ ] **Header title** (top bar in race/rider views): `MinHeaderTitleView(race.name)` — 20pt semibold.
+- [ ] Remove custom `.font(.title)`, `.system(size: 28)`, or hard-coded sizes on screen titles.
+
 ### 1. Race/Route Cards
 
 **Current State**: Custom race card components with route maps and details.
@@ -56,7 +73,7 @@ Cyclismo Guide is a cycling race guide app that provides information about cycli
         marginBottom: spacing[2],
         color: 'var(--color-text-secondary)' 
       }}>
-        {race.location} · {race.date}
+        {race.location}   {race.date}
       </p>
       <div style={{ 
         display: 'flex', 
@@ -82,14 +99,15 @@ Cyclismo Guide is a cycling race guide app that provides information about cycli
 - [ ] Use `<ListItem>` for each race entry
   ```javascript
   import { List, ListItem } from '@min-apps/design-system/components';
-  
+  import { metadataSeparator } from '@min-apps/design-system/tokens';
+
   <List spacing="default">
     {races.map(race => (
       <ListItem
         key={race.id}
         image={race.mapThumbnailUrl}
         title={race.name}
-        subtitle={`${race.location} · ${race.date} · ${race.distance} km`}
+        subtitle={`${race.location}${metadataSeparator}${race.date}${metadataSeparator}${race.distance} km`}
         onClick={() => viewRace(race.id)}
         action={
           <Button variant="ghost" size="sm">
@@ -113,7 +131,7 @@ For calendar view:
             <ListItem
               key={race.id}
               title={race.name}
-              subtitle={`${race.date} · ${race.location}`}
+              subtitle={`${race.date}   ${race.location}`}
               onClick={() => viewRace(race.id)}
             />
           ))}
@@ -296,7 +314,7 @@ For calendar view:
             marginBottom: spacing[2],
             color: 'var(--color-text-secondary)'
           }}>
-            {rider.team} · {rider.nationality}
+            {rider.team}   {rider.nationality}
           </p>
           <div style={{ display: 'flex', gap: spacing[2] }}>
             <Button variant="primary">Follow</Button>

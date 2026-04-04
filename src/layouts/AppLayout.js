@@ -21,10 +21,10 @@ export function AppLayout({
   
   const mainStyles = `
     flex: 1;
-    padding: ${spacing.page.marginTop} ${spacing.page.marginLeft} ${spacing.page.marginBottom} ${spacing.page.marginRight};
+    padding: ${spacing.page.marginTop} ${spacing.page.marginRight} ${spacing.page.marginBottom} ${spacing.page.marginLeft};
     
     @media (max-width: 767px) {
-      padding: ${spacing.page.marginTopMobile} ${spacing.page.marginLeftMobile} ${spacing.page.marginBottomMobile} ${spacing.page.marginRightMobile};
+      padding: ${spacing.page.marginTopMobile} ${spacing.page.marginRightMobile} ${spacing.page.marginBottomMobile} ${spacing.page.marginLeftMobile};
     }
   `;
   

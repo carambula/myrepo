@@ -7,6 +7,7 @@ import { NotificationToggle } from './NotificationToggle.js';
 import { TimePickerInput } from './TimePickerInput.js';
 import { NumberInput } from './NumberInput.js';
 import { NotificationSettingsGroup } from './NotificationSettingsGroup.js';
+import { spacing } from '../tokens/index.js';
 
 export function YourtubeNotificationSettings({
   preferences,
@@ -110,14 +111,14 @@ export function YourtubeNotificationSettings({
         .yourtube-notification-settings {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: ${spacing[4]};
         }
 
         .priority-channels-manager {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          padding: 12px;
+          gap: ${spacing[3]};
+          padding: ${spacing[3]};
           background-color: var(--color-gray-50);
           border-radius: 8px;
         }
@@ -135,7 +136,7 @@ export function YourtubeNotificationSettings({
         }
 
         .priority-channels-button {
-          padding: 8px 16px;
+          padding: ${spacing[2]} ${spacing[4]};
           font-size: 14px;
           font-weight: 500;
           color: var(--color-primary-main);

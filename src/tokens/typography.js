@@ -65,6 +65,13 @@ export const typography = {
       lineHeight: 1.2,
       letterSpacing: '-0.025em',
     },
+    /** Primary title inside AppLayout `main` — WatchedIt (mov min) canonical; all min apps must match */
+    mainContentTitle: {
+      fontSize: '48px',
+      fontWeight: 700,
+      lineHeight: 1.2,
+      letterSpacing: '-0.025em',
+    },
     h2: {
       fontSize: '36px',
       fontWeight: 700,

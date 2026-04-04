@@ -18,12 +18,12 @@ export function AppHeader({
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: ${spacing.page.marginTop} ${spacing.page.marginLeft};
+    padding: ${spacing.page.marginTop} ${spacing.page.marginRight} ${spacing.page.marginBottom} ${spacing.page.marginLeft};
     background-color: var(--color-background-primary);
     ${showShadow ? `box-shadow: ${shadows.sm};` : ''}
     
     @media (max-width: 767px) {
-      padding: ${spacing.page.marginTopMobile} ${spacing.page.marginLeftMobile};
+      padding: ${spacing.page.marginTopMobile} ${spacing.page.marginRightMobile} ${spacing.page.marginBottomMobile} ${spacing.page.marginLeftMobile};
     }
   `;
   

@@ -213,43 +213,67 @@ export function setAppTheme(themeName = 'light') {
 
     const appContent = `/**
  * Example App Component with Design System
- * 
- * This is a reference implementation showing how to use the design system.
- * Copy patterns from here into your actual App.jsx
+ *
+ * Bootstrap loading is identical across all four min apps (mov min reference).
+ * Do not center the loader or wrap it in a centered parent.
+ *
+ * Page margins match WatchedIt (mov min): CSS vars from global.css (--min-page-margin-*).
+ * AppLayout children go directly here — do not wrap in a second <main> or extra horizontal padding.
  */
 
 import React from 'react';
 import { AppLayout } from '@min-apps/design-system/layouts';
-import { Button, ThemeToggle } from '@min-apps/design-system/components';
+import { Button, ThemeToggle, MainContentTitle, MainAppLoading } from '@min-apps/design-system/components';
 import './theme-setup.js';
 
 function App() {
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    initAppData().then(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return <MainAppLoading />;
+  }
+
+  const pagePad = {
+    paddingTop: 'var(--min-page-margin-top)',
+    paddingRight: 'var(--min-page-margin-right)',
+    paddingBottom: 'var(--min-page-margin-bottom)',
+    paddingLeft: 'var(--min-page-margin-left)',
+  };
+
   return (
     <AppLayout
       header={
-        <header style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '16px'
-        }}>
+        <header
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            ...pagePad,
+          }}
+        >
           <h1>My Min App</h1>
           <ThemeToggle />
         </header>
       }
     >
-      <main>
-        <h2>Welcome to Your Min App</h2>
-        <p>This app is now using the min-apps design system!</p>
-        
-        <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-          <Button variant="primary">Primary Button</Button>
-          <Button variant="secondary">Secondary Button</Button>
-          <Button variant="outline">Outline Button</Button>
-        </div>
-      </main>
+      <MainContentTitle>Welcome to Your Min App</MainContentTitle>
+      <p>This app is now using the min-apps design system!</p>
+
+      <div style={{ display: 'flex', gap: '12px', marginTop: 'var(--min-page-margin-top)' }}>
+        <Button variant="primary">Primary Button</Button>
+        <Button variant="secondary">Secondary Button</Button>
+        <Button variant="outline">Outline Button</Button>
+      </div>
     </AppLayout>
   );
+}
+
+function initAppData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
 }
 
 export default App;
@@ -269,53 +293,54 @@ export default App;
 
     const homeContent = `/**
  * Example Home Screen with Design System
- * 
- * This shows the proper logo positioning and spacing
- * using the HomeLayout component.
+ *
+ * Bootstrap loading is identical across all four min apps (mov min reference).
  */
 
 import React from 'react';
 import { HomeLayout } from '@min-apps/design-system/layouts';
-import { Button } from '@min-apps/design-system/components';
+import { Button, MainAppLoading } from '@min-apps/design-system/components';
 import { spacing } from '@min-apps/design-system/tokens';
 
-function Home() {
+function HomeScreen() {
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    initHomeData().then(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return <MainAppLoading />;
+  }
+
   return (
     <HomeLayout
-      logo="/logo.svg"  // Replace with your app's logo
+      logo="/logo.svg"
       title="Your App Name"
       subtitle="Your app tagline"
     >
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
         gap: spacing[4],
         marginTop: spacing[6]
       }}>
-        <Button 
-          variant="primary" 
-          fullWidth
-          onClick={() => console.log('Get Started')}
-        >
+        <Button variant="primary" fullWidth onClick={() => console.log('Get Started')}>
           Get Started
         </Button>
-        
-        <Button 
-          variant="outline" 
-          fullWidth
-          onClick={() => console.log('Learn More')}
-        >
+        <Button variant="outline" fullWidth onClick={() => console.log('Learn More')}>
           Learn More
         </Button>
       </div>
-      
-      {/* Logo will be positioned at exactly 32px from top on desktop */}
-      {/* Buttons will have consistent 24px × 12px padding */}
     </HomeLayout>
   );
 }
 
-export default Home;
+function initHomeData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+export default HomeScreen;
 `;
 
     fs.writeFileSync(homePath, homeContent);
@@ -366,6 +391,7 @@ ${this.appType ? `\n**App**: ${APP_TYPES[this.appType]}` : ''}
   - [ ] Left: \`spacing.page.marginLeft\` (16px)
   - [ ] Right: \`spacing.page.marginRight\` (16px)
   - [ ] Bottom: \`spacing.page.marginBottom\` (24px)
+- [ ] **Mov min screen grid**: \`docs/layout-margins-mov-min.md\` — no double horizontal padding inside \`AppLayout\` main; sticky search/filters align with content; fixed controls use \`spacing.page\` / \`--min-page-margin-*\`
 
 ### Button Spacing
 - [ ] Update button padding
@@ -500,6 +526,7 @@ _Add any app-specific notes, issues, or customizations here:_
     const tasks = {
       watchedit: `
 ### WatchedIt-Specific Tasks
+- [ ] **Main bootstrap loading**: web → \`docs/main-app-loading.md\`; React Native → \`@min-apps/design-system/react-native\` — \`docs/main-app-loading-native.md\`
 - [ ] Replace movie card components with design system
 - [ ] Update poster image sizing (consistent dimensions)
 - [ ] Standardize movie list spacing
@@ -509,6 +536,7 @@ _Add any app-specific notes, issues, or customizations here:_
 
       podlink: `
 ### PodLink-Specific Tasks
+- [ ] **Main bootstrap loading**: native → \`docs/main-app-loading-native.md\`; web → \`docs/main-app-loading.md\`
 - [ ] Replace podcast episode components
 - [ ] Standardize episode card spacing
 - [ ] Update audio player controls styling
@@ -518,6 +546,8 @@ _Add any app-specific notes, issues, or customizations here:_
 
       yourtube: `
 ### YourTube-Specific Tasks
+- [ ] **Main bootstrap loading**: React Native → \`import { MainAppLoading } from '@min-apps/design-system/react-native'\`; web → \`…/components\` + global.css — \`docs/main-app-loading-native.md\`
+- [ ] **Page grid**: match mov min on every screen — \`docs/layout-margins-mov-min.md\` (no YouTube-tight gutters or full-bleed list roots; \`AppLayout\` / \`spacing.page\` / \`--min-page-margin-*\`)
 - [ ] Replace video card components
 - [ ] Standardize thumbnail sizing (16:9 aspect ratio)
 - [ ] Update video metadata spacing
@@ -527,6 +557,7 @@ _Add any app-specific notes, issues, or customizations here:_
 
       cyclismo: `
 ### Cyclismo-Specific Tasks
+- [ ] **Main bootstrap loading**: native → \`docs/main-app-loading-native.md\`; web → \`docs/main-app-loading.md\`
 - [ ] Replace route/guide components
 - [ ] Standardize map container sizing
 - [ ] Update route detail spacing

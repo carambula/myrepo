@@ -1,8 +1,12 @@
 # Getting Started
 
+## Native min apps (iOS / Android)
+
+If your app is **Swift or Kotlin**, start with **[Native tokens](./native-tokens.md)** and the **[`native/`](../native/)** folder. Install the npm package only if you also embed WebViews; margins for UIKit / Compose come from **`MinPageMargins.swift`**, **`min_page_margins.xml`**, or **`spacing.json`**, regenerated with **`npm run build:native`** after token edits.
+
 ## Installation
 
-Install the design system in your min app project:
+Install the design system in your min app project (web or hybrid):
 
 ```bash
 npm install @min-apps/design-system
@@ -108,6 +112,8 @@ The design system uses CSS custom properties that you can reference in your CSS:
 
 ## Next Steps
 
+- [Layout and margins (mov min)](./layout-margins-mov-min.md) (screen grid, sticky chrome, overlays — same in every app)
+- [Main app loading](./main-app-loading.md) (bootstrap screen — same as WatchedIt / mov min in every app)
 - [Component Documentation](./components.md)
 - [Design Tokens Reference](./tokens.md)
 - [Theming Guide](./theming.md)

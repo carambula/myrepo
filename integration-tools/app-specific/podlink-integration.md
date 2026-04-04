@@ -10,6 +10,22 @@
 
 PodLink is a podcast app that allows users to follow, unlock, and listen to podcasts. The integration should normalize its visual design while preserving its unique podcast-focused features.
 
+### Main app loading (bootstrap)
+
+Use the **same** main bootstrap loader as **WatchedIt (mov min)**.
+
+- [ ] **Native / React Native:** **[Main app loading — native](../../docs/main-app-loading-native.md)**.
+- [ ] **Web:** **[Main app loading](../../docs/main-app-loading.md)**.
+
+### Screen titles — match mov min (iOS)
+
+Use the generated SwiftUI views from **`native/MinTitleTypography.swift`** so every title is the same size and position as WatchedIt:
+
+- [ ] **Show detail title** (podcast hero): `MinMainContentTitleView(show.title)` — 48pt bold, leading, 16pt bottom. Parent applies `MinPageMargins` horizontal padding.
+- [ ] **Home title**: `MinHomeScreenTitleView("PodLink")` — 36pt bold (30pt compact), centered.
+- [ ] **Header title** (top bar in show/player view): `MinHeaderTitleView(show.title)` — 20pt semibold.
+- [ ] Remove custom font sizes on podcast title `Text` views (e.g. `.font(.title)`, `.system(size: 28)`, `.largeTitle`).
+
 ## App-Specific Considerations
 
 ### 1. Podcast Episode Cards
@@ -39,7 +55,7 @@ PodLink is a podcast app that allows users to follow, unlock, and listen to podc
       <div style={{ flex: 1 }}>
         <h3 style={{ marginBottom: spacing[2] }}>{episode.title}</h3>
         <p style={{ marginBottom: spacing[1] }}>{episode.podcastName}</p>
-        <span>{episode.duration} · {episode.publishDate}</span>
+        <span>{episode.duration}   {episode.publishDate}</span>
       </div>
     </div>
   </Card>
@@ -61,14 +77,15 @@ PodLink is a podcast app that allows users to follow, unlock, and listen to podc
 - [ ] **CRITICAL**: Use `e.stopPropagation()` on the play button to prevent triggering the row click
   ```javascript
   import { List, ListItem, Button } from '@min-apps/design-system/components';
-  
+  import { metadataSeparator } from '@min-apps/design-system/tokens';
+
   <List spacing="comfortable">
     {episodes.map(episode => (
       <ListItem
         key={episode.id}
         image={episode.artworkUrl}
         title={episode.title}
-        subtitle={`${episode.podcastName} · ${episode.duration}`}
+        subtitle={`${episode.podcastName}${metadataSeparator}${episode.duration}`}
         onClick={() => openEpisodePlayer(episode.id)}
         action={
           <Button 
@@ -217,7 +234,7 @@ const playEpisode = (episodeId) => {
             marginBottom: spacing[4],
             color: 'var(--color-text-secondary)'
           }}>
-            {show.episodeCount} episodes · {show.category}
+            {show.episodeCount} episodes   {show.category}
           </p>
           <Button variant="primary" onClick={handleSubscribe}>
             {isSubscribed ? '✓ Subscribed' : 'Subscribe'}

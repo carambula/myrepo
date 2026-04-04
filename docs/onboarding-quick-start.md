@@ -276,12 +276,14 @@ import {
   OnboardingContainer,
   OnboardingManager,
   cyclismoOnboardingConfig,
+  MainAppLoading,
 } from '@min-apps/design-system';
 import { saveNotificationPreferences } from '@min-apps/design-system/notifications';
 
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Web: import global.css; use MainAppLoading from @min-apps/design-system. React Native: use @min-apps/design-system/react-native — docs/main-app-loading-native.md
 
   useEffect(() => {
     // Check onboarding status on mount
@@ -326,7 +328,7 @@ function App() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <MainAppLoading />;
   }
 
   if (showOnboarding) {

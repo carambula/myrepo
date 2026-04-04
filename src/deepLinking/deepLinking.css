@@ -11,11 +11,6 @@
   margin-top: 0.5rem;
 }
 
-.deep-link-preview.loading {
-  color: var(--color-text-secondary, #666);
-  font-style: italic;
-}
-
 .deep-link-preview-badge {
   display: inline-flex;
   align-items: center;

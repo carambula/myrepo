@@ -62,15 +62,23 @@ Standardized list item with image, title, subtitle, and optional actions.
 | `onClick` | `function` | - | Click handler |
 | `children` | `ReactNode` | - | Additional content |
 
+### Inline metadata in `subtitle`
+
+Combine multiple metadata fragments with **exactly three spaces** between them. Prefer `metadataSeparator` from `@min-apps/design-system/tokens` so spacing stays consistent. Do not use middle dots (·), bullet dots (•), or other glyphs as separators. See [Visual specification — inline metadata](./visual-specification.md#inline-metadata-separators).
+
 ### Examples
 
 ```javascript
 import { ListItem } from '@min-apps/design-system';
+import { metadataSeparator } from '@min-apps/design-system/tokens';
+
+// Building a subtitle from parts
+const subtitle = `2023${metadataSeparator}Drama`;
 
 // Basic list item
 <ListItem
   title="Movie Title"
-  subtitle="2023 • Drama"
+  subtitle="2023   Drama"
   image="/poster.jpg"
   onClick={handleItemClick}
 />
@@ -78,7 +86,7 @@ import { ListItem } from '@min-apps/design-system';
 // With action button
 <ListItem
   title="Podcast Episode"
-  subtitle="45 min • Jan 15"
+  subtitle="45 min   Jan 15"
   image="/cover.jpg"
   action={<Button variant="ghost">Play</Button>}
 />

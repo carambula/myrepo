@@ -10,6 +10,58 @@
 
 YourTube is a video app for browsing and watching videos. The integration should normalize its visual design to match the design system while preserving video-specific features.
 
+### Main app loading (bootstrap) — vid min must match mov min
+
+YourTube often ships a **centered** full-screen loader (`flex: 1` + `justifyContent: 'center'` + `alignItems: 'center'`, or an `ActivityIndicator` in the middle). That **does not** match WatchedIt. Rip it out and use the design-system loader only.
+
+**React Native / Expo (native builds):** `global.css` and `import { MainAppLoading } from '…/components'` are **wrong** — they target the DOM. Use:
+
+```javascript
+import { MainAppLoading } from '@min-apps/design-system/react-native';
+
+if (loading) {
+  return <MainAppLoading />;
+}
+```
+
+- [ ] Install **`react-native`** in the app; design system lists it as an optional peer.
+- [ ] **No** parent `View` with `justifyContent: 'center'` / `alignItems: 'center'` around `MainAppLoading`.
+
+**Web (if you have a web bundle for vid min):** import **`global.css`** and use `MainAppLoading` from **`@min-apps/design-system/components`**.
+
+**Swift / Kotlin native:** copy generated **`native/MinMainAppLoading.*`** and **`min_main_loading.xml`** from the design system (`npm run build:native`). See **[Main app loading — native](../../docs/main-app-loading-native.md)**.
+
+- [ ] Full spec: **[Main app loading](../../docs/main-app-loading.md)** (web) + **[native](../../docs/main-app-loading-native.md)**.
+
+**Wrong (common in vid min):**
+
+```jsx
+// Do not — centers the loader block in the viewport
+<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  <ActivityIndicator />
+</View>
+```
+
+### Page grid — vid min must match mov min (not YouTube-style gutters)
+
+Video UIs often use **tighter** side gutters, **full-bleed** thumbnails, or a root wrapper with **`padding: 8px` / `1rem`** that never matches WatchedIt. **vid min** must use the **same** screen margins as mov min on **every** primary screen (home, queue, subscriptions, search, channel, settings).
+
+- [ ] Follow **[Layout and margins (mov min)](../../docs/layout-margins-mov-min.md)**.
+- [ ] Root shells: **`AppLayout`** / **`HomeLayout`**, or **`min-page-padding`** / **`ContentContainer`** — use **`spacing.page.*`** or **`--min-page-margin-*`**; do not invent parallel margins.
+- [ ] **No second horizontal padding** inside `AppLayout` `main` (sticky search, filter chips, and list rows align with the same left/right edge as mov min).
+- [ ] **Smoke test:** open WatchedIt and yourtube on the same device; scroll areas and header title blocks should share **one** vertical margin line on the left and right.
+
+### Screen titles — vid min must match mov min (iOS)
+
+YourTube prototypes often use custom title sizes (`.title`, `.system(size: 28)`, `.largeTitle`). Replace all of them with the generated SwiftUI views from **`native/MinTitleTypography.swift`**:
+
+- [ ] **Video detail title** (hero): `MinMainContentTitleView(video.title)` — 48pt bold, leading, 16pt bottom. Parent applies `MinPageMargins` horizontal padding.
+- [ ] **Channel title** (channel page hero): `MinMainContentTitleView(channel.name)` — same view, same size.
+- [ ] **Home title**: `MinHomeScreenTitleView("YourTube")` — 36pt bold (30pt compact), centered.
+- [ ] **Header title** (top bar in video/channel views): `MinHeaderTitleView(video.title)` — 20pt semibold.
+- [ ] Remove any custom `.font(.title)`, `.system(size: 28)`, `.largeTitle`, or hard-coded `Text` styles on screen titles.
+- [ ] **Smoke test:** open WatchedIt and YourTube side-by-side; detail titles, home titles, and header titles must be the same size, weight, and horizontal position.
+
 ## App-Specific Considerations
 
 ### 1. Video Cards & Thumbnails
@@ -55,7 +107,7 @@ YourTube is a video app for browsing and watching videos. The integration should
         {video.channelName}
       </p>
       <p style={{ fontSize: '14px', color: 'var(--color-text-tertiary)' }}>
-        {video.views} views · {video.publishedAt}
+        {video.views} views   {video.publishedAt}
       </p>
     </div>
   </Card>
@@ -72,11 +124,10 @@ YourTube is a video app for browsing and watching videos. The integration should
 - [ ] Use consistent spacing:
   ```javascript
   import { Grid } from '@min-apps/design-system/layouts';
-  import { spacing } from '@min-apps/design-system/tokens';
   
   <Grid 
     columns={{ xs: 1, sm: 2, md: 3, lg: 4 }}
-    gap={spacing[4]}
+    gap="default"
   >
     {videos.map(video => (
       <VideoCard key={video.id} video={video} />
@@ -87,14 +138,15 @@ YourTube is a video app for browsing and watching videos. The integration should
 For list view:
   ```javascript
   import { List, ListItem, Button } from '@min-apps/design-system/components';
-  
+  import { metadataSeparator } from '@min-apps/design-system/tokens';
+
   <List spacing="default">
     {videos.map(video => (
       <ListItem
         key={video.id}
         image={video.thumbnailUrl}
         title={video.title}
-        subtitle={`${video.channelName} · ${video.views} views`}
+        subtitle={`${video.channelName}${metadataSeparator}${video.views} views`}
         // Clicking thumbnail/title opens video detail/player view
         onClick={() => openVideoPlayer(video.id)}
         action={
@@ -227,67 +279,62 @@ See `docs/list-tap-behavior.md` for complete guidelines.
 - [ ] Use `<ContentContainer>` for max-width content
 - [ ] Apply consistent spacing:
   ```javascript
-  <AppLayout>
-    <ContentContainer>
-      {/* Video player */}
-      <div style={{ marginBottom: spacing[4] }}>
-        <VideoPlayer video={video} />
-      </div>
-      
-      {/* Video info */}
-      <div style={{ marginBottom: spacing[6] }}>
-        <h1 style={{ marginBottom: spacing[2] }}>{video.title}</h1>
-        <div style={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: spacing[3]
-        }}>
-          <div>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
-              {video.views} views · {video.publishedAt}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: spacing[2] }}>
-            <Button variant="outline" size="sm">
-              👍 {video.likes}
-            </Button>
-            <Button variant="outline" size="sm">
-              Share
-            </Button>
-          </div>
-        </div>
-        
-        {/* Channel info */}
-        <div style={{ 
-          display: 'flex',
-          gap: spacing.list.itemGap,
-          padding: spacing[4],
-          backgroundColor: 'var(--color-background-secondary)',
-          borderRadius: '8px'
-        }}>
-          <img 
-            src={video.channel.avatarUrl}
-            style={{ width: '48px', height: '48px', borderRadius: '50%' }}
-          />
-          <div style={{ flex: 1 }}>
-            <h3>{video.channel.name}</h3>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
-              {video.channel.subscribers} subscribers
-            </p>
-          </div>
-          <Button variant="primary">
-            {isSubscribed ? '✓ Subscribed' : 'Subscribe'}
-          </Button>
+  // AppLayout main already applies spacing.page margins (mov min) — 
+  // do NOT add ContentContainer or extra horizontal padding here.
+  <AppLayout header={<AppHeader title={video.title} backButton onBack={goBack} />}>
+    {/* Video player — full bleed inside main is fine for the player itself */}
+    <div style={{ marginBottom: spacing[4] }}>
+      <VideoPlayer video={video} />
+    </div>
+    
+    {/* Video info — no extra horizontal padding */}
+    <div style={{ marginBottom: spacing[6] }}>
+      <h1 style={{ marginBottom: spacing[2] }}>{video.title}</h1>
+      <div style={{ 
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing[3]
+      }}>
+        <p style={{ color: 'var(--color-text-secondary)' }}>
+          {video.views} views   {video.publishedAt}
+        </p>
+        <div style={{ display: 'flex', gap: spacing[2] }}>
+          <Button variant="outline" size="sm">👍 {video.likes}</Button>
+          <Button variant="outline" size="sm">Share</Button>
         </div>
       </div>
       
-      {/* Related videos */}
-      <h2 style={{ marginBottom: spacing[4] }}>Related Videos</h2>
-      <Grid columns={{ xs: 1, md: 2, lg: 3 }} gap={spacing[4]}>
-        {/* Related video cards */}
-      </Grid>
-    </ContentContainer>
+      {/* Channel info — vertical padding only */}
+      <div style={{ 
+        display: 'flex',
+        gap: spacing.list.itemGap,
+        paddingTop: spacing[4],
+        paddingBottom: spacing[4],
+        backgroundColor: 'var(--color-background-secondary)',
+        borderRadius: '8px'
+      }}>
+        <img 
+          src={video.channel.avatarUrl}
+          style={{ width: '48px', height: '48px', borderRadius: '50%' }}
+        />
+        <div style={{ flex: 1 }}>
+          <h3>{video.channel.name}</h3>
+          <p style={{ color: 'var(--color-text-secondary)' }}>
+            {video.channel.subscribers} subscribers
+          </p>
+        </div>
+        <Button variant="primary">
+          {isSubscribed ? '✓ Subscribed' : 'Subscribe'}
+        </Button>
+      </div>
+    </div>
+    
+    {/* Related videos */}
+    <h2 style={{ marginBottom: spacing[4] }}>Related Videos</h2>
+    <Grid columns={{ xs: 1, md: 2, lg: 3 }} gap="default">
+      {/* Related video cards */}
+    </Grid>
   </AppLayout>
   ```
 
@@ -316,38 +363,38 @@ See `docs/list-tap-behavior.md` for complete guidelines.
 - [ ] Use design system components for channel page
 - [ ] Apply consistent spacing
   ```javascript
-  <AppLayout>
-    <ContentContainer>
-      {/* Channel header */}
-      <div style={{ 
-        padding: spacing[6],
-        backgroundColor: 'var(--color-background-secondary)',
-        marginBottom: spacing[6]
-      }}>
-        <div style={{ display: 'flex', gap: spacing[4] }}>
-          <img 
-            src={channel.avatarUrl}
-            style={{ width: '88px', height: '88px', borderRadius: '50%' }}
-          />
-          <div>
-            <h1 style={{ marginBottom: spacing[1] }}>{channel.name}</h1>
-            <p style={{ 
-              marginBottom: spacing[2],
-              color: 'var(--color-text-secondary)'
-            }}>
-              {channel.subscribers} subscribers · {channel.videoCount} videos
-            </p>
-            <Button variant="primary">Subscribe</Button>
-          </div>
+  // AppLayout main = mov min page margins. No ContentContainer wrapping needed.
+  <AppLayout header={<AppHeader title={channel.name} backButton onBack={goBack} />}>
+    {/* Channel header — vertical spacing only; horizontal aligns with page grid */}
+    <div style={{ 
+      paddingTop: spacing[6],
+      paddingBottom: spacing[6],
+      backgroundColor: 'var(--color-background-secondary)',
+      marginBottom: spacing[6]
+    }}>
+      <div style={{ display: 'flex', gap: spacing[4] }}>
+        <img 
+          src={channel.avatarUrl}
+          style={{ width: '88px', height: '88px', borderRadius: '50%' }}
+        />
+        <div>
+          <h1 style={{ marginBottom: spacing[1] }}>{channel.name}</h1>
+          <p style={{ 
+            marginBottom: spacing[2],
+            color: 'var(--color-text-secondary)'
+          }}>
+            {channel.subscribers} subscribers   {channel.videoCount} videos
+          </p>
+          <Button variant="primary">Subscribe</Button>
         </div>
       </div>
-      
-      {/* Channel videos */}
-      <h2 style={{ marginBottom: spacing[4] }}>Videos</h2>
-      <Grid columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} gap={spacing[4]}>
-        {/* Video cards */}
-      </Grid>
-    </ContentContainer>
+    </div>
+    
+    {/* Channel videos */}
+    <h2 style={{ marginBottom: spacing[4] }}>Videos</h2>
+    <Grid columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} gap="default">
+      {/* Video cards */}
+    </Grid>
   </AppLayout>
   ```
 

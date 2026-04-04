@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "dev": "node build.js --watch"
+    "build": "npm run build:native",
+    "build:native": "node scripts/build-native-tokens.js"
   },
   "keywords": [
     "design-system",
@@ -17,7 +17,13 @@
   "author": "carambula",
   "license": "MIT",
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "react-native": ">=0.71.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    }
   },
   "devDependencies": {},
   "exports": {
@@ -30,6 +36,10 @@
     "./onboarding": "./src/onboarding/index.js",
     "./hooks": "./src/hooks/index.js",
     "./storage": "./src/storage/index.js",
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./react-native": "./src/react-native.js",
+    "./native/spacing.json": "./native/spacing.json",
+    "./native/main-app-loading.json": "./native/main_app_loading.json",
+    "./native/title-typography.json": "./native/title_typography.json"
   }
 }

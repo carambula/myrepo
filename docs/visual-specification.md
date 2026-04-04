@@ -25,10 +25,10 @@ This document defines the exact visual specifications that all min apps must fol
 - **Bottom margin**: 24px
 - **Token**: `typography.styles.bodyLarge`
 
-### Content Container
-- **Max width**: 600px
-- **Horizontal padding**: 16px (desktop), 12px (mobile)
-- **Token**: Use `ContentContainer` component
+### Content column
+- **Max width**: 600px (inner column for primary actions and lists on home)
+- **Horizontal inset to viewport**: Same as page grid — `spacing.page.marginLeft` / `marginRight` (16px / 12px mobile) on the home shell via `HomeLayout`
+- **Token**: `HomeLayout` (preferred) or `ContentContainer` with default padding when not inside `AppLayout` `main`
 
 ## Button Specifications
 
@@ -86,11 +86,57 @@ This document defines the exact visual specifications that all min apps must fol
 - **Text overflow**: Ellipsis
 - **Token**: `typography.styles.bodySmall`
 
+### Inline metadata separators
+
+When a subtitle, caption, or header row combines multiple metadata fragments (for example podcast name and duration, or year and rating):
+
+- Separate segments with **exactly three ASCII spaces** (`"   "`).
+- Use the design token `metadataSeparator` from `@min-apps/design-system/tokens` in code so all four min apps stay aligned.
+- Do **not** use middle dots (·), bullet dots (•), pipes, slashes, or commas as decorative separators between those fragments.
+
+The same rule applies to detail views and cards where metadata appears on one line (show stats, video counts, race location and date, and so on).
+
 ### Hover State
 - **Background**: `var(--color-hover-primary)`
 - **Shadow**: `0 2px 8px rgba(0, 0, 0, 0.1)`
 - **Cursor**: Pointer
 - **Transition**: 250ms ease-in-out
+
+## Loading and empty (null) states
+
+These rules apply to **all** min-app screens (lists, detail shells, settings, link previews, initial app load, and any “no data” view). They keep status UI consistent with list content, which is left-aligned in reading order.
+
+### Layout and alignment
+
+- **Always left-align** loading and empty states: `text-align: left` on the container; do not center the block in the viewport (`text-align: center`, `justify-content: center` on a full-width column, or large vertical “hero” empty layouts are not allowed).
+- **Spinner and label** sit on one row: `display: flex`, `align-items: center`, `justify-content: flex-start`, `gap: 8px`, with the spinner first so motion stays at the **start** of the line (same edge as list titles).
+- **Respect** `prefers-reduced-motion`: spinner animation is disabled in global styles when the user requests reduced motion; the track remains visible.
+
+### Visual weight (keep it simple)
+
+- **No large icons** in loading or empty states: no emoji-as-hero, no illustration tiles, and no oversized glyphs. Optional **small** inline UI (e.g. a text link or `Button` size `sm`) is allowed when it performs an action.
+- **Spinner size**: **14px** diameter, **2px** border, using `.min-content-status__spinner` in `global.css` — do not use full-screen spinners or brand marks as loaders.
+- **Typography**: secondary body line — **14px** (`0.875rem`), `var(--color-text-secondary)`, normal weight. One short line for loading; one or two lines maximum for empty copy.
+
+### Implementation
+
+- Import global styles so utilities apply: `import '@min-apps/design-system/src/styles/global.css'`.
+- **React / JSX** (integration templates, deep linking): use the same class names as the design system:
+
+```jsx
+<div className="min-content-status min-content-status--loading" role="status" aria-live="polite">
+  <span className="min-content-status__spinner" aria-hidden="true" />
+  <span className="min-content-status__label">Loading…</span>
+</div>
+
+<div className="min-content-status min-content-status--empty">
+  <p className="min-content-status__message">No items found</p>
+</div>
+```
+
+**Main bootstrap loading** (initial `App` load in **every** min app, **web and native**): **WatchedIt (mov min)** is the reference. PodLink, YourTube, and Cyclismo must match it **exactly** — same structure and **`Loading…`** copy. **Web:** **[Main app loading](./main-app-loading.md)** (`MAIN_APP_LOADING_CLASSNAME` / `MainAppLoading` + `global.css`). **iOS / Android / React Native:** **[Main app loading — native](./main-app-loading-native.md)** (`@min-apps/design-system/react-native`, or generated `native/*`). Do **not** use a full-screen centered spinner shell on any platform.
+
+- **Object-tree components** (same package): `LoadingState({ message: 'Loading…', main: true })` and `EmptyState({ message, main: true })` from `@min-apps/design-system/components`.
 
 ## Page Layout Specifications
 
@@ -106,6 +152,8 @@ This document defines the exact visual specifications that all min apps must fol
   - Bottom: 16px
   - Left: 12px
 - **Token**: `spacing.page.*`
+- **Canonical reference**: **WatchedIt (mov min)** — all four apps use this grid for every screen. Sticky search, filters, inputs, and fixed overlays must align to these insets, not custom padding. Full rules: **[Layout and margins (mov min)](./layout-margins-mov-min.md)**.
+- **CSS** (when not using tokens in JS): `--min-page-margin-*` in `global.css`; utility classes `min-page-padding`, `min-page-padding-x`, `min-page-padding-y`.
 
 ### Content Width
 - **Default max width**: 1200px
@@ -306,6 +354,14 @@ Use this to verify exact measurements across all apps:
 ### Page Layout
 - [ ] Page margin top: 24px (desktop), 16px (mobile)
 - [ ] Page margin left/right: 16px (desktop), 12px (mobile)
+- [ ] **Screen grid** matches mov min — [Layout and margins](./layout-margins-mov-min.md): no double horizontal padding inside `AppLayout` `main`; sticky search/filters/inputs align with primary content; fixed overlays use `spacing.page` / `--min-page-margin-*`
+
+### Loading and empty (null) states
+- [ ] Loading and empty blocks are **left-aligned** (no centered column or `text-align: center` for these states)
+- [ ] Loading uses **flex-start** row: small spinner (14px) then label
+- [ ] **Main / bootstrap** loading matches **WatchedIt (mov min)** — [Main app loading](./main-app-loading.md) (`MAIN_APP_LOADING_CLASSNAME` or equivalent; not a centered full-viewport flex wrapper)
+- [ ] No **large** icons, hero emoji, or illustrations in loading/empty states
+- [ ] Copy uses secondary text color and ~14px size
 
 ## Visual Comparison
 

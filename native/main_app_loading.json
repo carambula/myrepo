@@ -1,0 +1,10 @@
+{
+  "generated": "2026-04-04T04:26:12.517Z",
+  "source": "src/tokens/mainLoading.js",
+  "note": "Main bootstrap loading — mov min reference. iOS ≈ pt, Android ≈ dp/sp.",
+  "message": "Loading…",
+  "spinnerSize": 14,
+  "rowGap": 8,
+  "labelFontSize": 14,
+  "paddingVertical": 16
+}

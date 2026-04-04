@@ -69,9 +69,11 @@
       background-color: var(--color-hover-primary);
     }
 
+    /* AppHeader title — typography.styles.h5 (mov min) */
     .header-title {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
+      line-height: 1.4;
     }
 
     .scroll-container {
@@ -106,10 +108,14 @@
       min-width: 250px;
     }
 
+    /* Primary title in main — mov min: typography.styles.mainContentTitle */
     .podcast-title {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 8px;
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+      margin: 0 0 16px 0;
+      color: var(--color-text-primary);
     }
 
     .podcast-author {
@@ -125,6 +131,11 @@
       color: var(--color-text-tertiary);
       margin-bottom: 16px;
       flex-wrap: wrap;
+    }
+
+    /* Three ASCII spaces between metadata segments (design system: no middle dot) */
+    .metadata-separator {
+      white-space: pre;
     }
 
     .podcast-description {
@@ -191,6 +202,7 @@
     .episode-meta {
       font-size: 14px;
       color: var(--color-text-secondary);
+      white-space: pre-wrap;
     }
 
     .play-button {
@@ -353,9 +365,9 @@
           <p class="podcast-author">The Tech Team</p>
           <div class="podcast-meta">
             <span>245 episodes</span>
-            <span>•</span>
+            <span class="metadata-separator" aria-hidden="true">   </span>
             <span>Technology</span>
-            <span>•</span>
+            <span class="metadata-separator" aria-hidden="true">   </span>
             <span>English</span>
           </div>
         </div>
@@ -430,7 +442,7 @@
         <div class="episode-artwork"></div>
         <div class="episode-content">
           <div class="episode-title">${title}</div>
-          <div class="episode-meta">2024-01-${String(20 - index).padStart(2, '0')} • ${40 + index}:${String(index * 3).padStart(2, '0')}</div>
+          <div class="episode-meta">2024-01-${String(20 - index).padStart(2, '0')}   ${40 + index}:${String(index * 3).padStart(2, '0')}</div>
         </div>
         <button class="play-button" onclick="event.stopPropagation()">▶</button>
       `;

@@ -10,8 +10,29 @@
 
 import React from 'react';
 import { HomeLayout } from '@min-apps/design-system/layouts';
-import { Button, ThemeToggle } from '@min-apps/design-system/components';
+import { Button, ThemeToggle, MainAppLoading } from '@min-apps/design-system/components';
 import { spacing } from '@min-apps/design-system/tokens';
+
+/**
+ * Bootstrap wrapper — same loading for all four min apps (mov min reference).
+ */
+function HomeScreen() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    initAppData().then(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <MainAppLoading />;
+  }
+
+  return <Home />;
+}
+
+function initAppData() {
+  return new Promise((r) => setTimeout(r, 300));
+}
 
 function Home() {
   const handleGetStarted = () => {
@@ -77,4 +98,5 @@ function Home() {
   );
 }
 
-export default Home;
+export default HomeScreen;
+export { Home };

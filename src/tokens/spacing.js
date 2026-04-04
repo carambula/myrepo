@@ -24,7 +24,11 @@ export const spacing = {
   
   // Semantic spacing values
   page: {
-    // Standard page margins for all apps
+    /**
+     * Standard screen margins for every min app — same grid as WatchedIt (mov min).
+     * Use for AppLayout/HomeLayout, headers, scrollable content, sticky toolbars, filters,
+     * search fields, and fixed/overlay controls so columns line up across pod / vid / cyc.
+     */
     marginTop: '24px',
     marginBottom: '24px',
     marginLeft: '16px',

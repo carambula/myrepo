@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { AppLayout, ContentContainer, Grid } from '@min-apps/design-system/layouts';
-import { Button, Card, AppHeader } from '@min-apps/design-system/components';
+import { Button, Card, AppHeader, MainContentTitle, MainAppLoading } from '@min-apps/design-system/components';
 import { spacing, borders } from '@min-apps/design-system/tokens';
 
 // Example item data
@@ -29,8 +29,20 @@ const EXAMPLE_ITEM = {
 };
 
 function DetailView() {
-  const [item, setItem] = React.useState(EXAMPLE_ITEM);
+  const [item, setItem] = React.useState(null);
   const [isFavorited, setIsFavorited] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchItem().then((data) => {
+      setItem(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading || !item) {
+    return <MainAppLoading />;
+  }
 
   const handlePrimaryAction = () => {
     console.log('Primary action for:', item);
@@ -73,13 +85,7 @@ function DetailView() {
 
             {/* Info */}
             <div>
-              <h1 style={{ 
-                marginBottom: spacing[2],
-                fontSize: '2rem',
-                fontWeight: 'bold'
-              }}>
-                {item.title}
-              </h1>
+              <MainContentTitle>{item.title}</MainContentTitle>
               
               <p style={{ 
                 marginBottom: spacing[4],
@@ -201,6 +207,10 @@ function DetailView() {
       </ContentContainer>
     </AppLayout>
   );
+}
+
+function fetchItem() {
+  return new Promise((resolve) => setTimeout(() => resolve(EXAMPLE_ITEM), 300));
 }
 
 export default DetailView;

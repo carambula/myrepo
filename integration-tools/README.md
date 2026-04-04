@@ -9,6 +9,10 @@ This directory contains automated tools and guides for integrating the min-apps 
 3. **yourtube** (vid min) - Video app
 4. **Cyclismo guide** (cyc min) - Cycling guide app
 
+**Main bootstrap loading** matches **WatchedIt (mov min)** on **web and native**: [Main app loading](../docs/main-app-loading.md) (DOM/CSS), [Main app loading — native](../docs/main-app-loading-native.md) (React Native, Swift, Kotlin, `native/`). Other loading/empty rules: [Visual specification](../docs/visual-specification.md#loading-and-empty-null-states).
+
+**Page grid and margins** (content, sticky search, filters, fixed buttons) also match **mov min** across all apps: [Layout and margins (mov min)](../docs/layout-margins-mov-min.md).
+
 ## Quick Start
 
 ### Option 1: Automated Integration Script

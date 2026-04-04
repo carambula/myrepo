@@ -6,29 +6,37 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
 
-// Import design system global styles
 import '@min-apps/design-system/src/styles/global.css';
-
-// Import and initialize theme
 import { initTheme } from '@min-apps/design-system';
+import { MainAppLoading } from '@min-apps/design-system/components';
 
-// Initialize theme system
-// This will:
-// - Load saved theme preference from localStorage
-// - Apply the theme to the document
-// - Set up theme change listeners
 initTheme();
 
-// Optional: Set a custom default theme for this app
-// import { applyTheme } from '@min-apps/design-system';
-// applyTheme('light'); // or 'dark', or your custom theme name
+/**
+ * Root shell — bootstrap loading is identical across all four min apps (mov min reference).
+ */
+function Root() {
+  const [ready, setReady] = React.useState(false);
 
-// Render app
+  React.useEffect(() => {
+    import('./App').then((mod) => {
+      window.__App = mod.default;
+      setReady(true);
+    });
+  }, []);
+
+  if (!ready) {
+    return <MainAppLoading />;
+  }
+
+  const App = window.__App;
+  return <App />;
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <Root />
   </React.StrictMode>
 );

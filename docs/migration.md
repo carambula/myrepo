@@ -201,6 +201,14 @@ import { ContentContainer, Card } from '@min-apps/design-system';
 
 ## App-Specific Considerations
 
+### Main app loading (all min apps)
+
+Use the **same** main bootstrap loader as **WatchedIt (mov min)**. **Web:** [Main app loading](./main-app-loading.md). **Native (RN / Swift / Kotlin):** [Main app loading — native](./main-app-loading-native.md) and `npm run build:native` artifacts in `native/`.
+
+### Page grid and chrome (all min apps)
+
+Match **WatchedIt (mov min)** for **every screen**: content insets, sticky search and filters, and fixed overlay controls all use **`spacing.page.*`** (or **`--min-page-margin-*`** in CSS). Do not add a second horizontal padding layer inside **`AppLayout`** `main`. See [Layout and margins (mov min)](./layout-margins-mov-min.md).
+
 ### WatchedIt (mov min)
 - Replace movie list items with `ListItem` component
 - Use `HomeLayout` for the main screen

@@ -18,7 +18,7 @@ List items should have **separate tap areas** for different actions:
 ```
 ┌─────────────────────────────────────────────────┐
 │  [Art]  Episode Title              [Play ▶]    │
-│         Podcast Name · Duration                 │
+│         Podcast Name   Duration                 │
 └─────────────────────────────────────────────────┘
     ↑                                       ↑
     Primary tap area                   Secondary tap

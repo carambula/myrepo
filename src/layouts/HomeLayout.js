@@ -59,6 +59,7 @@ export function HomeLayout({
     
     @media (max-width: 767px) {
       font-size: ${typography.styles.h3.fontSize};
+      font-weight: ${typography.styles.h2.fontWeight};
     }
   `;
   

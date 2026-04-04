@@ -25,10 +25,12 @@ import {
   Input, 
   AppHeader, 
   Card,
-  DismissButton 
+  DismissButton,
+  MainContentTitle,
+  MainAppLoading,
 } from '@min-apps/design-system/components';
 import { useScrollDismiss } from '@min-apps/design-system/hooks';
-import { spacing } from '@min-apps/design-system/tokens';
+import { spacing, metadataSeparator } from '@min-apps/design-system/tokens';
 
 // Example podcast data
 const EXAMPLE_PODCAST = {
@@ -129,11 +131,25 @@ const EXAMPLE_EPISODES = [
 
 function PodcastShowView() {
   const scrollContainerRef = useRef(null);
-  const [podcast, setPodcast] = React.useState(EXAMPLE_PODCAST);
-  const [episodes, setEpisodes] = React.useState(EXAMPLE_EPISODES);
+  const [podcast, setPodcast] = React.useState(null);
+  const [episodes, setEpisodes] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [currentlyPlayingId, setCurrentlyPlayingId] = React.useState(null);
-  const [isSubscribed, setIsSubscribed] = React.useState(podcast.isSubscribed);
+  const [isSubscribed, setIsSubscribed] = React.useState(false);
+  const [episodesLoading, setEpisodesLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchShowData().then(({ show, eps }) => {
+      setPodcast(show);
+      setEpisodes(eps);
+      setIsSubscribed(show.isSubscribed);
+      setEpisodesLoading(false);
+    });
+  }, []);
+
+  if (episodesLoading || !podcast) {
+    return <MainAppLoading />;
+  }
 
   // Track scroll state for dismiss button
   const { isScrolled, isAtBottom } = useScrollDismiss(scrollContainerRef, {
@@ -209,10 +225,12 @@ function PodcastShowView() {
           paddingBottom: spacing[20], // Extra space for microplayer if present
         }}
       >
-        {/* Podcast Header Section */}
+        {/* Podcast header — AppLayout main already applies page margins (mov min); no extra horizontal inset */}
         <div style={{ 
-          padding: spacing[6],
-          paddingBottom: spacing[4],
+          paddingTop: 0,
+          paddingBottom: spacing[6],
+          paddingLeft: 0,
+          paddingRight: 0,
         }}>
           <div style={{ 
             display: 'flex',
@@ -236,14 +254,7 @@ function PodcastShowView() {
 
             {/* Podcast Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 style={{ 
-                fontSize: '1.75rem',
-                fontWeight: 'bold',
-                marginBottom: spacing[2],
-                color: 'var(--color-text-primary)',
-              }}>
-                {podcast.title}
-              </h1>
+              <MainContentTitle>{podcast.title}</MainContentTitle>
               
               <p style={{ 
                 fontSize: '1rem',
@@ -262,9 +273,9 @@ function PodcastShowView() {
                 color: 'var(--color-text-tertiary)',
               }}>
                 <span>{podcast.episodeCount} episodes</span>
-                <span>•</span>
+                {metadataSeparator}
                 <span>{podcast.category}</span>
-                <span>•</span>
+                {metadataSeparator}
                 <span>{podcast.language}</span>
               </div>
 
@@ -320,9 +331,12 @@ function PodcastShowView() {
           </p>
         </div>
 
-        {/* Episodes Section Header */}
+        {/* Episodes section — vertical rhythm only; horizontal aligns with page grid */}
         <div style={{ 
-          padding: `${spacing[4]} ${spacing[6]} ${spacing[3]}`,
+          paddingTop: spacing[4],
+          paddingBottom: spacing[3],
+          paddingLeft: 0,
+          paddingRight: 0,
           borderTop: '1px solid var(--color-border-primary)',
         }}>
           <h2 style={{ 
@@ -346,33 +360,42 @@ function PodcastShowView() {
           </div>
         </div>
 
-        {/* Episode List */}
-        <div style={{ padding: `0 ${spacing[4]} ${spacing[4]}` }}>
-          <List spacing="default">
-            {episodes.map(episode => (
-              <EpisodeListItem
-                key={episode.id}
-                artwork={episode.artworkUrl}
-                artworkAlt={episode.title}
-                title={episode.title}
-                subtitle={`${episode.publishDate} · ${episode.duration}`}
-                duration={episode.duration}
-                isPlaying={episode.isPlaying}
-                onEpisodeClick={() => openEpisodePlayer(episode)}
-                onPlayClick={() => handlePlayClick(episode)}
-              />
-            ))}
-          </List>
-
-          {/* Empty state */}
-          {episodes.length === 0 && (
-            <div style={{ 
-              textAlign: 'center',
-              padding: spacing[8],
-              color: 'var(--color-text-secondary)',
-            }}>
-              <p>No episodes found</p>
+        {/* Episode list */}
+        <div style={{ paddingBottom: spacing[4] }}>
+          {episodesLoading ? (
+            <div
+              className="min-content-status min-content-status--loading"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="min-content-status__spinner" aria-hidden="true" />
+              <span className="min-content-status__label">Loading…</span>
             </div>
+          ) : (
+            <>
+              <List spacing="default">
+                {episodes.map(episode => (
+                  <EpisodeListItem
+                    key={episode.id}
+                    artwork={episode.artworkUrl}
+                    artworkAlt={episode.title}
+                    title={episode.title}
+                    subtitle={`${episode.publishDate}${metadataSeparator}${episode.duration}`}
+                    duration={episode.duration}
+                    isPlaying={episode.isPlaying}
+                    onEpisodeClick={() => openEpisodePlayer(episode)}
+                    onPlayClick={() => handlePlayClick(episode)}
+                  />
+                ))}
+              </List>
+
+              {/* Empty state — left-aligned; see docs/visual-specification.md */}
+              {episodes.length === 0 && (
+                <div className="min-content-status min-content-status--empty">
+                  <p className="min-content-status__message">No episodes found</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -422,11 +445,14 @@ function MinimalPodcastShowView() {
         style={{ 
           height: '100%',
           overflowY: 'auto',
-          padding: spacing[4],
+          paddingTop: spacing[4],
+          paddingBottom: spacing[4],
+          paddingLeft: 0,
+          paddingRight: 0,
         }}
       >
         {/* Your content here */}
-        <h1>Podcast Show Content</h1>
+        <MainContentTitle>Podcast Show Content</MainContentTitle>
         
         {/* ... episodes list ... */}
       </div>
@@ -438,6 +464,12 @@ function MinimalPodcastShowView() {
         onClick={handleDismiss}
       />
     </AppLayout>
+  );
+}
+
+function fetchShowData() {
+  return new Promise((resolve) =>
+    setTimeout(() => resolve({ show: EXAMPLE_PODCAST, eps: EXAMPLE_EPISODES }), 300)
   );
 }
 

@@ -11,8 +11,8 @@
 
 import React from 'react';
 import { AppLayout } from '@min-apps/design-system/layouts';
-import { List, EpisodeListItem, Input, AppHeader } from '@min-apps/design-system/components';
-import { spacing } from '@min-apps/design-system/tokens';
+import { List, EpisodeListItem, Input, AppHeader, MainAppLoading } from '@min-apps/design-system/components';
+import { spacing, metadataSeparator } from '@min-apps/design-system/tokens';
 
 // Example episode data structure
 const EXAMPLE_EPISODES = [
@@ -37,9 +37,21 @@ const EXAMPLE_EPISODES = [
 ];
 
 function EpisodeListView() {
-  const [episodes, setEpisodes] = React.useState(EXAMPLE_EPISODES);
+  const [episodes, setEpisodes] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [currentlyPlayingId, setCurrentlyPlayingId] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchEpisodes().then((data) => {
+      setEpisodes(data);
+      setIsLoading(false);
+    });
+  }, []);
+
+  if (isLoading || !episodes) {
+    return <MainAppLoading />;
+  }
 
   /**
    * Opens the episode detail/player view
@@ -89,10 +101,12 @@ function EpisodeListView() {
         />
       }
     >
-      {/* Search bar */}
+      {/* Sticky search — horizontal inset from AppLayout main only */}
       <div style={{ 
-        padding: spacing[4],
+        paddingTop: 0,
         paddingBottom: spacing[2],
+        paddingLeft: 0,
+        paddingRight: 0,
         position: 'sticky',
         top: 0,
         backgroundColor: 'var(--color-background-primary)',
@@ -107,36 +121,45 @@ function EpisodeListView() {
         />
       </div>
 
-      {/* Episode List */}
-      <div style={{ padding: `0 ${spacing[4]}px ${spacing[4]}px` }}>
-        <List spacing="default">
-          {episodes.map(episode => (
-            <EpisodeListItem
-              key={episode.id}
-              artwork={episode.artworkUrl}
-              artworkAlt={episode.title}
-              title={episode.title}
-              subtitle={episode.podcastName}
-              duration={episode.duration}
-              isPlaying={episode.isPlaying}
-              // Clicking art/title opens the episode player view
-              onEpisodeClick={() => openEpisodePlayer(episode)}
-              // Clicking play button plays the episode
-              // The component handles e.stopPropagation() internally
-              onPlayClick={() => handlePlayClick(episode)}
-            />
-          ))}
-        </List>
-
-        {/* Empty state */}
-        {episodes.length === 0 && (
-          <div style={{ 
-            textAlign: 'center',
-            padding: spacing[8],
-            color: 'var(--color-text-secondary)'
-          }}>
-            <p>No episodes found</p>
+      {/* Episode list — no extra horizontal padding inside AppLayout main */}
+      <div style={{ paddingBottom: spacing[4] }}>
+        {isLoading ? (
+          <div
+            className="min-content-status min-content-status--loading"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="min-content-status__spinner" aria-hidden="true" />
+            <span className="min-content-status__label">Loading…</span>
           </div>
+        ) : (
+          <>
+            <List spacing="default">
+              {episodes.map(episode => (
+                <EpisodeListItem
+                  key={episode.id}
+                  artwork={episode.artworkUrl}
+                  artworkAlt={episode.title}
+                  title={episode.title}
+                  subtitle={episode.podcastName}
+                  duration={episode.duration}
+                  isPlaying={episode.isPlaying}
+                  // Clicking art/title opens the episode player view
+                  onEpisodeClick={() => openEpisodePlayer(episode)}
+                  // Clicking play button plays the episode
+                  // The component handles e.stopPropagation() internally
+                  onPlayClick={() => handlePlayClick(episode)}
+                />
+              ))}
+            </List>
+
+            {/* Empty state — left-aligned; see docs/visual-specification.md */}
+            {episodes.length === 0 && (
+              <div className="min-content-status min-content-status--empty">
+                <p className="min-content-status__message">No episodes found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>
@@ -165,7 +188,7 @@ function EpisodeListViewWithListItem() {
           key={episode.id}
           image={episode.artworkUrl}
           title={episode.title}
-          subtitle={`${episode.podcastName} · ${episode.duration}`}
+          subtitle={`${episode.podcastName}${metadataSeparator}${episode.duration}`}
           onClick={() => openEpisodePlayer(episode)}
           action={
             <button
@@ -188,6 +211,10 @@ function EpisodeListViewWithListItem() {
       ))}
     </List>
   );
+}
+
+function fetchEpisodes() {
+  return new Promise((resolve) => setTimeout(() => resolve(EXAMPLE_EPISODES), 300));
 }
 
 export default EpisodeListView;

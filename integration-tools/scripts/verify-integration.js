@@ -39,6 +39,7 @@ class IntegrationVerifier {
     this.checkCSSVariableUsage();
     this.checkSpacingTokenUsage();
     this.checkComponentImports();
+    this.checkMainAppLoading();
     this.checkHardCodedValues();
 
     // Print results
@@ -177,6 +178,63 @@ class IntegrationVerifier {
       this.results.passed.push(`✓ Using design system components: ${Array.from(foundComponents).join(', ')}`);
     } else {
       this.results.warnings.push('⚠ No design system component imports found');
+    }
+  }
+
+  checkMainAppLoading() {
+    const srcDir = path.join(this.targetDir, 'src');
+    if (!fs.existsSync(srcDir)) return;
+
+    let usesMainAppLoading = false;
+    this.scanFilesForPattern(
+      srcDir,
+      /MainAppLoading/,
+      () => { usesMainAppLoading = true; }
+    );
+
+    if (usesMainAppLoading) {
+      this.results.passed.push('✓ Uses MainAppLoading component for bootstrap loading (mov min reference)');
+    } else {
+      this.results.failed.push(
+        '✗ MainAppLoading not found — every min app must use the same left-aligned bootstrap loader as WatchedIt (mov min). ' +
+        'Web: import { MainAppLoading } from "@min-apps/design-system/components". ' +
+        'React Native: import { MainAppLoading } from "@min-apps/design-system/react-native".'
+      );
+    }
+
+    let hasCenteredLoading = false;
+    const centeredPatterns = [
+      /justifyContent:\s*['"]center['"].*[Ll]oading/,
+      /[Ll]oading.*justifyContent:\s*['"]center['"]/,
+      /alignItems:\s*['"]center['"].*[Ll]oading/,
+      /text-align:\s*center.*[Ll]oading/,
+      /[Ll]oading.*text-align:\s*center/,
+    ];
+    for (const pat of centeredPatterns) {
+      this.scanFilesForPattern(srcDir, pat, () => { hasCenteredLoading = true; });
+    }
+
+    if (hasCenteredLoading) {
+      this.results.failed.push(
+        '✗ Centered loading detected — bootstrap loading must be left-aligned (mov min reference). Remove any justifyContent/alignItems/text-align center wrappers around loading states.'
+      );
+    }
+
+    let hasFlexGrowLoading = false;
+    const flexGrowPatterns = [
+      /flex:\s*1.*[Ll]oading/,
+      /[Ll]oading.*flex:\s*1/,
+      /flexGrow.*[Ll]oading/,
+      /[Ll]oading.*flexGrow/,
+    ];
+    for (const pat of flexGrowPatterns) {
+      this.scanFilesForPattern(srcDir, pat, () => { hasFlexGrowLoading = true; });
+    }
+
+    if (hasFlexGrowLoading) {
+      this.results.warnings.push(
+        '⚠ flex:1 or flexGrow near loading state — the loader must not expand to fill vertical space. Use MainAppLoading which pins content to top-left.'
+      );
     }
   }
 

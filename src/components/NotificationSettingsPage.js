@@ -4,6 +4,8 @@
  */
 
 import { useState, useEffect } from 'react';
+import { MainContentTitle } from './MainContentTitle.js';
+import { spacing } from '../tokens/index.js';
 import { CyclismoNotificationSettings } from './CyclismoNotificationSettings.js';
 import { PodlinkNotificationSettings } from './PodlinkNotificationSettings.js';
 import { WatcheditNotificationSettings } from './WatcheditNotificationSettings.js';
@@ -105,7 +107,9 @@ export function NotificationSettingsPage({
   return (
     <div className="notification-settings-page">
       <div className="notification-settings-page__header">
-        <h1 className="notification-settings-page__title">Notification Settings</h1>
+        <MainContentTitle marginBottom={spacing[2]}>
+          Notification Settings
+        </MainContentTitle>
         <p className="notification-settings-page__subtitle">
           Manage your {getAppName()} notification preferences
         </p>
@@ -124,21 +128,15 @@ export function NotificationSettingsPage({
       )}
 
       <style>{`
+        /* Page insets: same as mov min / global.css --min-page-margin-* */
         .notification-settings-page {
           max-width: 800px;
           margin: 0 auto;
-          padding: 24px 16px;
+          padding: var(--min-page-margin-top) var(--min-page-margin-right) var(--min-page-margin-bottom) var(--min-page-margin-left);
         }
 
         .notification-settings-page__header {
           margin-bottom: 32px;
-        }
-
-        .notification-settings-page__title {
-          font-size: 32px;
-          font-weight: 700;
-          color: var(--color-text-primary);
-          margin: 0 0 8px 0;
         }
 
         .notification-settings-page__subtitle {
@@ -167,15 +165,6 @@ export function NotificationSettingsPage({
           color: var(--color-error);
         }
 
-        @media (max-width: 768px) {
-          .notification-settings-page {
-            padding: 16px 12px;
-          }
-
-          .notification-settings-page__title {
-            font-size: 24px;
-          }
-        }
       `}</style>
     </div>
   );

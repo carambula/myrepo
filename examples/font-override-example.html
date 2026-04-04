@@ -53,6 +53,11 @@
       color: #6b7280;
     }
 
+    /* Inline metadata: three spaces between segments (see design system visual spec) */
+    .caption--metadata {
+      white-space: pre-wrap;
+    }
+
     /* Styling */
     header {
       margin-bottom: 40px;
@@ -301,7 +306,7 @@
 
       <div class="preview-card">
         <span class="tier-badge">Caption</span>
-        <p class="caption">Released: 2013 • Runtime: 143 min • Rating: PG-13</p>
+        <p class="caption caption--metadata">Released: 2013   Runtime: 143 min   Rating: PG-13</p>
         <p class="caption">Small text, metadata, timestamps</p>
       </div>
     </div>
@@ -312,7 +317,7 @@
     
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 32px; margin-top: 16px;">
       <h1 style="font-size: 42px; margin-bottom: 8px;">The Shawshank Redemption</h1>
-      <p class="caption" style="margin-bottom: 24px;">Drama • 1994 • 142 min</p>
+      <p class="caption caption--metadata" style="margin-bottom: 24px;">Drama   1994   142 min</p>
       
       <h3>Overview</h3>
       <p style="margin-bottom: 16px;">

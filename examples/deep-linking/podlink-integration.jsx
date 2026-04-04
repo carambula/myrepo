@@ -14,8 +14,38 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
-import { EpisodeListItem, List } from '@min-apps/design-system';
-import { borders } from '@min-apps/design-system/tokens';
+import { EpisodeListItem, List, MainAppLoading, AppHeader } from '@min-apps/design-system';
+import { AppLayout } from '@min-apps/design-system/layouts';
+import { borders, spacing } from '@min-apps/design-system/tokens';
+
+/**
+ * PodLink App shell — AppLayout applies mov min page margins.
+ */
+function PodlinkApp() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    initPodlinkData().then(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <MainAppLoading />;
+  }
+
+  return (
+    <AppLayout header={<AppHeader title="podlink" />}>
+      <PodlinkMainContent />
+    </AppLayout>
+  );
+}
+
+function initPodlinkData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+function PodlinkMainContent() {
+  return <>{/* app routes — no extra horizontal padding; AppLayout main provides page margins */}</>;
+}
 
 /**
  * Example: Podcast List Component
@@ -452,6 +482,7 @@ async function fetchPodcastFromRSS(url) {
 }
 
 export {
+  PodlinkApp,
   PodcastList,
   EpisodeList,
   QueueManager,

@@ -54,6 +54,20 @@ var(--color-error-main)           /* Error color */
 /* ... and many more */
 ```
 
+## Inline metadata
+
+### Metadata separator {#metadata-separator}
+
+Use this constant whenever you join inline metadata fragments (list subtitles, headers, captions). The value is three ASCII spaces.
+
+```javascript
+import { metadataSeparator } from '@min-apps/design-system';
+
+const subtitle = `${podcastName}${metadataSeparator}${duration}`;
+```
+
+Do not use middle dots (·) or bullet characters (•) between metadata segments. Full UI rules: [Visual specification](./visual-specification.md#inline-metadata-separators).
+
 ## Spacing
 
 ### Standard Spacing Scale
@@ -78,6 +92,9 @@ spacing[24]  // 96px
 ### Semantic Spacing
 
 #### Page Margins (Critical for consistency!)
+
+Canonical grid matches **WatchedIt (mov min)** for all min apps — including sticky search, filters, and fixed controls. See **[Layout and margins (mov min)](./layout-margins-mov-min.md)**. In CSS, mirror values with `--min-page-margin-*` in `global.css`.
+
 ```javascript
 // Desktop
 spacing.page.marginTop        // 24px - Top margin on all pages

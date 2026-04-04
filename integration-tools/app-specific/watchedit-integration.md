@@ -12,6 +12,27 @@ WatchedIt is the most mature and hardened of the min apps. The integration shoul
 
 ## App-Specific Considerations
 
+### Main app loading (bootstrap) — suite reference
+
+WatchedIt **(mov min)** defines the canonical main bootstrap loader. Keep it as the reference implementation; other min apps copy it verbatim.
+
+- [ ] **Web:** **[Main app loading](../../docs/main-app-loading.md)** — `MAIN_APP_LOADING_CLASSNAME` or `<MainAppLoading />` from `…/components` + `global.css`.
+- [ ] **React Native:** `import { MainAppLoading } from '@min-apps/design-system/react-native'` — see **[main-app-loading-native](../../docs/main-app-loading-native.md)**.
+- [ ] **Swift / Kotlin:** generated `native/MinMainAppLoading.*` (`npm run build:native` in the design-system package).
+
+### Screen titles (suite standard — you are the reference)
+
+WatchedIt defines the canonical title type for every screen. All four native iOS apps must use the generated SwiftUI views from **`native/MinTitleTypography.swift`** so titles are the exact same size and position:
+
+- [ ] **Detail view title** (movie hero): `MinMainContentTitleView(movie.title)` — 48pt bold, leading-aligned, 16pt bottom. Parent applies `MinPageMargins` horizontal padding.
+- [ ] **Home screen title**: `MinHomeScreenTitleView("WatchedIt")` — 36pt bold (30pt on compact), centered.
+- [ ] **Header title** (top bar): `MinHeaderTitleView(movie.title)` — 20pt semibold, single line.
+- [ ] Remove any custom `Text(title).font(.largeTitle)` or `.system(size: 28)` or `.title` — those drift from the reference.
+
+### Page grid (suite standard — you are the reference)
+
+mov min **is** the canonical margin grid. Keep every screen on **`spacing.page.*`** / **`AppLayout`** / **`HomeLayout`** per **[Layout and margins (mov min)](../../docs/layout-margins-mov-min.md)** so pod / vid / cyc can match WatchedIt pixel-for-pixel at the content edges.
+
 ### 1. Movie Cards & Posters
 
 **Current State**: WatchedIt likely has custom movie card components with poster images.
@@ -64,7 +85,7 @@ WatchedIt is the most mature and hardened of the min apps. The integration shoul
         key={movie.id}
         image={movie.posterUrl}
         title={movie.title}
-        subtitle={`${movie.year} · ${movie.rating}`}
+        subtitle={`${movie.year}   ${movie.rating}`}
         // Clicking poster/title opens movie detail view
         onClick={() => navigateToMovie(movie.id)}
         action={

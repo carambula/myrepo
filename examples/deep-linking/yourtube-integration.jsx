@@ -14,7 +14,39 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
-import { borders } from '@min-apps/design-system/tokens';
+import { MainAppLoading, AppHeader } from '@min-apps/design-system/components';
+import { AppLayout } from '@min-apps/design-system/layouts';
+import { borders, spacing } from '@min-apps/design-system/tokens';
+
+/**
+ * YourTube App shell — AppLayout applies mov min page margins.
+ * Bootstrap loading matches WatchedIt (mov min).
+ */
+function YourtubeApp() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    initYourtubeData().then(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <MainAppLoading />;
+  }
+
+  return (
+    <AppLayout header={<AppHeader title="YourTube" />}>
+      <YourtubeMainContent />
+    </AppLayout>
+  );
+}
+
+function initYourtubeData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+function YourtubeMainContent() {
+  return <>{/* app routes — no extra horizontal padding; AppLayout main provides page margins */}</>;
+}
 
 /**
  * Example: Video Queue Component
@@ -22,24 +54,25 @@ import { borders } from '@min-apps/design-system/tokens';
  */
 function VideoQueue({ videos }) {
   return (
-    <div className="video-queue">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
       {videos.map(video => (
-        <div key={video.id} className="video-item">
+        <div key={video.id} style={{
+          display: 'flex', alignItems: 'center', gap: spacing.list.itemGap,
+          padding: `${spacing.list.itemPaddingY} 0`,
+        }}>
           <img 
             src={video.thumbnail} 
             alt={video.title}
-            style={{ borderRadius: borders.radii.artTile }}
+            style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
           />
-          <div className="video-info">
-            <h3>{video.title}</h3>
-            <p>{video.channel}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: 0 }}>{video.title}</h3>
+            <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{video.channel}</p>
             
-            {/* Deep link to YouTube - will open in Yourtube app */}
             <DeepLink href={`https://www.youtube.com/watch?v=${video.id}`}>
               Watch on YouTube
             </DeepLink>
-            
-            {/* Short URL format also supported */}
+            {' '}
             <DeepLink href={`https://youtu.be/${video.id}`}>
               Share Short Link
             </DeepLink>
@@ -58,15 +91,18 @@ function ChannelSubscriptions({ channels }) {
   const { open } = useOpenLink();
   
   return (
-    <div className="channel-subscriptions">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
       {channels.map(channel => (
-        <div key={channel.id} className="channel-item">
+        <div key={channel.id} style={{
+          display: 'flex', alignItems: 'center', gap: spacing.list.itemGap,
+          padding: `${spacing.list.itemPaddingY} 0`,
+        }}>
           <img 
             src={channel.avatar} 
             alt={channel.name}
-            style={{ borderRadius: borders.radii.artTile }}
+            style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
           />
-          <h4>{channel.name}</h4>
+          <h4 style={{ margin: 0 }}>{channel.name}</h4>
           
           {/* Support both channel ID and handle formats */}
           {channel.channelId ? (
@@ -99,25 +135,30 @@ function ChannelSubscriptions({ channels }) {
  */
 function PlaylistManager({ playlists }) {
   return (
-    <div className="playlist-manager">
+    <div>
       <h3>Your Playlists</h3>
-      {playlists.map(playlist => (
-        <div key={playlist.id} className="playlist-item">
-          <img 
-            src={playlist.thumbnail} 
-            alt={playlist.title}
-            style={{ borderRadius: borders.radii.artTile }}
-          />
-          <div className="playlist-info">
-            <h4>{playlist.title}</h4>
-            <span>{playlist.videoCount} videos</span>
-            
-            <DeepLink href={`https://www.youtube.com/playlist?list=${playlist.id}`}>
-              Open Playlist
-            </DeepLink>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
+        {playlists.map(playlist => (
+          <div key={playlist.id} style={{
+            display: 'flex', alignItems: 'center', gap: spacing.list.itemGap,
+            padding: `${spacing.list.itemPaddingY} 0`,
+          }}>
+            <img 
+              src={playlist.thumbnail} 
+              alt={playlist.title}
+              style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: 0 }}>{playlist.title}</h4>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>{playlist.videoCount} videos</span>
+              {' '}
+              <DeepLink href={`https://www.youtube.com/playlist?list=${playlist.id}`}>
+                Open Playlist
+              </DeepLink>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -136,19 +177,25 @@ function PriorityChannels({ priorityChannels }) {
   };
   
   return (
-    <div className="priority-channels">
+    <div>
       <h3>Priority Channels</h3>
-      <p>Get notified first when these channels upload</p>
+      <p style={{ color: 'var(--color-text-secondary)' }}>Get notified first when these channels upload</p>
       
-      {priorityChannels.map(channel => (
-        <div key={channel.id} className="priority-channel">
-          <img src={channel.avatar} alt={channel.name} />
-          <span>{channel.name}</span>
-          <button onClick={() => handleOpenChannel(channel.id)}>
-            Open
-          </button>
-        </div>
-      ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
+        {priorityChannels.map(channel => (
+          <div key={channel.id} style={{
+            display: 'flex', alignItems: 'center', gap: spacing.list.itemGap,
+            padding: `${spacing.list.itemPaddingY} 0`,
+          }}>
+            <img src={channel.avatar} alt={channel.name}
+              style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>{channel.name}</span>
+            <button onClick={() => handleOpenChannel(channel.id)}>
+              Open
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -159,23 +206,25 @@ function PriorityChannels({ priorityChannels }) {
  */
 function VideoDiscovery({ recommendations }) {
   return (
-    <div className="video-discovery">
+    <div>
       <h2>Recommended Videos</h2>
-      <div className="recommendations-grid">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
         {recommendations.map(video => (
           <DeepLink
             key={video.id}
             href={`https://www.youtube.com/watch?v=${video.id}`}
-            className="recommendation-card"
+            style={{ display: 'flex', alignItems: 'center', gap: spacing.list.itemGap, padding: `${spacing.list.itemPaddingY} 0`, textDecoration: 'none', color: 'inherit' }}
           >
             <img 
               src={video.thumbnail} 
               alt={video.title}
-              style={{ borderRadius: borders.radii.artTile }}
+              style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
             />
-            <h4>{video.title}</h4>
-            <p>{video.channel}</p>
-            <span>{video.views} views</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: 0 }}>{video.title}</h4>
+              <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{video.channel}</p>
+              <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)' }}>{video.views} views</span>
+            </div>
           </DeepLink>
         ))}
       </div>
@@ -221,22 +270,20 @@ function ShareVideoButton({ videoId, videoTitle }) {
  */
 function YourtubeSettings() {
   return (
-    <div className="settings-page">
-      <h1>Settings</h1>
-      
-      <section>
+    <AppLayout header={<AppHeader title="Settings" />}>
+      <section style={{ marginBottom: spacing.section.marginBottom }}>
         <h2>Playback</h2>
         {/* Other settings */}
       </section>
       
-      <section>
+      <section style={{ marginBottom: spacing.section.marginBottom }}>
         <h2>Deep Linking</h2>
         <DeepLinkPreferencesPanel title="Video Preferences" />
-        <p className="help-text">
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>
           Choose which app opens when you click YouTube links from external sources.
         </p>
       </section>
-    </div>
+    </AppLayout>
   );
 }
 
@@ -252,7 +299,6 @@ function AddToQueue() {
     const parsed = parseExternalUrl(videoUrl);
     
     if (parsed && parsed.contentType === CONTENT_TYPES.VIDEO) {
-      // Add to queue using the extracted ID
       addToVideoQueue(parsed.extractedId);
       setVideoUrl('');
     } else {
@@ -261,15 +307,18 @@ function AddToQueue() {
   };
   
   return (
-    <div className="add-to-queue">
+    <div>
       <h3>Add Video to Queue</h3>
-      <input
-        type="text"
-        value={videoUrl}
-        onChange={(e) => setVideoUrl(e.target.value)}
-        placeholder="Paste YouTube URL (youtube.com or youtu.be)"
-      />
-      <button onClick={handleAddToQueue}>Add to Queue</button>
+      <div style={{ display: 'flex', gap: spacing.button.gap }}>
+        <input
+          type="text"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+          placeholder="Paste YouTube URL (youtube.com or youtu.be)"
+          style={{ flex: 1 }}
+        />
+        <button onClick={handleAddToQueue}>Add to Queue</button>
+      </div>
     </div>
   );
 }
@@ -282,22 +331,21 @@ function VideoComments({ comments }) {
   const { extractAllIdsFromText } = require('@min-apps/design-system/deepLinking');
   
   return (
-    <div className="video-comments">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
       {comments.map(comment => {
         const ids = extractAllIdsFromText(comment.text);
         
         return (
-          <div key={comment.id} className="comment">
-            <div className="comment-header">
+          <div key={comment.id} style={{ padding: `${spacing.list.itemPaddingY} 0` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[1] }}>
               <strong>{comment.author}</strong>
-              <span>{comment.timestamp}</span>
+              <span style={{ color: 'var(--color-text-tertiary)', fontSize: 14 }}>{comment.timestamp}</span>
             </div>
-            <p>{comment.text}</p>
+            <p style={{ margin: 0 }}>{comment.text}</p>
             
-            {/* Show all referenced videos */}
             {ids.length > 0 && (
-              <div className="referenced-videos">
-                <h4>Videos mentioned:</h4>
+              <div style={{ marginTop: spacing[2] }}>
+                <h4 style={{ margin: 0, fontSize: 14 }}>Videos mentioned:</h4>
                 {ids.map((item, index) => (
                   <DeepLink key={index} href={item.url}>
                     Watch {item.contentType}
@@ -320,23 +368,27 @@ function DistractionFreeVideoList({ videos }) {
   const { open } = useOpenLink();
   
   const openInDistractionFreeMode = async (videoId) => {
-    // Open the video, and the app can handle showing it in distraction-free mode
     await open(`https://www.youtube.com/watch?v=${videoId}`, {
       forceApp: APP_IDS.YOURTUBE,
     });
   };
   
   return (
-    <div className="distraction-free-list">
+    <div>
       <h3>Watch Without Distractions</h3>
-      {videos.map(video => (
-        <div key={video.id} className="video-item">
-          <h4>{video.title}</h4>
-          <button onClick={() => openInDistractionFreeMode(video.id)}>
-            Watch Focused
-          </button>
-        </div>
-      ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
+        {videos.map(video => (
+          <div key={video.id} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: `${spacing.list.itemPaddingY} 0`,
+          }}>
+            <h4 style={{ margin: 0 }}>{video.title}</h4>
+            <button onClick={() => openInDistractionFreeMode(video.id)}>
+              Watch Focused
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -347,22 +399,24 @@ function DistractionFreeVideoList({ videos }) {
  */
 function RelatedVideos({ related }) {
   return (
-    <div className="related-videos">
+    <div>
       <h3>Related Videos</h3>
-      <div className="related-grid">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
         {related.map(video => (
           <DeepLink
             key={video.id}
             href={`https://www.youtube.com/watch?v=${video.id}`}
-            className="related-video"
+            style={{ display: 'flex', alignItems: 'center', gap: spacing.list.itemGap, padding: `${spacing.list.itemPaddingY} 0`, textDecoration: 'none', color: 'inherit' }}
           >
             <img 
               src={video.thumbnail} 
               alt={video.title}
-              style={{ borderRadius: borders.radii.artTile }}
+              style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
             />
-            <p>{video.title}</p>
-            <span>{video.duration}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0 }}>{video.title}</p>
+              <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)' }}>{video.duration}</span>
+            </div>
           </DeepLink>
         ))}
       </div>
@@ -394,29 +448,33 @@ function TrendingVideos({ trending }) {
   const { open } = useOpenLink();
   
   return (
-    <div className="trending-videos">
+    <div>
       <h2>Trending Now</h2>
-      {trending.map(video => (
-        <div 
-          key={video.id} 
-          className="trending-video"
-          onClick={() => open(`https://www.youtube.com/watch?v=${video.id}`)}
-        >
-          <img 
-            src={video.thumbnail} 
-            alt={video.title}
-            style={{ borderRadius: borders.radii.artTile }}
-          />
-          <div className="video-info">
-            <h4>{video.title}</h4>
-            <p>{video.channel}</p>
-            <div className="video-stats">
-              <span>{video.views} views</span>
-              <span>{video.uploadTime}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.list.betweenItems }}>
+        {trending.map(video => (
+          <div 
+            key={video.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: spacing.list.itemGap,
+              padding: `${spacing.list.itemPaddingY} 0`, cursor: 'pointer',
+            }}
+            onClick={() => open(`https://www.youtube.com/watch?v=${video.id}`)}
+          >
+            <img 
+              src={video.thumbnail} 
+              alt={video.title}
+              style={{ width: 48, height: 48, borderRadius: borders.radii.artTile, objectFit: 'cover', flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: 0 }}>{video.title}</h4>
+              <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{video.channel}</p>
+              <span style={{ fontSize: 14, color: 'var(--color-text-tertiary)' }}>
+                {video.views} views{'   '}{video.uploadTime}
+              </span>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -441,15 +499,18 @@ function ImportPlaylist() {
   };
   
   return (
-    <div className="import-playlist">
+    <div>
       <h3>Import Playlist</h3>
-      <input
-        type="text"
-        value={playlistUrl}
-        onChange={(e) => setPlaylistUrl(e.target.value)}
-        placeholder="Paste YouTube playlist URL"
-      />
-      <button onClick={handleImport}>Import</button>
+      <div style={{ display: 'flex', gap: spacing.button.gap }}>
+        <input
+          type="text"
+          value={playlistUrl}
+          onChange={(e) => setPlaylistUrl(e.target.value)}
+          placeholder="Paste YouTube playlist URL"
+          style={{ flex: 1 }}
+        />
+        <button onClick={handleImport}>Import</button>
+      </div>
     </div>
   );
 }
@@ -486,6 +547,7 @@ function importYouTubePlaylist(playlistId) {
 }
 
 export {
+  YourtubeApp,
   VideoQueue,
   ChannelSubscriptions,
   PlaylistManager,

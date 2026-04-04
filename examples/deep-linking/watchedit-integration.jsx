@@ -14,7 +14,39 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
-import { borders } from '@min-apps/design-system/tokens';
+import { MainAppLoading, AppHeader } from '@min-apps/design-system/components';
+import { AppLayout } from '@min-apps/design-system/layouts';
+import { borders, spacing } from '@min-apps/design-system/tokens';
+
+/**
+ * WatchedIt App shell — canonical reference.
+ * AppLayout applies mov min page margins; children sit directly inside main.
+ */
+function WatcheditApp() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    initWatcheditData().then(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <MainAppLoading />;
+  }
+
+  return (
+    <AppLayout header={<AppHeader title="WatchedIt" />}>
+      <WatcheditMainContent />
+    </AppLayout>
+  );
+}
+
+function initWatcheditData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+function WatcheditMainContent() {
+  return <>{/* app routes — no extra horizontal padding; AppLayout main provides page margins */}</>;
+}
 
 /**
  * Example: Movie List Component
@@ -318,6 +350,7 @@ const exampleMovies = [
 ];
 
 export {
+  WatcheditApp,
   MovieList,
   MovieDetails,
   SearchResults,

@@ -4,6 +4,7 @@ Use this checklist when integrating the design system into each min app.
 
 ## Pre-Integration
 
+- [ ] **Native apps**: wire **[`native/`](../native/)** (Swift / Android dimens / JSON) per [Native tokens](./native-tokens.md) — web CSS/JS alone does not change iOS or Android UI
 - [ ] Review the [Getting Started Guide](./getting-started.md)
 - [ ] Review the [Migration Guide](./migration.md)
 - [ ] Review the [Design Tokens Reference](./tokens.md)
@@ -45,6 +46,12 @@ Use this checklist when integrating the design system into each min app.
   - [ ] Right margins: `spacing.page.marginRight`
   - [ ] Bottom margins: `spacing.page.marginBottom`
 
+### Screen grid vs WatchedIt (mov min) — every screen
+- [ ] Read **[Layout and margins (mov min)](./layout-margins-mov-min.md)** — canonical grid for all four apps
+- [ ] Root layout is `AppLayout` / `HomeLayout`, or you use `min-page-padding` / `ContentContainer` — not one-off viewport padding
+- [ ] **No double horizontal inset** inside `AppLayout` `main` (sticky search, filters, lists share the same left/right edge)
+- [ ] Fixed / overlay controls (dismiss FABs, corner actions) use `spacing.page.*` or `--min-page-margin-*`, not arbitrary spacing
+
 ### Logo Positioning (Critical!)
 - [ ] Update home screen logo positioning with `spacing.logo.*`
   - [ ] Logo top margin: `spacing.logo.marginTop` (32px desktop, 24px mobile)
@@ -65,6 +72,9 @@ Use this checklist when integrating the design system into each min app.
   - [ ] Horizontal padding: `spacing.list.itemPaddingX` (16px)
   - [ ] Image-text gap: `spacing.list.itemGap` (12px)
   - [ ] Space between items: `spacing.list.betweenItems` (8px)
+
+### Inline metadata (subtitles, captions, detail rows)
+- [ ] Separate combined metadata with exactly three spaces — use `metadataSeparator` from `@min-apps/design-system/tokens`, not middle dots (·) or bullets (•). See [Visual specification](./visual-specification.md#inline-metadata-separators).
 
 ## Phase 3: Replace Colors
 
@@ -115,6 +125,11 @@ Use this checklist when integrating the design system into each min app.
   - [ ] Add `helperText` for errors
   - [ ] Add `error` boolean prop
   - [ ] Add `fullWidth` if needed
+
+### Loading and empty (null) states
+- [ ] Follow [Visual specification — Loading and empty states](./visual-specification.md#loading-and-empty-null-states): **left-aligned** rows, **small** 14px spinner, **no large icons** or centered empty heroes
+- [ ] Use `.min-content-status` classes from `global.css` (or `LoadingState` / `EmptyState` components) for loading and “no data” messages
+- [ ] **Main bootstrap load**: match **WatchedIt (mov min)** exactly — **web:** [Main app loading](./main-app-loading.md); **React Native / native:** [Main app loading — native](./main-app-loading-native.md) (`@min-apps/design-system/react-native` or `native/` artifacts). No centered full-screen spinner on any platform.
 
 ## Phase 5: Update Layouts
 
@@ -238,24 +253,30 @@ If you want a custom theme for your app:
 ## App-Specific Notes
 
 ### WatchedIt (mov min)
+- [ ] **Main loading**: suite reference — web [main-app-loading.md](./main-app-loading.md), native [main-app-loading-native.md](./main-app-loading-native.md)
 - [ ] Replace movie card components with design system
 - [ ] Update poster image sizing
 - [ ] Standardize movie list spacing
 - [ ] Update player controls positioning
 
 ### podlink (pod min)
+- [ ] **Main loading**: same as mov min — native [main-app-loading-native.md](./main-app-loading-native.md), web [main-app-loading.md](./main-app-loading.md)
 - [ ] Replace podcast episode components
 - [ ] Standardize episode card spacing
 - [ ] Update player controls styling
 - [ ] Normalize episode list items
 
 ### yourtube (vid min)
+- [ ] **Main loading (native)**: `import { MainAppLoading } from '@min-apps/design-system/react-native'` — not `…/components` (DOM). Remove centered `ActivityIndicator` shell — [main-app-loading-native.md](./main-app-loading-native.md)
+- [ ] **Main loading (web, if any)**: [main-app-loading.md](./main-app-loading.md)
+- [ ] **Page grid**: same as mov min — [layout-margins-mov-min.md](./layout-margins-mov-min.md); [YourTube integration guide](../integration-tools/app-specific/yourtube-integration.md) (section *Page grid — vid min must match mov min*)
 - [ ] Replace video card components
 - [ ] Standardize thumbnail sizing
 - [ ] Update video metadata spacing
 - [ ] Normalize video list items
 
 ### Cyclismo guide (cyc min)
+- [ ] **Main loading**: same as mov min — native [main-app-loading-native.md](./main-app-loading-native.md), web [main-app-loading.md](./main-app-loading.md)
 - [ ] Replace route/guide components
 - [ ] Standardize map container sizing
 - [ ] Update route detail spacing

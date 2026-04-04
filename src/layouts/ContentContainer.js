@@ -22,17 +22,28 @@ export function ContentContainer({
   const paddingValues = {
     none: '0',
     small: spacing[3],
-    default: spacing.container.paddingX,
+    /* Horizontal default matches page grid (mov min); see docs/layout-margins-mov-min.md */
+    default: spacing.page.marginLeft,
     large: spacing[6],
   };
   
+  const horizontal = paddingValues[padding];
   const styles = `
     max-width: ${maxWidthValues[maxWidth]};
     margin-left: auto;
     margin-right: auto;
-    padding-left: ${paddingValues[padding]};
-    padding-right: ${paddingValues[padding]};
+    padding-left: ${horizontal};
+    padding-right: ${horizontal};
     width: 100%;
+    
+    ${
+      padding === 'default'
+        ? `@media (max-width: 767px) {
+      padding-left: ${spacing.page.marginLeftMobile};
+      padding-right: ${spacing.page.marginRightMobile};
+    }`
+        : ''
+    }
   `;
   
   return {

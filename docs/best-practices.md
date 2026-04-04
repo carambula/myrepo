@@ -62,6 +62,10 @@ spacing.list.itemGap         // Gap between image and text
 spacing.list.betweenItems    // Space between list items
 ```
 
+### Page grid (mov min)
+
+**WatchedIt (mov min)** is the reference for the **screen margin grid** across pod min, vid min, and cyc min. Use **`spacing.page.*`** (or `global.css` `--min-page-margin-*`) for any edge inset: scroll areas, headers, sticky search/filter rows, and fixed controls. **Do not** stack a second horizontal padding inside **`AppLayout`** `main`. See **[Layout and margins (mov min)](./layout-margins-mov-min.md)**.
+
 ### Layout Components
 
 Use layout components instead of custom layouts:
@@ -84,6 +88,16 @@ import { HomeLayout, List } from '@min-apps/design-system';
   </div>
 </div>
 ```
+
+## Inline metadata in UI
+
+List subtitles, card captions, and one-line detail rows often combine two or more fragments (channel name and view count, date and duration, and so on).
+
+- Separate those fragments with **exactly three spaces**, not a middle dot (·), bullet (•), or other punctuation used as a divider.
+- Import and use `metadataSeparator` from `@min-apps/design-system/tokens` when building strings in JavaScript or JSX.
+- In plain HTML, if multiple spaces would collapse, wrap the gap in an element with `white-space: pre` (or `pre-wrap`) or use the same three-space string inside a styled span.
+
+See [Visual specification — inline metadata](./visual-specification.md#inline-metadata-separators) and [Design tokens — metadataSeparator](./tokens.md#metadata-separator).
 
 ## Colors and Theming
 

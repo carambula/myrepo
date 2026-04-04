@@ -14,7 +14,38 @@ import {
   CONTENT_TYPES,
   APP_IDS,
 } from '@min-apps/design-system/deepLinking';
-import { borders } from '@min-apps/design-system/tokens';
+import { MainAppLoading, AppHeader } from '@min-apps/design-system/components';
+import { AppLayout } from '@min-apps/design-system/layouts';
+import { borders, spacing } from '@min-apps/design-system/tokens';
+
+/**
+ * Cyclismo App shell — AppLayout applies mov min page margins.
+ */
+function CyclismoApp() {
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    initCyclismoData().then(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <MainAppLoading />;
+  }
+
+  return (
+    <AppLayout header={<AppHeader title="Cyclismo Guide" />}>
+      <CyclismoMainContent />
+    </AppLayout>
+  );
+}
+
+function initCyclismoData() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+function CyclismoMainContent() {
+  return <>{/* app routes — no extra horizontal padding; AppLayout main provides page margins */}</>;
+}
 
 /**
  * Example: Race Calendar Component
@@ -524,6 +555,7 @@ async function fetchRiderUrlByUCI(uciCode) {
 }
 
 export {
+  CyclismoApp,
   RaceCalendar,
   RiderProfiles,
   TeamRosters,

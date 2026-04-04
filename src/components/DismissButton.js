@@ -43,8 +43,8 @@ export function DismissButton({
   
   const baseStyles = `
     position: fixed;
-    bottom: ${spacing[4]};
-    left: ${spacing[4]};
+    bottom: ${spacing.page.marginBottom};
+    left: ${spacing.page.marginLeft};
     width: ${currentSize};
     height: ${currentSize};
     border-radius: ${borders.radii.md};
@@ -80,6 +80,11 @@ export function DismissButton({
     &:active {
       background-color: var(--color-active-primary);
       transform: translateY(${translateY}) scale(0.95);
+    }
+    
+    @media (max-width: 767px) {
+      bottom: ${spacing.page.marginBottomMobile};
+      left: ${spacing.page.marginLeftMobile};
     }
   `;
   

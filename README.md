@@ -2,6 +2,23 @@
 
 A unified design system for the min apps suite: **WatchedIt** (mov min), **podlink** (pod min), **yourtube** (vid min), and **Cyclismo guide** (cyc min).
 
+## Native apps (iOS / Android) — read this first
+
+The suite ships as **native** apps. **`global.css` and JavaScript tokens do not change what Xcode or Gradle compile.** To align margins and spacing with mov min, each app must use the generated artifacts in **[`native/`](./native/)**:
+
+- **[`native/MinPageMargins.swift`](./native/MinPageMargins.swift)** + **[`native/MinPageInsets.swift`](./native/MinPageInsets.swift)** — **both** required on iOS: constants plus `uiEdgeInsets(traitCollection:)` / size-class padding so **phones use 12pt horizontal**, not 16pt everywhere
+- **[`native/android/values/min_page_content_insets.xml`](./native/android/values/min_page_content_insets.xml)** + **[`values-sw600dp/`](./native/android/values-sw600dp/min_page_content_insets.xml)** — use `@dimen/min_page_padding_*` so **handsets vs tablets** track automatically (same as web mobile vs desktop margins)
+- **[`native/android/values/min_page_margins.xml`](./native/android/values/min_page_margins.xml)** — explicit token pairs when needed
+- **[`native/spacing.json`](./native/spacing.json)** — full spacing scale for tooling or hand wiring
+
+Regenerate after editing [`src/tokens/spacing.js`](./src/tokens/spacing.js):
+
+```bash
+npm run build:native
+```
+
+Full workflow: **[docs/native-tokens.md](./docs/native-tokens.md)** and **[native/README.md](./native/README.md)**.
+
 ## Overview
 
 This design system harmonizes the visual and interface language across all min apps, providing:
@@ -206,8 +223,10 @@ All components follow WCAG 2.1 AA standards with:
 ## Structure
 
 ```
+native/               # Generated: Swift, Kotlin, Android dimens, spacing.json (npm run build:native)
+scripts/              # build-native-tokens.js — compile tokens → native/
 src/
-├── tokens/           # Design tokens (colors, spacing, typography, etc.)
+├── tokens/           # Design tokens (colors, spacing, typography, etc.) — source for native/
 ├── themes/           # Theme configurations
 ├── appearance/       # Font override and appearance customization
 ├── assets/           # Font files and other assets
@@ -223,6 +242,7 @@ src/
 ## Documentation
 
 See the `/docs` folder for detailed documentation on:
+- **Native tokens** — [docs/native-tokens.md](./docs/native-tokens.md) (how iOS/Android consume this repo)
 - Design tokens reference
 - Component API documentation
 - Theming guide

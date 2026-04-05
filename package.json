@@ -1,45 +1,23 @@
 {
-  "name": "@min-apps/design-system",
-  "version": "1.0.0",
-  "description": "Unified design system for the min apps suite (WatchedIt, podlink, yourtube, Cyclismo guide)",
-  "main": "src/index.js",
-  "type": "module",
-  "scripts": {
-    "build": "npm run build:native",
-    "build:native": "node scripts/build-native-tokens.js"
-  },
-  "keywords": [
-    "design-system",
-    "tokens",
-    "components",
-    "theming"
-  ],
+  "name": "min-apps",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for the min apps suite: WatchedIt, podlink, yourtube, Cyclismo guide",
   "author": "carambula",
   "license": "MIT",
-  "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-native": ">=0.71.0"
+  "packageManager": "npm@11.9.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "studio": "npm run dev --workspace=@min-apps/design-studio",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
   },
-  "peerDependenciesMeta": {
-    "react-native": {
-      "optional": true
-    }
-  },
-  "devDependencies": {},
-  "exports": {
-    ".": "./src/index.js",
-    "./tokens": "./src/tokens/index.js",
-    "./themes": "./src/themes/index.js",
-    "./components": "./src/components/index.js",
-    "./layouts": "./src/layouts/index.js",
-    "./notifications": "./src/notifications/index.js",
-    "./onboarding": "./src/onboarding/index.js",
-    "./hooks": "./src/hooks/index.js",
-    "./storage": "./src/storage/index.js",
-    "./styles.css": "./dist/styles.css",
-    "./react-native": "./src/react-native.js",
-    "./native/spacing.json": "./native/spacing.json",
-    "./native/main-app-loading.json": "./native/main_app_loading.json",
-    "./native/title-typography.json": "./native/title_typography.json"
+  "devDependencies": {
+    "turbo": "^2.4.0"
   }
 }

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cyclismo Theme Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">Cyclismo Theme Admin</div>
+        <div class="brand-subtitle">Create and manage bundled theme presets</div>
+      </div>
+      <div class="topbar-actions">
+        <a href="/"><button>Back to Console</button></a>
+      </div>
+    </header>
+
+    <main class="layout theme-admin-layout">
+      <section class="list-pane">
+        <div class="pane-header">
+          <div class="pane-title">Themes</div>
+          <div class="pane-actions">
+            <button id="newThemeBtn" class="primary">New</button>
+            <button id="deleteThemeBtn" class="danger">Delete</button>
+          </div>
+        </div>
+        <div class="list-container">
+          <div id="themesList" class="themes-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-pane">
+        <div class="pane-header">
+          <div class="pane-title">Theme Editor</div>
+          <div class="pane-actions">
+            <button id="saveThemeBtn" class="primary">Save</button>
+          </div>
+        </div>
+        <div class="detail-content">
+          <div id="themeStatus" class="status-text" style="padding: 16px">No theme selected.</div>
+          <form id="themeForm" class="detail-card hidden">
+            <label>Name <input id="themeName" type="text" /></label>
+            <label>Built-in Theme Name <input id="themeBuiltInName" type="text" /></label>
+            <label>Supports Light Mode
+              <select id="themeSupportsLightMode">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+            <label>Headline Font
+              <select id="themeHeadlineFontStyle">
+                <option value="system-default">System Default</option>
+                <option value="system-rounded">System Rounded</option>
+                <option value="system-monospaced">System Monospaced</option>
+                <option value="new-york">New York</option>
+                <option value="system-condensed">System Condensed</option>
+              </select>
+            </label>
+            <label>Body Font
+              <select id="themeBodyFontStyle">
+                <option value="system-default">System Default</option>
+                <option value="system-rounded">System Rounded</option>
+                <option value="system-monospaced">System Monospaced</option>
+                <option value="new-york">New York</option>
+              </select>
+            </label>
+            <label>Accent <input id="themeAccent" type="color" /></label>
+            <label>Secondary Accent <input id="themeSecondaryAccent" type="color" /></label>
+            <label>Dark Headline <input id="themeDarkModeHeadlineColor" type="color" /></label>
+            <label>Light Headline <input id="themeLightModeHeadlineColor" type="color" /></label>
+            <label>Dark Background <input id="themeDarkBackground" type="color" /></label>
+            <label>Light Background <input id="themeLightBackground" type="color" /></label>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/themes.js"></script>
+  </body>
+</html>

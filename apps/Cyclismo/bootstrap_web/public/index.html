@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Cyclismo Bootstrap Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">Cyclismo Bootstrap Console</div>
+        <div class="brand-subtitle">Inspect bootstrap races and regenerate data</div>
+      </div>
+      <div class="topbar-actions">
+        <button id="previewPodcastsBtn">Preview Podcasts</button>
+        <button id="commitPodcastsBtn">Commit Podcasts</button>
+        <button id="themesBtn">Themes</button>
+        <button id="refreshResultsBtn">Refresh Results</button>
+        <button id="healthBtn">Data Health</button>
+        <button id="regenerateBtn" class="primary">Regenerate Bootstrap</button>
+        <button id="refreshBtn">Reload Data</button>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <div class="toolbar-row">
+        <label>
+          Search
+          <input id="searchInput" type="search" placeholder="Search races..." />
+        </label>
+        <label>
+          Series
+          <input id="seriesInput" type="text" placeholder="WorldTour..." />
+        </label>
+        <label>
+          Discipline
+          <input id="disciplineInput" type="text" placeholder="Road..." />
+        </label>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="list-pane">
+        <div class="pane-header">
+          <div class="pane-title">Races</div>
+          <div class="pane-actions">
+            <span id="raceCount" class="status-text">0 races</span>
+          </div>
+        </div>
+        <div class="list-container">
+          <table class="race-table">
+            <thead>
+              <tr>
+                <th class="col-thumb"></th>
+                <th>Name</th>
+                <th>Dates</th>
+                <th>Series</th>
+                <th>Discipline</th>
+                <th>Gender</th>
+              </tr>
+            </thead>
+            <tbody id="raceTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="detail-pane">
+        <div class="pane-header">
+          <div class="pane-title">Race Detail</div>
+        </div>
+        <div class="detail-content">
+          <div id="detailEmpty" class="empty-state">
+            Select a race to view details.
+          </div>
+          <div id="detailCard" class="detail-card hidden"></div>
+          <div class="health-panel">
+            <div class="pane-subtitle">Data Health</div>
+            <div id="healthStatus" class="status-text">No data loaded.</div>
+            <div id="healthMetrics" class="health-metrics"></div>
+            <div class="pane-subtitle">Podcast Matching</div>
+            <div id="podcastStatus" class="status-text">No preview loaded.</div>
+            <div id="podcastPreview" class="podcast-preview"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+Bootstrap Scraping Results - Generated 2025-11-26 03:44:48 +0000
+================================================================================
+
+✅ Rewatchables
+   Count: 354
+
+✅ Blank Check
+   Count: 386
+
+✅ The Big Picture
+   Count: 834
+
+✅ Filmspotting
+   Count: 62
+
+✅ The Confused Breakfast
+   Count: 400
+
+✅ RT: Best Movies of All Time
+   Count: 298
+
+✅ RT: Best Christmas Movies
+   Count: 0
+
+✅ RT: Essential Movies for Kids
+   Count: 50
+
+✅ RT: Oscars Best and Worst
+   Count: 98
+
+✅ IMDb List 1
+   Count: 273
+
+✅ IMDb List 2
+   Count: 130
+
+✅ Criterion Collection
+   Count: 17
+

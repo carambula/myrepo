@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- AUTO-GENERATED — use these in layouts so all min apps match without hand-picking mobile vs regular. -->
-<!-- Phone/default: spacing.page.*Mobile (~CSS max-width 767px). -->
-<resources>
-    <dimen name="min_page_padding_top">16dp</dimen>
-    <dimen name="min_page_padding_bottom">16dp</dimen>
-    <dimen name="min_page_padding_start">12dp</dimen>
-    <dimen name="min_page_padding_end">12dp</dimen>
-</resources>

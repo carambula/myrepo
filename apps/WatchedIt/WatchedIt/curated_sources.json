@@ -1,0 +1,79 @@
+{
+  "podcasts": [
+    {
+      "name": "The Big Picture",
+      "rssUrl": "https://feeds.megaphone.fm/the-big-picture",
+      "description": "Movie discussions, interviews, and top 5 lists from The Ringer",
+      "qualityScore": 0.9
+    },
+    {
+      "name": "Filmspotting",
+      "rssUrl": "https://feeds.feedburner.com/filmspotting",
+      "description": "Movie reviews, top 5 lists, and film discussions",
+      "qualityScore": 0.85
+    },
+    {
+      "name": "Blank Check",
+      "rssUrl": "https://feeds.simplecast.com/54nAGcIl",
+      "description": "Podcast about directors' filmographies",
+      "qualityScore": 0.8
+    },
+    {
+      "name": "The Filmcast",
+      "rssUrl": "https://feeds.feedburner.com/slashfilmcast",
+      "description": "Movie reviews and discussions",
+      "qualityScore": 0.75
+    },
+    {
+      "name": "Unspooled",
+      "rssUrl": "https://feeds.megaphone.fm/unspooled",
+      "description": "Paul Scheer and Amy Nicholson discuss the AFI Top 100 movies",
+      "qualityScore": 0.8
+    },
+    {
+      "name": "How Did This Get Made?",
+      "rssUrl": "https://feeds.megaphone.fm/how-did-this-get-made",
+      "description": "Comedy podcast about bad movies",
+      "qualityScore": 0.7
+    },
+    {
+      "name": "The Next Picture Show",
+      "rssUrl": "https://feeds.feedburner.com/thenextpictureshow",
+      "description": "Film discussions pairing new releases with classics",
+      "qualityScore": 0.75
+    },
+    {
+      "name": "The Projection Booth",
+      "rssUrl": "https://feeds.feedburner.com/theprojectionbooth",
+      "description": "In-depth film discussions and interviews",
+      "qualityScore": 0.7
+    }
+  ],
+  "imdbLists": [
+    {
+      "name": "IMDb Top 250",
+      "url": "https://www.imdb.com/chart/top",
+      "description": "Top 250 movies of all time according to IMDb users",
+      "qualityScore": 0.95
+    },
+    {
+      "name": "IMDb Top 100 Action Movies",
+      "url": "https://www.imdb.com/search/title/?genres=action&sort=user_rating,desc&title_type=feature&num_votes=25000,",
+      "description": "Top action movies",
+      "qualityScore": 0.8
+    },
+    {
+      "name": "AFI's 100 Years...100 Movies",
+      "url": "https://www.imdb.com/list/ls055592025/",
+      "description": "American Film Institute's list of the 100 greatest American films",
+      "qualityScore": 0.9
+    },
+    {
+      "name": "Sight & Sound Greatest Films",
+      "url": "https://www.imdb.com/list/ls057823854/",
+      "description": "Sight & Sound magazine's poll of the greatest films of all time",
+      "qualityScore": 0.9
+    }
+  ]
+}
+

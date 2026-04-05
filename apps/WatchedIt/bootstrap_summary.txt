@@ -1,0 +1,37 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    BOOTSTRAP DATASET GENERATION SUMMARY                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📊 OVERALL RESULTS:
+   Total Sources: 12
+   Successful: 11 (91.7%)
+   Failed: 1 (8.3%)
+   Raw Movies Found: ~2,700+
+   Unique Movies: 2,347
+
+✅ SUCCESSFUL SOURCES:
+   1. The Big Picture (Podcast) - 827 movies
+   2. Blank Check (Podcast) - 382 movies
+   3. Rewatchables (Podcast) - 354 movies
+   4. RT: Best Movies of All Time - 286 movies
+   5. IMDb List 1 (ls042702401) - 200 movies
+   6. IMDb List 2 (ls058479560) - 124 movies
+   7. RT: Oscars Best and Worst - 72 movies
+   8. Filmspotting (Podcast) - 60 movies
+   9. RT: Essential Movies for Kids - 31 movies
+   10. Criterion Collection (Wikipedia) - 11 movies
+   11. RT: Best Christmas Movies - 0 movies (page structure issue)
+
+❌ FAILED SOURCES:
+   1. The Confused Breakfast (Podcast) - HTTP 404 (RSS feed not found)
+
+📈 BREAKDOWN:
+   Podcasts: 4/5 successful (1,623 movies total)
+   Lists: 6/7 successful (723 movies total)
+   
+   Total Unique: 2,347 movies
+
+💾 OUTPUT FILES:
+   - bootstrap_dataset.txt: Complete list of all unique movies with sources
+   - bootstrap_results.txt: Detailed scraping results per source
+

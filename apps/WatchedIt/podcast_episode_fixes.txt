@@ -1,0 +1,44 @@
+Podcast Episode Title Fixes Report
+Generated: 2025-11-28 02:58:51 +0000
+
+Summary:
+- Movies merged: 1
+- Movies updated: 6
+- Movies removed: 1
+- Total fixes: 7
+
+Details:
+📝 UPDATE: 'Columbus with Kogonada, Pather Panchali' → 'Columbus'
+   Original: Columbus with Kogonada, Pather Panchali
+   New title: Columbus
+   Source title: Columbus with Kogonada, Pather Panchali
+
+📝 UPDATE: 'Fire Walk with Me' → 'Fire Walk'
+   Original: Fire Walk with Me
+   New title: Fire Walk
+   Source title: Fire Walk with Me
+
+📝 UPDATE: '‘Sleeping With the Enemy’' → '‘Sleeping'
+   Original: ‘Sleeping With the Enemy’
+   New title: ‘Sleeping
+   Source title: ‘Sleeping With the Enemy’
+
+📝 UPDATE: 'Chapter 3—Parabellum’ With Chad Stahelski, and Watching It' → 'Chapter 3—Parabellum’'
+   Original: Chapter 3—Parabellum’ With Chad Stahelski, and Watching It
+   New title: Chapter 3—Parabellum’
+   Source title: Chapter 3—Parabellum’ With Chad Stahelski, and Watching It
+
+📝 UPDATE: '‘Die Hard With a Vengeance’' → '‘Die Hard'
+   Original: ‘Die Hard With a Vengeance’
+   New title: ‘Die Hard
+   Source title: ‘Die Hard With a Vengeance’
+
+📝 UPDATE: 'Ride with the Devil' → 'Ride'
+   Original: Ride with the Devil
+   New title: Ride
+   Source title: Ride with the Devil
+
+✅ MERGE: 'Beetlejuice (1988)- ReIssue' → 'Beetlejuice'
+   Episode: Beetlejuice (1988)- ReIssue
+   Extracted: Beetlejuice (1988)
+   Matched to: Beetlejuice

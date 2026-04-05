@@ -1,0 +1,96 @@
+---
+description: Screen margins, element positioning, and grid layout rules for all min apps
+alwaysApply: true
+---
+
+# Spacing, margins, and grid layout
+
+All min apps (WatchedIt, PodLink, YourTube, Cyclismo) share a unified spacing system. The canonical source is `MinSpacing` in `packages/design-system/swift/Sources/MinAppKit/Tokens/MinSpacing.swift` and `spacing.js`.
+
+## Spacing scale
+
+| Token | Points | Use |
+|-------|--------|-----|
+| `xs`  | 4      | Tight internal gaps |
+| `sm`  | 8      | Button gaps, small internal padding |
+| `md`  | 12     | Inter-component spacing |
+| `lg`  | 16     | **Toolbar/button/nav edge inset**, grid gutters |
+| `xl`  | 24     | **Screen content margins** (= `screenHorizontalPadding`) |
+| `xxl` | 32     | Section spacing |
+
+## Screen content margins (`xl` / 24pt)
+
+All scroll content, detail views, onboarding panels, list rows, and page-level elements use `screenHorizontalPadding` (24pt) from the screen edge.
+
+```swift
+// Swift — screen content
+.padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+// or
+.padding(.horizontal, MinSpacing.screenHorizontalPadding)
+```
+
+```css
+/* CSS — use the variable, not a literal */
+padding-left: var(--min-page-margin-left);   /* 24px */
+padding-right: var(--min-page-margin-right);  /* 24px */
+```
+
+## Floating controls inset (`lg` / 16pt)
+
+Floating toolbars, search bars, account buttons, layout-toggle FABs, and top safe-area controls sit at `lg` (16pt) — **8pt inside the screen edge** from the content margin. This creates a subtle visual break where chrome extends past content.
+
+```swift
+// Floating bottom toolbar
+.padding(.horizontal, DesignSystem.Spacing.lg)
+
+// Top controls (account button bar)
+.padding(.horizontal, MinSpacing.lg)
+
+// Overlay FABs (leading/trailing)
+.padding(.leading, DesignSystem.Spacing.lg)
+.padding(.trailing, DesignSystem.Spacing.lg)
+```
+
+### Banned patterns for toolbar/control edge insets
+
+```swift
+.padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding) // too far in
+.padding(.horizontal, DesignSystem.Spacing.sm)                       // too far out
+.padding(.horizontal, DesignSystem.Spacing.md + DesignSystem.Spacing.xs) // legacy 16pt
+```
+
+## 2-column grid (PodLink & YourTube)
+
+Both pod min and vid min use an identical 2-column flexible grid:
+
+```swift
+private let gridColumns = [
+    GridItem(.flexible(), spacing: DesignSystem.Spacing.lg),
+    GridItem(.flexible(), spacing: DesignSystem.Spacing.lg)
+]
+
+LazyVGrid(columns: gridColumns, spacing: DesignSystem.Spacing.lg) { ... }
+    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding) // xl outer margin
+```
+
+Key rules:
+- **Exactly 2 `.flexible()` columns** — never `.adaptive()` which breaks with wider margins
+- **`lg` (16pt) gutter** between columns and between rows — both axes match
+- **No fixed-width frames** on grid items — artwork uses `.aspectRatio(1, contentMode: .fit)` to fill the column
+- **`xl` (24pt) outer margin** on the grid container
+
+### Banned grid patterns
+
+```swift
+GridItem(.adaptive(minimum: 170), spacing: 12)    // breaks column count
+.frame(width: artworkSize, height: artworkSize)    // prevents fluid fill
+GridItem(.flexible(), spacing: DesignSystem.Spacing.xl) // gutter too wide
+```
+
+## Mobile breakpoints
+
+| Platform | Breakpoint | Regular margins | Mobile margins |
+|----------|-----------|----------------|---------------|
+| CSS      | 767px     | 24px           | 16px          |
+| iOS      | compact `horizontalSizeClass` | 24pt | 16pt |
+| Android  | 600dp     | 24dp           | 16dp          |

@@ -209,7 +209,7 @@
 					};
 				};
 			};
-			buildConfigurationList = D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo Guide" */;
+			buildConfigurationList = D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -600,7 +600,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo Guide" */ = {
+		D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D94F3E182F395E6600CDE80A /* Debug */,

@@ -191,70 +191,19 @@ export const PriorityPodcastManager = {
 };
 
 /**
- * iOS Background Task example for Podlink
+ * Web implementation note
+ * 
+ * For web apps, override the API methods with your actual implementations:
+ * 
+ * PodlinkBackgroundJobs.updatePodcastQueue = async function() {
+ *   await fetch('/api/podcasts/update', { method: 'POST' });
+ * };
+ * 
+ * PodlinkBackgroundJobs.checkPriorityPodcasts = async function(podcastIds) {
+ *   const response = await fetch('/api/podcasts/check', {
+ *     method: 'POST',
+ *     body: JSON.stringify({ podcastIds })
+ *   });
+ *   return response.json();
+ * };
  */
-export const iOSImplementationExample = `
-// Swift implementation example
-
-import BackgroundTasks
-import UserNotifications
-
-class PodlinkNotificationManager {
-    func registerBackgroundTasks() {
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.podlink.morning_queue",
-            using: nil
-        ) { task in
-            self.handleMorningQueueTask(task: task as! BGAppRefreshTask)
-        }
-        
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.podlink.priority_podcasts",
-            using: nil
-        ) { task in
-            self.handlePriorityPodcastsTask(task: task as! BGAppRefreshTask)
-        }
-    }
-    
-    func handleMorningQueueTask(task: BGAppRefreshTask) {
-        let queue = DispatchQueue.global()
-        
-        queue.async {
-            Task {
-                do {
-                    // Update podcast feeds
-                    await self.updatePodcastQueue()
-                    
-                    // Get new episodes
-                    let queueData = await self.getQueueData()
-                    
-                    // Generate AI summary if enabled
-                    let preferences = self.loadPreferences()
-                    var summary: String?
-                    if preferences.useAppleIntelligence {
-                        summary = await self.generateAISummary(for: queueData.newItems)
-                    }
-                    
-                    // Send notification
-                    if !queueData.newItems.isEmpty {
-                        await self.sendQueueNotification(
-                            newCount: queueData.newItems.count,
-                            summary: summary
-                        )
-                    }
-                    
-                    task.setTaskCompleted(success: true)
-                } catch {
-                    task.setTaskCompleted(success: false)
-                }
-            }
-        }
-        
-        task.expirationHandler = {
-            queue.async {
-                task.setTaskCompleted(success: false)
-            }
-        }
-    }
-}
-`;

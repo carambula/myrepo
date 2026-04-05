@@ -154,6 +154,8 @@ export async function updateNotificationSettings(newPreferences) {
 /**
  * Example 7: React Hook
  * Use notifications in a React component
+ * 
+ * Note: This is for React web apps, not React Native
  */
 export function useNotifications(appId) {
   const [manager, setManager] = React.useState(null);

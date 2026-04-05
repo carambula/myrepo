@@ -14,8 +14,8 @@ import {
 /**
  * Background job handlers for Cyclismo
  * 
- * These are template functions that should be called by your platform-specific
- * background job scheduler (iOS BackgroundTasks, Android WorkManager, etc.)
+ * These are template functions that should be called by the background job scheduler.
+ * Override the API methods with your actual data fetching logic.
  */
 export const CyclismoBackgroundJobs = {
   /**
@@ -152,98 +152,16 @@ export function getCyclismoScheduleConfig(preferences) {
 }
 
 /**
- * iOS-specific background task registration
- * Example implementation for Swift integration
+ * Web implementation note
+ * 
+ * For web apps, the BackgroundJobScheduler handles all scheduling automatically.
+ * Simply override the API methods above with your actual implementations:
+ * 
+ * Example:
+ * CyclismoBackgroundJobs.fetchRacesForToday = async function() {
+ *   const response = await fetch('/api/races/today');
+ *   return response.json();
+ * };
+ * 
+ * The scheduler will call these methods at the scheduled times.
  */
-export const iOSBackgroundTaskExample = `
-// Swift code example for iOS
-
-import BackgroundTasks
-import UserNotifications
-
-class CyclismoNotificationManager {
-    func registerBackgroundTasks() {
-        // Register morning races task
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.cyclismo.morning_races",
-            using: nil
-        ) { task in
-            self.handleMorningRacesTask(task: task as! BGAppRefreshTask)
-        }
-        
-        // Register stream start check task
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.cyclismo.stream_start",
-            using: nil
-        ) { task in
-            self.handleStreamStartTask(task: task as! BGAppRefreshTask)
-        }
-    }
-    
-    func scheduleMorningRacesTask(at time: String) {
-        let request = BGAppRefreshTaskRequest(identifier: "com.cyclismo.morning_races")
-        
-        // Calculate next notification time
-        let nextTime = calculateNextTime(from: time)
-        request.earliestBeginDate = nextTime
-        
-        try? BGTaskScheduler.shared.submit(request)
-    }
-}
-`;
-
-/**
- * Android-specific WorkManager implementation
- * Example implementation for Kotlin integration
- */
-export const androidWorkManagerExample = `
-// Kotlin code example for Android
-
-import androidx.work.*
-import java.util.concurrent.TimeUnit
-
-class CyclismoNotificationManager(private val context: Context) {
-    fun scheduleMorningRacesNotification(time: String) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-            
-        val workRequest = PeriodicWorkRequestBuilder<MorningRacesWorker>(
-            1, TimeUnit.DAYS
-        )
-            .setConstraints(constraints)
-            .setInitialDelay(calculateDelayUntil(time), TimeUnit.MILLISECONDS)
-            .build()
-            
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "cyclismo_morning_races",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
-        )
-    }
-    
-    fun scheduleStreamStartNotifications(intervalMinutes: Int) {
-        val workRequest = PeriodicWorkRequestBuilder<StreamStartWorker>(
-            intervalMinutes.toLong(), TimeUnit.MINUTES
-        ).build()
-        
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "cyclismo_stream_start",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
-    }
-}
-
-class MorningRacesWorker(context: Context, params: WorkerParameters) 
-    : CoroutineWorker(context, params) {
-    
-    override suspend fun doWork(): Result {
-        val races = fetchTodaysRaces()
-        if (races.isNotEmpty()) {
-            sendNotification(createMorningRacesNotification(races))
-        }
-        return Result.success()
-    }
-}
-`;

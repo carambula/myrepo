@@ -304,20 +304,18 @@ const manager = await setupNotifications(APP_IDS.CYCLISMO, {
 await manager.sendTestNotification();
 ```
 
-## Platform-Specific Setup
+## Web Setup
 
-### Web (Browser)
-
-1. **Add Service Worker**
+### 1. Add Service Worker
 
 Create `/public/service-worker.js`:
 
 ```javascript
-// Copy from examples/public/service-worker.js
+// Copy from public/service-worker.js in this package
 // Or create your own based on the template
 ```
 
-2. **Register Service Worker**
+### 2. Register Service Worker
 
 ```javascript
 if ('serviceWorker' in navigator) {
@@ -328,7 +326,7 @@ if ('serviceWorker' in navigator) {
 }
 ```
 
-3. **Initialize Notifications**
+### 3. Initialize Notifications
 
 ```javascript
 import { setupNotifications, APP_IDS } from '@min-apps/design-system/notifications';
@@ -339,7 +337,7 @@ navigator.serviceWorker.ready.then(async () => {
 });
 ```
 
-### React Integration
+## React Integration
 
 ```javascript
 import { useEffect, useState } from 'react';
@@ -406,88 +404,6 @@ function App() {
     </div>
   );
 }
-```
-
-### iOS (React Native / Expo)
-
-```javascript
-import * as Notifications from 'expo-notifications';
-import { getNotificationManager, APP_IDS } from '@min-apps/design-system/notifications';
-
-// Configure notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-// Request permissions
-const { status } = await Notifications.requestPermissionsAsync();
-
-if (status === 'granted') {
-  // Initialize manager with custom notification sender
-  const manager = getNotificationManager(APP_IDS.CYCLISMO, {
-    jobHandlers: {
-      ...CyclismoJobHandlers,
-      
-      // Override with Expo notifications
-      async sendNotification(notification) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: notification.title,
-            body: notification.body,
-            data: notification.data
-          },
-          trigger: null // Send immediately
-        });
-      }
-    }
-  });
-  
-  await manager.initialize();
-  manager.startJobs();
-}
-```
-
-### Android (React Native)
-
-```javascript
-import PushNotification from 'react-native-push-notification';
-import { getNotificationManager, APP_IDS } from '@min-apps/design-system/notifications';
-
-// Configure push notifications
-PushNotification.configure({
-  onNotification: function (notification) {
-    console.log('Notification:', notification);
-  },
-  permissions: {
-    alert: true,
-    badge: true,
-    sound: true,
-  },
-  popInitialNotification: true,
-  requestPermissions: true,
-});
-
-// Initialize manager
-const manager = getNotificationManager(APP_IDS.CYCLISMO, {
-  jobHandlers: {
-    ...CyclismoJobHandlers,
-    
-    async sendNotification(notification) {
-      PushNotification.localNotification({
-        title: notification.title,
-        message: notification.body,
-        data: notification.data
-      });
-    }
-  }
-});
-
-await manager.initialize();
-manager.startJobs();
 ```
 
 ## Testing

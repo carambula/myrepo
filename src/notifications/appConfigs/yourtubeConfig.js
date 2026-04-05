@@ -192,224 +192,28 @@ export const VideoTracker = {
 };
 
 /**
- * iOS implementation example
+ * Web implementation note
+ * 
+ * For web apps, override the API methods with your actual implementations:
+ * 
+ * YourtubeBackgroundJobs.updateVideoQueue = async function() {
+ *   await fetch('/api/videos/update', { method: 'POST' });
+ * };
+ * 
+ * YourtubeBackgroundJobs.checkPriorityChannels = async function(channelIds) {
+ *   const response = await fetch('/api/channels/check', {
+ *     method: 'POST',
+ *     body: JSON.stringify({ channelIds })
+ *   });
+ *   return response.json();
+ * };
+ * 
+ * YourtubeBackgroundJobs.generateAISummary = async function(videos) {
+ *   const response = await fetch('/api/ai/summarize', {
+ *     method: 'POST',
+ *     body: JSON.stringify({ videos })
+ *   });
+ *   const { summary } = await response.json();
+ *   return summary;
+ * };
  */
-export const iOSImplementationExample = `
-// Swift implementation for Yourtube
-
-import BackgroundTasks
-import UserNotifications
-
-class YourtubeNotificationManager {
-    func registerBackgroundTasks() {
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.yourtube.morning_queue",
-            using: nil
-        ) { task in
-            self.handleMorningQueueTask(task: task as! BGAppRefreshTask)
-        }
-        
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: "com.yourtube.priority_channels",
-            using: nil
-        ) { task in
-            self.handlePriorityChannelsTask(task: task as! BGAppRefreshTask)
-        }
-    }
-    
-    func scheduleMorningQueue(at time: String, useAI: Bool) {
-        let request = BGAppRefreshTaskRequest(
-            identifier: "com.yourtube.morning_queue"
-        )
-        
-        let nextTime = calculateNextDailyTime(from: time)
-        request.earliestBeginDate = nextTime
-        
-        do {
-            try BGTaskScheduler.shared.submit(request)
-        } catch {
-            print("Could not schedule morning queue: \\(error)")
-        }
-    }
-    
-    func handleMorningQueueTask(task: BGAppRefreshTask) {
-        let queue = DispatchQueue.global()
-        
-        queue.async {
-            Task {
-                do {
-                    // Update video feeds
-                    await self.updateVideoQueue()
-                    
-                    // Get queue data
-                    let queueData = await self.getQueueData()
-                    
-                    // Generate AI summary if enabled
-                    let preferences = self.loadPreferences()
-                    var summary: String?
-                    if preferences.useAppleIntelligence {
-                        summary = await self.generateAISummary(for: queueData.newVideos)
-                    }
-                    
-                    // Send notification
-                    if !queueData.newVideos.isEmpty {
-                        await self.sendQueueNotification(
-                            newCount: queueData.newVideos.count,
-                            summary: summary
-                        )
-                    }
-                    
-                    // Reschedule
-                    self.scheduleMorningQueue(
-                        at: preferences.time,
-                        useAI: preferences.useAppleIntelligence
-                    )
-                    
-                    task.setTaskCompleted(success: true)
-                } catch {
-                    task.setTaskCompleted(success: false)
-                }
-            }
-        }
-        
-        task.expirationHandler = {
-            queue.async {
-                task.setTaskCompleted(success: false)
-            }
-        }
-    }
-    
-    func handlePriorityChannelsTask(task: BGAppRefreshTask) {
-        let queue = DispatchQueue.global()
-        
-        queue.async {
-            Task {
-                do {
-                    let preferences = self.loadPreferences()
-                    let channelIds = preferences.priorityChannelIds
-                    
-                    let newVideos = await self.checkPriorityChannels(channelIds)
-                    
-                    for video in newVideos {
-                        await self.sendPriorityVideoNotification(video)
-                    }
-                    
-                    // Reschedule with same interval
-                    self.schedulePriorityChannelsCheck(
-                        intervalMinutes: preferences.checkIntervalMinutes
-                    )
-                    
-                    task.setTaskCompleted(success: true)
-                } catch {
-                    task.setTaskCompleted(success: false)
-                }
-            }
-        }
-        
-        task.expirationHandler = {
-            queue.async {
-                task.setTaskCompleted(success: false)
-            }
-        }
-    }
-}
-`;
-
-/**
- * Android implementation example
- */
-export const androidImplementationExample = `
-// Kotlin implementation for Yourtube
-
-import androidx.work.*
-import java.util.concurrent.TimeUnit
-
-class YourtubeNotificationManager(private val context: Context) {
-    fun scheduleMorningQueue(time: String, useAI: Boolean) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-            
-        val data = workDataOf("use_ai" to useAI)
-        
-        val workRequest = PeriodicWorkRequestBuilder<MorningQueueWorker>(
-            1, TimeUnit.DAYS
-        )
-            .setConstraints(constraints)
-            .setInitialDelay(calculateDelayUntilTime(time), TimeUnit.MILLISECONDS)
-            .setInputData(data)
-            .build()
-            
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "yourtube_morning_queue",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
-        )
-    }
-    
-    fun schedulePriorityChannelsCheck(intervalMinutes: Int, channelIds: List<String>) {
-        val data = workDataOf(
-            "channel_ids" to channelIds.toTypedArray()
-        )
-        
-        val workRequest = PeriodicWorkRequestBuilder<PriorityChannelsWorker>(
-            intervalMinutes.toLong(), TimeUnit.MINUTES
-        )
-            .setInputData(data)
-            .build()
-            
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "yourtube_priority_channels",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
-    }
-}
-
-class MorningQueueWorker(context: Context, params: WorkerParameters) 
-    : CoroutineWorker(context, params) {
-    
-    override suspend fun doWork(): Result {
-        return try {
-            val useAI = inputData.getBoolean("use_ai", false)
-            
-            updateVideoQueue()
-            val queueData = getQueueData()
-            
-            if (queueData.newVideos.isNotEmpty()) {
-                val summary = if (useAI) {
-                    generateAISummary(queueData.newVideos)
-                } else {
-                    null
-                }
-                
-                sendQueueNotification(queueData.newVideos.size, summary)
-            }
-            
-            Result.success()
-        } catch (e: Exception) {
-            Result.retry()
-        }
-    }
-}
-
-class PriorityChannelsWorker(context: Context, params: WorkerParameters) 
-    : CoroutineWorker(context, params) {
-    
-    override suspend fun doWork(): Result {
-        return try {
-            val channelIds = inputData.getStringArray("channel_ids")?.toList() ?: emptyList()
-            
-            val newVideos = checkPriorityChannels(channelIds)
-            
-            newVideos.forEach { video ->
-                sendPriorityVideoNotification(video)
-            }
-            
-            Result.success()
-        } catch (e: Exception) {
-            Result.retry()
-        }
-    }
-}
-`;

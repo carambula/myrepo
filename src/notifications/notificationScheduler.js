@@ -2,12 +2,10 @@
  * Notification Scheduler
  * Utilities for scheduling background jobs and notifications
  * 
- * Note: This provides the interface and helpers. Actual background job
- * execution will depend on the platform (iOS/Android/Web) and should be
- * implemented in the consuming app using:
- * - iOS: BackgroundTasks framework, UNUserNotificationCenter
- * - Android: WorkManager, NotificationManager
- * - Web: Service Workers, Notification API
+ * Note: This provides the interface and helpers for web applications.
+ * Background jobs are executed using:
+ * - Web: Service Workers, Notification API, Background Sync API
+ * - Browser timers (setTimeout/setInterval) for scheduling
  */
 
 import { getEnabledNotifications } from './notificationPreferences.js';
@@ -207,7 +205,7 @@ export const BackgroundJobConfig = {
   },
 
   /**
-   * Get minimum fetch interval (in seconds) for iOS background fetch
+   * Get minimum fetch interval (in seconds) for background job scheduling
    */
   getMinimumFetchInterval(appId) {
     const enabled = getEnabledNotifications(appId);
@@ -261,11 +259,10 @@ export const NotificationPermissions = {
   },
 
   /**
-   * Guide to platform-specific permissions
+   * Web platform permission guide
    */
   platformGuide: {
-    ios: 'Use UNUserNotificationCenter.requestAuthorization',
-    android: 'Use NotificationManagerCompat.areNotificationsEnabled',
-    web: 'Use Notification.requestPermission'
+    web: 'Use Notification.requestPermission() API',
+    info: 'For web apps, use the Web Notification API'
   }
 };

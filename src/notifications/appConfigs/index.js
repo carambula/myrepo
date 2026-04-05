@@ -1,36 +1,29 @@
 /**
  * App Configurations Export
- * Export all app-specific notification configurations
+ * Export all app-specific notification configurations for web apps
  */
 
 export {
   CyclismoBackgroundJobs,
-  getCyclismoScheduleConfig,
-  iOSBackgroundTaskExample as cyclismoIOSExample,
-  androidWorkManagerExample as cyclismoAndroidExample
+  getCyclismoScheduleConfig
 } from './cyclismoConfig.js';
 
 export {
   PodlinkBackgroundJobs,
   getPodlinkScheduleConfig,
   AppleIntelligenceHelper,
-  PriorityPodcastManager,
-  iOSImplementationExample as podlinkIOSExample
+  PriorityPodcastManager
 } from './podlinkConfig.js';
 
 export {
   WatcheditBackgroundJobs,
   getWatcheditScheduleConfig,
-  EpisodeTracker,
-  iOSImplementationExample as watcheditIOSExample,
-  androidImplementationExample as watcheditAndroidExample
+  EpisodeTracker
 } from './watcheditConfig.js';
 
 export {
   YourtubeBackgroundJobs,
   getYourtubeScheduleConfig,
   PriorityChannelManager,
-  VideoTracker,
-  iOSImplementationExample as yourtubeIOSExample,
-  androidImplementationExample as yourtubeAndroidExample
+  VideoTracker
 } from './yourtubeConfig.js';

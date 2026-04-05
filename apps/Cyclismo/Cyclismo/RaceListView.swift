@@ -1238,7 +1238,8 @@ struct RaceListView: View {
                         .overlay { ProgressView() }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(width: 200, height: 200)
+                .frame(width: 200)
+                .aspectRatio(CalendarRaceDisplayStyle.default.imageAspectRatio, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
                 .overlay(alignment: .topLeading) {
                     if isRaceLive(race) {

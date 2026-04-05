@@ -24,10 +24,10 @@ export const FONT_TIERS = {
 export const ROTINA_WEIGHTS = {
   EXTRA_THIN: { name: 'ExtraThin', weight: 200 },
   THIN: { name: 'Thin', weight: 250 },
+  EXTRA_LIGHT: { name: 'ExtraLight', weight: 275 },
   LIGHT: { name: 'Light', weight: 300 },
   REGULAR: { name: 'Regular', weight: 400 },
   MEDIUM: { name: 'Medium', weight: 500 },
-  SEMIBOLD: { name: 'SemiBold', weight: 600 },
   BOLD: { name: 'Bold', weight: 700 },
   EXTRA_BOLD: { name: 'ExtraBold', weight: 800 },
 };
@@ -38,7 +38,7 @@ export const ROTINA_WEIGHTS = {
  */
 export const DEFAULT_FONT_OVERRIDE = {
   [FONT_TIERS.DISPLAY]: ROTINA_WEIGHTS.BOLD,
-  [FONT_TIERS.HEADING]: ROTINA_WEIGHTS.SEMIBOLD,
+  [FONT_TIERS.HEADING]: ROTINA_WEIGHTS.MEDIUM,
   [FONT_TIERS.BODY]: ROTINA_WEIGHTS.REGULAR,
   [FONT_TIERS.UI]: ROTINA_WEIGHTS.MEDIUM,
   [FONT_TIERS.CAPTION]: ROTINA_WEIGHTS.REGULAR,

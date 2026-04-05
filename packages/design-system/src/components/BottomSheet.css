@@ -1,0 +1,124 @@
+/**
+ * BottomSheet Component Styles
+ * Provides blur and darkening effects that intensify with detent size
+ */
+
+.min-bottom-sheet-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1300;
+  pointer-events: none;
+}
+
+.min-bottom-sheet-container--open {
+  pointer-events: auto;
+}
+
+.min-bottom-sheet__backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Backdrop states based on detent size */
+.min-bottom-sheet__backdrop--small {
+  background-color: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.min-bottom-sheet__backdrop--medium {
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.min-bottom-sheet__backdrop--large {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.min-bottom-sheet__backdrop--hidden {
+  opacity: 0;
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+}
+
+.min-bottom-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-surface-primary);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  touch-action: none;
+}
+
+.min-bottom-sheet--closed {
+  transform: translateY(100%);
+}
+
+.min-bottom-sheet--small {
+  height: 30vh;
+  max-height: 30vh;
+}
+
+.min-bottom-sheet--medium {
+  height: 50vh;
+  max-height: 50vh;
+}
+
+.min-bottom-sheet--large {
+  height: 90vh;
+  max-height: 90vh;
+}
+
+.min-bottom-sheet__handle-container {
+  padding: 12px 0;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+.min-bottom-sheet__handle-container:active {
+  cursor: grabbing;
+}
+
+.min-bottom-sheet__handle {
+  width: 36px;
+  height: 4px;
+  background-color: var(--color-border-primary);
+  border-radius: 2px;
+}
+
+.min-bottom-sheet__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 16px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth scrolling for iOS */
+@supports (-webkit-touch-callout: none) {
+  .min-bottom-sheet__content {
+    -webkit-overflow-scrolling: touch;
+  }
+}

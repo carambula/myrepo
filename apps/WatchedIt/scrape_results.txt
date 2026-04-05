@@ -1,0 +1,12 @@
+Total movies found: 10
+
+1. Champagne Problems [Rank: 1]
+2. In Your Dreams [Rank: 2]
+3. Frankenstein [Rank: 3]
+4. The Carman Family Deaths [Rank: 4]
+5. KPop Demon Hunters [Rank: 5]
+6. A Merry Little Ex-Mas [Rank: 6]
+7. Train Dreams [Rank: 7]
+8. Selena y Los Dinos: A Family’s Legacy [Rank: 8]
+9. The Little Things [Rank: 9]
+10. A Man Called Otto [Rank: 10]

@@ -1,0 +1,309 @@
+/**
+ * Global styles for the min apps design system
+ * Import this file in your app to apply base styles
+ */
+
+/* Page margins — keep in sync with src/tokens/spacing.js spacing.page (WatchedIt / mov min is canonical) */
+:root {
+  --min-page-margin-top: 24px;
+  --min-page-margin-bottom: 24px;
+  --min-page-margin-left: 24px;
+  --min-page-margin-right: 24px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --min-page-margin-top: 16px;
+    --min-page-margin-bottom: 16px;
+    --min-page-margin-left: 16px;
+    --min-page-margin-right: 16px;
+  }
+}
+
+/* Reset and base styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-background-primary);
+  transition: background-color 250ms ease-in-out, color 250ms ease-in-out;
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Images */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Forms */
+input, button, textarea, select {
+  font: inherit;
+}
+
+/* Text wrapping */
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+
+/* Font override support for headings */
+h1, h2 {
+  font-family: var(--font-display, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif));
+}
+
+h3, h4, h5, h6 {
+  font-family: var(--font-heading, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif));
+}
+
+/* Primary title in AppLayout main — sync with typography.styles.mainContentTitle (mov min) */
+.min-main-content-title {
+  margin: 0 0 16px 0;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+
+/* Font override support for UI elements */
+button, input, select, textarea, label {
+  font-family: var(--font-ui, var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif));
+}
+
+/* Remove default button styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Links */
+a {
+  color: var(--color-primary-main);
+  text-decoration: none;
+  transition: color 250ms ease-in-out;
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-primary-main);
+  color: var(--color-primary-contrast);
+}
+
+/* Scrollbar (webkit browsers) */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Utility classes */
+.min-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.min-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--min-page-margin-left);
+  padding-right: var(--min-page-margin-right);
+}
+
+/* Full page inset — use inside unpadded roots; do not add extra horizontal padding inside AppLayout main */
+.min-page-padding {
+  padding: var(--min-page-margin-top) var(--min-page-margin-right) var(--min-page-margin-bottom) var(--min-page-margin-left);
+}
+
+.min-page-padding-x {
+  padding-left: var(--min-page-margin-left);
+  padding-right: var(--min-page-margin-right);
+}
+
+.min-page-padding-y {
+  padding-top: var(--min-page-margin-top);
+  padding-bottom: var(--min-page-margin-bottom);
+}
+
+.min-text-center {
+  text-align: center;
+}
+
+.min-text-left {
+  text-align: left;
+}
+
+.min-text-right {
+  text-align: right;
+}
+
+.min-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.min-hidden {
+  display: none;
+}
+
+.min-visible {
+  display: block;
+}
+
+/* Loading and empty (null) states — left-aligned, no large icons (see visual-specification.md) */
+.min-content-status {
+  box-sizing: border-box;
+  text-align: left;
+  padding: 16px 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  justify-self: start;
+}
+
+/*
+ * Root / main bootstrap loading (e.g. App.tsx while hydrating).
+ *
+ * CRITICAL: this row must NOT grow to fill vertical space. It sits at the
+ * top-left of its parent — same as WatchedIt (mov min). `margin-bottom: auto`
+ * pins it to the top even when a parent uses `justify-content: center`.
+ */
+.min-content-status--main {
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin-top: 0;
+  margin-bottom: auto;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: var(--min-page-margin-left);
+  padding-right: var(--min-page-margin-right);
+}
+
+.min-content-status--loading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* Win over app-level utility classes that re-center or shrink the bootstrap row */
+.min-content-status--main.min-content-status--loading {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 auto !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+}
+
+.min-content-status--main .min-content-status__label {
+  text-align: left !important;
+}
+
+/*
+ * When the bootstrap loader is the direct child of body, #root, or #__next,
+ * force the parent to top-left flow so no app shell can center it.
+ */
+body > .min-content-status--main,
+#root > .min-content-status--main,
+#__next > .min-content-status--main,
+#app > .min-content-status--main,
+[data-reactroot] > .min-content-status--main {
+  margin-top: 0 !important;
+  margin-bottom: auto !important;
+  align-self: flex-start !important;
+}
+
+.min-content-status__spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-primary);
+  border-top-color: var(--color-text-tertiary);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .min-content-status__spinner {
+    animation: min-ds-spin 0.7s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .min-content-status__spinner {
+    border-color: var(--color-text-tertiary);
+    opacity: 0.85;
+  }
+}
+
+@keyframes min-ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.min-content-status__label,
+.min-content-status__message {
+  margin: 0;
+  text-align: left;
+}

@@ -1,0 +1,516 @@
+openapi: 3.0.3
+info:
+  title: Cyclismo API
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /races:
+    get:
+      summary: List races
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: series
+          schema:
+            type: string
+        - in: query
+          name: discipline
+          schema:
+            type: string
+        - in: query
+          name: raceType
+          schema:
+            type: string
+        - in: query
+          name: format
+          schema:
+            type: string
+          description: Alias for raceType
+        - in: query
+          name: gender
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: List of races
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Race"
+  /races/{id}:
+    get:
+      summary: Race detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Race detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+  /races/{id}/podcasts:
+    get:
+      summary: Race podcasts
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Podcasts linked to race
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PodcastEpisodeLink"
+  /races/{id}/stages:
+    get:
+      summary: Race stages
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stages linked to a race
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stage"
+  /races/{id}/results:
+    get:
+      summary: Race results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Results linked to race
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RaceResult"
+  /stages/{id}:
+    get:
+      summary: Stage detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stage detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stage"
+  /stages/{id}/results:
+    get:
+      summary: Stage results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Results linked to stage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StageResult"
+  /stages/{id}/podcasts:
+    get:
+      summary: Stage podcasts
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Podcasts linked to stage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PodcastEpisodeLink"
+  /teams/{id}:
+    get:
+      summary: Team detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Team detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+  /teams/{id}/races:
+    get:
+      summary: Team races
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: upcoming
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Team races
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Race"
+  /athletes/{id}:
+    get:
+      summary: Athlete detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Athlete detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Athlete"
+  /athletes/{id}/races:
+    get:
+      summary: Athlete races
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: upcoming
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Athlete races
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Race"
+  /search:
+    get:
+      summary: Search races, teams, and athletes
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  races:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Race"
+                  teams:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Team"
+                  athletes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Athlete"
+components:
+  schemas:
+    Race:
+      type: object
+      properties:
+        race_id:
+          type: string
+        name:
+          type: string
+        series:
+          type: string
+        classification:
+          type: string
+        colloquial_categories:
+          type: array
+          items:
+            type: string
+        discipline:
+          type: string
+        race_type:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        start_time_local:
+          type: string
+          description: Local race start time in HH:mm:ss when available.
+        start_timezone:
+          type: string
+          description: IANA timezone for local start time (for example Europe/Paris).
+        start_datetime_utc:
+          type: string
+          format: date-time
+          description: Absolute UTC start timestamp when source data provides it.
+        location_country:
+          type: string
+        location_city:
+          type: string
+        organizer:
+          type: string
+        official_website:
+          type: string
+        data_timestamp:
+          type: string
+          format: date-time
+        gender_division:
+          type: string
+    Stage:
+      type: object
+      properties:
+        stage_id:
+          type: string
+        race_id:
+          type: string
+        source_stage_id:
+          type: string
+        stage_number:
+          type: integer
+        stage_type:
+          type: string
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+        start_location:
+          type: string
+        end_location:
+          type: string
+        distance_km:
+          type: number
+        depart_time_local:
+          type: string
+        depart_timezone:
+          type: string
+        depart_datetime_utc:
+          type: string
+          format: date-time
+        is_rest_day:
+          type: boolean
+        source_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PodcastEpisodeLink:
+      type: object
+      properties:
+        episode_id:
+          type: string
+        source_id:
+          type: string
+        source_slug:
+          type: string
+        source_name:
+          type: string
+        title:
+          type: string
+        raw_title:
+          type: string
+        description:
+          type: string
+        episode_url:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        matched_by:
+          type: string
+    RaceResult:
+      type: object
+      properties:
+        race_result_id:
+          type: string
+        race_id:
+          type: string
+        result_type:
+          type: string
+        rank:
+          type: integer
+        athlete_name:
+          type: string
+        team_name:
+          type: string
+        nationality:
+          type: string
+        result_text:
+          type: string
+        source:
+          type: string
+        source_url:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        synced_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    StageResult:
+      type: object
+      properties:
+        stage_result_id:
+          type: string
+        stage_id:
+          type: string
+        result_type:
+          type: string
+        rank:
+          type: integer
+        athlete_name:
+          type: string
+        team_name:
+          type: string
+        nationality:
+          type: string
+        result_text:
+          type: string
+        source:
+          type: string
+        source_url:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        synced_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Team:
+      type: object
+      properties:
+        team_id:
+          type: string
+        name:
+          type: string
+        uci_code:
+          type: string
+        discipline:
+          type: string
+        region:
+          type: string
+        website:
+          type: string
+        social_handles:
+          type: object
+          additionalProperties:
+            type: string
+        logo_url:
+          type: string
+    Athlete:
+      type: object
+      properties:
+        athlete_id:
+          type: string
+        full_name:
+          type: string
+        team_id:
+          type: string
+        nationality:
+          type: string
+        discipline:
+          type: string
+        dob:
+          type: string
+          format: date
+        social_handles:
+          type: object
+          additionalProperties:
+            type: string

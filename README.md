@@ -1,193 +1,98 @@
-# Min Apps Design System
+# Min Apps
 
-A unified design system for the min apps suite: **WatchedIt** (mov min), **podlink** (pod min), **yourtube** (vid min), and **Cyclismo guide** (cyc min).
+Monorepo for the min apps suite and their shared design system.
 
-## Overview
+## Apps
 
-This design system harmonizes the visual and interface language across all min apps, providing:
+| App | Path | Description |
+|-----|------|-------------|
+| **mov min** | `apps/WatchedIt` | WatchedIt — movie tracking (Swift / Xcode) |
+| **pod min** | `apps/PodLink` | podlink — podcast app (Swift / Xcode) |
+| **vid min** | `apps/YourTube` | yourtube — video app (Swift / Xcode) |
+| **cyc min** | `apps/Cyclismo` | Cyclismo guide — cycling guide (Swift / Xcode + backend) |
 
-- **Design Tokens**: Centralized color, spacing, typography, and other design values
-- **Theming System**: Interchangeable themes that work across all apps
-- **Font Override System**: Custom font selection from the Rotina family with per-tier customization
-- **Shared Components**: Common UI components with consistent styling
-- **Layout Patterns**: Standardized margins, positioning, and spacing
-- **Templates**: Pre-built page layouts and component compositions
-- **Notification System**: Unified notification preferences and background job scheduling
-- **Onboarding System**: Consistent, beautiful first-run experiences for all apps
-- **Deep Linking System**: Comprehensive deep linking with bias towards min apps and user preference support
+## Packages
 
-## Installation
+| Package | Path | Description |
+|---------|------|-------------|
+| `@min-apps/design-system` | `packages/design-system` | Shared tokens, themes, components, layouts, and utilities |
+| `@min-apps/design-studio` | `packages/design-studio` | Web tool for browsing tokens, previewing themes, and managing the design system |
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 18 (for the design system and native token generation)
+- [Xcode](https://developer.apple.com/xcode/) (for the native apps)
+
+### Install design system dependencies
 
 ```bash
-npm install @min-apps/design-system
+npm install
 ```
 
-## Usage
+### Launch the Design Studio
 
-### Import Design Tokens
+Browse tokens, preview themes, and see how changes affect all 4 apps:
 
-```javascript
-import { tokens } from '@min-apps/design-system/tokens';
-import { lightTheme, darkTheme } from '@min-apps/design-system/themes';
+```bash
+npm run studio
 ```
 
-### Import Components
+Opens at [http://localhost:3100](http://localhost:3100).
 
-```javascript
-import { Button, ListItem, AppHeader } from '@min-apps/design-system/components';
+### Build native tokens
+
+Regenerates Swift, Kotlin, and Android XML files from the design system tokens:
+
+```bash
+npm run build
 ```
 
-### Import Layout Components
+The generated files land in `packages/design-system/native/`. Each app can reference them via Xcode project/file references or by copying them into its target.
 
-```javascript
-import { AppLayout, ContentContainer } from '@min-apps/design-system/layouts';
+### Open an app in Xcode
+
+```bash
+open apps/WatchedIt/WatchedIt.xcodeproj
+open apps/PodLink/PodLink.xcodeproj
+open apps/YourTube/YourTube.xcodeproj
+open "apps/Cyclismo/Cyclismo Guide.xcodeproj"
 ```
-
-### Apply Global Styles
-
-```javascript
-import '@min-apps/design-system/styles.css';
-```
-
-### Use Font Override System
-
-```javascript
-import { 
-  FontOverrideSettings,
-  enableFontOverride,
-  FONT_TIERS,
-  ROTINA_WEIGHTS 
-} from '@min-apps/design-system';
-import '@min-apps/design-system/src/assets/fonts/rotina/rotina.css';
-
-// Add font override settings UI to your appearance page
-<FontOverrideSettings />
-
-// Or programmatically enable with custom configuration
-enableFontOverride({
-  [FONT_TIERS.DISPLAY]: ROTINA_WEIGHTS.BOLD,
-  [FONT_TIERS.HEADING]: ROTINA_WEIGHTS.SEMIBOLD,
-  [FONT_TIERS.BODY]: ROTINA_WEIGHTS.REGULAR,
-  [FONT_TIERS.UI]: ROTINA_WEIGHTS.MEDIUM,
-  [FONT_TIERS.CAPTION]: ROTINA_WEIGHTS.REGULAR,
-});
-```
-
-### Use Notification System
-
-```javascript
-import { 
-  NotificationSettingsPage,
-  loadNotificationPreferences,
-  APP_IDS 
-} from '@min-apps/design-system/notifications';
-
-// Render notification settings page
-<NotificationSettingsPage appId={APP_IDS.CYCLISMO} />
-
-// Load preferences programmatically
-const preferences = loadNotificationPreferences(APP_IDS.CYCLISMO);
-```
-
-### Use Onboarding System
-
-```javascript
-import {
-  OnboardingContainer,
-  cyclismoOnboardingConfig,
-  OnboardingManager,
-} from '@min-apps/design-system/onboarding';
-
-// Check if onboarding should be shown
-if (OnboardingManager.shouldShowOnboarding('cyclismo')) {
-  // Render onboarding
-  <OnboardingContainer
-    config={cyclismoOnboardingConfig}
-    onComplete={(settings) => {
-      // Apply default settings and navigate to app
-    }}
-    onRequestNotifications={async () => {
-      const permission = await Notification.requestPermission();
-    }}
-  />
-}
-```
-
-### Use Deep Linking System
-
-```javascript
-import { 
-  DeepLink,
-  openLink,
-  DeepLinkPreferencesPanel 
-} from '@min-apps/design-system/deepLinking';
-
-// Use DeepLink component for automatic deep linking
-<DeepLink href="https://www.themoviedb.org/movie/550">
-  Check out Fight Club
-</DeepLink>
-
-// Open links programmatically
-await openLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-
-// Add preferences UI to settings
-<DeepLinkPreferencesPanel title="Link Preferences" />
-```
-
-## Design Principles
-
-### Consistency
-All apps share the same:
-- Margins and padding values
-- Top positioning for common elements
-- SVG asset sizing and placement
-- Button styles and positioning
-- List element patterns and spacing
-
-### Theming
-Themes can be interchanged between apps. Each theme defines:
-- Color palette
-- Typography scale
-- Spacing system
-- Shadow and elevation values
-- Border radius values
-
-### Accessibility
-All components follow WCAG 2.1 AA standards with:
-- Proper color contrast
-- Keyboard navigation
-- Screen reader support
-- Focus indicators
 
 ## Structure
 
 ```
-src/
-├── tokens/           # Design tokens (colors, spacing, typography, etc.)
-├── themes/           # Theme configurations
-├── appearance/       # Font override and appearance customization
-├── assets/           # Font files and other assets
-├── components/       # Shared UI components
-├── layouts/          # Layout components and templates
-├── notifications/    # Notification preferences and scheduling
-├── onboarding/       # Onboarding flows and configurations
-├── deepLinking/      # Deep linking system with min app bias
-└── utils/            # Utility functions and helpers
+min-apps/
+├── apps/
+│   ├── WatchedIt/              # mov min — WatchedIt (Swift)
+│   ├── PodLink/                # pod min — podlink (Swift)
+│   ├── YourTube/               # vid min — yourtube (Swift)
+│   └── Cyclismo/               # cyc min — Cyclismo guide (Swift + backend)
+├── packages/
+│   ├── design-system/          # @min-apps/design-system
+│   │   ├── src/                # Tokens, components, layouts (JS)
+│   │   ├── native/             # Generated Swift/Kotlin/XML for iOS & Android
+│   │   ├── scripts/            # build-native-tokens.js
+│   │   └── docs/               # Documentation
+│   └── design-studio/          # @min-apps/design-studio (npm run studio)
+├── package.json                # Root workspace config (npm)
+└── turbo.json                  # Turborepo task pipeline
 ```
 
-## Documentation
+## How the apps use the design system
 
-See the `/docs` folder for detailed documentation on:
-- Design tokens reference
-- Component API documentation
-- Theming guide
-- Migration guide for existing apps
-- **Font override system guide** (NEW)
-- **Font override integration guide** (NEW)
-- Notification system guide
-- Onboarding system guide
-- Deep linking system guide
-- Best practices
+The apps are native Swift/Xcode projects. They consume the design system's **generated native artifacts** from `packages/design-system/native/`:
+
+- **iOS**: `MinPageMargins.swift`, `MinPageInsets.swift`, `MinMainAppLoading.swift`, `MinTitleTypography.swift`, etc.
+- **Android**: XML dimens in `native/android/values/`
+- **JSON**: `spacing.json`, `main_app_loading.json`, `title_typography.json` for tooling
+
+After editing tokens in `packages/design-system/src/tokens/`, run `npm run build` to regenerate these files.
+
+## Design System
+
+See the design system [README](./packages/design-system/README.md) for full documentation on tokens, components, theming, notifications, onboarding, deep linking, and storage.
 
 ## License
 

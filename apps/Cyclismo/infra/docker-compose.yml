@@ -1,0 +1,54 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cyclismo
+    volumes:
+      - cyclismo_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cyclismo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  ingestion:
+    build:
+      context: ../ingestion
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/cyclismo
+      MIGRATIONS_DIR: /migrations
+      UCI_CALENDAR_URL: https://www.uci.org/calendar/all/2jnxYAuvjgttyHi6YQ94EJ
+      UCI_ROAD_RIDERS_URL: https://www.uci.org/riders/road-riders-teams/4uEfOErsvL4hkRJriqkdiw?tab=riders-list-teams
+      UCI_CX_RIDERS_URL: https://www.uci.org/riders/cyclo-cross-riders-and-teams/3jXe3jZAo10WPTzww80yOo
+      UCI_MTB_RIDERS_URL: https://www.uci.org/riders/mountain-bike-riders-teams/1V5hGPnEvXzbIqkjUHmFuw
+      PCS_RACES_URLS: https://www.procyclingstats.com/races.php,https://www.procyclingstats.com/races.php?women=1
+      PCS_TEAMS_URLS: https://www.procyclingstats.com/teams/worldtour,https://www.procyclingstats.com/teams/women,https://www.procyclingstats.com/teams/continental
+      OLYMPICS_CYCLING_URL: ""
+      LIFETIME_GRAND_PRIX_URL: ""
+      HTML_RACE_SOURCES_JSON: "[]"
+      HTML_ROSTER_SOURCES_JSON: "[]"
+      HTML_PARTICIPANT_SOURCES_JSON: "[]"
+      OPENAI_API_KEY: ""
+    command: ["npm", "run", "bootstrap"]
+    volumes:
+      - ../backend/db/migrations:/migrations:ro
+  backend:
+    build:
+      context: ../backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/cyclismo
+      PORT: "4000"
+    ports:
+      - "4000:4000"
+volumes:
+  cyclismo_pg:

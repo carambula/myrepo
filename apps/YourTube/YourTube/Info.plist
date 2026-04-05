@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>Carambula-Projects.YourTube.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.591238096911-svah993j8fjfqlt5a4hb40rd1hg0j9ea</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>Carambula-Projects.YourTube.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vidmin</string>
+			</array>
+		</dict>
+	</array>
+	<key>GOOGLE_CLIENT_ID</key>
+	<string>591238096911-svah993j8fjfqlt5a4hb40rd1hg0j9ea.apps.googleusercontent.com</string>
+	<key>GOOGLE_REDIRECT_URI</key>
+	<string>com.googleusercontent.apps.591238096911-svah993j8fjfqlt5a4hb40rd1hg0j9ea:/oauthredirect</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>remote-notification</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PodLink Bootstrap Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">PodLink Bootstrap Console</div>
+        <div class="brand-subtitle">Manage default podcasts, categories, and themes</div>
+      </div>
+      <div class="topbar-actions">
+        <button id="enrichBtn">Enrich All</button>
+        <button id="themesBtn">Themes</button>
+        <button id="healthBtn">Data Health</button>
+        <button id="refreshBtn" class="primary">Reload Data</button>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <div class="toolbar-row">
+        <label>
+          Search
+          <input id="searchInput" type="search" placeholder="Search podcasts..." />
+        </label>
+        <label>
+          Category
+          <select id="categoryFilter"><option value="all">All Categories</option></select>
+        </label>
+        <button id="addCategoryBtn" style="align-self:flex-end">+ Category</button>
+        <button id="addPodcastBtn" style="align-self:flex-end">+ Podcast</button>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="list-pane">
+        <div class="pane-header">
+          <div class="pane-title">Podcasts <span id="podcastCount" style="color:#6b7280;font-weight:400"></span></div>
+        </div>
+        <div class="pane-body" id="catalogBody"></div>
+      </section>
+
+      <section class="detail-pane">
+        <div class="detail-empty" id="detailEmpty">Select a podcast to view details</div>
+        <div class="detail-card" id="detailCard"></div>
+      </section>
+    </main>
+
+    <div class="modal-overlay hidden" id="modalOverlay">
+      <div class="modal" id="modalContent"></div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -38,3 +38,35 @@ export {
   BackgroundJobConfig,
   NotificationPermissions
 } from './notificationScheduler.js';
+
+export {
+  default as NotificationService,
+  NotificationPermissionManager,
+  WebNotificationService,
+  Platform
+} from './notificationService.js';
+
+export {
+  default as BackgroundJobScheduler,
+  getScheduler,
+  initializeBackgroundJobs,
+  stopBackgroundJobs,
+  restartBackgroundJobs,
+  JobQueue,
+  getJobQueue
+} from './backgroundJobScheduler.js';
+
+export {
+  CyclismoJobHandlers,
+  PodlinkJobHandlers,
+  WatcheditJobHandlers,
+  YourtubeJobHandlers,
+  getJobHandlers
+} from './jobHandlers.js';
+
+export {
+  default as NotificationManager,
+  getNotificationManager,
+  initializeNotifications,
+  setupNotifications
+} from './notificationManager.js';

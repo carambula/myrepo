@@ -1,9 +1,12 @@
 /**
  * Notification Preferences Manager
  * Handles reading, writing, and validating notification preferences
+ * 
+ * Storage: Uses iCloud-synced storage for native apps, localStorage fallback
  */
 
 import { getDefaultPreferences, VALIDATION_RULES } from './notificationTypes.js';
+import { getICloudStorage } from '../storage/iCloudStorage.js';
 
 const STORAGE_KEY_PREFIX = 'min-apps-notifications';
 
@@ -15,15 +18,20 @@ function getStorageKey(appId) {
 }
 
 /**
+ * Get storage instance (iCloud-synced or localStorage)
+ */
+function getStorage() {
+  return getICloudStorage();
+}
+
+/**
  * Load notification preferences for an app
  */
-export function loadNotificationPreferences(appId) {
-  if (typeof localStorage === 'undefined') {
-    return getDefaultPreferences(appId);
-  }
-
+export async function loadNotificationPreferences(appId) {
+  const storage = getStorage();
+  
   try {
-    const stored = localStorage.getItem(getStorageKey(appId));
+    const stored = await storage.getItem(getStorageKey(appId));
     if (!stored) {
       return getDefaultPreferences(appId);
     }
@@ -44,12 +52,9 @@ export function loadNotificationPreferences(appId) {
 /**
  * Save notification preferences for an app
  */
-export function saveNotificationPreferences(appId, preferences) {
-  if (typeof localStorage === 'undefined') {
-    console.warn('localStorage not available');
-    return false;
-  }
-
+export async function saveNotificationPreferences(appId, preferences) {
+  const storage = getStorage();
+  
   try {
     const validated = validatePreferences(appId, preferences);
     if (!validated.valid) {
@@ -57,7 +62,7 @@ export function saveNotificationPreferences(appId, preferences) {
       return false;
     }
 
-    localStorage.setItem(getStorageKey(appId), JSON.stringify(preferences));
+    await storage.setItem(getStorageKey(appId), JSON.stringify(preferences));
     return true;
   } catch (error) {
     console.error('Error saving notification preferences:', error);
@@ -68,8 +73,8 @@ export function saveNotificationPreferences(appId, preferences) {
 /**
  * Update a specific notification preference
  */
-export function updateNotificationPreference(appId, notificationType, updates) {
-  const currentPreferences = loadNotificationPreferences(appId);
+export async function updateNotificationPreference(appId, notificationType, updates) {
+  const currentPreferences = await loadNotificationPreferences(appId);
   
   const updatedPreferences = {
     ...currentPreferences,
@@ -85,13 +90,11 @@ export function updateNotificationPreference(appId, notificationType, updates) {
 /**
  * Clear notification preferences for an app
  */
-export function clearNotificationPreferences(appId) {
-  if (typeof localStorage === 'undefined') {
-    return false;
-  }
-
+export async function clearNotificationPreferences(appId) {
+  const storage = getStorage();
+  
   try {
-    localStorage.removeItem(getStorageKey(appId));
+    await storage.removeItem(getStorageKey(appId));
     return true;
   } catch (error) {
     console.error('Error clearing notification preferences:', error);
@@ -194,8 +197,8 @@ export function validatePreferences(appId, preferences) {
 /**
  * Check if any notifications are enabled for an app
  */
-export function hasEnabledNotifications(appId) {
-  const preferences = loadNotificationPreferences(appId);
+export async function hasEnabledNotifications(appId) {
+  const preferences = await loadNotificationPreferences(appId);
   
   return Object.values(preferences).some(setting => setting.enabled === true);
 }
@@ -203,8 +206,8 @@ export function hasEnabledNotifications(appId) {
 /**
  * Get all enabled notification types for an app
  */
-export function getEnabledNotifications(appId) {
-  const preferences = loadNotificationPreferences(appId);
+export async function getEnabledNotifications(appId) {
+  const preferences = await loadNotificationPreferences(appId);
   
   return Object.entries(preferences)
     .filter(([_, settings]) => settings.enabled === true)
@@ -214,41 +217,43 @@ export function getEnabledNotifications(appId) {
 /**
  * Export all preferences (for backup/sync)
  */
-export function exportAllPreferences() {
-  if (typeof localStorage === 'undefined') {
-    return null;
-  }
-
-  const allPreferences = {};
-  const keys = Object.keys(localStorage);
+export async function exportAllPreferences() {
+  const storage = getStorage();
   
-  keys.forEach(key => {
-    if (key.startsWith(STORAGE_KEY_PREFIX)) {
-      try {
-        allPreferences[key] = JSON.parse(localStorage.getItem(key));
-      } catch (error) {
-        console.error(`Error exporting preference ${key}:`, error);
+  try {
+    const allPreferences = {};
+    const keys = await storage.keys();
+    
+    for (const key of keys) {
+      if (key.startsWith(STORAGE_KEY_PREFIX)) {
+        try {
+          const value = await storage.getItem(key);
+          allPreferences[key] = JSON.parse(value);
+        } catch (error) {
+          console.error(`Error exporting preference ${key}:`, error);
+        }
       }
     }
-  });
-
-  return allPreferences;
+    
+    return allPreferences;
+  } catch (error) {
+    console.error('Error exporting all preferences:', error);
+    return null;
+  }
 }
 
 /**
  * Import all preferences (from backup/sync)
  */
-export function importAllPreferences(preferences) {
-  if (typeof localStorage === 'undefined') {
-    return false;
-  }
-
+export async function importAllPreferences(preferences) {
+  const storage = getStorage();
+  
   try {
-    Object.entries(preferences).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(preferences)) {
       if (key.startsWith(STORAGE_KEY_PREFIX)) {
-        localStorage.setItem(key, JSON.stringify(value));
+        await storage.setItem(key, JSON.stringify(value));
       }
-    });
+    }
     return true;
   } catch (error) {
     console.error('Error importing preferences:', error);

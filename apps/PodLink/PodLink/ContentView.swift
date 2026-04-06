@@ -269,13 +269,14 @@ struct ContentView: View {
         accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        let aff = MinAffordanceStyle.shared
+        return Button(action: action) {
             Image(systemName: systemName)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .frame(width: topControlSize, height: topControlSize)
-                .contentShape(Circle())
-                .frostedSurface(Circle())
+                .contentShape(Rectangle())
+                .frostedSurface(aff.insettableCircleShape)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

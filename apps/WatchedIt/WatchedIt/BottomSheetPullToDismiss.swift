@@ -107,23 +107,24 @@ private struct CloseButtonView: View {
             .foregroundStyle(isActive ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
             .frame(width: closeButtonSize, height: closeButtonSize)
             .background {
+                let cs = MinAffordanceStyle.shared.circleShape
                 if blurMode == .flat {
-                    Circle()
-                        .fill(DesignSystem.Color.cardBackground.opacity(isActive ? 0.92 : 0.86))
+                    cs.fill(DesignSystem.Color.cardBackground.opacity(isActive ? 0.92 : 0.86))
                 } else {
-                    Circle()
-                        .fill(GlassControl.floatingMaterial)
+                    cs.fill(GlassControl.floatingMaterial)
                 }
             }
-            .clipShape(Circle())
+            .clipShape(MinAffordanceStyle.shared.circleShape)
             .overlay {
-                Circle()
-                    .stroke(
-                        isActive
-                            ? DesignSystem.Color.accent.opacity(0.35)
-                            : GlassControl.Border.standard.color,
-                        lineWidth: GlassControl.Border.standard.width
-                    )
+                if MinAffordanceStyle.shared.borderEnabled {
+                    MinAffordanceStyle.shared.circleShape
+                        .stroke(
+                            isActive
+                                ? DesignSystem.Color.accent.opacity(0.35)
+                                : GlassControl.Border.standard.color,
+                            lineWidth: GlassControl.Border.standard.width
+                        )
+                }
             }
             .shadow(
                 color: isActive ? DesignSystem.Color.accent.opacity(0.2) : DesignSystem.Shadow.sm.color,

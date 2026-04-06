@@ -8,6 +8,13 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     var isCompact: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
+        let aff = MinAffordanceStyle.shared
+        let circleShape = aff.circleShape
+        let rectShape = aff.capsuleShape
+        let strokeColor: Color = role == .destructive ? DesignSystem.Color.error.opacity(0.3) : .white.opacity(0.2)
+        let compactShape = circleShape
+        let fullShape = rectShape
+
         configuration.label
             .if(!isCompact) { view in
                 view
@@ -15,59 +22,22 @@ struct LiquidGlassButtonStyle: ButtonStyle {
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
             }
             .background {
-                Group {
-                    if role == .destructive {
-                        if isCompact {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .background {
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .blur(radius: 10)
-                                }
-                                .overlay {
-                                    Circle()
-                                        .stroke(DesignSystem.Color.error.opacity(0.3), lineWidth: 0.5)
-                                }
-                        } else {
-                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                .fill(.ultraThinMaterial)
-                                .background {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                        .fill(.ultraThinMaterial)
-                                        .blur(radius: 10)
-                                }
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                        .stroke(DesignSystem.Color.error.opacity(0.3), lineWidth: 0.5)
-                                }
-                        }
+                if isCompact {
+                    compactShape
+                        .fill(.ultraThinMaterial)
+                        .background { compactShape.fill(.ultraThinMaterial).blur(radius: 10) }
+                } else {
+                    fullShape
+                        .fill(.ultraThinMaterial)
+                        .background { fullShape.fill(.ultraThinMaterial).blur(radius: 10) }
+                }
+            }
+            .overlay {
+                if aff.borderEnabled {
+                    if isCompact {
+                        compactShape.stroke(strokeColor, lineWidth: 0.5)
                     } else {
-                        if isCompact {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .background {
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .blur(radius: 10)
-                                }
-                                .overlay {
-                                    Circle()
-                                        .stroke(.white.opacity(0.2), lineWidth: 0.5)
-                                }
-                        } else {
-                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                .fill(.ultraThinMaterial)
-                                .background {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                        .fill(.ultraThinMaterial)
-                                        .blur(radius: 10)
-                                }
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                        .stroke(.white.opacity(0.2), lineWidth: 0.5)
-                                }
-                        }
+                        fullShape.stroke(strokeColor, lineWidth: 0.5)
                     }
                 }
             }

@@ -303,13 +303,10 @@ struct SearchScreenView: View {
                     isSearchFieldFocused = true
                 }
             } label: {
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
+                MinAffordanceStyle.shared.capsuleShape
                     .fill(GlassControl.floatingMaterial)
                     .frame(width: 100, height: 24)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                            .stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width)
-                    )
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width) } }
             }
             .padding(.bottom, DesignSystem.Spacing.sm)
             .frame(maxWidth: .infinity)
@@ -537,11 +534,8 @@ struct SearchScreenView: View {
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
             .frame(height: searchControlSize)
             .background(GlassControl.toolbarMaterial)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-            )
+            .clipShape(MinAffordanceStyle.shared.capsuleShape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
 
             if mainToolbarLayoutStyle == .separated {
                 Spacer(minLength: DesignSystem.Spacing.sm)

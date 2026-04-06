@@ -37,6 +37,9 @@ struct GlassButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape = isCircular
+            ? MinAffordanceStyle.shared.circleShape
+            : MinAffordanceStyle.shared.capsuleShape
         configuration.label
             .padding(isCircular ? 10 : 12)
             .background {
@@ -51,7 +54,7 @@ struct GlassButtonStyle: ButtonStyle {
                     }
                 }
             }
-            .clipShape(isCircular ? AnyShape(Circle()) : AnyShape(Capsule()))
+            .clipShape(shape)
             .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
             .animation(.spring(response: 0.2), value: configuration.isPressed)
     }
@@ -60,8 +63,10 @@ struct GlassButtonStyle: ButtonStyle {
         ZStack {
             Color.clear
                 .background(.ultraThinMaterial)
-            RoundedRectangle(cornerRadius: 100)
-                .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
+            if MinAffordanceStyle.shared.borderEnabled {
+                RoundedRectangle(cornerRadius: 100)
+                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
+            }
         }
     }
 
@@ -69,15 +74,17 @@ struct GlassButtonStyle: ButtonStyle {
         ZStack {
             Color.clear
                 .background(.ultraThinMaterial)
-            RoundedRectangle(cornerRadius: 100)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.75
-                )
+            if MinAffordanceStyle.shared.borderEnabled {
+                RoundedRectangle(cornerRadius: 100)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.75
+                    )
+            }
         }
     }
 
@@ -92,19 +99,21 @@ struct GlassButtonStyle: ButtonStyle {
                 endPoint: .bottomTrailing
             )
 
-            RoundedRectangle(cornerRadius: 100)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 0.75
-                )
+            if MinAffordanceStyle.shared.borderEnabled {
+                RoundedRectangle(cornerRadius: 100)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.75
+                    )
 
-            RoundedRectangle(cornerRadius: 100)
-                .strokeBorder(Color.white.opacity(0.5), lineWidth: 0.25)
-                .padding(0.5)
+                RoundedRectangle(cornerRadius: 100)
+                    .strokeBorder(Color.white.opacity(0.5), lineWidth: 0.25)
+                    .padding(0.5)
+            }
         }
     }
 }
@@ -115,28 +124,31 @@ struct GlassToolbarModifier: ViewModifier {
     let style: GlassComponentStyle
 
     func body(content: Content) -> some View {
+        let shape = MinAffordanceStyle.shared.insettableCapsuleShape
         content
             .padding(.horizontal, DesignSystem.Spacing.lg)
             .padding(.vertical, DesignSystem.Spacing.md)
             .background {
-                Capsule()
+                shape
                     .fill(.clear)
                     .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
+                    .clipShape(MinAffordanceStyle.shared.capsuleShape)
                     .overlay {
-                        if style == .enhanced || style == .premium {
-                            Capsule()
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.75
-                                )
-                        } else {
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
+                        if MinAffordanceStyle.shared.borderEnabled {
+                            if style == .enhanced || style == .premium {
+                                shape
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 0.75
+                                    )
+                            } else {
+                                shape
+                                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
+                            }
                         }
                     }
                     .shadow(color: .black.opacity(0.10), radius: style == .premium ? 4 : 2, y: 1)
@@ -197,6 +209,11 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
+        let circleShape = MinAffordanceStyle.shared.circleShape
+        let rectShape = MinAffordanceStyle.shared.capsuleShape
+        let strokeColor = role == .destructive
+            ? DesignSystem.Colors.error.opacity(0.35)
+            : DesignSystem.Colors.borderLight.opacity(0.9)
         Group {
             if isCompact {
                 configuration.label
@@ -208,29 +225,18 @@ struct LiquidGlassButtonStyle: ButtonStyle {
         }
         .background {
             if isCompact {
-                Circle()
-                    .fill(role == .destructive ? destructiveFillColor : baseFillColor)
-                    .overlay {
-                        Circle()
-                            .stroke(
-                                role == .destructive
-                                    ? DesignSystem.Colors.error.opacity(0.35)
-                                    : DesignSystem.Colors.borderLight.opacity(0.9),
-                                lineWidth: 0.8
-                            )
-                    }
+                circleShape.fill(role == .destructive ? destructiveFillColor : baseFillColor)
             } else {
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                    .fill(role == .destructive ? destructiveFillColor : baseFillColor)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                            .stroke(
-                                role == .destructive
-                                    ? DesignSystem.Colors.error.opacity(0.35)
-                                    : DesignSystem.Colors.borderLight.opacity(0.9),
-                                lineWidth: 0.8
-                            )
-                    }
+                rectShape.fill(role == .destructive ? destructiveFillColor : baseFillColor)
+            }
+        }
+        .overlay {
+            if MinAffordanceStyle.shared.borderEnabled {
+                if isCompact {
+                    circleShape.stroke(strokeColor, lineWidth: 0.8)
+                } else {
+                    rectShape.stroke(strokeColor, lineWidth: 0.8)
+                }
             }
         }
         .foregroundStyle(role == .destructive ? DesignSystem.Colors.error : DesignSystem.Colors.textPrimary)
@@ -301,8 +307,9 @@ struct FrostedSurfaceModifier<S: InsettableShape>: ViewModifier {
                 shape
                     .fill(.thinMaterial)
                     .overlay {
-                        shape
-                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
+                        if MinAffordanceStyle.shared.borderEnabled {
+                            shape.strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
+                        }
                     }
                     .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
             }
@@ -324,11 +331,12 @@ struct FrostedIconButtonStyle: ButtonStyle {
     var foreground: Color = DesignSystem.Colors.accent
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape = MinAffordanceStyle.shared.insettableCircleShape
         configuration.label
             .font(.body.weight(.semibold))
             .foregroundStyle(foreground)
             .frame(width: size, height: size)
-            .frostedSurface(Circle())
+            .frostedSurface(shape)
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(DesignSystem.Animation.quick, value: configuration.isPressed)
     }

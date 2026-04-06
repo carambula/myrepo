@@ -339,109 +339,137 @@ struct MiniPlayerView: View {
     private var microplayerIconHitSize: CGFloat { 32 }
 
     private var microplayerRow: some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            if let episode = playbackService.state.currentEpisode {
-                Button {
-                    showNowPlayingSheet = true
-                } label: {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.18), lineWidth: 2.5)
+        let aff = MinAffordanceStyle.shared
+        let isSquare = aff.isSquare
+        let surfaceShape = aff.insettableCapsuleShape
+        let artClipShape = aff.circleShape
+        let progress = min(max(playbackService.state.progress, 0), 1)
 
-                        Circle()
-                            .trim(from: 0, to: min(max(playbackService.state.progress, 0), 1))
-                            .stroke(
-                                themeManager.currentTheme.accentColor,
-                                style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+        return VStack(spacing: 0) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                if let episode = playbackService.state.currentEpisode {
+                    Button {
+                        showNowPlayingSheet = true
+                    } label: {
+                        ZStack {
+                            if !isSquare {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.18), lineWidth: 2.5)
+
+                                Circle()
+                                    .trim(from: 0, to: progress)
+                                    .stroke(
+                                        themeManager.currentTheme.accentColor,
+                                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                                    )
+                                    .rotationEffect(.degrees(-90))
+                            }
+
+                            AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(1, contentMode: .fill)
+                            } placeholder: {
+                                artClipShape
+                                    .fill(Color(.tertiarySystemFill))
+                            }
+                            .frame(
+                                width: isSquare ? microplayerArtworkOuterSize : microplayerArtworkInnerSize,
+                                height: isSquare ? microplayerArtworkOuterSize : microplayerArtworkInnerSize
                             )
-                            .rotationEffect(.degrees(-90))
-
-                        AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(1, contentMode: .fill)
-                        } placeholder: {
-                            Circle()
-                                .fill(Color(.tertiarySystemFill))
+                            .clipShape(artClipShape)
                         }
-                        .frame(width: microplayerArtworkInnerSize, height: microplayerArtworkInnerSize)
-                        .clipShape(Circle())
-                    }
-                    .frame(width: microplayerArtworkOuterSize, height: microplayerArtworkOuterSize)
-                    .scaleEffect(artworkBufferThrob ? 0.85 : 1.0)
-                    .opacity(artworkBufferThrob ? 0.5 : 1.0)
-                    .onChange(of: playbackService.state.isBuffering) { _, buffering in
-                        if buffering {
+                        .frame(width: microplayerArtworkOuterSize, height: microplayerArtworkOuterSize)
+                        .scaleEffect(artworkBufferThrob ? 0.85 : 1.0)
+                        .opacity(artworkBufferThrob ? 0.5 : 1.0)
+                        .onChange(of: playbackService.state.isBuffering) { _, buffering in
+                            if buffering {
+                                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                                    artworkBufferThrob = true
+                                }
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    artworkBufferThrob = false
+                                }
+                            }
+                        }
+                        .onAppear {
+                            guard playbackService.state.isBuffering else { return }
                             withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
                                 artworkBufferThrob = true
                             }
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                artworkBufferThrob = false
-                            }
                         }
                     }
-                    .onAppear {
-                        guard playbackService.state.isBuffering else { return }
-                        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
-                            artworkBufferThrob = true
-                        }
-                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open now playing")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open now playing")
-            }
 
-            Button {
-                playbackService.skipBackward()
-            } label: {
-                Image(systemName: "gobackward.15")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(DesignSystem.Colors.textPrimary)
-                    .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
-            }
-            .buttonStyle(.plain)
-            .disabled(restrictTransportForOfflineStream)
-
-            Button {
-                playbackService.togglePlayPause()
-            } label: {
-                Image(systemName: playbackService.state.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(DesignSystem.Colors.textPrimary)
-                    .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
-            }
-            .buttonStyle(.plain)
-            .disabled(restrictTransportForOfflineStream)
-
-            Button {
-                playbackService.skipForward()
-            } label: {
-                Image(systemName: "goforward.30")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(DesignSystem.Colors.textPrimary)
-                    .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
-            }
-            .buttonStyle(.plain)
-            .disabled(restrictTransportForOfflineStream)
-
-            if !playbackService.state.queue.isEmpty {
                 Button {
-                    Task { await playbackService.playNextInQueue() }
+                    playbackService.skipBackward()
                 } label: {
-                    Image(systemName: "forward.end.fill")
+                    Image(systemName: "gobackward.15")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(DesignSystem.Colors.textPrimary)
                         .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Play next in queue")
+                .disabled(restrictTransportForOfflineStream)
+
+                Button {
+                    playbackService.togglePlayPause()
+                } label: {
+                    Image(systemName: playbackService.state.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                        .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
+                }
+                .buttonStyle(.plain)
+                .disabled(restrictTransportForOfflineStream)
+
+                Button {
+                    playbackService.skipForward()
+                } label: {
+                    Image(systemName: "goforward.30")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
+                        .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
+                }
+                .buttonStyle(.plain)
+                .disabled(restrictTransportForOfflineStream)
+
+                if !playbackService.state.queue.isEmpty {
+                    Button {
+                        Task { await playbackService.playNextInQueue() }
+                    } label: {
+                        Image(systemName: "forward.end.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                            .frame(width: microplayerIconHitSize, height: microplayerIconHitSize)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Play next in queue")
+                }
+            }
+            .padding(.leading, DesignSystem.Spacing.sm)
+            .padding(.trailing, DesignSystem.Spacing.sm)
+            .frame(height: isSquare ? microplayerContainerHeight - 3 : microplayerContainerHeight)
+
+            if isSquare {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.18))
+                        Rectangle()
+                            .fill(themeManager.currentTheme.accentColor)
+                            .frame(width: geo.size.width * progress)
+                    }
+                }
+                .frame(height: 3)
+                .clipShape(Rectangle())
             }
         }
-        .padding(.leading, DesignSystem.Spacing.sm)
-        .padding(.trailing, DesignSystem.Spacing.sm)
         .frame(height: microplayerContainerHeight)
-        .frostedSurface(Capsule())
+        .frostedSurface(surfaceShape)
     }
 
     private var floatingMicroplayerView: some View {

@@ -411,13 +411,15 @@ struct DesignSystemButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape = MinAffordanceStyle.shared.capsuleShape
         configuration.label
             .font(size.fontSize)
             .foregroundColor(foregroundColor(for: variant))
             .padding(.vertical, size.verticalPadding)
             .padding(.horizontal, size.horizontalPadding)
             .background(backgroundColor(for: variant))
-            .cornerRadius(DesignSystem.CornerRadius.md)
+            .clipShape(shape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(MinAffordanceStyle.borderColor, lineWidth: MinAffordanceStyle.borderLineWidth) } }
             .opacity(configuration.isPressed ? DesignSystem.Opacity.pressed : 1.0)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(DesignSystem.Animation.springQuick, value: configuration.isPressed)

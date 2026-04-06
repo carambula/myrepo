@@ -137,7 +137,7 @@ private struct ChannelVideoRowView: View {
                         .foregroundStyle(.white)
                         .padding(8)
                         .background(.black.opacity(0.65))
-                        .clipShape(Circle())
+                        .clipShape(MinAffordanceStyle.shared.circleShape)
                         .padding(8)
                 }
             }

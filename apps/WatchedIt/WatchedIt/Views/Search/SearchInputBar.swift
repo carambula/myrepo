@@ -59,11 +59,8 @@ struct SearchInputBar: View {
         .padding(.horizontal, DesignSystem.Spacing.md)
         .frame(height: controlHeight)
         .background(GlassControl.floatingMaterial)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-        )
+        .clipShape(MinAffordanceStyle.shared.capsuleShape)
+        .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
         .onAppear {
             draftText = committedText
             Task { @MainActor in

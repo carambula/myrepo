@@ -419,13 +419,10 @@ private struct CollectionsHomeContentView: View {
                     toolbarScrollState.expand()
                 }
             } label: {
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
+                MinAffordanceStyle.shared.capsuleShape
                     .fill(GlassControl.floatingMaterial)
                     .frame(width: 100, height: 24)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                            .stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width)
-                    )
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width) } }
             }
             .padding(.bottom, DesignSystem.Spacing.sm)
             .frame(maxWidth: .infinity)

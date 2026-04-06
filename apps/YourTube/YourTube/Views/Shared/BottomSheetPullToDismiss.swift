@@ -32,16 +32,20 @@ struct BottomSheetPullToDismiss: ViewModifier {
                     .foregroundStyle(isCloseReady ? Color.white : Color.secondary)
                     .frame(width: DesignSystem.Controls.controlHeight, height: DesignSystem.Controls.controlHeight)
                     .background {
+                        let cs = MinAffordanceStyle.shared.circleShape
                         if isCloseReady {
-                            Circle().fill(Color.red.opacity(0.9))
+                            cs.fill(Color.red.opacity(0.9))
                         } else {
-                            Circle().fill(.ultraThinMaterial)
+                            cs.fill(.ultraThinMaterial)
                         }
                     }
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(isCloseReady ? 0.35 : 0.2), lineWidth: 0.8)
-                    )
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
+                    .overlay {
+                        if MinAffordanceStyle.shared.borderEnabled {
+                            MinAffordanceStyle.shared.circleShape
+                                .stroke(Color.white.opacity(isCloseReady ? 0.35 : 0.2), lineWidth: 0.8)
+                        }
+                    }
                     .padding(.bottom, 14)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }

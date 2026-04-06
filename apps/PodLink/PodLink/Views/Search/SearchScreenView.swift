@@ -311,11 +311,8 @@ struct SearchScreenView: View {
             .padding(.horizontal, DesignSystem.Spacing.md)
             .frame(height: searchControlHeight)
             .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(Color.white.opacity(0.28), lineWidth: 0.8)
-            }
+            .clipShape(MinAffordanceStyle.shared.capsuleShape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
 
             Button {
                 dismiss()
@@ -325,11 +322,8 @@ struct SearchScreenView: View {
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
                     .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(Color.white.opacity(0.28), lineWidth: 0.8)
-                    }
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close Search")

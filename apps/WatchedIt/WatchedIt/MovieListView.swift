@@ -3479,13 +3479,10 @@ struct MovieListView: View {
                 toolbarScrollState.expand()
             }
         } label: {
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
+            MinAffordanceStyle.shared.capsuleShape
                 .fill(GlassControl.floatingMaterial)
                 .frame(width: 100, height: 24)
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                        .stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width)
-                )
+                .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width) } }
         }
         .padding(.bottom, DesignSystem.Spacing.sm)
         .frame(maxWidth: .infinity)
@@ -3499,13 +3496,10 @@ struct MovieListView: View {
                 isSearchFieldFocused = true
             }
         } label: {
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
+            MinAffordanceStyle.shared.capsuleShape
                 .fill(GlassControl.floatingMaterial)
                 .frame(width: 100, height: 24)
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
-                        .stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width)
-                )
+                .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.subtle.color, lineWidth: GlassControl.Border.subtle.width) } }
         }
         .padding(.bottom, DesignSystem.Spacing.sm)
         .frame(maxWidth: .infinity)
@@ -3665,14 +3659,16 @@ struct MovieListView: View {
                     .frame(width: GlassControl.compactHeight, height: GlassControl.compactHeight)
                     .foregroundStyle(searchFilterButtonColor)
                     .background(DesignSystem.Color.accent)
-                    .clipShape(Circle())
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(MinAffordanceStyle.borderColor, lineWidth: MinAffordanceStyle.borderLineWidth) } }
                     .shadow(color: DesignSystem.Color.accent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
         }
     }
     
     private var searchFieldContainer: some View {
-        HStack(spacing: DesignSystem.Spacing.sm) {
+        let aff = MinAffordanceStyle.shared
+        return HStack(spacing: DesignSystem.Spacing.sm) {
             DesignSystemIcon(DesignSystem.Icon.search, size: DesignSystem.IconSize.sm, color: searchIconColor)
             DebouncedSearchInputField(
                 committedText: $searchText,
@@ -3683,8 +3679,8 @@ struct MovieListView: View {
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .frame(height: usesCustomFloatingToolbar ? customToolbarControlHeight : glassControlHeight)
         .background(searchFieldBackground)
-        .clipShape(Capsule())
-        .overlay(searchFieldOverlay)
+        .clipShape(aff.capsuleShape)
+        .overlay { if aff.borderEnabled { searchFieldOverlay } }
         .shadow(color: searchFieldShadowColor, radius: searchFieldShadowRadius, x: 0, y: searchFieldShadowY)
     }
     
@@ -3722,37 +3718,30 @@ struct MovieListView: View {
     
     @ViewBuilder
     private var searchFieldOverlay: some View {
+        let s = MinAffordanceStyle.shared.capsuleShape
         switch searchBarAppearance {
         case .classic:
-            Capsule()
-                .stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
         case .solid:
-            Capsule()
-                .stroke(DesignSystem.Color.accent, lineWidth: 1.5)
+            s.stroke(DesignSystem.Color.accent, lineWidth: 1.5)
         case .elevated:
-            Capsule()
-                .stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
         case .glass:
             ZStack {
-                // Inner subtle border
-                Capsule()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.3),
-                                .white.opacity(0.1),
-                                .clear,
-                                .white.opacity(0.15)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.0
-                    )
-                
-                // Outer border for definition
-                Capsule()
-                    .stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5)
+                s.stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.3),
+                            .white.opacity(0.1),
+                            .clear,
+                            .white.opacity(0.15)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.0
+                )
+                s.stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5)
             }
         }
     }
@@ -3834,7 +3823,8 @@ struct MovieListView: View {
                     .frame(width: GlassControl.compactHeight, height: GlassControl.compactHeight)
                     .foregroundStyle(DesignSystem.Color.textPrimary)
                     .background(DesignSystem.Color.accent)
-                    .clipShape(Circle())
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(MinAffordanceStyle.borderColor, lineWidth: MinAffordanceStyle.borderLineWidth) } }
                     .shadow(color: DesignSystem.Color.accent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
         }
@@ -4626,6 +4616,7 @@ struct AccountSheetView: View {
     @State private var showThemes = false
     @State private var isRefreshingCatalog = false
     @State private var refreshAlertMessage: String? = nil
+    @Bindable private var affordanceStyle = MinAffordanceStyle.shared
 
     private func accountActionRowLabel(_ title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
@@ -4684,7 +4675,24 @@ struct AccountSheetView: View {
                         accountActionRowLabel("Themes", systemImage: DesignSystem.Icon.settings)
                     }
                     .buttonStyle(.plain)
-                    
+
+                    Toggle(isOn: $affordanceStyle.borderEnabled) {
+                        Label("Affordance border", systemImage: "square.dashed")
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                    }
+
+                    HStack {
+                        Label("Affordance shape", systemImage: "square.on.circle")
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                        Spacer()
+                        Picker("", selection: $affordanceStyle.shape) {
+                            ForEach(MinAffordanceStyle.Shape.allCases, id: \.self) { shape in
+                                Text(shape.displayName).tag(shape)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
                     NavigationLink(destination: LoadingScreenStyleView()) {
                         Label("Loading Screen Style", systemImage: "sparkles.rectangle.stack")
                             .foregroundStyle(DesignSystem.Color.textPrimary)
@@ -4692,6 +4700,11 @@ struct AccountSheetView: View {
                     
                     NavigationLink(destination: SearchBarAppearanceView()) {
                         Label("Search Bar Appearance", systemImage: DesignSystem.Icon.search)
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                    }
+                    
+                    NavigationLink(destination: FontOverrideSettingsView()) {
+                        Label("Fonts", systemImage: "textformat")
                             .foregroundStyle(DesignSystem.Color.textPrimary)
                     }
 
@@ -5039,13 +5052,10 @@ struct CustomToolbarIconSpacingView: View {
                                 .padding(.horizontal, DesignSystem.Spacing.md)
                                 .frame(height: 34)
                                 .background(.thinMaterial)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-                                )
+                                .clipShape(MinAffordanceStyle.shared.capsuleShape)
+                                .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
 
-                                Circle()
+                                MinAffordanceStyle.shared.circleShape
                                     .fill(.thinMaterial)
                                     .frame(width: 34, height: 34)
                                     .overlay(
@@ -5053,10 +5063,7 @@ struct CustomToolbarIconSpacingView: View {
                                             .font(.system(size: 12, weight: .semibold))
                                             .foregroundStyle(DesignSystem.Color.secondaryAccent ?? DesignSystem.Color.accent)
                                     )
-                                    .overlay(
-                                        Circle()
-                                            .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-                                    )
+                                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
                             }
                         }
                         .padding(.vertical, DesignSystem.Spacing.xs)
@@ -5369,8 +5376,8 @@ struct SearchBarAppearanceRow: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .background(backgroundForPreview)
-                .clipShape(Capsule())
-                .overlay(overlayForPreview)
+                .clipShape(MinAffordanceStyle.shared.capsuleShape)
+                .overlay { if MinAffordanceStyle.shared.borderEnabled { overlayForPreview } }
                 .shadow(color: shadowColorForPreview, radius: shadowRadiusForPreview, x: 0, y: 2)
                 .padding(.horizontal, 8)
                 
@@ -5409,33 +5416,29 @@ struct SearchBarAppearanceRow: View {
     
     @ViewBuilder
     private var overlayForPreview: some View {
+        let s = MinAffordanceStyle.shared.capsuleShape
         switch appearance {
         case .classic:
-            Capsule()
-                .stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
         case .solid:
-            Capsule()
-                .stroke(DesignSystem.Color.accent, lineWidth: 1)
+            s.stroke(DesignSystem.Color.accent, lineWidth: 1)
         case .elevated:
-            Capsule()
-                .stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
         case .glass:
             ZStack {
-                Capsule()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.3),
-                                .white.opacity(0.1),
-                                .clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.5
-                    )
-                Capsule()
-                    .stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.3)
+                s.stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.3),
+                            .white.opacity(0.1),
+                            .clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+                s.stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.3)
             }
         }
     }

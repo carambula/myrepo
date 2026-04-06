@@ -12,6 +12,7 @@ cd /path/to/your/myrepo
 ```
 
 This will copy the Rotina fonts to:
+
 - `apps/WatchedIt/WatchedIt/Fonts/Rotina/`
 - `apps/PodLink/PodLink/Fonts/Rotina/`
 - `apps/YourTube/YourTube/Fonts/Rotina/`
@@ -22,42 +23,36 @@ This will copy the Rotina fonts to:
 For **each app** (WatchedIt, PodLink, YourTube, Cyclismo):
 
 1. **Open the app in Xcode**
-
 2. **Locate the Fonts/Rotina folder** in Finder:
-   ```
+  ```
    apps/[AppName]/[AppName]/Fonts/Rotina/
-   ```
-
+  ```
 3. **Drag the entire Rotina folder** into the Xcode project navigator
-   - Drag it into the `[AppName]/Fonts/` group
-   - If the `Fonts` group doesn't exist, create it first
-
+  - Drag it into the `[AppName]/Fonts/` group
+  - If the `Fonts` group doesn't exist, create it first
 4. **In the dialog that appears, ensure:**
-   - ✅ "Copy items if needed" is **checked**
-   - ✅ "Create groups" is **selected** (not "Create folder references")
-   - ✅ Your app target is **checked** under "Add to targets"
-   - Click "Finish"
-
+  - ✅ "Copy items if needed" is **checked**
+  - ✅ "Create groups" is **selected** (not "Create folder references")
+  - ✅ Your app target is **checked** under "Add to targets"
+  - Click "Finish"
 5. **Verify fonts were added:**
-   - Select your app target in Xcode
-   - Go to "Build Phases" tab
-   - Expand "Copy Bundle Resources"
-   - You should see all 16 Rotina font files listed (or 32 if both .woff2 and .woff)
+  - Select your app target in Xcode
+  - Go to "Build Phases" tab
+  - Expand "Copy Bundle Resources"
+  - You should see all 16 Rotina font files listed (or 32 if both .woff2 and .woff)
 
 ## Step 3: Register Fonts in Info.plist
 
 For **each app**:
 
 1. **Open Info.plist** in Xcode (or as source code)
-
 2. **Add the font files** by adding this key:
-   - Right-click in Info.plist
-   - Select "Add Row"
-   - Choose "Fonts provided by application" (or type `UIAppFonts`)
-   - Set type to "Array"
-
+  - Right-click in Info.plist
+  - Select "Add Row"
+  - Choose "Fonts provided by application" (or type `UIAppFonts`)
+  - Set type to "Array"
 3. **Add each font file** as array items:
-   ```xml
+  ```xml
    <key>UIAppFonts</key>
    <array>
        <string>Rotina-ExtraThin.woff2</string>
@@ -77,13 +72,8 @@ For **each app**:
        <string>Rotina-BoldItalic.woff2</string>
        <string>Rotina-ExtraBoldItalic.woff2</string>
    </array>
-   ```
-
+  ```
    Or use the snippet file:
-   ```bash
-   # Copy the snippet content from:
-   packages/design-system/scripts/Info.plist-fonts-snippet.xml
-   ```
 
 ## Step 4: Update ThemeManager
 
@@ -392,12 +382,11 @@ func verifyFontsLoaded() {
 ### Font Names Don't Match
 
 1. **Get actual font names**:
-   ```swift
+  ```swift
    if let font = UIFont(name: "Rotina-Regular", size: 12) {
        print("Font loaded: \(font.fontName)")
    }
-   ```
-
+  ```
 2. **Use Font Book app** on Mac to inspect font names
 
 ### File Size Concerns
@@ -409,6 +398,7 @@ func verifyFontsLoaded() {
 ## Next Steps
 
 After integration:
+
 - Update existing text styles to use custom fonts
 - Create reusable font modifiers
 - Test on different devices and iOS versions
@@ -419,3 +409,4 @@ After integration:
 - [Font Override Documentation](../docs/font-override.md)
 - [Font Override Integration Guide](../docs/font-override-integration.md)
 - [Design System Typography Tokens](../docs/tokens.md#typography)
+

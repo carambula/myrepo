@@ -297,7 +297,7 @@ private struct VideoRowView: View {
                         .foregroundStyle(.white)
                         .padding(6)
                         .background(.black.opacity(0.65))
-                        .clipShape(Circle())
+                        .clipShape(MinAffordanceStyle.shared.circleShape)
                         .padding(6)
                 }
                 .frame(width: 146, height: 82)

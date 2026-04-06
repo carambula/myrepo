@@ -16,39 +16,42 @@ private struct CloseButtonView: View {
     let isActive: Bool
 
     var body: some View {
+        let cs = MinAffordanceStyle.shared.circleShape
         ZStack {
-            Circle()
+            cs
                 .fill(.ultraThinMaterial)
                 .background {
-                    Circle()
+                    cs
                         .fill(.ultraThinMaterial)
                         .blur(radius: 8)
                 }
                 .overlay {
-                    ZStack {
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(isActive ? 0.4 : 0.2),
-                                        .white.opacity(isActive ? 0.15 : 0.08),
-                                        .clear,
-                                        .white.opacity(isActive ? 0.2 : 0.1)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                        Circle()
-                            .stroke(
-                                isActive ? DesignSystem.Color.accent.opacity(0.6) : DesignSystem.Color.textSecondary.opacity(0.4),
-                                lineWidth: 1
-                            )
+                    if MinAffordanceStyle.shared.borderEnabled {
+                        ZStack {
+                            cs
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            .white.opacity(isActive ? 0.4 : 0.2),
+                                            .white.opacity(isActive ? 0.15 : 0.08),
+                                            .clear,
+                                            .white.opacity(isActive ? 0.2 : 0.1)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                            cs
+                                .stroke(
+                                    isActive ? DesignSystem.Color.accent.opacity(0.6) : DesignSystem.Color.textSecondary.opacity(0.4),
+                                    lineWidth: 1
+                                )
+                        }
                     }
                 }
                 .overlay {
-                    Circle()
+                    cs
                         .fill(
                             LinearGradient(
                                 colors: [

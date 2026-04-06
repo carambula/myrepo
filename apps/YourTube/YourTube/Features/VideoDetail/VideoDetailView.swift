@@ -112,7 +112,7 @@ struct VideoDetailView: View {
                     .foregroundStyle(.white)
                     .padding(10)
                     .background(.black.opacity(0.7))
-                    .clipShape(Circle())
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
             }
             .buttonStyle(.plain)
             .padding(10)
@@ -139,7 +139,7 @@ struct VideoDetailView: View {
                     .foregroundStyle(.white)
                     .padding(18)
                     .background(.black.opacity(0.68))
-                    .clipShape(Circle())
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
             }
             .frame(height: 220)
             .frame(maxWidth: .infinity)

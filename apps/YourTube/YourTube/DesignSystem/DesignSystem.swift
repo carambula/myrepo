@@ -384,6 +384,7 @@ struct DesignSystemButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape = MinAffordanceStyle.shared.capsuleShape
         configuration.label
             .font(size.font)
             .foregroundStyle(foregroundColor)
@@ -391,7 +392,8 @@ struct DesignSystemButtonStyle: ButtonStyle {
             .padding(.horizontal, size.horizontalPadding)
             .frame(minHeight: DesignSystem.Controls.controlHeight)
             .background(backgroundColor.opacity(configuration.isPressed ? 0.75 : 1))
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg, style: .continuous))
+            .clipShape(shape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(MinAffordanceStyle.borderColor, lineWidth: MinAffordanceStyle.borderLineWidth) } }
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(DesignSystem.Animation.springQuick, value: configuration.isPressed)
     }
@@ -421,16 +423,14 @@ struct CircularGlassIconButtonStyle: ButtonStyle {
     var size: CGFloat = DesignSystem.Controls.iconButtonSize
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape = MinAffordanceStyle.shared.circleShape
         configuration.label
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(DesignSystem.Color.textPrimary)
             .frame(width: size, height: size)
             .background(.thinMaterial.opacity(configuration.isPressed ? 0.65 : 1))
-            .overlay(
-                Circle()
-                    .stroke(DesignSystem.Color.border.opacity(0.4), lineWidth: 1)
-            )
-            .clipShape(Circle())
+            .clipShape(shape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(DesignSystem.Color.border.opacity(0.4), lineWidth: 1) } }
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(DesignSystem.Animation.springQuick, value: configuration.isPressed)
     }

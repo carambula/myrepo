@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F60718293A4B11 /* WatchedIt/theme_presets.json in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B10 /* WatchedIt/theme_presets.json */; };
 		A1B2C3D4E5F60718293A4B12 /* WatchedIt/theme_presets.json in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B10 /* WatchedIt/theme_presets.json */; };
+		D93087FB2F83D7AE00F7A445 /* MinAppKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60718293B20A1 /* MinAppKit */; };
+		D93087FC2F83D7AE00F7A445 /* MinAppKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60718293B20A2 /* MinAppKit */; };
 		E1C0FF1A2B3C4D5E6F708193 /* WatchedIt/bootstrap_database.store in Resources */ = {isa = PBXBuildFile; fileRef = E1C0FF1A2B3C4D5E6F708192 /* WatchedIt/bootstrap_database.store */; };
 		F0A1B2C3D4E5F60718293A55 /* WatchedIt/bootstrap_database.store in Resources */ = {isa = PBXBuildFile; fileRef = E1C0FF1A2B3C4D5E6F708192 /* WatchedIt/bootstrap_database.store */; };
 		F0A1B2C3D4E5F60718293B12 /* WatchedItCore in Frameworks */ = {isa = PBXBuildFile; productRef = F0A1B2C3D4E5F60718293B11 /* WatchedItCore */; };
@@ -81,6 +83,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D93087FB2F83D7AE00F7A445 /* MinAppKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +105,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D93087FC2F83D7AE00F7A445 /* MinAppKit in Frameworks */,
 				F0A1B2C3D4E5F60718293B12 /* WatchedItCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -795,22 +799,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F0A1B2C3D4E5F60718293B10 /* XCLocalSwiftPackageReference "." */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = .;
-		};
 		A1B2C3D4E5F60718293B20A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../../packages/design-system/swift";
 		};
+		F0A1B2C3D4E5F60718293B10 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F0A1B2C3D4E5F60718293B11 /* WatchedItCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F0A1B2C3D4E5F60718293B10 /* XCLocalSwiftPackageReference "." */;
-			productName = WatchedItCore;
-		};
 		A1B2C3D4E5F60718293B20A1 /* MinAppKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D4E5F60718293B20A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */;
@@ -820,6 +819,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D4E5F60718293B20A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */;
 			productName = MinAppKit;
+		};
+		F0A1B2C3D4E5F60718293B11 /* WatchedItCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0A1B2C3D4E5F60718293B10 /* XCLocalSwiftPackageReference "." */;
+			productName = WatchedItCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -12,6 +12,7 @@ struct AccountSheetView: View {
     @AppStorage("backgroundPlaybackBehavior") private var backgroundPlaybackBehaviorRawValue = BackgroundPlaybackBehavior.continuePlaying.rawValue
     @AppStorage("playbackTimeLimit") private var playbackTimeLimitRawValue = PlaybackTimeLimit.off.rawValue
     @AppStorage("videoDetailPresentationMode") private var videoDetailPresentationModeRawValue = VideoDetailPresentationMode.fullYouTubePage.rawValue
+    @Bindable private var affordanceStyle = MinAffordanceStyle.shared
     @State private var showsThemeSelection = false
     @State private var showsNotificationPreferences = false
 
@@ -74,6 +75,15 @@ struct AccountSheetView: View {
                     Picker("Search Placement", selection: $searchPlacement) {
                         Text("Top leading").tag(NavigationSearchPlacement.topLeading)
                         Text("Bottom trailing").tag(NavigationSearchPlacement.bottomTrailing)
+                    }
+                    .pickerStyle(.menu)
+
+                    Toggle("Affordance border", isOn: $affordanceStyle.borderEnabled)
+
+                    Picker("Affordance shape", selection: $affordanceStyle.shape) {
+                        ForEach(MinAffordanceStyle.Shape.allCases, id: \.self) { shape in
+                            Text(shape.displayName).tag(shape)
+                        }
                     }
                     .pickerStyle(.menu)
                 }

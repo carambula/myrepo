@@ -391,7 +391,8 @@ struct RaceListView: View {
     }
 
     private var customFloatingFilterGroup: some View {
-        HStack(spacing: customToolbarIconSpacing.points) {
+        let aff = MinAffordanceStyle.shared
+        return HStack(spacing: customToolbarIconSpacing.points) {
             categoryMenu
             formatMenu
             streamerMenu
@@ -400,11 +401,8 @@ struct RaceListView: View {
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .frame(height: customToolbarControlHeight)
         .background(.thinMaterial)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(.white.opacity(0.28), lineWidth: 0.8)
-        )
+        .clipShape(aff.capsuleShape)
+        .overlay { if aff.borderEnabled { aff.capsuleShape.stroke(.white.opacity(0.28), lineWidth: 0.8) } }
         .shadow(color: searchFieldShadowColor, radius: searchFieldShadowRadius, x: 0, y: searchFieldShadowY)
     }
 
@@ -843,7 +841,8 @@ struct RaceListView: View {
     }
 
     private var searchFieldContainer: some View {
-        HStack(spacing: DesignSystem.Spacing.sm) {
+        let aff = MinAffordanceStyle.shared
+        return HStack(spacing: DesignSystem.Spacing.sm) {
             DesignSystemIcon(DesignSystem.Icon.search, size: DesignSystem.IconSize.sm, color: searchIconColor)
             TextField("Search races", text: $searchText)
                 .focused($isBottomSearchFocused)
@@ -854,8 +853,8 @@ struct RaceListView: View {
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .frame(height: usesCustomFloatingToolbar ? customToolbarControlHeight : glassControlHeight)
         .background(searchFieldBackground)
-        .clipShape(Capsule())
-        .overlay(searchFieldOverlay)
+        .clipShape(aff.capsuleShape)
+        .overlay { if aff.borderEnabled { searchFieldOverlay } }
         .shadow(color: searchFieldShadowColor, radius: searchFieldShadowRadius, x: 0, y: searchFieldShadowY)
     }
 
@@ -891,31 +890,30 @@ struct RaceListView: View {
 
     @ViewBuilder
     private var searchFieldOverlay: some View {
+        let s = MinAffordanceStyle.shared.capsuleShape
         switch searchBarAppearance {
         case .classic:
-            Capsule().stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.6), lineWidth: 0.5)
         case .solid:
-            Capsule().stroke(DesignSystem.Color.accent, lineWidth: 1.5)
+            s.stroke(DesignSystem.Color.accent, lineWidth: 1.5)
         case .elevated:
-            Capsule().stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
+            s.stroke(DesignSystem.Color.borderLight.opacity(0.8), lineWidth: 0.5)
         case .glass:
             ZStack {
-                Capsule()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.3),
-                                .white.opacity(0.1),
-                                .clear,
-                                .white.opacity(0.15)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.0
-                    )
-                Capsule()
-                    .stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5)
+                s.stroke(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.3),
+                            .white.opacity(0.1),
+                            .clear,
+                            .white.opacity(0.15)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.0
+                )
+                s.stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5)
             }
         }
     }
@@ -991,16 +989,14 @@ struct RaceListView: View {
         foregroundColor: SwiftUI.Color = DesignSystem.Color.textPrimary,
         accessibilityLabel: String
     ) -> some View {
-        Label(accessibilityLabel, systemImage: systemImage)
+        let aff = MinAffordanceStyle.shared
+        return Label(accessibilityLabel, systemImage: systemImage)
             .labelStyle(.iconOnly)
             .frame(width: customToolbarControlHeight, height: customToolbarControlHeight)
             .foregroundStyle(foregroundColor)
             .background(.thinMaterial)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                    .stroke(.white.opacity(0.28), lineWidth: 0.8)
-            )
+            .clipShape(aff.circleShape)
+            .overlay { if aff.borderEnabled { aff.circleShape.stroke(.white.opacity(0.28), lineWidth: 0.8) } }
             .shadow(color: searchFieldShadowColor, radius: searchFieldShadowRadius, x: 0, y: searchFieldShadowY)
     }
 
@@ -1009,12 +1005,14 @@ struct RaceListView: View {
         foregroundColor: SwiftUI.Color = DesignSystem.Color.textPrimary,
         accessibilityLabel: String
     ) -> some View {
-        Label(accessibilityLabel, systemImage: systemImage)
+        let aff = MinAffordanceStyle.shared
+        return Label(accessibilityLabel, systemImage: systemImage)
             .labelStyle(.iconOnly)
             .frame(width: glassControlHeight, height: glassControlHeight)
             .foregroundStyle(foregroundColor)
             .background(DesignSystem.Color.accent)
-            .clipShape(Circle())
+            .clipShape(aff.circleShape)
+            .overlay { if aff.borderEnabled { aff.circleShape.stroke(MinAffordanceStyle.borderColor, lineWidth: MinAffordanceStyle.borderLineWidth) } }
             .shadow(color: DesignSystem.Color.accent.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
@@ -1023,13 +1021,14 @@ struct RaceListView: View {
         foregroundColor: SwiftUI.Color = DesignSystem.Color.textPrimary,
         accessibilityLabel: String
     ) -> some View {
-        Label(accessibilityLabel, systemImage: systemImage)
+        let aff = MinAffordanceStyle.shared
+        return Label(accessibilityLabel, systemImage: systemImage)
             .labelStyle(.iconOnly)
             .frame(width: glassControlHeight, height: glassControlHeight)
             .foregroundStyle(foregroundColor)
             .background(
                 ZStack {
-                    Circle().fill(.ultraThinMaterial)
+                    aff.circleShape.fill(.ultraThinMaterial)
                     LinearGradient(
                         colors: [
                             .white.opacity(0.2),
@@ -1039,40 +1038,37 @@ struct RaceListView: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    .clipShape(Circle())
+                    .clipShape(aff.circleShape)
                 }
             )
-            .overlay(
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.4),
-                                .white.opacity(0.1)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.0
-                    )
-            )
-            .overlay(
-                Circle()
-                    .stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5)
-            )
+            .overlay {
+                if aff.borderEnabled {
+                    aff.circleShape
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    .white.opacity(0.4),
+                                    .white.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.0
+                        )
+                }
+            }
+            .overlay { if aff.borderEnabled { aff.circleShape.stroke(DesignSystem.Color.borderLight.opacity(0.5), lineWidth: 0.5) } }
             .shadow(color: DesignSystem.Shadow.md.color.opacity(0.3), radius: 6, x: 0, y: 3)
     }
 
     private func glassToolbarItem<Content: View>(isEmphasized: Bool = false, @ViewBuilder content: () -> Content) -> some View {
-        content()
+        let aff = MinAffordanceStyle.shared
+        return content()
             .frame(height: glassControlHeight)
             .padding(.horizontal, DesignSystem.Spacing.sm)
             .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(DesignSystem.Color.borderLight.opacity(isEmphasized ? 0.7 : 0.4), lineWidth: 0.5)
-            )
+            .clipShape(aff.capsuleShape)
+            .overlay { if aff.borderEnabled { aff.capsuleShape.stroke(DesignSystem.Color.borderLight.opacity(isEmphasized ? 0.7 : 0.4), lineWidth: 0.5) } }
             .shadow(color: DesignSystem.Shadow.lg.color.opacity(isEmphasized ? 0.8 : 0.6), radius: isEmphasized ? 12 : 10, x: 0, y: isEmphasized ? 6 : 5)
     }
 
@@ -1086,7 +1082,7 @@ struct RaceListView: View {
                 .labelStyle(.iconOnly)
                 .frame(width: glassControlHeight)
                 .foregroundStyle(foregroundColor)
-                .clipShape(Circle())
+                .clipShape(MinAffordanceStyle.shared.circleShape)
         }
     }
 
@@ -2045,6 +2041,7 @@ private struct AccountSheetView: View {
     @State private var isShowingCalendarAppearance = false
     @AppStorage(ICloudSyncManager.podcastPlayerPreferenceKey) private var podcastPlayerPreferenceRaw = PodcastPlayerPreference.system.rawValue
     @AppStorage(ICloudSyncManager.youtubeAppPreferenceKey) private var youtubeAppPreferenceRaw = YouTubeAppPreference.defaultBrowser.rawValue
+    @Bindable private var affordanceStyle = MinAffordanceStyle.shared
 
     var body: some View {
         NavigationStack {
@@ -2097,6 +2094,15 @@ private struct AccountSheetView: View {
                     } label: {
                         Label("Calendar Race Display", systemImage: "rectangle.3.group")
                     }
+
+                    Toggle("Affordance border", isOn: $affordanceStyle.borderEnabled)
+
+                    Picker("Affordance shape", selection: $affordanceStyle.shape) {
+                        ForEach(MinAffordanceStyle.Shape.allCases, id: \.self) { shape in
+                            Text(shape.displayName).tag(shape)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
                 .designSystemGroupedListRow()
 

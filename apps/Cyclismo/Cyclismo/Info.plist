@@ -16,8 +16,37 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.cycmin.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cycmin</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>flobikes</string>
+		<string>flosports</string>
+		<string>max</string>
+		<string>hbomax</string>
+		<string>overcast</string>
+		<string>podmin</string>
+		<string>peacock</string>
+		<string>peacocktv</string>
+		<string>pktc</string>
+		<string>podcasts</string>
+		<string>spotify</string>
+		<string>vidmin</string>
+		<string>youtube</string>
+		<string>movmin</string>
+		<string>cycmin</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -36,38 +65,28 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Rotina-ExtraThin.woff2</string>
+		<string>Rotina-Thin.woff2</string>
+		<string>Rotina-ExtraLight.woff2</string>
+		<string>Rotina-Light.woff2</string>
+		<string>Rotina-Regular.woff2</string>
+		<string>Rotina-Medium.woff2</string>
+		<string>Rotina-Bold.woff2</string>
+		<string>Rotina-ExtraBold.woff2</string>
+		<string>Rotina-ExtraThinItalic.woff2</string>
+		<string>Rotina-ThinItalic.woff2</string>
+		<string>Rotina-ExtraLightItalic.woff2</string>
+		<string>Rotina-LightItalic.woff2</string>
+		<string>Rotina-Italic.woff2</string>
+		<string>Rotina-MediumItalic.woff2</string>
+		<string>Rotina-BoldItalic.woff2</string>
+		<string>Rotina-ExtraBoldItalic.woff2</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-	</array>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>cycmin</string>
-			</array>
-			<key>CFBundleURLName</key>
-			<string>com.cycmin.app</string>
-		</dict>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>flobikes</string>
-		<string>flosports</string>
-		<string>max</string>
-		<string>hbomax</string>
-		<string>overcast</string>
-		<string>podmin</string>
-		<string>peacock</string>
-		<string>peacocktv</string>
-		<string>pktc</string>
-		<string>podcasts</string>
-		<string>spotify</string>
-		<string>vidmin</string>
-		<string>youtube</string>
-		<string>movmin</string>
-		<string>cycmin</string>
 	</array>
 </dict>
 </plist>

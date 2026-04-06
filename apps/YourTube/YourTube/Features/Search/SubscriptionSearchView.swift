@@ -105,11 +105,8 @@ struct SubscriptionSearchView: View {
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
             .frame(height: searchControlHeight)
             .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(theme.divider.opacity(0.5), lineWidth: 1)
-            }
+            .clipShape(MinAffordanceStyle.shared.capsuleShape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(theme.divider.opacity(0.5), lineWidth: 1) } }
 
             Button {
                 isSearchFieldFocused = false
@@ -120,11 +117,8 @@ struct SubscriptionSearchView: View {
                     .foregroundStyle(theme.text)
                     .frame(width: searchControlHeight, height: searchControlHeight)
                     .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(theme.divider.opacity(0.5), lineWidth: 1)
-                    }
+                    .clipShape(MinAffordanceStyle.shared.circleShape)
+                    .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(theme.divider.opacity(0.5), lineWidth: 1) } }
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close Search")

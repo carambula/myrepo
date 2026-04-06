@@ -17,9 +17,25 @@ struct AppearanceSettingsView: View {
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
     @AppStorage("miniPlayerDockPresentation") private var miniPlayerDockPresentation = MiniPlayerDockPresentation.fullBleed.rawValue
+    @Bindable private var affordanceStyle = MinAffordanceStyle.shared
 
     var body: some View {
         List {
+            Section {
+                Toggle("Affordance border", isOn: $affordanceStyle.borderEnabled)
+
+                Picker("Affordance shape", selection: $affordanceStyle.shape) {
+                    ForEach(MinAffordanceStyle.Shape.allCases, id: \.self) { shape in
+                        Text(shape.displayName).tag(shape)
+                    }
+                }
+            } header: {
+                Text("Controls")
+            } footer: {
+                Text("Border adds an outline to buttons, inputs, and players. Shape switches between round (capsule/circle) and square (rounded rectangle) geometry.")
+            }
+            .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
             Section("Search Bar") {
                 ForEach(SearchBarAppearance.allCases, id: \.self) { style in
                     Button {

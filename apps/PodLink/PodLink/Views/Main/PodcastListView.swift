@@ -264,11 +264,13 @@ struct PodcastListView: View {
         if layoutMode == "grid",
            let draggedPodcastID,
            let draggedPodcast = followedPodcasts.first(where: { $0.id == draggedPodcastID }) {
+            let cellWidth = gridItemFrames[draggedPodcastID]?.width
             gridArtwork(
                 podcast: draggedPodcast,
                 unplayed: false,
                 overlayBadgeOnArt: false
             )
+            .frame(width: cellWidth, height: cellWidth)
             .scaleEffect(1.06)
             .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
             .position(

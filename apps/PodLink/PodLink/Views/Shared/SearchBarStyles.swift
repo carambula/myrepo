@@ -30,57 +30,54 @@ struct SearchBarStyleModifier: ViewModifier {
     @Environment(ThemeManager.self) private var themeManager
 
     func body(content: Content) -> some View {
+        let aff = MinAffordanceStyle.shared
+        let s = aff.capsuleShape
+        let si = aff.insettableCapsuleShape
         content
             .padding(.horizontal, DesignSystem.Spacing.md)
             .frame(height: DesignSystem.Controls.controlHeight)
             .background {
                 switch style {
                 case .classic:
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
-                        }
+                    s.fill(.ultraThinMaterial)
                 case .solid:
-                    Capsule()
-                        .fill(DesignSystem.Colors.surface)
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(themeManager.currentTheme.accentColor.opacity(0.85), lineWidth: 1.2)
-                        }
+                    s.fill(DesignSystem.Colors.surface)
                         .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
                 case .elevated:
-                    Capsule()
-                        .fill(.thickMaterial)
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.7)
-                        }
+                    s.fill(.thickMaterial)
                         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
                 case .glass:
-                    Capsule()
-                        .fill(.ultraThinMaterial)
+                    s.fill(.ultraThinMaterial)
                         .overlay {
                             LinearGradient(
                                 colors: [.white.opacity(0.15), .white.opacity(0.05), .clear, .white.opacity(0.02)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
-                            .clipShape(Capsule())
-                        }
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.8
-                                )
+                            .clipShape(s)
                         }
                         .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                }
+            }
+            .overlay {
+                if aff.borderEnabled {
+                    switch style {
+                    case .classic:
+                        si.strokeBorder(Color.white.opacity(0.28), lineWidth: 0.8)
+                    case .solid:
+                        si.strokeBorder(themeManager.currentTheme.accentColor.opacity(0.85), lineWidth: 1.2)
+                    case .elevated:
+                        si.strokeBorder(Color.white.opacity(0.2), lineWidth: 0.7)
+                    case .glass:
+                        si.strokeBorder(
+                            LinearGradient(
+                                colors: [.white.opacity(0.3), .white.opacity(0.1), .clear, .white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.8
+                        )
+                    }
                 }
             }
     }

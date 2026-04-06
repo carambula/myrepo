@@ -76,8 +76,8 @@ private struct PodLinkPullToDismissModifier: ViewModifier {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(isActive ? themeManager.currentTheme.accentColor : DesignSystem.Colors.textPrimary)
                     .frame(width: closeButtonSize, height: closeButtonSize)
-                    .contentShape(Circle())
-                    .frostedSurface(Circle())
+                    .contentShape(Rectangle())
+                    .frostedSurface(MinAffordanceStyle.shared.insettableCircleShape)
                     .scaleEffect(isActive ? 1.04 : 1.0)
                     .opacity(isActive ? 1.0 : 0.85)
             }

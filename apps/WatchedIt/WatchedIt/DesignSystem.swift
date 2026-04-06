@@ -791,16 +791,14 @@ struct GlassCircleButton: View {
     }
 
     var body: some View {
+        let shape = MinAffordanceStyle.shared.circleShape
         Image(systemName: systemImage)
             .font(DesignSystem.Typography.glassIcon)
             .foregroundStyle(foregroundColor)
             .frame(width: size.points, height: size.points)
             .background(GlassControl.toolbarMaterial)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                    .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-            )
+            .clipShape(shape)
+            .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
             .accessibilityLabel(accessibilityLabel)
     }
 }
@@ -820,17 +818,15 @@ struct GlassCapsuleToolbar<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
+        let shape = MinAffordanceStyle.shared.capsuleShape
         HStack(spacing: spacing) {
             content()
         }
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .frame(height: height)
         .background(GlassControl.toolbarMaterial)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-        )
+        .clipShape(shape)
+        .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
     }
 }
 
@@ -846,6 +842,7 @@ struct GlassSearchField: View {
     var placeholder: String = "Search movies"
 
     var body: some View {
+        let shape = MinAffordanceStyle.shared.capsuleShape
         HStack(spacing: DesignSystem.Spacing.sm) {
             DesignSystemIcon(DesignSystem.Icon.search, size: DesignSystem.IconSize.sm, color: DesignSystem.Color.textSecondary)
             TextField(placeholder, text: $text)
@@ -854,11 +851,8 @@ struct GlassSearchField: View {
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .frame(height: height)
         .background(material)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width)
-        )
+        .clipShape(shape)
+        .overlay { if MinAffordanceStyle.shared.borderEnabled { shape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
     }
 }
 
@@ -911,6 +905,11 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View {
+        let circleShape = MinAffordanceStyle.shared.circleShape
+        let rectShape = MinAffordanceStyle.shared.capsuleShape
+        let strokeColor = role == .destructive
+            ? DesignSystem.Color.error.opacity(0.35)
+            : DesignSystem.Color.borderLight.opacity(0.9)
         configuration.label
             .if(!isCompact) { view in
                 view
@@ -919,29 +918,18 @@ struct LiquidGlassButtonStyle: ButtonStyle {
             }
             .background {
                 if isCompact {
-                    Circle()
-                        .fill(role == .destructive ? destructiveFillColor : baseFillColor)
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    role == .destructive
-                                        ? DesignSystem.Color.error.opacity(0.35)
-                                        : DesignSystem.Color.borderLight.opacity(0.9),
-                                    lineWidth: GlassControl.Border.standard.width
-                                )
-                        }
+                    circleShape.fill(role == .destructive ? destructiveFillColor : baseFillColor)
                 } else {
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                        .fill(role == .destructive ? destructiveFillColor : baseFillColor)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                .stroke(
-                                    role == .destructive
-                                        ? DesignSystem.Color.error.opacity(0.35)
-                                        : DesignSystem.Color.borderLight.opacity(0.9),
-                                    lineWidth: GlassControl.Border.standard.width
-                                )
-                        }
+                    rectShape.fill(role == .destructive ? destructiveFillColor : baseFillColor)
+                }
+            }
+            .overlay {
+                if MinAffordanceStyle.shared.borderEnabled {
+                    if isCompact {
+                        circleShape.stroke(strokeColor, lineWidth: GlassControl.Border.standard.width)
+                    } else {
+                        rectShape.stroke(strokeColor, lineWidth: GlassControl.Border.standard.width)
+                    }
                 }
             }
             .foregroundColor(role == .destructive ? DesignSystem.Color.error : DesignSystem.Color.textPrimary)

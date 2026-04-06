@@ -29,6 +29,25 @@
 	<string>591238096911-svah993j8fjfqlt5a4hb40rd1hg0j9ea.apps.googleusercontent.com</string>
 	<key>GOOGLE_REDIRECT_URI</key>
 	<string>com.googleusercontent.apps.591238096911-svah993j8fjfqlt5a4hb40rd1hg0j9ea:/oauthredirect</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Rotina-ExtraThin.woff2</string>
+		<string>Rotina-Thin.woff2</string>
+		<string>Rotina-ExtraLight.woff2</string>
+		<string>Rotina-Light.woff2</string>
+		<string>Rotina-Regular.woff2</string>
+		<string>Rotina-Medium.woff2</string>
+		<string>Rotina-Bold.woff2</string>
+		<string>Rotina-ExtraBold.woff2</string>
+		<string>Rotina-ExtraThinItalic.woff2</string>
+		<string>Rotina-ThinItalic.woff2</string>
+		<string>Rotina-ExtraLightItalic.woff2</string>
+		<string>Rotina-LightItalic.woff2</string>
+		<string>Rotina-Italic.woff2</string>
+		<string>Rotina-MediumItalic.woff2</string>
+		<string>Rotina-BoldItalic.woff2</string>
+		<string>Rotina-ExtraBoldItalic.woff2</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

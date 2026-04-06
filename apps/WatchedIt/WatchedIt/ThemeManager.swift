@@ -694,7 +694,7 @@ public enum FontTier: String, CaseIterable, Codable {
     }
 }
 
-public struct FontOverrideSettings: Codable {
+public struct FontOverrideSettings: Codable, Equatable {
     public var enabled: Bool = false
     public var displayWeight: RotinaWeight = .bold
     public var headingWeight: RotinaWeight = .medium

@@ -225,6 +225,22 @@ struct AppearanceSettingsView: View {
                 }
             }
             .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+            
+            Section("Typography") {
+                NavigationLink {
+                    FontOverrideSettingsView()
+                        .environment(themeManager)
+                } label: {
+                    HStack {
+                        Text("Fonts")
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        Spacer()
+                        Image(systemName: "textformat")
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                    }
+                }
+            }
+            .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
         }
         .podLinkSettingsListSurface()
         .navigationTitle("Appearance")

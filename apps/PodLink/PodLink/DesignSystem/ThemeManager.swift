@@ -213,6 +213,29 @@ class ThemeManager {
 
     @ObservationIgnored
     private let selectedThemeKey = "selectedTheme"
+    
+    // MARK: - Font Override Properties
+    @ObservationIgnored
+    @AppStorage("fontOverrideEnabled") var fontOverrideEnabled: Bool = false
+    
+    @ObservationIgnored
+    private var fontOverrideSettingsData: Data? {
+        get { UserDefaults.standard.data(forKey: "fontOverrideSettings") }
+        set { UserDefaults.standard.set(newValue, forKey: "fontOverrideSettings") }
+    }
+    
+    var fontOverrideSettings: FontOverrideSettings {
+        get {
+            guard let data = fontOverrideSettingsData,
+                  let settings = try? JSONDecoder().decode(FontOverrideSettings.self, from: data) else {
+                return FontOverrideSettings()
+            }
+            return settings
+        }
+        set {
+            fontOverrideSettingsData = try? JSONEncoder().encode(newValue)
+        }
+    }
 
     init() {
         let savedID = UserDefaults.standard.string(forKey: "selectedTheme") ?? "default"
@@ -267,7 +290,7 @@ class ThemeManager {
 import SwiftUI
 import UIKit
 
-enum RotinaWeight: String, Codable, CaseIterable {
+public enum RotinaWeight: String, Codable, CaseIterable {
     case extraThin = "Rotina-ExtraThin"
     case thin = "Rotina-Thin"
     case extraLight = "Rotina-ExtraLight"
@@ -277,7 +300,7 @@ enum RotinaWeight: String, Codable, CaseIterable {
     case bold = "Rotina-Bold"
     case extraBold = "Rotina-ExtraBold"
     
-    var weight: Font.Weight {
+    public var weight: Font.Weight {
         switch self {
         case .extraThin: return .ultraLight
         case .thin: return .thin
@@ -290,7 +313,7 @@ enum RotinaWeight: String, Codable, CaseIterable {
         }
     }
     
-    var uiWeight: UIFont.Weight {
+    public var uiWeight: UIFont.Weight {
         switch self {
         case .extraThin: return .ultraLight
         case .thin: return .thin
@@ -303,19 +326,19 @@ enum RotinaWeight: String, Codable, CaseIterable {
         }
     }
     
-    var displayName: String {
+    public var displayName: String {
         rawValue.replacingOccurrences(of: "Rotina-", with: "")
     }
 }
 
-enum FontTier: String, CaseIterable, Codable {
+public enum FontTier: String, CaseIterable, Codable {
     case display    // H1, H2 - largest headings
     case heading    // H3-H6 - section headings
     case body       // Paragraphs, body text
     case ui         // Buttons, labels, controls
     case caption    // Small text, metadata
     
-    var defaultRotinaWeight: RotinaWeight {
+    public var defaultRotinaWeight: RotinaWeight {
         switch self {
         case .display: return .bold
         case .heading: return .medium
@@ -325,7 +348,7 @@ enum FontTier: String, CaseIterable, Codable {
         }
     }
     
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .display: return "Display"
         case .heading: return "Heading"
@@ -335,7 +358,7 @@ enum FontTier: String, CaseIterable, Codable {
         }
     }
     
-    var description: String {
+    public var description: String {
         switch self {
         case .display: return "Large headings (H1, H2)"
         case .heading: return "Section headings (H3-H6)"
@@ -346,15 +369,31 @@ enum FontTier: String, CaseIterable, Codable {
     }
 }
 
-struct FontOverrideSettings: Codable {
-    var enabled: Bool = false
-    var displayWeight: RotinaWeight = .bold
-    var headingWeight: RotinaWeight = .medium
-    var bodyWeight: RotinaWeight = .regular
-    var uiWeight: RotinaWeight = .medium
-    var captionWeight: RotinaWeight = .regular
+public struct FontOverrideSettings: Codable, Equatable {
+    public var enabled: Bool = false
+    public var displayWeight: RotinaWeight = .bold
+    public var headingWeight: RotinaWeight = .medium
+    public var bodyWeight: RotinaWeight = .regular
+    public var uiWeight: RotinaWeight = .medium
+    public var captionWeight: RotinaWeight = .regular
     
-    func weight(for tier: FontTier) -> RotinaWeight {
+    public init(
+        enabled: Bool = false,
+        displayWeight: RotinaWeight = .bold,
+        headingWeight: RotinaWeight = .medium,
+        bodyWeight: RotinaWeight = .regular,
+        uiWeight: RotinaWeight = .medium,
+        captionWeight: RotinaWeight = .regular
+    ) {
+        self.enabled = enabled
+        self.displayWeight = displayWeight
+        self.headingWeight = headingWeight
+        self.bodyWeight = bodyWeight
+        self.uiWeight = uiWeight
+        self.captionWeight = captionWeight
+    }
+    
+    public func weight(for tier: FontTier) -> RotinaWeight {
         switch tier {
         case .display: return displayWeight
         case .heading: return headingWeight
@@ -364,7 +403,7 @@ struct FontOverrideSettings: Codable {
         }
     }
     
-    mutating func setWeight(_ weight: RotinaWeight, for tier: FontTier) {
+    public mutating func setWeight(_ weight: RotinaWeight, for tier: FontTier) {
         switch tier {
         case .display: displayWeight = weight
         case .heading: headingWeight = weight
@@ -375,32 +414,10 @@ struct FontOverrideSettings: Codable {
     }
 }
 
-// Add these to your ThemeManager class:
+// MARK: - Font Override Methods
 extension ThemeManager {
-    
-    @AppStorage("fontOverrideEnabled") var fontOverrideEnabled: Bool = false
-    
-    private var fontOverrideSettingsData: Data? {
-        get { UserDefaults.standard.data(forKey: "fontOverrideSettings") }
-        set { UserDefaults.standard.set(newValue, forKey: "fontOverrideSettings") }
-    }
-    
-    var fontOverrideSettings: FontOverrideSettings {
-        get {
-            guard let data = fontOverrideSettingsData,
-                  let settings = try? JSONDecoder().decode(FontOverrideSettings.self, from: data) else {
-                return FontOverrideSettings()
-            }
-            return settings
-        }
-        set {
-            fontOverrideSettingsData = try? JSONEncoder().encode(newValue)
-            objectWillChange.send()
-        }
-    }
-    
     // Get custom font for a specific tier
-    func customFont(_ tier: FontTier, size: CGFloat) -> Font {
+    public func customFont(_ tier: FontTier, size: CGFloat) -> Font {
         if fontOverrideEnabled {
             let weight = fontOverrideSettings.weight(for: tier)
             return .custom(weight.rawValue, size: size)
@@ -410,7 +427,7 @@ extension ThemeManager {
     }
     
     // Get custom UIFont for a specific tier
-    func customUIFont(_ tier: FontTier, size: CGFloat) -> UIFont {
+    public func customUIFont(_ tier: FontTier, size: CGFloat) -> UIFont {
         if fontOverrideEnabled {
             let weight = fontOverrideSettings.weight(for: tier)
             if let font = UIFont(name: weight.rawValue, size: size) {
@@ -422,7 +439,7 @@ extension ThemeManager {
     }
     
     // Verify fonts are loaded (useful for debugging)
-    func verifyRotinaFontsLoaded() {
+    public func verifyRotinaFontsLoaded() {
         let rotinaFonts = UIFont.fontNames(forFamilyName: "Rotina")
         if rotinaFonts.isEmpty {
             print("⚠️ WARNING: Rotina fonts not found!")

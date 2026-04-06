@@ -86,6 +86,13 @@ struct AccountSheetView: View {
                         }
                     }
                     .pickerStyle(.menu)
+
+                    NavigationLink {
+                        FontOverrideSettingsView()
+                            .environment(themeManager)
+                    } label: {
+                        Label("Fonts", systemImage: "textformat")
+                    }
                 }
                 .designSystemGroupedListRow()
 

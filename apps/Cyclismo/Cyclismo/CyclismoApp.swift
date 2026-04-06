@@ -27,6 +27,7 @@ struct CyclismoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(themeManager)
                 .themeBackground()
                 .onOpenURL { url in
                     deepLinkURL = url

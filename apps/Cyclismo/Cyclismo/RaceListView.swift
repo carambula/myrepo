@@ -2039,6 +2039,7 @@ private struct AccountSheetView: View {
     @State private var isShowingThemes = false
     @State private var isShowingNotifications = false
     @State private var isShowingCalendarAppearance = false
+    @State private var isShowingFontSettings = false
     @AppStorage(ICloudSyncManager.podcastPlayerPreferenceKey) private var podcastPlayerPreferenceRaw = PodcastPlayerPreference.system.rawValue
     @AppStorage(ICloudSyncManager.youtubeAppPreferenceKey) private var youtubeAppPreferenceRaw = YouTubeAppPreference.defaultBrowser.rawValue
     @Bindable private var affordanceStyle = MinAffordanceStyle.shared
@@ -2093,6 +2094,12 @@ private struct AccountSheetView: View {
                         isShowingCalendarAppearance = true
                     } label: {
                         Label("Calendar Race Display", systemImage: "rectangle.3.group")
+                    }
+
+                    Button {
+                        isShowingFontSettings = true
+                    } label: {
+                        Label("Font Settings", systemImage: "textformat")
                     }
 
                     Toggle("Affordance border", isOn: $affordanceStyle.borderEnabled)
@@ -2150,6 +2157,9 @@ private struct AccountSheetView: View {
             }
             .navigationDestination(isPresented: $isShowingCalendarAppearance) {
                 CalendarRaceAppearanceSettingsView()
+            }
+            .navigationDestination(isPresented: $isShowingFontSettings) {
+                FontOverrideSettingsView()
             }
         }
     }

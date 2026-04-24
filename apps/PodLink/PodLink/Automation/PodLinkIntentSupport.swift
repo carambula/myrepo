@@ -105,11 +105,10 @@ enum PodLinkIntentPlayback {
 
     static func resumePlayback() async throws {
         let playback = PlaybackService.shared
-        if playback.state.currentEpisode != nil {
-            playback.resume()
-            return
+        if playback.state.currentEpisode == nil {
+            // Fast, synchronous on-disk restore — no RSS round-trip required to start playback.
+            _ = await MainActor.run { playback.restoreResumeSessionFromDiskIfNeeded() }
         }
-        await playback.restoreResumeSessionIfNeeded()
         guard playback.state.currentEpisode != nil else {
             throw PodLinkIntentError.nothingPlaying
         }

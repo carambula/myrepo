@@ -157,25 +157,12 @@ struct ContentView: View {
         }
         .task(id: hasCompletedOnboarding) {
             guard hasCompletedOnboarding else { return }
-            await playbackService.restoreResumeSessionIfNeeded()
-
-            let followed = Podcast.loadFollowedPodcasts()
-            let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
-                for podcast in followed {
-                    group.addTask {
-                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
-                        return (podcast.id, episodes)
-                    }
-                }
-                var map: [String: [Episode]] = [:]
-                for await result in group {
-                    guard let (id, episodes) = result else { continue }
-                    map[id] = episodes
-                }
-                return map
-            }
-
-            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
+            // Resume state has already been hydrated synchronously in `PlaybackService.init()`,
+            // so the mini player is on screen by now. Fan out the slower work in parallel
+            // instead of blocking it behind the resume RSS refresh.
+            async let resumeRefresh: Void = playbackService.refreshResumeSessionFromFeed()
+            async let queueRebuild: Void = refreshFollowedFeedsAndRebuildQueue()
+            _ = await (resumeRefresh, queueRebuild)
             DownloadRetentionEngine.runSweep()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -351,6 +338,29 @@ struct ContentView: View {
            PrivateFeedAuthStore.canonicalFeedURL(currentPodcast.feedURL) == canonicalFeedURL {
             presentRootSheet(.podcast(resolvedPodcast))
         }
+    }
+
+    private func refreshFollowedFeedsAndRebuildQueue() async {
+        let followed = Podcast.loadFollowedPodcasts()
+        guard !followed.isEmpty else {
+            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: [:])
+            return
+        }
+        let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
+            for podcast in followed {
+                group.addTask {
+                    guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                    return (podcast.id, episodes)
+                }
+            }
+            var map: [String: [Episode]] = [:]
+            for await result in group {
+                guard let (id, episodes) = result else { continue }
+                map[id] = episodes
+            }
+            return map
+        }
+        await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
     }
 
     private func placeholderPodcastTitle(for feedURL: URL) -> String {

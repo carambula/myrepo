@@ -22,7 +22,7 @@ struct FontOverrideSettingsView: View {
         Form {
             Section {
                 Toggle("Enable Custom Fonts", isOn: $enabled)
-                    .onChange(of: enabled) { newValue in
+                    .onChange(of: enabled) { _, newValue in
                         themeManager.fontOverrideEnabled = newValue
                     }
             } header: {
@@ -121,7 +121,7 @@ struct FontOverrideSettingsView: View {
         }
         .navigationTitle("Font Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: settings) { newSettings in
+        .onChange(of: settings) { _, newSettings in
             themeManager.fontOverrideSettings = newSettings
         }
     }

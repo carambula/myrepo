@@ -103,6 +103,10 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
     var isVideoMode: Bool
     var onToggleVideo: () -> Void
 
+    var shareURL: URL? = nil
+    var shareSubject: String = ""
+    var shareMessage: String = ""
+
     var scrollBottomPadding: CGFloat
 
     @State private var playPauseThrob = false
@@ -244,16 +248,6 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
                         .accessibilityLabel(downloadAccessibilityLabel)
                         .disabled(!isDownloadEnabled)
 
-                        Button {
-                            overlaySheet = .sleepTimer
-                        } label: {
-                            Image(systemName: "moon.zzz")
-                                .font(.system(size: 22))
-                                .foregroundColor(playbackService.state.sleepTimerEnd != nil
-                                    ? themeManager.currentTheme.accentColor
-                                    : DesignSystem.Colors.textSecondary)
-                        }
-
                         Button(action: onToggleSave) {
                             Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                                 .font(.system(size: 22))
@@ -263,25 +257,49 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
                         }
                         .accessibilityLabel(isSaved ? "Remove from saved" : "Save episode")
 
-                        if hasVideo {
-                            Button(action: onToggleVideo) {
-                                VStack(spacing: 4) {
-                                    Image(systemName: isVideoMode ? "video.fill" : "video")
-                                        .font(.system(size: 18))
-                                    Text("Video")
-                                        .font(DesignSystem.Typography.caption())
-                                }
-                                .foregroundColor(isVideoMode
-                                    ? themeManager.currentTheme.accentColor
-                                    : DesignSystem.Colors.textSecondary)
+                        if let shareURL {
+                            ShareLink(
+                                item: shareURL,
+                                subject: Text(shareSubject),
+                                message: Text(shareMessage)
+                            ) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
                             }
+                            .accessibilityLabel("Share episode")
                         }
 
-                        Button {} label: {
-                            Image(systemName: "airplayaudio")
+                        AirPlayRoutePickerView(
+                            activeTintColor: UIColor(themeManager.currentTheme.accentColor),
+                            inactiveTintColor: UIColor(DesignSystem.Colors.textSecondary)
+                        )
+                        .frame(width: 26, height: 26)
+                        .accessibilityLabel("AirPlay")
+
+                        Menu {
+                            Button {
+                                overlaySheet = .sleepTimer
+                            } label: {
+                                Label("Sleep Timer", systemImage: "moon.zzz")
+                            }
+
+                            if hasVideo {
+                                Button(action: onToggleVideo) {
+                                    Label(
+                                        isVideoMode ? "Play Audio Only" : "Play Video",
+                                        systemImage: isVideoMode ? "speaker.wave.2.fill" : "video.fill"
+                                    )
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
                                 .font(.system(size: 22))
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                                .foregroundColor(playbackService.state.sleepTimerEnd != nil
+                                    ? themeManager.currentTheme.accentColor
+                                    : DesignSystem.Colors.textSecondary)
                         }
+                        .accessibilityLabel("More options")
                     }
 
                     belowChrome()

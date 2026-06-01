@@ -34,7 +34,7 @@ struct SubscriptionSearchView: View {
                                 Text(channel.title.decodedHTMLEntities)
                                     .foregroundStyle(theme.text)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
                         }
                     }
                 }
@@ -44,15 +44,15 @@ struct SubscriptionSearchView: View {
                         Button {
                             onSelectVideo(video)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                                 Text(video.title.decodedHTMLEntities)
                                     .foregroundStyle(theme.text)
                                     .lineLimit(2)
                                 Text(video.publishedAt, style: .relative)
-                                    .font(.caption)
+                                    .font(DesignSystem.Typography.captionMedium)
                                     .foregroundStyle(theme.secondaryText)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
                         }
                     }
                 }
@@ -104,7 +104,7 @@ struct SubscriptionSearchView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
             .frame(height: searchControlHeight)
-            .background(.ultraThinMaterial)
+            .background(.thinMaterial)
             .clipShape(MinAffordanceStyle.shared.capsuleShape)
             .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(theme.divider.opacity(0.5), lineWidth: 1) } }
 
@@ -116,7 +116,7 @@ struct SubscriptionSearchView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(theme.text)
                     .frame(width: searchControlHeight, height: searchControlHeight)
-                    .background(.ultraThinMaterial)
+                    .background(.thinMaterial)
                     .clipShape(MinAffordanceStyle.shared.circleShape)
                     .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(theme.divider.opacity(0.5), lineWidth: 1) } }
             }

@@ -32,6 +32,7 @@ private struct CatalogStoreCorruptionRecoveryView: View {
 }
 
 private struct CollectionsHomeContentView: View {
+    @Binding var deepLinkURL: URL?
     @StateObject private var localDB = LocalDatabaseManager.shared
     @StateObject private var viewModel = CollectionsHomeViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -212,6 +213,17 @@ private struct CollectionsHomeContentView: View {
             .onChange(of: preferredServicesData) { _, _ in rebuildSnapshot() }
             .onChange(of: toolbarBehaviorRaw) { _, _ in
                 toolbarScrollState.reset()
+            }
+            .onChange(of: deepLinkURL) { _, url in
+                guard let url else { return }
+                deepLinkURL = nil
+                guard let deepLink = DeepLinkHandler.parse(url: url) else { return }
+                switch deepLink {
+                case .movie(let tmdbID):
+                    if let movie = localDB.movies.first(where: { $0.tmdbId == tmdbID }) {
+                        selectedMovie = movie
+                    }
+                }
             }
             .onChange(of: viewModel.sections.count) { _, newCount in
                 guard perfLoggingEnabled, !hasLoggedFirstContentPaint, newCount > 0 else { return }
@@ -978,6 +990,7 @@ private struct CollectionMovieCard: View {
 }
 
 struct CollectionsHomeView: View {
+    @Binding var deepLinkURL: URL?
     @StateObject private var localDB = LocalDatabaseManager.shared
 
     var body: some View {
@@ -985,7 +998,7 @@ struct CollectionsHomeView: View {
             if localDB.catalogNeedsRestartDueToCorruption {
                 CatalogStoreCorruptionRecoveryView()
             } else {
-                CollectionsHomeContentView()
+                CollectionsHomeContentView(deepLinkURL: $deepLinkURL)
             }
         }
     }

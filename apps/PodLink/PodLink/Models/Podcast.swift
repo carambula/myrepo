@@ -89,7 +89,6 @@ extension Podcast {
         followedCacheLock.unlock()
 
         let localData = UserDefaults.standard.data(forKey: followedPodcastsStorageKey)
-        let ubiquitousData = NSUbiquitousKeyValueStore.default.data(forKey: followedPodcastsStorageKey)
 
         let fromLocal = localData.flatMap { data in try? JSONDecoder().decode([Podcast].self, from: data) } ?? []
         if !fromLocal.isEmpty {
@@ -99,7 +98,7 @@ extension Podcast {
             return fromLocal
         }
 
-        guard let data = ubiquitousData,
+        guard let data = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey),
               let fromCloud = try? JSONDecoder().decode([Podcast].self, from: data),
               !fromCloud.isEmpty else {
             followedCacheLock.lock()
@@ -119,7 +118,7 @@ extension Podcast {
     /// Union of UserDefaults and iCloud KVS subscriptions (by canonical feed URL). Local entries win on conflict so this device keeps its settings; cloud-only feeds are appended.
     static func mergedFollowedPodcastsForMutation() -> [Podcast] {
         let localData = UserDefaults.standard.data(forKey: followedPodcastsStorageKey)
-        let ubiquitousData = NSUbiquitousKeyValueStore.default.data(forKey: followedPodcastsStorageKey)
+        let ubiquitousData = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey)
         let local = localData.flatMap { data in try? JSONDecoder().decode([Podcast].self, from: data) } ?? []
         let fromCloud = ubiquitousData.flatMap { data in try? JSONDecoder().decode([Podcast].self, from: data) } ?? []
 
@@ -143,17 +142,20 @@ extension Podcast {
     static func saveFollowedPodcasts(_ podcasts: [Podcast]) {
         guard let data = try? JSONEncoder().encode(podcasts) else { return }
         UserDefaults.standard.set(data, forKey: followedPodcastsStorageKey)
-        NSUbiquitousKeyValueStore.default.set(data, forKey: followedPodcastsStorageKey)
+        CloudKeyValueWriter.setData(data, forKey: followedPodcastsStorageKey)
         invalidateFollowedCache()
         NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
     }
 
     /// Called when iCloud KVS delivers changes (e.g. another device or after reinstall sync).
     static func applyFollowedPodcastsFromUbiquitousStore() {
-        guard let data = NSUbiquitousKeyValueStore.default.data(forKey: followedPodcastsStorageKey),
+        guard let data = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey),
               (try? JSONDecoder().decode([Podcast].self, from: data)) != nil else { return }
         UserDefaults.standard.set(data, forKey: followedPodcastsStorageKey)
         invalidateFollowedCache()
-        NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
+        // Posted on the main thread because UI observers update SwiftUI state; this method may run off-main.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
+        }
     }
 }

@@ -20,7 +20,7 @@ struct ListeningHistoryView: View {
                 emptyState
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: DesignSystem.Spacing.sm) {
                         ForEach(resolvedItems) { item in
                             EpisodeRowView(
                                 episode: item.episode,
@@ -28,9 +28,6 @@ struct ListeningHistoryView: View {
                                 onTap: { openPlay(item) },
                                 showsDownloadAffordance: false
                             )
-
-                            Divider()
-                                .padding(.leading, 76)
                         }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
@@ -207,7 +204,7 @@ struct ListeningHistoryView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.md)
             .frame(height: searchControlHeight)
-            .background(.ultraThinMaterial)
+            .background(.thinMaterial)
             .clipShape(MinAffordanceStyle.shared.capsuleShape)
             .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
 
@@ -222,7 +219,7 @@ struct ListeningHistoryView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
-                    .background(.ultraThinMaterial)
+                    .background(.thinMaterial)
                     .clipShape(MinAffordanceStyle.shared.circleShape)
                     .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
             }

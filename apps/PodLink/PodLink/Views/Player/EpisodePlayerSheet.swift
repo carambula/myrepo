@@ -130,6 +130,24 @@ struct EpisodePlayerSheet: View {
         !networkStatusService.isOnline && !canUseEpisodeWhileOffline
     }
 
+    // MARK: - Sharing
+
+    /// Direct, playable link to the episode — works for recipients regardless of whether they have PodLink.
+    private var episodeShareURL: URL? {
+        mergedEpisode.audioURL
+    }
+
+    private var episodeShareSubject: String {
+        mergedEpisode.title
+    }
+
+    private var episodeShareMessage: String {
+        if let podcastTitle = contextPodcast?.title, !podcastTitle.isEmpty {
+            return "\(mergedEpisode.title) from \(podcastTitle)"
+        }
+        return mergedEpisode.title
+    }
+
     var body: some View {
         PlayerSheetChrome(
             artwork: { episodeArtwork },
@@ -164,6 +182,9 @@ struct EpisodePlayerSheet: View {
             hasVideo: mergedEpisode.hasVideo,
             isVideoMode: isCurrentEpisode && playbackService.state.isVideoMode,
             onToggleVideo: toggleVideoForThisEpisode,
+            shareURL: episodeShareURL,
+            shareSubject: episodeShareSubject,
+            shareMessage: episodeShareMessage,
             scrollBottomPadding: SheetPullToDismissLayout.scrollContentBottomInset(playbackService: playbackService)
         )
         .background((themeManager.currentTheme.backgroundTint ?? .clear).opacity(0.5))

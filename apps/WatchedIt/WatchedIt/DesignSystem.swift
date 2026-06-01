@@ -763,7 +763,7 @@ enum GlassControl {
     }
 
     static let toolbarMaterial: Material = .thinMaterial
-    static let floatingMaterial: Material = .ultraThinMaterial
+    static let floatingMaterial: Material = .thinMaterial
 }
 
 /// Frosted-glass circular icon button — the primary button control throughout the app.

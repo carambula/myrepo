@@ -226,7 +226,7 @@ struct SubscriptionsFeedView: View {
                                 settlingChannelID: $settlingChannelID
                             ))
                         } else {
-                            LazyVStack(spacing: 8) {
+                            LazyVStack(spacing: DesignSystem.Spacing.sm) {
                                 ForEach(viewModel.videos) { video in
                                     VideoRowView(
                                         video: video,
@@ -282,8 +282,8 @@ private struct VideoRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Spacing.md) {
+            HStack(spacing: DesignSystem.Spacing.md) {
                 ZStack(alignment: .bottomTrailing) {
                     CachedAsyncImage(url: URL(string: video.thumbnailURL), initialBlurRadius: 24) { image in
                         image.resizable().scaledToFill()
@@ -303,13 +303,13 @@ private struct VideoRowView: View {
                 .frame(width: 146, height: 82)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(video.title.decodedHTMLEntities)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(DesignSystem.Typography.headlineSmall)
                         .foregroundStyle(theme.text)
                         .lineLimit(2)
                     Text("\(publishedText)   \(channelTitle)")
-                        .font(.system(size: 11))
+                        .font(DesignSystem.Typography.captionMedium)
                         .foregroundStyle(theme.secondaryText)
                         .lineLimit(1)
                 }
@@ -325,9 +325,9 @@ private struct VideoRowView: View {
                     .foregroundStyle(theme.accent)
             }
             .buttonStyle(.plain)
-            .padding(.vertical, 8)
+            .padding(.vertical, DesignSystem.Spacing.sm)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, DesignSystem.Spacing.sm)
     }
 }
 

@@ -512,7 +512,8 @@ struct MovieDetailView: View {
             return createPocketCastsSearchURL(podcastName: podcastName, episodeTitle: episode.title)
         case .podMin:
             if let deepLink = createPodMinDeepLinkURL(
-                dataSourceIdentifier: dataSourceIdentifier
+                dataSourceIdentifier: dataSourceIdentifier,
+                episode: episode
             ) {
                 return deepLink
             }
@@ -548,7 +549,8 @@ struct MovieDetailView: View {
     }
 
     private func createPodMinDeepLinkURL(
-        dataSourceIdentifier: String?
+        dataSourceIdentifier: String?,
+        episode: PodcastEpisode
     ) -> URL? {
         guard let identifier = dataSourceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
               !identifier.isEmpty,
@@ -558,10 +560,20 @@ struct MovieDetailView: View {
 
         var components = URLComponents()
         components.scheme = "podmin"
-        components.host = "show"
-        components.queryItems = [
-            URLQueryItem(name: "feed", value: feedURL)
-        ]
+        var items = [URLQueryItem(name: "feed", value: feedURL)]
+
+        // Our dataset has no per-episode audio URL, so deep link by episode title.
+        // pod min matches the title within the feed and opens that episode directly,
+        // falling back to the show screen if it can't find a match.
+        let episodeTitle = episode.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if episodeTitle.isEmpty {
+            components.host = "show"
+        } else {
+            components.host = "episode"
+            items.append(URLQueryItem(name: "title", value: episodeTitle))
+        }
+
+        components.queryItems = items
         return components.url
     }
 

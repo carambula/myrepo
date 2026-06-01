@@ -18,33 +18,25 @@ enum EpisodePlaybackStore {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    private static func cloudDouble(
-        forKey key: String,
-        legacyKey: String,
-        cloud: NSUbiquitousKeyValueStore
-    ) -> Double? {
-        if cloud.object(forKey: key) != nil {
-            return cloud.double(forKey: key)
+    private static func cloudDouble(forKey key: String, legacyKey: String) -> Double? {
+        if CloudKeyValueWriter.object(forKey: key) != nil {
+            return CloudKeyValueWriter.double(forKey: key)
         }
-        if cloud.object(forKey: legacyKey) != nil {
-            let value = cloud.double(forKey: legacyKey)
-            cloud.set(value, forKey: key)
+        if CloudKeyValueWriter.object(forKey: legacyKey) != nil {
+            let value = CloudKeyValueWriter.double(forKey: legacyKey)
+            CloudKeyValueWriter.setDouble(value, forKey: key)
             return value
         }
         return nil
     }
 
-    private static func cloudBool(
-        forKey key: String,
-        legacyKey: String,
-        cloud: NSUbiquitousKeyValueStore
-    ) -> Bool? {
-        if cloud.object(forKey: key) != nil {
-            return cloud.bool(forKey: key)
+    private static func cloudBool(forKey key: String, legacyKey: String) -> Bool? {
+        if CloudKeyValueWriter.object(forKey: key) != nil {
+            return CloudKeyValueWriter.bool(forKey: key)
         }
-        if cloud.object(forKey: legacyKey) != nil {
-            let value = cloud.bool(forKey: legacyKey)
-            cloud.set(value, forKey: key)
+        if CloudKeyValueWriter.object(forKey: legacyKey) != nil {
+            let value = CloudKeyValueWriter.bool(forKey: legacyKey)
+            CloudKeyValueWriter.setBool(value, forKey: key)
             return value
         }
         return nil
@@ -67,14 +59,12 @@ enum EpisodePlaybackStore {
     static func merge(_ episode: Episode, postNotificationsForMigration: Bool = false) -> Episode {
         var e = episode
         let ud = UserDefaults.standard
-        let cloud = NSUbiquitousKeyValueStore.default
 
         if let local = ud.object(forKey: positionKey(episode.id)) as? Double {
             e.playbackPosition = local
         } else if let cloudPosition = cloudDouble(
             forKey: cloudPositionKey(episode.id),
-            legacyKey: positionKey(episode.id),
-            cloud: cloud
+            legacyKey: positionKey(episode.id)
         ) {
             e.playbackPosition = cloudPosition
         }
@@ -82,8 +72,7 @@ enum EpisodePlaybackStore {
         if ud.bool(forKey: playedKey(episode.id)) ||
             (cloudBool(
                 forKey: cloudPlayedKey(episode.id),
-                legacyKey: playedKey(episode.id),
-                cloud: cloud
+                legacyKey: playedKey(episode.id)
             ) ?? false) {
             e.isPlayed = true
         }
@@ -92,8 +81,7 @@ enum EpisodePlaybackStore {
             e.isBookmarked = ud.bool(forKey: bookmarkKey(episode.id))
         } else if let cloudBookmarked = cloudBool(
             forKey: cloudBookmarkKey(episode.id),
-            legacyKey: bookmarkKey(episode.id),
-            cloud: cloud
+            legacyKey: bookmarkKey(episode.id)
         ) {
             e.isBookmarked = cloudBookmarked
         }
@@ -125,7 +113,7 @@ enum EpisodePlaybackStore {
 
     static func persistPosition(_ position: TimeInterval, episodeID: String, notify: Bool = true) {
         UserDefaults.standard.set(position, forKey: positionKey(episodeID))
-        NSUbiquitousKeyValueStore.default.set(position, forKey: cloudPositionKey(episodeID))
+        CloudKeyValueWriter.setDouble(position, forKey: cloudPositionKey(episodeID))
         if notify {
             NotificationCenter.default.post(name: .episodePlaybackStateDidChange, object: episodeID)
         }
@@ -133,7 +121,7 @@ enum EpisodePlaybackStore {
 
     static func persistPlayed(_ played: Bool, episodeID: String, notify: Bool = true) {
         UserDefaults.standard.set(played, forKey: playedKey(episodeID))
-        NSUbiquitousKeyValueStore.default.set(played, forKey: cloudPlayedKey(episodeID))
+        CloudKeyValueWriter.setBool(played, forKey: cloudPlayedKey(episodeID))
         if played {
             DownloadRetentionEngine.handleEpisodeMarkedPlayed(episodeID: episodeID)
         }
@@ -161,7 +149,7 @@ enum EpisodePlaybackStore {
 
     static func persistBookmark(_ bookmarked: Bool, episodeID: String, notify: Bool = true) {
         UserDefaults.standard.set(bookmarked, forKey: bookmarkKey(episodeID))
-        NSUbiquitousKeyValueStore.default.set(bookmarked, forKey: cloudBookmarkKey(episodeID))
+        CloudKeyValueWriter.setBool(bookmarked, forKey: cloudBookmarkKey(episodeID))
         if notify {
             NotificationCenter.default.post(name: .episodePlaybackStateDidChange, object: episodeID)
         }

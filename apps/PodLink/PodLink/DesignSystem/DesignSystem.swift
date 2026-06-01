@@ -42,9 +42,9 @@ struct DesignSystem {
         static func headlineSmall() -> Font {
             let theme = ThemeManager.shared.currentTheme
             if let design = theme.headlineFontDesign as Font.Design? {
-                return .system(size: 17, weight: theme.headlineFontWeight, design: design)
+                return .system(size: 18, weight: theme.headlineFontWeight, design: design)
             }
-            return .system(size: 17, weight: .semibold)
+            return .system(size: 18, weight: .semibold)
         }
 
         static func bodyLarge() -> Font {

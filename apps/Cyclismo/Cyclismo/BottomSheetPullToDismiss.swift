@@ -19,10 +19,10 @@ private struct CloseButtonView: View {
         let cs = MinAffordanceStyle.shared.circleShape
         ZStack {
             cs
-                .fill(.ultraThinMaterial)
+                .fill(.thinMaterial)
                 .background {
                     cs
-                        .fill(.ultraThinMaterial)
+                        .fill(.thinMaterial)
                         .blur(radius: 8)
                 }
                 .overlay {

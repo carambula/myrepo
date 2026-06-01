@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 
 /// Retains the `NotificationCenter` token for iCloud KVS updates (required for block-based observers).
 private final class UbiquitousKeyValueStoreSyncObserver {
@@ -8,21 +7,17 @@ private final class UbiquitousKeyValueStoreSyncObserver {
     private var token: NSObjectProtocol?
 
     private init() {
+        // Driven by the in-memory iCloud mirror (`CloudKeyValueWriter`), which updates itself off
+        // the main thread before posting, so these reconciliations read warm values without blocking.
         token = NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default,
-            queue: .main
-        ) { notification in
-            let followedKey = Podcast.followedPodcastsStorageKey
-            let historyKey = ListeningHistoryStore.storageKey
-            if let keys = notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String] {
-                if keys.contains(followedKey) {
-                    Podcast.applyFollowedPodcastsFromUbiquitousStore()
-                }
-                if keys.contains(historyKey) {
-                    ListeningHistoryStore.applyFromUbiquitousStore()
-                }
-            } else {
+            forName: .cloudKeyValueStoreDidChange,
+            object: nil,
+            queue: nil
+        ) { _ in
+            // Reconcile off the main thread: both calls decode/encode JSON (followed podcasts plus up to
+            // 300 listening-history rows) which blocked the main thread at launch. They persist to
+            // thread-safe stores and post their change notifications back on the main thread.
+            DispatchQueue.global(qos: .utility).async {
                 Podcast.applyFollowedPodcastsFromUbiquitousStore()
                 ListeningHistoryStore.applyFromUbiquitousStore()
             }
@@ -48,9 +43,16 @@ struct PodLinkApp: App {
     }
 
     init() {
-        configureAudioSession()
+        CloudKeyValueWriter.start()
         _ = UbiquitousKeyValueStoreSyncObserver.shared
-        _ = NSUbiquitousKeyValueStore.default.synchronize()
+        // NOTE: Do NOT register custom fonts here. The Rotina fonts are only rendered inside the Font
+        // Settings preview (`FontOverrideSettingsView`); no launch UI uses them. Registering 16 woff2
+        // files at launch (even off-main) held the Core Text font-registry lock while the main thread did
+        // first layout, producing the `GSFont ... already exists` spam and multi-second launch hangs.
+        // Registration now happens lazily, only when the Font Settings screen actually needs the fonts.
+        #if DEBUG
+        MainThreadHangMonitor.shared.start()
+        #endif
     }
 
     var body: some Scene {
@@ -70,16 +72,6 @@ struct PodLinkApp: App {
                         isMicroplayerMode: isMicroplayerMode
                     )
                 )
-        }
-    }
-
-    private func configureAudioSession() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio, options: [])
-            try session.setActive(true)
-        } catch {
-            print("Failed to configure audio session: \(error)")
         }
     }
 }

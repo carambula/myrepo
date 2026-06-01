@@ -3691,14 +3691,14 @@ struct MovieListView: View {
         } else {
         switch searchBarAppearance {
         case .classic:
-            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(.thinMaterial)
         case .solid:
             DesignSystem.Color.cardBackground
         case .elevated:
-            Rectangle().fill(.thickMaterial)
+            Rectangle().fill(.thinMaterial)
         case .glass:
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(.thinMaterial)
                 
                 // Add subtle gradient highlight to simulate glass distortion
                 LinearGradient(
@@ -5383,7 +5383,7 @@ struct SearchBarAppearanceRow: View {
                 
                 // Mini toolbar preview
                 Rectangle()
-                    .fill(.ultraThinMaterial)
+                    .fill(.thinMaterial)
                     .frame(height: 12)
             }
         }
@@ -5393,14 +5393,14 @@ struct SearchBarAppearanceRow: View {
     private var backgroundForPreview: some View {
         switch appearance {
         case .classic:
-            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(.thinMaterial)
         case .solid:
             DesignSystem.Color.cardBackground
         case .elevated:
-            Rectangle().fill(.thickMaterial)
+            Rectangle().fill(.thinMaterial)
         case .glass:
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(.thinMaterial)
                 LinearGradient(
                     colors: [
                         .white.opacity(0.15),

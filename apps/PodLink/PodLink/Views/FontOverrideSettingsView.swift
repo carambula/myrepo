@@ -24,6 +24,9 @@ struct FontOverrideSettingsView: View {
                 Toggle("Enable Custom Fonts", isOn: $enabled)
                     .onChange(of: enabled) { _, newValue in
                         themeManager.fontOverrideEnabled = newValue
+                        if newValue {
+                            themeManager.ensureCustomFontsRegistered()
+                        }
                     }
             } header: {
                 Text("Font Override")

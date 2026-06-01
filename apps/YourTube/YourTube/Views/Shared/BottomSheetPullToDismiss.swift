@@ -36,7 +36,7 @@ struct BottomSheetPullToDismiss: ViewModifier {
                         if isCloseReady {
                             cs.fill(Color.red.opacity(0.9))
                         } else {
-                            cs.fill(.ultraThinMaterial)
+                            cs.fill(.thinMaterial)
                         }
                     }
                     .clipShape(MinAffordanceStyle.shared.circleShape)

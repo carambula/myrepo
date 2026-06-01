@@ -158,32 +158,17 @@ struct ContentView: View {
         .task(id: hasCompletedOnboarding) {
             guard hasCompletedOnboarding else { return }
             await playbackService.restoreResumeSessionIfNeeded()
-
-            let followed = Podcast.loadFollowedPodcasts()
-            let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
-                for podcast in followed {
-                    group.addTask {
-                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
-                        return (podcast.id, episodes)
-                    }
-                }
-                var map: [String: [Episode]] = [:]
-                for await result in group {
-                    guard let (id, episodes) = result else { continue }
-                    map[id] = episodes
-                }
-                return map
-            }
-
-            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
-            DownloadRetentionEngine.runSweep()
+            scheduleLaunchMaintenance()
+        }
+        .onDisappear {
+            autoQueueRefreshTask?.cancel()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 autoQueueRefreshTask?.cancel()
                 playbackService.saveResumeSessionNow()
             } else if phase == .active {
-                DownloadRetentionEngine.runSweep()
+                scheduleDeferredRetentionSweep()
             }
         }
         .sheet(item: $rootSheet) { sheet in
@@ -227,6 +212,52 @@ struct ContentView: View {
         }
         .onOpenURL { url in
             Task { await handleIncomingDeepLink(url) }
+        }
+    }
+
+    private func scheduleLaunchMaintenance() {
+        autoQueueRefreshTask?.cancel()
+        let playbackService = playbackService
+        autoQueueRefreshTask = Task(priority: .background) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            while playbackService.isPlaybackStartupInProgress {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+            }
+
+            let followed = Podcast.loadFollowedPodcasts()
+            let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
+                for podcast in followed {
+                    group.addTask {
+                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                        return (podcast.id, episodes)
+                    }
+                }
+                var map: [String: [Episode]] = [:]
+                for await result in group {
+                    guard let (id, episodes) = result else { continue }
+                    map[id] = episodes
+                }
+                return map
+            }
+
+            guard !Task.isCancelled else { return }
+            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
+            guard !Task.isCancelled else { return }
+            DownloadRetentionEngine.runSweep()
+        }
+    }
+
+    private func scheduleDeferredRetentionSweep() {
+        let playbackService = playbackService
+        Task(priority: .background) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            guard !playbackService.isPlaybackStartupInProgress else { return }
+            DownloadRetentionEngine.runSweep()
         }
     }
 

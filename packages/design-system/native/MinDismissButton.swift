@@ -48,7 +48,7 @@ public struct MinDismissButtonView: View {
                     }
                 }
                 .frame(width: size, height: size)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
             }
             .accessibilityLabel(label)

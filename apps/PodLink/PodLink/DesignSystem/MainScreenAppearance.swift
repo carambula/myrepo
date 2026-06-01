@@ -76,11 +76,8 @@ enum MainScreenArtEmphasis: String, CaseIterable {
     /// Extra points added to base grid artwork size when `largeArt` is selected.
     static let largeArtGridBonus: CGFloat = 28
 
-    /// List row artwork side length: standard matches episode-row feel; large is closer to grid tiles.
+    /// List row artwork side length: unified across all list contexts.
     func listArtworkSideLength(baseListSize: CGFloat = 60) -> CGFloat {
-        switch self {
-        case .standard: return baseListSize
-        case .largeArt: return baseListSize + 20
-        }
+        return baseListSize
     }
 }

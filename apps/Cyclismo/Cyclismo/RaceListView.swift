@@ -99,6 +99,7 @@ enum CalendarRaceMetadataPreference {
 }
 
 struct RaceListView: View {
+    @Binding var deepLinkURL: URL?
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var races: [Race] = []
     @State private var searchText = ""
@@ -312,6 +313,11 @@ struct RaceListView: View {
                 isBottomSearchFocused = false
                 searchText = ""
             }
+        }
+        .onChange(of: deepLinkURL) { _, url in
+            guard let url else { return }
+            deepLinkURL = nil
+            Task { await handleDeepLink(url) }
         }
         .themeBackground()
     }
@@ -865,14 +871,14 @@ struct RaceListView: View {
         } else {
             switch searchBarAppearance {
             case .classic:
-                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(.thinMaterial)
             case .solid:
                 DesignSystem.Color.cardBackground
             case .elevated:
-                Rectangle().fill(.thickMaterial)
+                Rectangle().fill(.thinMaterial)
             case .glass:
                 ZStack {
-                    Rectangle().fill(.ultraThinMaterial)
+                    Rectangle().fill(.thinMaterial)
                     LinearGradient(
                         colors: [
                             .white.opacity(0.15),
@@ -1028,7 +1034,7 @@ struct RaceListView: View {
             .foregroundStyle(foregroundColor)
             .background(
                 ZStack {
-                    aff.circleShape.fill(.ultraThinMaterial)
+                    aff.circleShape.fill(.thinMaterial)
                     LinearGradient(
                         colors: [
                             .white.opacity(0.2),
@@ -1066,7 +1072,7 @@ struct RaceListView: View {
         return content()
             .frame(height: glassControlHeight)
             .padding(.horizontal, DesignSystem.Spacing.sm)
-            .background(.ultraThinMaterial)
+            .background(.thinMaterial)
             .clipShape(aff.capsuleShape)
             .overlay { if aff.borderEnabled { aff.capsuleShape.stroke(DesignSystem.Color.borderLight.opacity(isEmphasized ? 0.7 : 0.4), lineWidth: 0.5) } }
             .shadow(color: DesignSystem.Shadow.lg.color.opacity(isEmphasized ? 0.8 : 0.6), radius: isEmphasized ? 12 : 10, x: 0, y: isEmphasized ? 6 : 5)
@@ -1291,8 +1297,8 @@ struct RaceListView: View {
             .frame(width: 44, alignment: .leading)
             .padding(.top, DesignSystem.Spacing.sm)
 
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(day.entries.enumerated()), id: \.element.id) { index, entry in
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                ForEach(day.entries) { entry in
                     Button {
                         selectedRace = entry.race
                     } label: {
@@ -1302,10 +1308,6 @@ struct RaceListView: View {
                             .padding(.bottom, DesignSystem.Spacing.sm)
                     }
                     .buttonStyle(.plain)
-
-                    if index < day.entries.count - 1 {
-                        Divider()
-                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1984,6 +1986,21 @@ struct RaceListView: View {
                     RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                         .stroke(.white.opacity(0.35), lineWidth: 0.5)
                 )
+        }
+    }
+
+    @MainActor
+    private func handleDeepLink(_ url: URL) async {
+        guard let deepLink = DeepLinkHandler.parse(url: url) else { return }
+        switch deepLink {
+        case .race(let id):
+            if let race = races.first(where: { $0.raceId == id }) {
+                selectedRace = race
+            } else if let race = try? await APIClient.shared.fetchRace(id: id) {
+                selectedRace = race
+            } else if let race = await BootstrapDataStore.shared.fetchRace(id: id) {
+                selectedRace = race
+            }
         }
     }
 

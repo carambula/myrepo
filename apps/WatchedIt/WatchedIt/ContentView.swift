@@ -10,7 +10,7 @@ import SwiftUI
 // Compatibility root for previews/legacy callers.
 struct ContentView: View {
     var body: some View {
-        CollectionsHomeView()
+        CollectionsHomeView(deepLinkURL: .constant(nil))
     }
 }
 

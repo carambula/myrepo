@@ -9,11 +9,12 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @Binding var deepLinkURL: URL?
 
     var body: some View {
         if hasCompletedOnboarding {
             NavigationStack {
-                RaceListView()
+                RaceListView(deepLinkURL: $deepLinkURL)
             }
             .themeBackground()
         } else {
@@ -23,5 +24,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(deepLinkURL: .constant(nil))
 }

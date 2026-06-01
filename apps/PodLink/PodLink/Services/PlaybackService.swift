@@ -51,6 +51,10 @@ class PlaybackService {
 
     var isSearchUIVisible: Bool { searchUIPresentationDepth > 0 }
 
+    var isPlaybackStartupInProgress: Bool {
+        state.isBuffering || (state.isPlaying && player?.timeControlStatus != .playing)
+    }
+
     func pushSearchUISession() {
         searchUIPresentationDepth += 1
     }
@@ -59,8 +63,18 @@ class PlaybackService {
         searchUIPresentationDepth = max(0, searchUIPresentationDepth - 1)
     }
 
+    /// `AVAudioSession.setActive(_:)` can block the caller for seconds, so activation always runs here,
+    /// never on the main thread.
+    nonisolated private static let audioSessionQueue = DispatchQueue(label: "PodLink.AudioSession", qos: .userInitiated)
+
     private var player: AVPlayer?
     private var timeObserver: Any?
+    private var startupSeekTask: Task<Void, Never>?
+    /// Observes the current item's `status` so the startup resume-seek fires the moment it is ready.
+    private var startupSeekStatusObservation: NSKeyValueObservation?
+    /// Bumped on every schedule/cancel so the startup resume-seek fires at most once per session and a
+    /// later `.readyToPlay` transition (rebuffer/stall recovery) can never re-seek to the stale start.
+    private var startupSeekToken = 0
     private var positionSaveTask: Task<Void, Never>?
     private var nowPlayingArtworkTask: Task<Void, Never>?
     /// Dedupes lock-screen artwork fetches across frequent `updateNowPlayingInfo` calls (seeks, time observer).
@@ -115,13 +129,14 @@ class PlaybackService {
         state.duration = merged.duration
         state.isBuffering = true
 
-        if let startTime = startAt ?? (merged.playbackPosition > 0 ? merged.playbackPosition : nil) {
-            await player?.seek(to: CMTime(seconds: startTime, preferredTimescale: 600))
-        }
-
-        player?.rate = state.playbackRate
         setupTimeObserver()
         observeTimeControlStatus()
+        player?.automaticallyWaitsToMinimizeStalling = false
+        await activateAudioSessionForPlayback()
+        player?.playImmediately(atRate: state.playbackRate)
+        if let startTime = startAt ?? (merged.playbackPosition > 0 ? merged.playbackPosition : nil) {
+            scheduleStartupSeek(to: startTime, episodeID: merged.id)
+        }
         updateNowPlayingInfo()
         configureRemoteCommands()
         startPositionSaving()
@@ -133,6 +148,7 @@ class PlaybackService {
         player?.pause()
         state.isPlaying = false
         state.isBuffering = false
+        cancelStartupSeek()
         positionSaveTask?.cancel()
         updateNowPlayingInfo()
         Task {
@@ -147,9 +163,10 @@ class PlaybackService {
             let episode = state.currentEpisode!
             let podcast = state.currentPodcast
             let startAt = state.currentTime
-            Task { await play(episode: episode, podcast: podcast, startAt: startAt) }
+            Task(priority: .userInitiated) { await play(episode: episode, podcast: podcast, startAt: startAt) }
             return
         }
+        activateAudioSessionForPlaybackDetached()
         player?.play()
         player?.rate = state.playbackRate
         state.isPlaying = true
@@ -221,6 +238,37 @@ class PlaybackService {
         UserDefaults.standard.set(Double(rate), forKey: playbackSpeedUserDefaultsKey)
     }
 
+    /// Synchronous audio-session work. MUST run on `audioSessionQueue`, never the main thread:
+    /// `setActive(_:)` reaches the media daemon and can block for seconds, which on the MainActor
+    /// surfaced as multi-second hangs whenever playback started.
+    nonisolated private static func activatePlaybackAudioSessionSync() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio, options: [])
+            try session.setActive(true)
+        } catch {
+            print("Failed to activate audio session for playback: \(error)")
+        }
+    }
+
+    /// Awaitable activation for the async play path: preserves "activate before play" ordering while
+    /// keeping the main thread free (the `await` suspends instead of blocking).
+    private func activateAudioSessionForPlayback() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            Self.audioSessionQueue.async {
+                Self.activatePlaybackAudioSessionSync()
+                continuation.resume()
+            }
+        }
+    }
+
+    /// Fire-and-forget activation for synchronous callers (resume, interruption recovery).
+    private func activateAudioSessionForPlaybackDetached() {
+        Self.audioSessionQueue.async {
+            Self.activatePlaybackAudioSessionSync()
+        }
+    }
+
     func stop() {
         player?.pause()
         removePlaybackEndObserver()
@@ -228,6 +276,7 @@ class PlaybackService {
         timeControlStatusObservation = nil
         player?.replaceCurrentItem(with: nil)
         removeTimeObserver()
+        cancelStartupSeek()
         state.currentEpisode = nil
         state.currentPodcast = nil
         state.isPlaying = false
@@ -253,40 +302,81 @@ class PlaybackService {
     /// Restores `state` without loading `AVPlayer` so the mini player shows correct artwork, title, and progress; playback starts on play.
     func restoreResumeSessionIfNeeded() async {
         guard state.currentEpisode == nil else { return }
-        guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
-              let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
-        else { return }
 
-        let followed = Podcast.loadFollowedPodcasts()
-        let resolvedPodcast =
-            followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
+        // Decode the archive, load followed podcasts, and merge stored progress off the main thread.
+        // These are JSON decodes plus `EpisodePlaybackStore`/`DownloadMetadataStore` disk reads that
+        // previously ran synchronously on the MainActor at launch.
+        let restored = await Task.detached(priority: .userInitiated) { () -> (Podcast, Episode, Episode)? in
+            guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
+                  let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
+            else { return nil }
 
-        let mergedEpisode: Episode
-        if let subscribed = followed.first(where: {
-            $0.feedURL.absoluteString == archive.episode.podcastID || $0.id == archive.episode.podcastID
-        }) {
-            do {
-                let fetched = try await RSSFeedService.shared.fetchEpisodes(feedURL: subscribed.feedURL)
-                if let fresh = fetched.first(where: { $0.id == archive.episode.id }) {
-                    mergedEpisode = EpisodePlaybackStore.merge(fresh)
-                } else {
-                    mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
-                }
-            } catch {
-                mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
-            }
-        } else {
-            mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
-        }
+            let followed = Podcast.loadFollowedPodcasts()
+            let resolvedPodcast =
+                followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
+            let mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
+            return (resolvedPodcast, mergedEpisode, archive.episode)
+        }.value
 
-        let feedDuration = mergedEpisode.duration
+        guard let (resolvedPodcast, mergedEpisode, archiveEpisode) = restored else { return }
+        // Re-check after the suspension: playback may have started while we were decoding.
+        guard state.currentEpisode == nil else { return }
+
         state.currentPodcast = resolvedPodcast
         state.currentEpisode = mergedEpisode
         state.currentTime = mergedEpisode.playbackPosition
-        state.duration = feedDuration > 0 ? feedDuration : archive.episode.duration
+        state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archiveEpisode.duration
         state.isPlaying = false
         state.isBuffering = false
         applyPreferredVideoMode(for: mergedEpisode)
+
+        refreshRestoredResumeSessionIfNeeded(
+            archive: LastResumeSessionArchive(episode: archiveEpisode, podcast: resolvedPodcast)
+        )
+    }
+
+    private func refreshRestoredResumeSessionIfNeeded(archive: LastResumeSessionArchive) {
+        Task(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let followed = Podcast.loadFollowedPodcasts()
+            guard let subscribed = followed.first(where: {
+                $0.feedURL.absoluteString == archive.episode.podcastID || $0.id == archive.episode.podcastID
+            }) else { return }
+
+            let fetched: [Episode]
+            if let cached = await RSSFeedService.shared.cachedEpisodes(feedURL: subscribed.feedURL) {
+                fetched = cached
+            } else {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled,
+                      self.player?.currentItem == nil,
+                      !self.state.isPlaying,
+                      self.state.currentEpisode?.id == archive.episode.id else { return }
+                do {
+                    fetched = try await RSSFeedService.shared.fetchEpisodes(feedURL: subscribed.feedURL)
+                } catch {
+                    return
+                }
+            }
+
+            guard let fresh = fetched.first(where: { $0.id == archive.episode.id }) else { return }
+            let mergedEpisode = EpisodePlaybackStore.merge(fresh)
+
+            await MainActor.run {
+                guard self.player?.currentItem == nil,
+                      !self.state.isPlaying,
+                      self.state.currentEpisode?.id == archive.episode.id else { return }
+
+                let resolvedPodcast =
+                    followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
+
+                self.state.currentPodcast = resolvedPodcast
+                self.state.currentEpisode = mergedEpisode
+                self.state.currentTime = mergedEpisode.playbackPosition
+                self.state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archive.episode.duration
+                self.applyPreferredVideoMode(for: mergedEpisode)
+            }
+        }
     }
 
     private func podcastForResumeArchive(episode: Episode) -> Podcast {
@@ -386,20 +476,27 @@ class PlaybackService {
             }
         }
 
-        var seenEpisodeIDs = Set<String>()
-        var rebuiltQueue: [Episode] = []
+        // Merging every fetched episode runs `EpisodePlaybackStore.merge` (UserDefaults reads, SHA-256
+        // key hashing, and `FileManager` download lookups) across all followed feeds. That is pure,
+        // main-thread-free work, so it runs off the main actor (matching `restoreResumeSessionIfNeeded`)
+        // to avoid a multi-second launch hang once the feeds resolve.
+        let rebuiltQueue = await Task.detached(priority: .userInitiated) { () -> [Episode] in
+            var seenEpisodeIDs = Set<String>()
+            var rebuilt: [Episode] = []
 
-        for podcast in followed {
-            guard let fetched = feedMap[podcast.id] else { continue }
-            let merged = fetched
-                .map { EpisodePlaybackStore.merge($0) }
-                .sorted { $0.publishDate > $1.publishDate }
-            guard let latestUnfinished = merged.first(where: { !$0.isEffectivelyFinished }) else { continue }
-            guard latestUnfinished.id != currentID else { continue }
-            guard !seenEpisodeIDs.contains(latestUnfinished.id) else { continue }
-            seenEpisodeIDs.insert(latestUnfinished.id)
-            rebuiltQueue.append(latestUnfinished)
-        }
+            for podcast in followed {
+                guard let fetched = feedMap[podcast.id] else { continue }
+                let merged = fetched
+                    .map { EpisodePlaybackStore.merge($0) }
+                    .sorted { $0.publishDate > $1.publishDate }
+                guard let latestUnfinished = merged.first(where: { !$0.isEffectivelyFinished }) else { continue }
+                guard latestUnfinished.id != currentID else { continue }
+                guard !seenEpisodeIDs.contains(latestUnfinished.id) else { continue }
+                seenEpisodeIDs.insert(latestUnfinished.id)
+                rebuilt.append(latestUnfinished)
+            }
+            return rebuilt
+        }.value
 
         guard !Task.isCancelled else { return }
         await MainActor.run { state.queue = rebuiltQueue }
@@ -477,6 +574,67 @@ class PlaybackService {
         }
     }
 
+    /// Seeks to the saved/explicit resume position once the player item can honor it.
+    ///
+    /// A previous implementation seeked after a fixed 350ms delay, but for streamed episodes the
+    /// `AVPlayerItem` is usually not `.readyToPlay` that quickly, so the seek was dropped and playback
+    /// restarted from 0. This waits for readiness via KVO (or seeks immediately if already ready) so the
+    /// resume position reliably lands, without blocking the main thread or reintroducing a launch hang.
+    private func scheduleStartupSeek(to time: TimeInterval, episodeID: String) {
+        cancelStartupSeek()
+        guard time > 0, let item = player?.currentItem else { return }
+
+        // `cancelStartupSeek()` bumped the token to a fresh value held by nobody else; capture it so
+        // the seek runs for this scheduling only.
+        let token = startupSeekToken
+
+        if item.status == .readyToPlay {
+            performStartupSeek(to: time, episodeID: episodeID, token: token)
+            return
+        }
+
+        startupSeekStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observedItem, _ in
+            guard observedItem.status == .readyToPlay else { return }
+            Task { @MainActor [weak self] in
+                guard let self,
+                      token == self.startupSeekToken,
+                      self.state.currentEpisode?.id == episodeID,
+                      observedItem === self.player?.currentItem else { return }
+                self.performStartupSeek(to: time, episodeID: episodeID, token: token)
+            }
+        }
+    }
+
+    private func performStartupSeek(to time: TimeInterval, episodeID: String, token: Int) {
+        guard token == startupSeekToken else { return }
+        // Consume the token and permanently tear down the readiness observer so the resume-seek can
+        // run only once per session: a later `.readyToPlay` (after a rebuffer/stall/route change) — or
+        // a duplicate readyToPlay KVO delivery — can never re-seek playback back to the start position.
+        startupSeekToken &+= 1
+        startupSeekStatusObservation?.invalidate()
+        startupSeekStatusObservation = nil
+
+        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+        player?.seek(
+            to: cmTime,
+            toleranceBefore: .zero,
+            toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600)
+        ) { [weak self] finished in
+            guard finished, let self, self.state.currentEpisode?.id == episodeID else { return }
+            self.state.currentTime = time
+            self.updateNowPlayingInfo()
+        }
+    }
+
+    private func cancelStartupSeek() {
+        // Invalidate any pending resume-seek (token mismatch aborts in-flight observer Tasks too).
+        startupSeekToken &+= 1
+        startupSeekTask?.cancel()
+        startupSeekTask = nil
+        startupSeekStatusObservation?.invalidate()
+        startupSeekStatusObservation = nil
+    }
+
     private func removeTimeObserver() {
         if let observer = timeObserver {
             player?.removeTimeObserver(observer)
@@ -538,15 +696,11 @@ class PlaybackService {
             let shouldResume = shouldResumeAfterInterruption && options.contains(.shouldResume)
             shouldResumeAfterInterruption = false
 
-            do {
-                try AVAudioSession.sharedInstance().setActive(true)
-            } catch {
-                print("Failed to reactivate audio session after interruption: \(error)")
-            }
-
             if shouldResume {
+                // `resume()` reactivates the audio session off the main thread before playing.
                 resume()
             } else {
+                activateAudioSessionForPlaybackDetached()
                 state.isPlaying = false
                 updateNowPlayingInfo()
             }

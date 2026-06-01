@@ -40,13 +40,13 @@ struct WatchedItApp: App {
     private var rootContent: some View {
         #if os(iOS)
         NewUserExperienceOverlayContainer {
-            CollectionsHomeView()
+            CollectionsHomeView(deepLinkURL: $deepLinkURL)
         }
         .onOpenURL { url in
             deepLinkURL = url
         }
         #else
-        CollectionsHomeView()
+        CollectionsHomeView(deepLinkURL: .constant(nil))
         #endif
     }
     

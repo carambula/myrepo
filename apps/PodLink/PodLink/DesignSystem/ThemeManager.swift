@@ -217,6 +217,10 @@ class ThemeManager {
     // MARK: - Font Override Properties
     @ObservationIgnored
     @AppStorage("fontOverrideEnabled") var fontOverrideEnabled: Bool = false
+
+    /// Bumped each time a new batch of Rotina weights finishes registering off the main thread. Views
+    /// that resolve custom fonts observe this so they re-render once the real fonts become available.
+    private(set) var fontRegistrationGeneration = 0
     
     @ObservationIgnored
     private var fontOverrideSettingsData: Data? {
@@ -250,7 +254,7 @@ class ThemeManager {
     func selectTheme(_ theme: any AppTheme) {
         currentTheme = theme
         UserDefaults.standard.set(theme.id, forKey: selectedThemeKey)
-        NSUbiquitousKeyValueStore.default.set(theme.id, forKey: selectedThemeKey)
+        CloudKeyValueWriter.setString(theme.id, forKey: selectedThemeKey)
     }
 
     func addCustomTheme(_ theme: CustomTheme) {
@@ -269,7 +273,7 @@ class ThemeManager {
     private func saveCustomThemes() {
         if let data = try? JSONEncoder().encode(customThemes) {
             UserDefaults.standard.set(data, forKey: "customThemes")
-            NSUbiquitousKeyValueStore.default.set(data, forKey: "customThemes")
+            CloudKeyValueWriter.setData(data, forKey: "customThemes")
         }
     }
 
@@ -416,9 +420,26 @@ public struct FontOverrideSettings: Codable, Equatable {
 
 // MARK: - Font Override Methods
 extension ThemeManager {
+    /// Registers exactly the Rotina weights referenced by the current override settings, off the main
+    /// thread, each at most once. Call only when the custom fonts are about to be displayed (the Font
+    /// Settings preview) or when the override is toggled on — never on the launch path.
+    func ensureCustomFontsRegistered() {
+        guard fontOverrideEnabled else { return }
+        let settings = fontOverrideSettings
+        let names = [
+            settings.displayWeight, settings.headingWeight, settings.bodyWeight,
+            settings.uiWeight, settings.captionWeight
+        ].map(\.rawValue)
+        RotinaFontRegistrar.ensureRegistered(fontNames: names) { [weak self] in
+            self?.fontRegistrationGeneration += 1
+        }
+    }
+
     // Get custom font for a specific tier
     public func customFont(_ tier: FontTier, size: CGFloat) -> Font {
         if fontOverrideEnabled {
+            ensureCustomFontsRegistered()
+            _ = fontRegistrationGeneration // Establish observation so views refresh once fonts load.
             let weight = fontOverrideSettings.weight(for: tier)
             return .custom(weight.rawValue, size: size)
         }
@@ -429,6 +450,8 @@ extension ThemeManager {
     // Get custom UIFont for a specific tier
     public func customUIFont(_ tier: FontTier, size: CGFloat) -> UIFont {
         if fontOverrideEnabled {
+            ensureCustomFontsRegistered()
+            _ = fontRegistrationGeneration // Establish observation so views refresh once fonts load.
             let weight = fontOverrideSettings.weight(for: tier)
             if let font = UIFont(name: weight.rawValue, size: size) {
                 return font

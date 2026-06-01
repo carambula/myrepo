@@ -310,7 +310,7 @@ struct SearchScreenView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.md)
             .frame(height: searchControlHeight)
-            .background(.ultraThinMaterial)
+            .background(.thinMaterial)
             .clipShape(MinAffordanceStyle.shared.capsuleShape)
             .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
 
@@ -321,7 +321,7 @@ struct SearchScreenView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
-                    .background(.ultraThinMaterial)
+                    .background(.thinMaterial)
                     .clipShape(MinAffordanceStyle.shared.circleShape)
                     .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
             }
@@ -386,7 +386,7 @@ struct SearchScreenView: View {
     }
 
     private var libraryEpisodeResultsList: some View {
-        LazyVStack(spacing: 0) {
+        LazyVStack(spacing: DesignSystem.Spacing.sm) {
             ForEach(libraryEpisodeResults) { result in
                 EpisodeRowView(
                     episode: result.episode,
@@ -394,9 +394,6 @@ struct SearchScreenView: View {
                     onTap: { openLibraryEpisodeFromSearch(result) }
                 )
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-
-                Divider()
-                    .padding(.leading, 84)
             }
         }
     }

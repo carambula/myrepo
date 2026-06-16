@@ -36,9 +36,9 @@ struct fit_minTests {
         #expect(SetTimerTitleFormatter.title(for: configuration) == "30s / 10s → 45s / 15s → 1m / 20s → 1m 15s")
     }
 
-    @Test func totalDurationUsesStandardClockFormat() {
-        #expect(SetTimerTitleFormatter.clockDuration(0) == "00:00:00")
-        #expect(SetTimerTitleFormatter.clockDuration(65) == "00:01:05")
+    @Test func totalDurationHidesHourPlaceUntilNeeded() {
+        #expect(SetTimerTitleFormatter.clockDuration(0) == "0:00")
+        #expect(SetTimerTitleFormatter.clockDuration(65) == "1:05")
         #expect(SetTimerTitleFormatter.clockDuration(3661) == "01:01:01")
     }
 
@@ -58,9 +58,53 @@ struct fit_minTests {
             IntervalSegment(kind: .rest, durationSeconds: 4, repIndex: 0),
         ]
 
-        #expect(TimerSoundCueResolver.cue(forElapsedSecond: 0, segments: segments) == .tick)
-        #expect(TimerSoundCueResolver.cue(forElapsedSecond: 4, segments: segments) == .boop)
-        #expect(TimerSoundCueResolver.cue(forElapsedSecond: 8, segments: segments) == .boop)
-        #expect(TimerSoundCueResolver.cue(forElapsedSecond: 12, segments: segments) == nil)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 1, segments: segments) == .tick)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 4, segments: segments) == .tick)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 5, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 8, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 9, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 12, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 13, segments: segments) == nil)
+    }
+
+    @Test func defaultPresetListIncludesRequestedStarterTimersInOrder() {
+        #expect(DefaultSetTimerSeeder.presets.map(\.title) == [
+            "Tabata Sprint",
+            "Classic HIIT",
+            "Muscle Burner",
+            "Cardio Build",
+            "Endurance Climb",
+            "Proportional Climb",
+            "Power Drop",
+            "Fatigue Crusher",
+            "Speed Finish",
+            "Classic Peak",
+            "Short Blitz",
+            "Heavy Endurance",
+            "Heart Rate Shock",
+            "Sprint Waves",
+            "High-Low Wave",
+        ])
+    }
+
+    @Test func defaultPresetCustomSchedulesMatchRequestedIntervals() {
+        let presets = Dictionary(uniqueKeysWithValues: DefaultSetTimerSeeder.presets.map { ($0.title, $0) })
+
+        #expect(presets["Power Drop"]?.segments?.map(\.durationSeconds) == [60, 30, 45, 30, 30])
+        #expect(presets["Fatigue Crusher"]?.segments?.map(\.durationSeconds) == [90, 30, 60, 20, 30])
+        #expect(presets["Classic Peak"]?.segments?.map(\.durationSeconds) == [30, 15, 45, 15, 60, 15, 45, 15, 30])
+        #expect(presets["Sprint Waves"]?.segments?.map(\.durationSeconds) == [15, 45, 30, 30, 15, 45, 30])
+    }
+
+    @Test func blockStyleLabelUsesExactWorkoutSegments() {
+        let segments = [
+            IntervalSegment(kind: .work, durationSeconds: 30, repIndex: 0),
+            IntervalSegment(kind: .rest, durationSeconds: 15, repIndex: 0),
+            IntervalSegment(kind: .work, durationSeconds: 60, repIndex: 1),
+            IntervalSegment(kind: .rest, durationSeconds: 30, repIndex: 1),
+            IntervalSegment(kind: .work, durationSeconds: 30, repIndex: 2),
+        ]
+
+        #expect(SetTimerTitleFormatter.blockTitle(for: segments) == "30s/15s → 60s/30s → 30s")
     }
 }

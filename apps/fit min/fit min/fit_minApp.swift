@@ -59,6 +59,7 @@ struct fit_minApp: App {
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : .light)
                 .themeBackground()
                 .task {
+                    TimerSoundService.shared.prewarm()
                     themeManager.syncFromCloud()
                 }
         }

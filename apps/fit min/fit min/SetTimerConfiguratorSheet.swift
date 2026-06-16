@@ -5,15 +5,20 @@ struct SetTimerConfiguratorSheet: View {
 
     let timer: SetTimer?
     var onSave: (SetTimerConfiguration, String) -> Void
+    var onDelete: (() -> Void)?
 
     @State private var configuration: SetTimerConfiguration
     @State private var customTitle: String
+    @State private var titleDraft: String
+    @State private var isTitleEditorPresented = false
 
-    init(timer: SetTimer?, onSave: @escaping (SetTimerConfiguration, String) -> Void) {
+    init(timer: SetTimer?, onSave: @escaping (SetTimerConfiguration, String) -> Void, onDelete: (() -> Void)? = nil) {
         self.timer = timer
         self.onSave = onSave
+        self.onDelete = onDelete
         _configuration = State(initialValue: timer?.configuration ?? SetTimerConfiguration())
         _customTitle = State(initialValue: timer?.customTitle ?? "")
+        _titleDraft = State(initialValue: timer?.customTitle ?? "")
     }
 
     var body: some View {
@@ -64,7 +69,21 @@ struct SetTimerConfiguratorSheet: View {
                 .designSystemGroupedListRow()
 
                 Section("Title") {
-                    TextField("Optional title", text: $customTitle)
+                    Button {
+                        titleDraft = customTitle
+                        isTitleEditorPresented = true
+                    } label: {
+                        HStack {
+                            Text("Title")
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Spacer()
+                            Text(titleDisplayText)
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Text("Generated")
                             .font(DesignSystem.Typography.caption())
@@ -85,6 +104,19 @@ struct SetTimerConfiguratorSheet: View {
                     }
                 }
                 .designSystemGroupedListRow()
+
+                if timer != nil, let onDelete {
+                    Section {
+                        Button(role: .destructive) {
+                            onDelete()
+                            dismiss()
+                        } label: {
+                            Label("Delete set timer", systemImage: DesignSystem.Icon.delete)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .designSystemGroupedListRow()
+                }
             }
             .designSystemGroupedListStyle()
             .navigationTitle(timer == nil ? "New Timer" : "Edit Timer")
@@ -116,6 +148,21 @@ struct SetTimerConfiguratorSheet: View {
                 if !configuration.restType.isAvailable(for: newValue) {
                     configuration.restType = .fixed
                 }
+            }
+            .alert("Timer title", isPresented: $isTitleEditorPresented) {
+                TextField("Optional title", text: $titleDraft)
+                Button("Done") {
+                    customTitle = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                Button("Clear", role: .destructive) {
+                    titleDraft = ""
+                    customTitle = ""
+                }
+                Button("Cancel", role: .cancel) {
+                    titleDraft = customTitle
+                }
+            } message: {
+                Text("Leave blank to use the generated workout label.")
             }
         }
         .themeBackground()
@@ -163,6 +210,11 @@ struct SetTimerConfiguratorSheet: View {
 
     private var canSave: Bool {
         !SetTimerScheduleBuilder.segments(for: configuration).isEmpty
+    }
+
+    private var titleDisplayText: String {
+        let trimmed = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Generated" : trimmed
     }
 
     private func durationStepper(_ title: String, seconds: Binding<Int>) -> some View {

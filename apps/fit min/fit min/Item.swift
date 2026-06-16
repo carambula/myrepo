@@ -108,6 +108,7 @@ final class SetTimer {
     var workStepSeconds: Int
     var restStepSeconds: Int
     var proportionalRestPercent: Int
+    var customSegmentsData: Data?
 
     init(
         createdAt: Date = Date(),
@@ -115,7 +116,8 @@ final class SetTimer {
         lastUsedAt: Date? = nil,
         completedCount: Int = 0,
         customTitle: String = "",
-        configuration: SetTimerConfiguration = SetTimerConfiguration()
+        configuration: SetTimerConfiguration = SetTimerConfiguration(),
+        customSegments: [IntervalSegment]? = nil
     ) {
         let configuration = configuration.normalized
         self.createdAt = createdAt
@@ -132,6 +134,7 @@ final class SetTimer {
         self.workStepSeconds = configuration.workStepSeconds
         self.restStepSeconds = configuration.restStepSeconds
         self.proportionalRestPercent = configuration.proportionalRestPercent
+        self.customSegmentsData = customSegments.flatMap { try? JSONEncoder().encode($0) }
     }
 
     var intervalType: IntervalType {
@@ -174,7 +177,12 @@ final class SetTimer {
     }
 
     var schedule: [IntervalSegment] {
-        SetTimerScheduleBuilder.segments(for: configuration)
+        if let customSegmentsData,
+           let customSegments = try? JSONDecoder().decode([IntervalSegment].self, from: customSegmentsData),
+           !customSegments.isEmpty {
+            return customSegments
+        }
+        return SetTimerScheduleBuilder.segments(for: configuration)
     }
 
     var totalDurationSeconds: Int {
@@ -184,6 +192,10 @@ final class SetTimer {
     var displayTitle: String {
         let trimmed = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? SetTimerTitleFormatter.title(for: configuration) : trimmed
+    }
+
+    var blockStyleLabel: String {
+        SetTimerTitleFormatter.blockTitle(for: schedule)
     }
 
     func markUsed(at date: Date = Date()) {
@@ -200,6 +212,7 @@ final class SetTimer {
     func apply(configuration: SetTimerConfiguration, customTitle: String) {
         self.configuration = configuration
         self.customTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        customSegmentsData = nil
         updatedAt = Date()
     }
 }
@@ -281,6 +294,25 @@ enum SetTimerScheduleBuilder {
 }
 
 enum SetTimerTitleFormatter {
+    static func blockTitle(for segments: [IntervalSegment]) -> String {
+        let workSegments = segments.filter { $0.kind == .work }
+        var blocks: [String] = []
+
+        for work in workSegments {
+            if let rest = segments.first(where: { $0.kind == .rest && $0.repIndex == work.repIndex }) {
+                blocks.append("\(blockDurationToken(work.durationSeconds))/\(blockDurationToken(rest.durationSeconds))")
+            } else {
+                blocks.append(blockDurationToken(work.durationSeconds))
+            }
+        }
+
+        return blocks.joined(separator: " → ")
+    }
+
+    private static func blockDurationToken(_ seconds: Int) -> String {
+        "\(seconds)s"
+    }
+
     static func title(for configuration: SetTimerConfiguration) -> String {
         let configuration = configuration.normalized
         let segments = SetTimerScheduleBuilder.segments(for: configuration)
@@ -317,6 +349,9 @@ enum SetTimerTitleFormatter {
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
         let remainingSeconds = seconds % 60
+        if hours == 0 {
+            return String(format: "%d:%02d", minutes, remainingSeconds)
+        }
         return String(format: "%02d:%02d:%02d", hours, minutes, remainingSeconds)
     }
 }
@@ -355,13 +390,14 @@ enum TimerSoundCue: Equatable {
 }
 
 enum TimerSoundCueResolver {
-    static func cue(forElapsedSecond elapsedSecond: Int, segments: [IntervalSegment]) -> TimerSoundCue? {
-        guard elapsedSecond >= 0 else { return nil }
+    static func cue(forCompletedElapsedSecond elapsedSecond: Int, segments: [IntervalSegment]) -> TimerSoundCue? {
+        guard elapsedSecond > 0 else { return nil }
+        let completedSecond = elapsedSecond - 1
         var boundary = 0
         for segment in segments {
             let nextBoundary = boundary + segment.durationSeconds
-            if elapsedSecond < nextBoundary {
-                let remainingIncludingCurrent = nextBoundary - elapsedSecond
+            if completedSecond < nextBoundary {
+                let remainingIncludingCurrent = nextBoundary - completedSecond
                 return remainingIncludingCurrent <= 4 ? .boop : .tick
             }
             boundary = nextBoundary

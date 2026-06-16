@@ -3,11 +3,14 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var timers: [SetTimer]
 
     @State private var isAccountPresented = false
     @State private var configuratorPresentation: ConfiguratorPresentation?
     @State private var timerPresentation: TimerPresentation?
+    @State private var activeTimer: SetTimer?
+    @State private var activeSession: SetTimerSessionController?
 
     private var sortedTimers: [SetTimer] {
         timers.sorted { lhs, rhs in
@@ -22,13 +25,23 @@ struct ContentView: View {
         NavigationStack {
             SetTimerListView(
                 timers: sortedTimers,
+                activeTimer: activeTimer,
+                activeSession: activeSession,
                 onOpen: { timer in
-                    timerPresentation = TimerPresentation(timer: timer, startsImmediately: false)
+                    let session = session(for: timer, startsImmediately: false)
+                    timerPresentation = TimerPresentation(timer: timer, session: session)
                 },
-                onPlay: { timer in
-                    timer.markUsed()
-                    try? modelContext.save()
-                    timerPresentation = TimerPresentation(timer: timer, startsImmediately: true)
+                onPlaybackButton: { timer in
+                    if activeTimer === timer, let activeSession {
+                        activeSession.togglePlayPause()
+                    } else {
+                        let session = session(for: timer, startsImmediately: true)
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 90_000_000)
+                            guard activeTimer === timer, activeSession === session else { return }
+                            timerPresentation = TimerPresentation(timer: timer, session: session)
+                        }
+                    }
                 },
                 onEdit: { timer in
                     configuratorPresentation = ConfiguratorPresentation(timer: timer)
@@ -72,6 +85,10 @@ struct ContentView: View {
         .sheet(item: $configuratorPresentation) { presentation in
             SetTimerConfiguratorSheet(timer: presentation.timer) { configuration, customTitle in
                 saveTimer(presentation.timer, configuration: configuration, customTitle: customTitle)
+            } onDelete: {
+                if let timer = presentation.timer {
+                    deleteTimer(timer)
+                }
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -80,25 +97,42 @@ struct ContentView: View {
         .sheet(item: $timerPresentation) { presentation in
             SetTimerDetailSheet(
                 timer: presentation.timer,
-                startsImmediately: presentation.startsImmediately,
+                session: presentation.session,
                 onEdit: {
                     timerPresentation = nil
                     configuratorPresentation = ConfiguratorPresentation(timer: presentation.timer)
-                },
-                onDelete: {
-                    deleteTimer(presentation.timer)
-                    timerPresentation = nil
                 }
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .bottomSheetPullToDismiss()
         }
+        .task {
+            TimerSoundService.shared.prewarm()
+            DefaultSetTimerSeeder.seedIfNeeded(existingTimers: timers, modelContext: modelContext)
+            updateSiriTimerIndex()
+            handlePendingTimerStart()
+        }
+        .onChange(of: timers.map(\.updatedAt)) {
+            updateSiriTimerIndex()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            handlePendingTimerStart()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: FitMinPendingTimerStartStore.didRequestStartNotification)) { _ in
+            handlePendingTimerStart()
+        }
     }
 
     private func saveTimer(_ timer: SetTimer?, configuration: SetTimerConfiguration, customTitle: String) {
         if let timer {
             timer.apply(configuration: configuration, customTitle: customTitle)
+            if activeTimer === timer {
+                activeSession?.pause()
+                activeTimer = nil
+                activeSession = nil
+            }
         } else {
             modelContext.insert(SetTimer(customTitle: customTitle, configuration: configuration))
         }
@@ -107,9 +141,66 @@ struct ContentView: View {
 
     private func deleteTimer(_ timer: SetTimer) {
         withAnimation {
+            if activeTimer === timer {
+                activeSession?.pause()
+                activeTimer = nil
+                activeSession = nil
+            }
             modelContext.delete(timer)
             try? modelContext.save()
         }
+    }
+
+    private func session(for timer: SetTimer, startsImmediately: Bool) -> SetTimerSessionController {
+        if activeTimer === timer, let activeSession {
+            if startsImmediately {
+                activeSession.start()
+            }
+            return activeSession
+        }
+
+        activeSession?.pause()
+        let session = SetTimerSessionController(
+            configuration: timer.configuration,
+            segments: timer.schedule,
+            startsImmediately: false
+        )
+        session.onComplete = {
+            timer.markCompleted()
+            try? modelContext.save()
+        }
+        activeTimer = timer
+        activeSession = session
+        if startsImmediately {
+            session.start()
+        }
+        return session
+    }
+
+    private func handlePendingTimerStart() {
+        guard let requestedName = FitMinPendingTimerStartStore.consumePendingStartName() else { return }
+        guard let timer = timer(named: requestedName) else { return }
+        let session = session(for: timer, startsImmediately: true)
+        timerPresentation = TimerPresentation(timer: timer, session: session)
+    }
+
+    private func timer(named name: String) -> SetTimer? {
+        let normalized = FitMinTimerNameNormalizer.normalize(name)
+        guard !normalized.isEmpty else { return nil }
+        return timers.first { timer in
+            FitMinTimerNameNormalizer.normalize(timer.displayTitle) == normalized
+        } ?? timers.first { timer in
+            FitMinTimerNameNormalizer.normalize(timer.displayTitle).contains(normalized)
+                || normalized.contains(FitMinTimerNameNormalizer.normalize(timer.displayTitle))
+        } ?? timers.first { timer in
+            let requestedWords = FitMinTimerNameNormalizer.words(in: normalized)
+            let timerWords = FitMinTimerNameNormalizer.words(in: FitMinTimerNameNormalizer.normalize(timer.displayTitle))
+            return !requestedWords.isEmpty && requestedWords.isSubset(of: timerWords)
+        }
+    }
+
+    private func updateSiriTimerIndex() {
+        FitMinTimerIndexStore.save(timers: sortedTimers)
     }
 }
 
@@ -121,15 +212,18 @@ struct ConfiguratorPresentation: Identifiable {
 struct TimerPresentation: Identifiable {
     let id = UUID()
     let timer: SetTimer
-    let startsImmediately: Bool
+    let session: SetTimerSessionController
 }
 
 struct SetTimerListView: View {
     let timers: [SetTimer]
+    let activeTimer: SetTimer?
+    let activeSession: SetTimerSessionController?
     var onOpen: (SetTimer) -> Void
-    var onPlay: (SetTimer) -> Void
+    var onPlaybackButton: (SetTimer) -> Void
     var onEdit: (SetTimer) -> Void
     var onDelete: (SetTimer) -> Void
+    @State private var titleTypeInitialY: CGFloat?
 
     var body: some View {
         ScrollView {
@@ -145,8 +239,9 @@ struct SetTimerListView: View {
                         ForEach(timers) { timer in
                             SetTimerRow(
                                 timer: timer,
+                                liveSession: liveSession(for: timer),
                                 onOpen: { onOpen(timer) },
-                                onPlay: { onPlay(timer) }
+                                onPlaybackButton: { onPlaybackButton(timer) }
                             )
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
@@ -172,15 +267,46 @@ struct SetTimerListView: View {
             .padding(.top, MinSpacing.TitleType.scrollTopPadding)
         }
         .scrollClipDisabled()
+        .coordinateSpace(name: "setTimerListScroll")
         .themeBackground()
     }
 
     private var titleTypeMark: some View {
-        Text("fit min")
-            .font(.system(size: 38, weight: .black, design: .rounded))
-            .foregroundStyle(DesignSystem.Colors.headlineColor)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityAddTraits(.isHeader)
+        Image("Title Type")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(DesignSystem.Colors.accent)
+            .frame(
+                maxWidth: MinSpacing.TitleType.maxWidth,
+                maxHeight: MinSpacing.TitleType.maxHeight,
+                alignment: .leading
+            )
+            .compositingGroup()
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.frame(in: .named("setTimerListScroll")).minY
+            } action: { newValue in
+                if titleTypeInitialY == nil {
+                    titleTypeInitialY = newValue
+                }
+            }
+            .visualEffect { content, proxy in
+                let scrollY = proxy.frame(in: .named("setTimerListScroll")).minY
+                let initial = titleTypeInitialY ?? scrollY
+                let drift = initial - scrollY
+                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1)
+                return content
+                    .offset(y: drift)
+                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
+                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
+            }
+            .zIndex(-1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func liveSession(for timer: SetTimer) -> SetTimerSessionController? {
+        activeTimer === timer ? activeSession : nil
     }
 
     private var emptyState: some View {
@@ -199,50 +325,136 @@ struct SetTimerListView: View {
 
 struct SetTimerRow: View {
     let timer: SetTimer
+    let liveSession: SetTimerSessionController?
     var onOpen: () -> Void
-    var onPlay: () -> Void
+    var onPlaybackButton: () -> Void
+
+    private let visualAssetSize: CGFloat = 72
 
     var body: some View {
-        Button(action: onOpen) {
+        HStack(spacing: DesignSystem.Spacing.md) {
             HStack(spacing: DesignSystem.Spacing.md) {
+                SetTimerClockAssetView(timer: timer, liveSession: liveSession)
+                    .frame(width: visualAssetSize, height: visualAssetSize)
+                    .contentShape(Circle())
+
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(timer.displayTitle)
-                        .font(DesignSystem.Typography.displayMedium())
-                        .foregroundStyle(DesignSystem.Colors.headlineColor)
+                        .font(DesignSystem.Typography.headlineLarge())
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.72)
 
                     Text(metadataText)
                         .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .lineLimit(2)
                 }
 
-                Spacer(minLength: DesignSystem.Spacing.md)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onOpen()
+            }
 
-                Button(action: onPlay) {
-                    Image(systemName: DesignSystem.Icon.playSmall)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(ThemeManager.shared.currentTheme.onAccent)
-                        .frame(width: 52, height: 52)
-                        .background(DesignSystem.Colors.accent, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Start \(timer.displayTitle)")
+            Button(action: onPlaybackButton) {
+                Image(systemName: liveSession?.isPlaying == true ? DesignSystem.Icon.pause : DesignSystem.Icon.play)
+                    .font(.system(size: 28))
+                    .foregroundStyle(DesignSystem.Colors.accent)
             }
-            .padding(.vertical, DesignSystem.Spacing.lg)
-            .padding(.horizontal, DesignSystem.Spacing.lg)
-            .background(DesignSystem.Colors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(DesignSystem.Colors.divider, lineWidth: 0.8)
-            }
+            .buttonStyle(.plain)
+            .padding(.vertical, DesignSystem.Spacing.sm)
+            .accessibilityLabel(liveSession?.isPlaying == true ? "Pause \(timer.displayTitle)" : "Start \(timer.displayTitle)")
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .contentShape(Rectangle())
     }
 
     private var metadataText: String {
-        let total = SetTimerTitleFormatter.clockDuration(timer.totalDurationSeconds)
-        return "\(total) total workout   Set completed \(timer.completedCount) times"
+        timer.blockStyleLabel
+    }
+}
+
+struct SetTimerClockAssetView: View {
+    let timer: SetTimer
+    let liveSession: SetTimerSessionController?
+
+    private var marks: [TimerSecondMark] {
+        liveSession?.marks ?? TimerSecondMark.marks(for: timer.schedule)
+    }
+
+    var body: some View {
+        ZStack {
+            Canvas { context, size in
+                guard !marks.isEmpty else { return }
+                let side = min(size.width, size.height)
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                let radius = max(0, side / 2 - 2)
+                let total = Double(marks.count)
+                let currentMarkID = liveSession?.currentMarkID
+                let countdownProgress = liveSession?.readyCountdownWindProgress ?? 0
+
+                func draw(_ mark: TimerSecondMark, color: Color, length: CGFloat, lineWidth: CGFloat) {
+                    let progress = Double(mark.id) / total
+                    let angle = CGFloat(-Double.pi / 2 + progress * Double.pi * 2)
+                    let outer = CGPoint(
+                        x: center.x + cos(angle) * radius,
+                        y: center.y + sin(angle) * radius
+                    )
+                    let inner = CGPoint(
+                        x: center.x + cos(angle) * max(0, radius - length),
+                        y: center.y + sin(angle) * max(0, radius - length)
+                    )
+                    var path = Path()
+                    path.move(to: inner)
+                    path.addLine(to: outer)
+                    context.stroke(
+                        path,
+                        with: .color(color),
+                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                    )
+                }
+
+                func anticlockwiseProgress(for mark: TimerSecondMark) -> Double {
+                    guard mark.id != 0 else { return 0 }
+                    return (total - Double(mark.id)) / total
+                }
+
+                for mark in marks where mark.id != 0 && mark.id != currentMarkID {
+                    let isComplete = liveSession.map { mark.id < $0.elapsedSeconds } ?? false
+                    draw(
+                        mark,
+                        color: isComplete ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.accent,
+                        length: mark.segmentKind == .work ? 8 : 4,
+                        lineWidth: mark.segmentKind == .work ? 1.4 : 1
+                    )
+                }
+
+                if let zeroMark = marks.first {
+                    draw(zeroMark, color: DesignSystem.Colors.headlineColor, length: 12, lineWidth: 2.2)
+                }
+
+                if let currentMarkID,
+                   let currentMark = marks.first(where: { $0.id == currentMarkID }) {
+                    draw(currentMark, color: DesignSystem.Colors.index, length: 12, lineWidth: 2.2)
+                }
+
+                if liveSession?.isReadyCountdownActive == true {
+                    for mark in marks {
+                        let distanceBehindWave = countdownProgress - anticlockwiseProgress(for: mark)
+                        guard distanceBehindWave >= 0, distanceBehindWave <= 0.18 else { continue }
+                        let intensity = 1 - distanceBehindWave / 0.18
+                        draw(
+                            mark,
+                            color: DesignSystem.Colors.highlight.opacity(0.35 + 0.65 * intensity),
+                            length: (mark.segmentKind == .work ? 8 : 4) + 6 * intensity,
+                            lineWidth: 1.4 + 1.4 * intensity
+                        )
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

@@ -5,7 +5,12 @@ struct AccountSheetView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Bindable private var affordanceStyle = MinAffordanceStyle.shared
 
-    @AppStorage("fitMin.timerSoundsEnabled") private var timerSoundsEnabled = true
+    @AppStorage(TimerSoundSettingsKey.enabled) private var timerSoundsEnabled = true
+    @AppStorage(TimerSoundSettingsKey.volume) private var timerSoundVolumeRawValue = TimerSoundVolume.standard.rawValue
+    @AppStorage(TimerSoundSettingsKey.tone) private var timerSoundToneRawValue = TimerSoundTone.balanced.rawValue
+    @AppStorage("fitMin.clockDisplayMode") private var clockDisplayModeRawValue = ClockDisplayMode.repsOnly.rawValue
+    @AppStorage("fitMin.bouncesFinalIntervalTicks") private var bouncesFinalIntervalTicks = false
+    @AppStorage("fitMin.readySetGoEnabled") private var readySetGoEnabled = false
     @State private var showsThemes = false
     @State private var showsFonts = false
 
@@ -38,13 +43,51 @@ struct AccountSheetView: View {
                     } label: {
                         Label("Fonts", systemImage: DesignSystem.Icon.fonts)
                     }
+
+                    Picker("Clock Display", selection: $clockDisplayModeRawValue) {
+                        ForEach(ClockDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Toggle("Bounce final interval ticks", isOn: $bouncesFinalIntervalTicks)
                 }
                 .designSystemGroupedListRow()
 
                 Section("Timer") {
+                    Toggle("Ready set go", isOn: $readySetGoEnabled)
+
                     Toggle(isOn: $timerSoundsEnabled) {
                         Label("Tick and boop sounds", systemImage: DesignSystem.Icon.sound)
                     }
+
+                    Picker("Sound volume", selection: $timerSoundVolumeRawValue) {
+                        ForEach(TimerSoundVolume.allCases) { volume in
+                            Text(volume.title).tag(volume.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(!timerSoundsEnabled)
+
+                    Picker("Sound tone", selection: $timerSoundToneRawValue) {
+                        ForEach(TimerSoundTone.allCases) { tone in
+                            Text(tone.title).tag(tone.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(!timerSoundsEnabled)
+
+                    Button {
+                        TimerSoundService.shared.play(.tick)
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 130_000_000)
+                            TimerSoundService.shared.play(.boop)
+                        }
+                    } label: {
+                        Label("Preview sound", systemImage: "speaker.wave.2.circle")
+                    }
+                    .disabled(!timerSoundsEnabled)
                 }
                 .designSystemGroupedListRow()
 

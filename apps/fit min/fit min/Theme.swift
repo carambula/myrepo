@@ -8,6 +8,7 @@ struct FitTheme: Identifiable {
     let name: String
     let accent: Color
     let highlight: Color
+    let indexColor: Color = Color(red: 1.0, green: 0.251, blue: 0.141)
     let onAccent: Color
     let background: Color
     let surface: Color

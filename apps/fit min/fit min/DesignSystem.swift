@@ -31,6 +31,7 @@ struct DesignSystem {
     enum Colors {
         static var accent: Color { ThemeManager.shared.currentTheme.accent }
         static var highlight: Color { ThemeManager.shared.currentTheme.highlight }
+        static var index: Color { ThemeManager.shared.currentTheme.indexColor }
         static var background: Color { ThemeManager.shared.currentTheme.background }
         static var surface: Color { ThemeManager.shared.currentTheme.surface }
         static var surfaceElevated: Color { ThemeManager.shared.currentTheme.surfaceElevated }
@@ -51,12 +52,14 @@ struct DesignSystem {
         static let delete = "trash"
         static let edit = "pencil"
         static let forward = "forward.fill"
+        static let clock = "timer"
         static let pause = "pause.circle.fill"
         static let play = "play.circle.fill"
         static let playSmall = "play.fill"
         static let themes = "paintbrush"
         static let fonts = "textformat"
         static let sound = "speaker.wave.2"
+        static let soundOff = "speaker.slash"
     }
 
     enum Controls {

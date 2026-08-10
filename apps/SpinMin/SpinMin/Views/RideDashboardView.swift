@@ -14,10 +14,20 @@ struct RideDashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \BikeConfiguration.lastUsed, order: .reverse) private var bikes: [BikeConfiguration]
     @Query private var wheelsets: [Wheelset]
+    @Query(sort: \ScheduledRide.scheduledDate) private var allRides: [ScheduledRide]
     
     @State private var selectedBike: BikeConfiguration?
     @State private var showingAddBike = false
     @State private var riderWeight: Double = 70
+    @State private var selectedRide: ScheduledRide?
+    
+    var todayRides: [ScheduledRide] {
+        allRides.filter { Calendar.current.isDateInToday($0.scheduledDate) && !$0.isCompleted }
+    }
+    
+    var upcomingRidesNeedingPrep: [ScheduledRide] {
+        allRides.filter { $0.needsPreparation && !$0.isToday }
+    }
     
     var body: some View {
         NavigationStack {
@@ -33,11 +43,21 @@ struct RideDashboardView: View {
                             .displayMedium()
                             .foregroundHeadline()
                         
-                        Text("Quick setup for today's ride")
+                        Text(headerSubtitle)
                             .bodyMedium()
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, DesignSystem.Spacing.xl)
+                    
+                    // Today's scheduled rides
+                    if !todayRides.isEmpty {
+                        todayRidesSection
+                    }
+                    
+                    // Rides needing preparation (next 24 hours)
+                    if !upcomingRidesNeedingPrep.isEmpty {
+                        prepNeededSection
+                    }
                     
                     if bikes.isEmpty {
                         emptyStateView

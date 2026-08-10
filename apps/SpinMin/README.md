@@ -15,6 +15,30 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 ## Features
 
+### Gear Tracking & Checklists
+- **Gear Locker**: Track helmets, shoes, cleats, tools, and accessories
+- **Lifespan tracking**: Auto-calculated expiry dates (helmets: 5 years, shoes: 2 years, etc.)
+- **Safety alerts**: Critical warnings for expired helmets, worn shoes
+- **Usage tracking**: Record rides and hours for wear calculations
+- **Consumables monitoring**: Track nutrition, bottles, spare kits
+- **Pre-ride checklists**: Templates for training, races, long rides, bikepacking
+- **Race day preparation**: Comprehensive race checklist with categories
+- **Quick check-in**: Mark items complete, track progress
+- **Gear ordering**: Direct links to replace expired/worn gear
+
+See [GEAR_TRACKING.md](./GEAR_TRACKING.md) for complete documentation.
+
+### Vendor Ordering System
+- **One-tap ordering** of replacement components from trusted retailers
+- **7 supported vendors**: Competitive Cyclist, Jenson USA, Silca, REI, Backcountry, Chain Reaction, Modern Bike
+- **Smart vendor recommendations** based on component type
+- **Context-aware buttons** (appear when replacement is needed)
+- **Direct links** to Silca chain wax and popular products
+- **User preferences** for favorite vendors
+- **Deep linking** opens Safari with product search
+
+See [VENDOR_ORDERING.md](./VENDOR_ORDERING.md) for complete documentation.
+
 ### Product Lookup Database
 - **Autocomplete search** for tires, chains, wheelsets, and components
 - **Pre-populated database** with 20+ popular products (Continental, Schwalbe, Shimano, SRAM, etc.)

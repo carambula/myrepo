@@ -40,11 +40,23 @@ struct ContentView: View {
                 }
                 .tag(3)
             
+            GearLockerView()
+                .tabItem {
+                    Label("Gear", systemImage: "tshirt.fill")
+                }
+                .tag(4)
+            
+            RideChecklistsView()
+                .tabItem {
+                    Label("Checklists", systemImage: "checklist")
+                }
+                .tag(5)
+            
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
-                .tag(4)
+                .tag(6)
         }
         .tint(themeManager.currentTheme.accent)
     }

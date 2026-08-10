@@ -32,6 +32,11 @@ struct SpinMinApp: App {
             BikeProduct.self,
             // Vendor preferences
             VendorPreference.self,
+            // Gear tracking
+            GearItem.self,
+            // Checklists
+            RideChecklist.self,
+            ChecklistItem.self,
         ])
         
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

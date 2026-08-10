@@ -28,6 +28,19 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 See [GEAR_TRACKING.md](./GEAR_TRACKING.md) for complete documentation.
 
+### Ride Scheduling & Preparation
+- **Ride planning**: Create rides with type, duration, distance, and notes
+- **Training platform sync**: *Coming soon* - TrainingPeaks and Garmin Connect integration
+- **Smart recommendations**: Algorithm suggests best bike and route for each ride
+- **Pre-ride preparation**: Comprehensive checklist with bike and gear checks
+- **Battery tracking**: Monitor charge levels for head unit, radar, and lights
+- **Weather alerts**: Warnings for extreme temperatures and precipitation
+- **Route management**: Save routes with distance, surface type, and difficulty ratings
+- **Readiness scoring**: Visual progress tracking for preparation
+- **Priority system**: Critical, important, and optional checks clearly marked
+
+See [RIDE_SCHEDULING.md](./RIDE_SCHEDULING.md) for complete documentation.
+
 ### Vendor Ordering System
 - **One-tap ordering** of replacement components from trusted retailers
 - **7 supported vendors**: Competitive Cyclist, Jenson USA, Silca, REI, Backcountry, Chain Reaction, Modern Bike

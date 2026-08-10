@@ -246,6 +246,19 @@ oon
             let expectedHours = 500.0
             return (gear.totalHours / expectedHours) * 100
             
+        case .brakePads:
+            // Varies significantly by type and use
+            // Road: ~1000km, MTB: ~500km, Wet conditions: much less
+            // Approximate as 100 hours for mixed use
+            let expectedHours = 100.0
+            return (gear.totalHours / expectedHours) * 100
+            
+        case .brakeRotors:
+            // Rotors last 2-3x longer than pads
+            // Road: ~5000km, MTB: ~2000km
+            let expectedHours = 250.0
+            return (gear.totalHours / expectedHours) * 100
+            
         case .computerGPS:
             // Battery cycles matter more than hours
             let expectedUses = 500  // charge cycles
@@ -330,6 +343,18 @@ oon
         case .cleats:
             if usagePercentage >= 50 {
                 warnings.append("Inspect cleat wear - uneven wear affects pedaling")
+            }
+        case .brakePads:
+            if usagePercentage >= 75 {
+                warnings.append("Check pad thickness - metal-on-rotor contact damages rotors")
+            } else if usagePercentage >= 50 {
+                warnings.append("Inspect pad wear and contamination")
+            }
+        case .brakeRotors:
+            if usagePercentage >= 75 {
+                warnings.append("Measure rotor thickness - below minimum is unsafe")
+            } else if usagePercentage >= 50 {
+                warnings.append("Check for rotor warping and glazing")
             }
         case .spareKit:
             if agePercentage >= 50 {

@@ -15,13 +15,19 @@ enum GearType: String, CaseIterable, Codable {
     case shoes
     case cleats
     case pedals
+    case brakePads = "brake_pads"
+    case brakeRotors = "brake_rotors"
     case computerGPS = "computer_gps"
-    case lights
+    case headUnit = "head_unit"
+    case radar
+    case tailLight = "tail_light"
+    case frontLight = "front_light"
     case multiTool = "multi_tool"
     case pumpCO2 = "pump_co2"
     case spareKit = "spare_kit"
     case bottles
     case nutrition
+    case chamoisCream = "chamois_cream"
     case jersey
     case bibs
     case jacket
@@ -35,13 +41,19 @@ enum GearType: String, CaseIterable, Codable {
         case .shoes: return "Cycling Shoes"
         case .cleats: return "Cleats"
         case .pedals: return "Pedals"
+        case .brakePads: return "Brake Pads"
+        case .brakeRotors: return "Brake Rotors"
         case .computerGPS: return "Computer/GPS"
-        case .lights: return "Lights"
+        case .headUnit: return "Head Unit"
+        case .radar: return "Radar"
+        case .tailLight: return "Tail Light"
+        case .frontLight: return "Front Light"
         case .multiTool: return "Multi-Tool"
         case .pumpCO2: return "Pump/CO2"
         case .spareKit: return "Spare Kit"
         case .bottles: return "Water Bottles"
         case .nutrition: return "Nutrition"
+        case .chamoisCream: return "Chamois Cream"
         case .jersey: return "Jersey"
         case .bibs: return "Bibs/Shorts"
         case .jacket: return "Jacket"
@@ -57,13 +69,19 @@ enum GearType: String, CaseIterable, Codable {
         case .shoes: return "shoe.fill"
         case .cleats: return "arrow.triangle.2.circlepath"
         case .pedals: return "gear.circle"
+        case .brakePads: return "record.circle"
+        case .brakeRotors: return "circle.dotted"
         case .computerGPS: return "location.circle.fill"
-        case .lights: return "flashlight.on.fill"
+        case .headUnit: return "bicycle.circle.fill"
+        case .radar: return "wave.3.right.circle.fill"
+        case .tailLight: return "light.beacon.max.fill"
+        case .frontLight: return "flashlight.on.fill"
         case .multiTool: return "wrench.and.screwdriver.fill"
         case .pumpCO2: return "wind"
         case .spareKit: return "bandage.fill"
         case .bottles: return "waterbottle.fill"
         case .nutrition: return "carrot.fill"
+        case .chamoisCream: return "drop.circle.fill"
         case .jersey: return "tshirt.fill"
         case .bibs: return "figure.walk"
         case .jacket: return "jacket.fill"
@@ -75,13 +93,13 @@ enum GearType: String, CaseIterable, Codable {
     
     var category: GearCategory {
         switch self {
-        case .helmet, .shoes, .cleats, .pedals:
+        case .helmet, .shoes, .cleats, .pedals, .brakePads, .brakeRotors:
             return .safety
-        case .computerGPS, .lights:
+        case .computerGPS, .headUnit, .radar, .tailLight, .frontLight:
             return .electronics
         case .multiTool, .pumpCO2, .spareKit, .saddleBag:
             return .tools
-        case .bottles, .nutrition:
+        case .bottles, .nutrition, .chamoisCream:
             return .consumables
         case .jersey, .bibs, .jacket, .gloves, .sunglasses:
             return .clothing
@@ -90,7 +108,16 @@ enum GearType: String, CaseIterable, Codable {
     
     var isConsumable: Bool {
         switch self {
-        case .nutrition, .bottles:
+        case .nutrition, .bottles, .chamoisCream:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    var requiresBattery: Bool {
+        switch self {
+        case .headUnit, .radar, .tailLight, .frontLight, .computerGPS:
             return true
         default:
             return false
@@ -101,15 +128,21 @@ enum GearType: String, CaseIterable, Codable {
         switch self {
         case .helmet: return 1825  // 5 years (safety standard)
         case .shoes: return 730    // 2 years (~1000 hours)
-        case .cleats: return 365   // 1 year
+        case .cleats: return 365   // 1 year (~500 hours)
         case .pedals: return 1825  // 5 years
+        case .brakePads: return 180  // 6 months (varies by use: road vs MTB)
+        case .brakeRotors: return 730  // 2 years (depends on pad material)
         case .computerGPS: return 1095  // 3 years (battery life)
-        case .lights: return 730   // 2 years (battery/LED life)
+        case .headUnit: return 1095  // 3 years (battery life)
+        case .radar: return 1095   // 3 years (battery life)
+        case .tailLight: return 730  // 2 years (battery/LED life)
+        case .frontLight: return 730  // 2 years (battery/LED life)
         case .multiTool: return nil  // Indefinite with care
         case .pumpCO2: return nil
         case .spareKit: return 730  // 2 years (tubes/patches degrade)
         case .bottles: return 365  // 1 year (wear/bacteria)
         case .nutrition: return 30  // 1 month (consumable)
+        case .chamoisCream: return 90  // 3 months (consumable, typical usage)
         case .jersey, .bibs: return 730  // 2 years (~200 washes)
         case .jacket: return 1095  // 3 years
         case .gloves: return 365   // 1 year
@@ -160,6 +193,22 @@ final class GearItem {
     var lastInspectionDate: Date?
     var crashDate: Date?  // For helmets
     
+    // Brake tracking
+    var brakeType: String?  // "hydraulic", "mechanical"
+    var padCompound: String?  // "organic", "metallic", "sintered"
+    var rotorSize: Int?  // 140mm, 160mm, 180mm, 203mm
+    var frontOrRear: String?  // "front", "rear"
+    
+    // Battery tracking for electronics
+    var hasBattery: Bool
+    var batteryPercentage: Double?  // 0-100
+    var lastChargedDate: Date?
+    var batteryRuntimeHours: Double?  // Expected runtime on full charge
+    var isCharging: Bool
+    
+    // Shoe/cleat linkage
+    var linkedGearId: UUID?  // Link cleats to shoes
+    
     // Checklist integration
     var isRequiredForRides: Bool
     var isRequiredForRaces: Bool
@@ -187,6 +236,8 @@ final class GearItem {
         self.isSafetyCritical = isSafetyCritical
         self.isRequiredForRides = isRequiredForRides
         self.isRequiredForRaces = isRequiredForRaces
+        self.hasBattery = gearType.requiresBattery
+        self.isCharging = false
         
         // Auto-set safety critical for certain gear
         if gearType == .helmet {
@@ -245,6 +296,70 @@ final class GearItem {
     func recordCrash() {
         crashDate = Date()
         retire(reason: "Helmet crash - immediate replacement required")
+    }
+    
+    // Battery management
+    var needsCharge: Bool {
+        guard hasBattery, let percentage = batteryPercentage else { return false }
+        return percentage < 20
+    }
+    
+    var batteryStatus: BatteryStatus {
+        guard hasBattery else { return .notApplicable }
+        guard let percentage = batteryPercentage else { return .unknown }
+        
+        if isCharging {
+            return .charging
+        } else if percentage >= 80 {
+            return .full
+        } else if percentage >= 50 {
+            return .good
+        } else if percentage >= 20 {
+            return .low
+        } else {
+            return .critical
+        }
+    }
+    
+    func markCharged() {
+        batteryPercentage = 100
+        lastChargedDate = Date()
+        isCharging = false
+    }
+    
+    func updateBatteryLevel(_ percentage: Double) {
+        batteryPercentage = max(0, min(100, percentage))
+    }
+}
+
+enum BatteryStatus {
+    case full
+    case good
+    case low
+    case critical
+    case charging
+    case unknown
+    case notApplicable
+    
+    var icon: String {
+        switch self {
+        case .full: return "battery.100"
+        case .good: return "battery.75"
+        case .low: return "battery.25"
+        case .critical: return "battery.0"
+        case .charging: return "battery.100.bolt"
+        case .unknown: return "battery.50"
+        case .notApplicable: return ""
+        }
+    }
+    
+    var color: String {
+        switch self {
+        case .full, .good, .charging: return "green"
+        case .low: return "orange"
+        case .critical: return "red"
+        case .unknown, .notApplicable: return "gray"
+        }
     }
 }
 
@@ -368,19 +483,22 @@ struct ChecklistTemplate {
         ChecklistTemplate(
             type: .training,
             name: "Training Ride",
-            categories: ["Safety", "Bike", "Tools", "Hydration"],
+            categories: ["Safety", "Electronics", "Bike", "Tools", "Consumables"],
             items: [
                 ("Helmet", "Safety", .helmet),
                 ("Cycling shoes", "Safety", .shoes),
                 ("Sunglasses", "Safety", .sunglasses),
-                ("Front & rear lights", "Safety", .lights),
-                ("Bike computer/GPS", "Bike", .computerGPS),
+                ("Chamois cream applied", "Consumables", .chamoisCream),
+                ("Head unit charged", "Electronics", .headUnit),
+                ("Radar charged", "Electronics", .radar),
+                ("Tail light charged", "Electronics", .tailLight),
+                ("Front light charged", "Electronics", .frontLight),
                 ("Tire pressure checked", "Bike", nil),
                 ("Chain lubed", "Bike", nil),
                 ("Multi-tool", "Tools", .multiTool),
                 ("Spare tube", "Tools", .spareKit),
                 ("CO2 or mini pump", "Tools", .pumpCO2),
-                ("Water bottles filled", "Hydration", .bottles),
+                ("Water bottles filled", "Consumables", .bottles),
             ]
         ),
         
@@ -388,7 +506,7 @@ struct ChecklistTemplate {
         ChecklistTemplate(
             type: .race,
             name: "Race Day",
-            categories: ["Pre-Race", "Gear", "Bike", "Nutrition", "Post-Race"],
+            categories: ["Pre-Race", "Gear", "Electronics", "Bike", "Nutrition", "Post-Race"],
             items: [
                 ("Registration confirmed", "Pre-Race", nil),
                 ("Course map reviewed", "Pre-Race", nil),
@@ -397,7 +515,11 @@ struct ChecklistTemplate {
                 ("Race shoes & cleats", "Gear", .shoes),
                 ("Race kit (jersey/bibs)", "Gear", .jersey),
                 ("Sunglasses", "Gear", .sunglasses),
-                ("Bike computer/GPS", "Gear", .computerGPS),
+                ("Chamois cream applied", "Gear", .chamoisCream),
+                ("Head unit charged & ready", "Electronics", .headUnit),
+                ("Radar charged", "Electronics", .radar),
+                ("Tail light charged", "Electronics", .tailLight),
+                ("Front light charged", "Electronics", .frontLight),
                 ("Bike cleaned", "Bike", nil),
                 ("Tire pressure optimal", "Bike", nil),
                 ("Chain waxed/lubed", "Bike", nil),
@@ -417,12 +539,15 @@ struct ChecklistTemplate {
         ChecklistTemplate(
             type: .longRide,
             name: "Long Ride (3+ hours)",
-            categories: ["Safety", "Bike", "Tools", "Nutrition", "Clothing"],
+            categories: ["Safety", "Electronics", "Bike", "Tools", "Nutrition", "Clothing"],
             items: [
                 ("Helmet", "Safety", .helmet),
                 ("Cycling shoes", "Safety", .shoes),
-                ("Front & rear lights", "Safety", .lights),
-                ("Bike computer with route", "Bike", .computerGPS),
+                ("Chamois cream applied", "Safety", .chamoisCream),
+                ("Head unit charged & route loaded", "Electronics", .headUnit),
+                ("Radar charged", "Electronics", .radar),
+                ("Tail light charged", "Electronics", .tailLight),
+                ("Front light charged", "Electronics", .frontLight),
                 ("Tire pressure checked", "Bike", nil),
                 ("Chain condition good", "Bike", nil),
                 ("Multi-tool", "Tools", .multiTool),

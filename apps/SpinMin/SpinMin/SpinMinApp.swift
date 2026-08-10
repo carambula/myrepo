@@ -37,6 +37,9 @@ struct SpinMinApp: App {
             // Checklists
             RideChecklist.self,
             ChecklistItem.self,
+            // Ride scheduling
+            ScheduledRide.self,
+            Route.self,
         ])
         
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

@@ -1,0 +1,564 @@
+//
+//  RideScheduleView.swift
+//  SpinMin
+//
+//  Views for ride scheduling and preparation
+//
+
+import SwiftUI
+import SwiftData
+
+// MARK: - Main Schedule View
+
+struct RideScheduleView: View {
+    @Query(sort: \ScheduledRide.scheduledDate, order: .forward) private var allRides: [ScheduledRide]
+    @Query private var bikes: [BikeConfiguration]
+    @Query private var routes: [Route]
+    @Query(filter: #Predicate<GearItem> { !$0.isRetired }) private var activeGear: [GearItem]
+    
+    @State private var showingAddRide = false
+    @State private var selectedRide: ScheduledRide?
+    
+    var upcomingRides: [ScheduledRide] {
+        allRides.filter { $0.isUpcoming && !$0.isCompleted }
+    }
+    
+    var todayRides: [ScheduledRide] {
+        upcomingRides.filter { $0.isToday }
+    }
+    
+    var ridesNeedingPrep: [ScheduledRide] {
+        upcomingRides.filter { $0.needsPreparation }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Today's rides
+                    if !todayRides.isEmpty {
+                        todaySection
+                    }
+                    
+                    // Rides needing preparation
+                    if !ridesNeedingPrep.isEmpty {
+                        needsPrepSection
+                    }
+                    
+                    // Upcoming rides
+                    if !upcomingRides.isEmpty {
+                        upcomingSection
+                    } else {
+                        emptyState
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                .padding(.vertical, DesignSystem.Spacing.lg)
+            }
+            .navigationTitle("Ride Schedule")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingAddRide = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddRide) {
+                AddRideView()
+            }
+            .sheet(item: $selectedRide) { ride in
+                PreRidePreparationView(
+                    ride: ride,
+                    bikes: bikes,
+                    routes: routes,
+                    allGear: activeGear
+                )
+            }
+        }
+    }
+    
+    private var todaySection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Today")
+                .h3()
+            
+            ForEach(todayRides) { ride in
+                RideCard(ride: ride) {
+                    selectedRide = ride
+                }
+            }
+        }
+    }
+    
+    private var needsPrepSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Needs Preparation")
+                .h3()
+            
+            ForEach(ridesNeedingPrep) { ride in
+                RideCard(ride: ride, showPrepBadge: true) {
+                    selectedRide = ride
+                }
+            }
+        }
+    }
+    
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Upcoming")
+                .h3()
+            
+            ForEach(upcomingRides.filter { !$0.isToday }) { ride in
+                RideCard(ride: ride) {
+                    selectedRide = ride
+                }
+            }
+        }
+    }
+    
+    private var emptyState: some View {
+        VStack(spacing: DesignSystem.Spacing.lg) {
+            Image(systemName: "calendar.badge.clock")
+                .font(.system(size: 60))
+                .foregroundAccent()
+            
+            Text("No Upcoming Rides")
+                .h3()
+            
+            Text("Add your first ride or sync with TrainingPeaks/Garmin")
+                .bodyMedium()
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button {
+                showingAddRide = true
+            } label: {
+                Text("Add Ride")
+            }
+            .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .large))
+        }
+        .padding(.vertical, DesignSystem.Spacing.xxl)
+    }
+}
+
+// MARK: - Ride Card
+
+struct RideCard: View {
+    let ride: ScheduledRide
+    var showPrepBadge: Bool = false
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                // Icon & time
+                VStack(spacing: DesignSystem.Spacing.xs) {
+                    Image(systemName: ride.rideType.icon)
+                        .font(.title2)
+                        .foregroundAccent()
+                    
+                    Text(ride.scheduledDate, style: .time)
+                        .captionSmall()
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 60)
+                
+                // Content
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    HStack {
+                        Text(ride.name)
+                            .bodyLarge()
+                        
+                        Spacer()
+                        
+                        if showPrepBadge {
+                            Label("Prep", systemImage: "exclamationmark.circle.fill")
+                                .captionSmall()
+                                .foregroundStyle(.orange)
+                        }
+                        
+                        if ride.isPrepared {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    
+                    HStack {
+                        Text(ride.rideType.displayName)
+                            .captionMedium()
+                            .foregroundStyle(.secondary)
+                        
+                        Text("   ")
+                            .captionMedium()
+                        
+                        Text(formatDuration(ride.duration))
+                            .captionMedium()
+                            .foregroundStyle(.secondary)
+                        
+                        if let distance = ride.distance {
+                            Text("   ")
+                                .captionMedium()
+                            Text(String(format: "%.0f km", distance))
+                                .captionMedium()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    if let bike = ride.selectedBike ?? ride.recommendedBike {
+                        HStack(spacing: DesignSystem.Spacing.xs) {
+                            Image(systemName: "bicycle")
+                                .font(.caption)
+                            Text(bike.name)
+                                .captionSmall()
+                        }
+                        .foregroundStyle(.tertiary)
+                    }
+                }
+                
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(DesignSystem.Spacing.md)
+            .background(Color(.systemBackground))
+            .cornerRadius(DesignSystem.CornerRadius.md)
+            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+}
+
+// MARK: - Add Ride View
+
+struct AddRideView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var name = ""
+    @State private var scheduledDate = Date().addingTimeInterval(3600 * 24)  // Tomorrow
+    @State private var duration: TimeInterval = 3600  // 1 hour
+    @State private var distance: Double?
+    @State private var rideType: RideType = .training
+    @State private var notes = ""
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Ride Details") {
+                    TextField("Ride name", text: $name)
+                    
+                    DatePicker("Date & Time", selection: $scheduledDate)
+                    
+                    Picker("Type", selection: $rideType) {
+                        ForEach(RideType.allCases, id: \.self) { type in
+                            Label(type.displayName, systemImage: type.icon)
+                                .tag(type)
+                        }
+                    }
+                }
+                
+                Section("Duration & Distance") {
+                    Picker("Duration", selection: $duration) {
+                        Text("30 min").tag(TimeInterval(1800))
+                        Text("1 hour").tag(TimeInterval(3600))
+                        Text("1.5 hours").tag(TimeInterval(5400))
+                        Text("2 hours").tag(TimeInterval(7200))
+                        Text("3 hours").tag(TimeInterval(10800))
+                        Text("4 hours").tag(TimeInterval(14400))
+                        Text("5+ hours").tag(TimeInterval(18000))
+                    }
+                    
+                    HStack {
+                        Text("Distance (km)")
+                        Spacer()
+                        TextField("Optional", value: $distance, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                
+                Section("Notes") {
+                    TextField("Additional notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("Add Ride")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        saveRide()
+                    }
+                    .disabled(name.isEmpty)
+                }
+            }
+        }
+    }
+    
+    private func saveRide() {
+        let ride = ScheduledRide(
+            name: name,
+            scheduledDate: scheduledDate,
+            duration: duration,
+            rideType: rideType,
+            distance: distance,
+            notes: notes
+        )
+        
+        modelContext.insert(ride)
+        dismiss()
+    }
+}
+
+// MARK: - Pre-Ride Preparation View
+
+struct PreRidePreparationView: View {
+    let ride: ScheduledRide
+    let bikes: [BikeConfiguration]
+    let routes: [Route]
+    let allGear: [GearItem]
+    
+    @Environment(\.dismiss) private var dismiss
+    @State private var preparation: PreRidePreparation?
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.lg) {
+                    if let prep = preparation {
+                        // Header
+                        prepHeader(prep)
+                        
+                        // Recommended bike & route
+                        recommendationsSection(prep)
+                        
+                        // Weather alert
+                        if let alert = prep.weatherAlert {
+                            weatherAlertCard(alert)
+                        }
+                        
+                        // Bike checks
+                        checksSection(title: "Bike Checks", checks: prep.bikeChecks)
+                        
+                        // Gear checks
+                        gearChecksSection(prep)
+                        
+                        // Actions
+                        if !prep.isReadyToRide {
+                            Button {
+                                markPrepared()
+                            } label: {
+                                Text("Mark as Prepared")
+                            }
+                            .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .large))
+                            .disabled(!prep.isReadyToRide)
+                        } else {
+                            HStack(spacing: DesignSystem.Spacing.md) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Ready to ride!")
+                                    .h3()
+                            }
+                            .padding(DesignSystem.Spacing.md)
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                .padding(.vertical, DesignSystem.Spacing.lg)
+            }
+            .navigationTitle("Ride Prep")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                loadPreparation()
+            }
+        }
+    }
+    
+    private func prepHeader(_ prep: PreRidePreparation) -> some View {
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            HStack {
+                Image(systemName: ride.rideType.icon)
+                    .font(.largeTitle)
+                    .foregroundAccent()
+                
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Text(ride.name)
+                        .h2()
+                    Text(ride.scheduledDate.formatted(date: .abbreviated, time: .shortened))
+                        .bodyMedium()
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Progress bar
+            ProgressView(value: prep.completionPercentage, total: 100)
+                .tint(.green)
+            
+            Text("\(Int(prep.completionPercentage))% Ready")
+                .captionMedium()
+                .foregroundStyle(.secondary)
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(DesignSystem.CornerRadius.md)
+    }
+    
+    private func recommendationsSection(_ prep: PreRidePreparation) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Recommendations")
+                .h3()
+            
+            if let bike = prep.recommendedBike {
+                HStack {
+                    Image(systemName: "bicycle")
+                        .foregroundAccent()
+                    Text(bike.name)
+                        .bodyLarge()
+                    Spacer()
+                    Image(systemName: "checkmark.circle")
+                        .foregroundStyle(.green)
+                }
+                .padding(DesignSystem.Spacing.md)
+                .background(Color(.systemBackground))
+                .cornerRadius(DesignSystem.CornerRadius.sm)
+            }
+            
+            if let route = prep.recommendedRoute {
+                HStack {
+                    Image(systemName: "map")
+                        .foregroundAccent()
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text(route.name)
+                            .bodyLarge()
+                        Text(String(format: "%.0f km", route.distance))
+                            .captionMedium()
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(DesignSystem.Spacing.md)
+                .background(Color(.systemBackground))
+                .cornerRadius(DesignSystem.CornerRadius.sm)
+            }
+        }
+    }
+    
+    private func weatherAlertCard(_ alert: String) -> some View {
+        HStack(spacing: DesignSystem.Spacing.md) {
+            Image(systemName: "cloud.sun.fill")
+                .foregroundStyle(.orange)
+            Text(alert)
+                .bodyMedium()
+            Spacer()
+        }
+        .padding(DesignSystem.Spacing.md)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(DesignSystem.CornerRadius.md)
+    }
+    
+    private func checksSection(title: String, checks: [PreRidePreparation.BikeCheck]) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text(title)
+                .h3()
+            
+            ForEach(checks, id: \.item) { check in
+                HStack {
+                    Image(systemName: check.isComplete ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(check.isComplete ? .green : .secondary)
+                    
+                    Text(check.item)
+                        .bodyMedium()
+                    
+                    Spacer()
+                    
+                    if check.priority == .critical {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                    }
+                }
+                .padding(DesignSystem.Spacing.sm)
+                .background(Color(.systemBackground))
+                .cornerRadius(DesignSystem.CornerRadius.sm)
+            }
+        }
+    }
+    
+    private func gearChecksSection(_ prep: PreRidePreparation) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Gear Checks")
+                .h3()
+            
+            ForEach(prep.gearChecks, id: \.gear.id) { check in
+                HStack {
+                    Image(systemName: check.isReady ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundStyle(check.isReady ? .green : .red)
+                    
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text(check.gear.displayName)
+                            .bodyMedium()
+                        
+                        if let issue = check.issue {
+                            Text(issue)
+                                .captionSmall()
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if check.priority == .critical {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                    }
+                }
+                .padding(DesignSystem.Spacing.sm)
+                .background(Color(.systemBackground))
+                .cornerRadius(DesignSystem.CornerRadius.sm)
+            }
+        }
+    }
+    
+    private func loadPreparation() {
+        preparation = RidePreparationService.prepareForRide(
+            ride,
+            bikes: bikes,
+            routes: routes,
+            allGear: allGear
+        )
+    }
+    
+    private func markPrepared() {
+        ride.markPrepared()
+        dismiss()
+    }
+}

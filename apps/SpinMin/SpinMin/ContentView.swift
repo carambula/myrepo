@@ -22,41 +22,47 @@ struct ContentView: View {
                 }
                 .tag(0)
             
+            RideScheduleView()
+                .tabItem {
+                    Label("Schedule", systemImage: "calendar")
+                }
+                .tag(1)
+            
             CalculatorView()
                 .tabItem {
                     Label("Pressure", systemImage: "gauge.with.dots.needle.bottom.50percent")
                 }
-                .tag(1)
+                .tag(2)
             
             GearCalculatorView()
                 .tabItem {
                     Label("Gearing", systemImage: "gearshape.2")
                 }
-                .tag(2)
+                .tag(3)
             
             BikeConfigurationsView()
                 .tabItem {
                     Label("Bikes", systemImage: "bicycle")
                 }
-                .tag(3)
+                .tag(4)
             
             GearLockerView()
                 .tabItem {
                     Label("Gear", systemImage: "tshirt.fill")
                 }
-                .tag(4)
+                .tag(5)
             
             RideChecklistsView()
                 .tabItem {
                     Label("Checklists", systemImage: "checklist")
                 }
-                .tag(5)
+                .tag(6)
             
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
-                .tag(6)
+                .tag(7)
         }
         .tint(themeManager.currentTheme.accent)
     }

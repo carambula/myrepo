@@ -24,6 +24,14 @@ final class BikeConfiguration {
     var defaultCasingRawValue: String?
     var defaultRidingStyleRawValue: String?
     
+    // Gearing (optional)
+    var drivetrainTypeRawValue: String?
+    var smallChainring: Int?
+    var largeChainring: Int?
+    var cassetteTeeth: [Int]?
+    var wheelDiameterRawValue: String?
+    var popularDrivetrainID: String?
+    
     init(
         name: String,
         bikeType: TirePressureCalculationService.BikeType,
@@ -75,5 +83,29 @@ final class BikeConfiguration {
         set {
             defaultRidingStyleRawValue = newValue?.rawValue
         }
+    }
+    
+    var drivetrainType: DrivetrainType? {
+        get {
+            guard let raw = drivetrainTypeRawValue else { return nil }
+            return DrivetrainType(rawValue: raw)
+        }
+        set {
+            drivetrainTypeRawValue = newValue?.rawValue
+        }
+    }
+    
+    var wheelDiameter: WheelSize? {
+        get {
+            guard let raw = wheelDiameterRawValue else { return nil }
+            return WheelSize(rawValue: raw)
+        }
+        set {
+            wheelDiameterRawValue = newValue?.rawValue
+        }
+    }
+    
+    var hasGearing: Bool {
+        return smallChainring != nil && cassetteTeeth != nil && !cassetteTeeth!.isEmpty
     }
 }

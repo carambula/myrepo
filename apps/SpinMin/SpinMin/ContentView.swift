@@ -18,21 +18,27 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             CalculatorView()
                 .tabItem {
-                    Label("Calculator", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                    Label("Pressure", systemImage: "gauge.with.dots.needle.bottom.50percent")
                 }
                 .tag(0)
+            
+            GearCalculatorView()
+                .tabItem {
+                    Label("Gearing", systemImage: "gearshape.2")
+                }
+                .tag(1)
             
             BikeConfigurationsView()
                 .tabItem {
                     Label("Bikes", systemImage: "bicycle")
                 }
-                .tag(1)
+                .tag(2)
             
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
-                .tag(2)
+                .tag(3)
         }
         .tint(themeManager.currentTheme.accent)
     }

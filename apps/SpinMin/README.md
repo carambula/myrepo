@@ -112,11 +112,13 @@ The service uses:
 ### Data Persistence
 
 Uses SwiftData with CloudKit sync:
-- `BikeConfiguration` - Saved bike profiles with optional gearing
+- `BikeConfiguration` - Saved bike profiles with optional gearing, bike odometer, and maintenance relationships
 - `Wheelset` - Multiple wheel configurations per bike
 - `TireTracking` - Current tire state (front/rear) with mileage and age
 - `TireHistory` - Historical record of replaced tires
-- `RideLog` - Ride tracking for mileage updates
+- `ComponentTracking` - Current components installed on bike (chain, cassette, brake pads, etc.)
+- `MaintenanceRecord` - Historical maintenance activities with costs and notes
+- `RideLog` - Ride tracking for mileage updates (updates bike + wheelset + component odometers)
 - `GearConfiguration` - Standalone gear setups
 - `CalculationHistory` - Past pressure calculations
 - `ThemePreference` - Theme selection

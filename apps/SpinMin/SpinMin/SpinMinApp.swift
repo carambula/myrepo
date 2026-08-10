@@ -24,6 +24,12 @@ struct SpinMinApp: App {
             CalculationHistory.self,
             GearConfiguration.self,
             ThemePreference.self,
+            // Product database
+            TireProduct.self,
+            ChainProduct.self,
+            WheelsetProduct.self,
+            ComponentProduct.self,
+            BikeProduct.self,
         ])
         
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -69,6 +75,10 @@ struct SpinMinApp: App {
             ContentView()
                 .environment(themeManager)
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : nil)
+                .onAppear {
+                    // Seed product database on first launch
+                    ProductDatabaseSeeder.seedDatabaseIfNeeded(context: sharedModelContainer.mainContext)
+                }
         }
         .modelContainer(sharedModelContainer)
     }

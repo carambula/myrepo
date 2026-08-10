@@ -339,6 +339,7 @@ struct AddComponentTrackingView: View {
     @State private var model = ""
     @State private var installDate = Date()
     @State private var lubeType: ChainLubeType = .hotWax
+    @State private var showingProductSearch = false
     
     var body: some View {
         NavigationStack {
@@ -347,6 +348,21 @@ struct AddComponentTrackingView: View {
                     Picker("Type", selection: $componentType) {
                         ForEach(ComponentType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
+                        }
+                    }
+                    
+                    // Product lookup button for chain
+                    if componentType == .chain {
+                        Button {
+                            showingProductSearch = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "magnifyingglass")
+                                Text("Search Product Database")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                     }
                     
@@ -386,6 +402,12 @@ struct AddComponentTrackingView: View {
                     .disabled(brand.isEmpty)
                 }
             }
+            .sheet(isPresented: $showingProductSearch) {
+                ChainSelectionView { chain in
+                    brand = chain.brand
+                    model = chain.model
+                }
+            }
         }
     }
     
@@ -407,6 +429,98 @@ struct AddComponentTrackingView: View {
         bike.componentTracking.append(component)
         
         dismiss()
+    }
+}
+
+// MARK: - Chain Selection View
+
+struct ChainSelectionView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var searchText = ""
+    @State private var searchResults: [ChainProduct] = []
+    
+    let onSelect: (ChainProduct) -> Void
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search chains", text: $searchText)
+                        .textFieldStyle(.plain)
+                    if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                            searchResults = []
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(DesignSystem.Spacing.md)
+                .background(DesignSystem.Color.surfaceElevated)
+                .cornerRadius(DesignSystem.CornerRadius.md)
+                .padding(DesignSystem.Spacing.screenHorizontalPadding)
+                
+                // Results
+                ScrollView {
+                    LazyVStack(spacing: DesignSystem.Spacing.sm) {
+                        ForEach(searchResults) { chain in
+                            Button {
+                                onSelect(chain)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("\(chain.brand) \(chain.model)")
+                                            .bodyLarge()
+                                            .foregroundHeadline()
+                                        Text("\(chain.speedCount)-speed")
+                                            .captionMedium()
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(DesignSystem.Spacing.md)
+                                .background(DesignSystem.Color.surface)
+                                .cornerRadius(DesignSystem.CornerRadius.md)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(DesignSystem.Spacing.screenHorizontalPadding)
+                }
+            }
+            .navigationTitle("Select Chain")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                performSearch()
+            }
+            .onChange(of: searchText) { old, new in
+                performSearch()
+            }
+        }
+    }
+    
+    private func performSearch() {
+        searchResults = ProductLookupService.searchChains(
+            query: searchText,
+            context: modelContext
+        )
     }
 }
 

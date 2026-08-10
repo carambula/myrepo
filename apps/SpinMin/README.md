@@ -39,6 +39,19 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 See [TIRE_TRACKING.md](./TIRE_TRACKING.md) for detailed documentation.
 
+### Bike Maintenance Tracking
+**Chain-focused maintenance** with quick waxing/lubing workflows:
+- **Chain wax/lube intervals**: Hot wax (500 km), drip wax (300 km), wet/dry lube tracking
+- **Chain wear monitoring**: 0.5% limit for 11+ speed, prevents cassette damage
+- **Quick actions**: One-tap chain wax, clean, and replace logging
+- **Component lifespan tracking**: Chain, cassette, brake pads, cables, bearings, etc.
+- **Health status system**: 🟢 Excellent → 🟡 Good → 🟠 Service Due → 🔴 Replace Soon → ⛔️ Replace Now
+- **Maintenance history**: Chronological records with costs and notes
+- **Bike odometer**: Automatic updates from ride logging
+- **Dashboard indicators**: Maintenance due warnings on bike cards
+
+See [MAINTENANCE_TRACKING.md](./MAINTENANCE_TRACKING.md) for detailed documentation.
+
 ### Gear Ratio Calculator
 - Comprehensive gearing analysis with ratio, gear inches, development
 - Speed at cadence calculations

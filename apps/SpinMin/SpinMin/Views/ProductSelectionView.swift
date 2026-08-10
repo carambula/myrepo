@@ -243,7 +243,7 @@ struct TireProductCard: View {
                             .foregroundStyle(.secondary)
                         
                         if let year = tire.year {
-                            Text("·")
+                            Text("   ")
                                 .captionMedium()
                                 .foregroundStyle(.secondary)
                             Text(String(year))
@@ -252,7 +252,7 @@ struct TireProductCard: View {
                         }
                         
                         if let weight = tire.weight {
-                            Text("·")
+                            Text("   ")
                                 .captionMedium()
                                 .foregroundStyle(.secondary)
                             Text("\(weight)g")

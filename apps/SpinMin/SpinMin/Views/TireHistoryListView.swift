@@ -65,7 +65,7 @@ struct TireHistoryCard: View {
                         Text(history.tirePosition.displayName)
                             .captionMedium()
                             .foregroundStyle(.secondary)
-                        Text("·")
+                        Text("   ")
                             .foregroundStyle(.secondary)
                         Text(history.removeDate.formatted(date: .abbreviated, time: .omitted))
                             .captionMedium()

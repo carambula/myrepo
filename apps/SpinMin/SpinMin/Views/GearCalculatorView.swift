@@ -295,7 +295,7 @@ struct GearCalculatorView: View {
                             .foregroundAccent()
                     }
                     
-                    Text("\(drivetrain.speeds)-speed • \(drivetrain.chainringDescription)")
+                    Text("\(drivetrain.speeds)-speed   \(drivetrain.chainringDescription)")
                         .bodySmall()
                         .foregroundStyle(.secondary)
                     

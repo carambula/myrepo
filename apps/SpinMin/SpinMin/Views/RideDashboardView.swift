@@ -166,7 +166,7 @@ struct BikeSetupCard: View {
                             .bodySmall()
                             .foregroundStyle(.secondary)
                         
-                        Text("·")
+                        Text("   ")
                             .bodySmall()
                             .foregroundStyle(.secondary)
                         
@@ -331,7 +331,7 @@ struct WheelsetQuickView: View {
                                     TireHealthBadge(position: "R", status: health.status, compact: true)
                                 }
                                 
-                                Text("·")
+                                Text("   ")
                                     .foregroundStyle(.secondary)
                                 
                                 Text("\(String(format: "%.0f", wheelset.totalMileageKm)) km")
@@ -645,7 +645,7 @@ struct TireHealthCard: View {
                 Text("\(String(format: "%.0f", tire.tireMileageKm)) km")
                     .captionSmall()
                     .monospacedDigit()
-                Text("·")
+                Text("   ")
                     .captionSmall()
                     .foregroundStyle(.secondary)
                 Text("\(tire.tireAgeDays)d")

@@ -144,7 +144,7 @@ struct MaintenanceRecordCard: View {
                         Text(record.maintenanceDate.formatted(date: .abbreviated, time: .omitted))
                             .captionMedium()
                             .foregroundStyle(.secondary)
-                        Text("·")
+                        Text("   ")
                             .captionMedium()
                             .foregroundStyle(.secondary)
                         Text(String(format: "%.0f km", record.bikeOdometerKm))

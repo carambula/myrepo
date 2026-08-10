@@ -15,6 +15,16 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 ## Features
 
+### Product Lookup Database
+- **Autocomplete search** for tires, chains, wheelsets, and components
+- **Pre-populated database** with 20+ popular products (Continental, Schwalbe, Shimano, SRAM, etc.)
+- **Smart filtering** by wheel size, speed count, compatibility
+- **Offline-first** operation with local database
+- **Extensible** - add custom products via manual entry
+- **Relevance scoring** for best search results
+
+See [PRODUCT_DATABASE.md](./PRODUCT_DATABASE.md) for complete documentation.
+
 ### Ride-Ready Dashboard
 - Quick-glance view of all saved bikes and wheelsets
 - Real-time tire pressure recommendations
@@ -122,6 +132,12 @@ Uses SwiftData with CloudKit sync:
 - `GearConfiguration` - Standalone gear setups
 - `CalculationHistory` - Past pressure calculations
 - `ThemePreference` - Theme selection
+- **Product Database**:
+  - `TireProduct` - Pre-populated tire catalog with specs
+  - `ChainProduct` - Chain specifications and compatibility
+  - `WheelsetProduct` - Wheelset specifications
+  - `ComponentProduct` - Generic component catalog
+  - `BikeProduct` - Complete bike specifications
 
 ## Testing
 

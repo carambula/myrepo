@@ -19,6 +19,9 @@ final class BikeConfiguration {
     var lastUsed: Date
     var createdAt: Date
     
+    // Odometer tracking
+    var totalMileageKm: Double  // Total distance on this bike
+    
     // Default settings for this bike
     var defaultTerrainRawValue: String?
     var defaultCasingRawValue: String?
@@ -31,6 +34,14 @@ final class BikeConfiguration {
     var cassetteTeeth: [Int]?
     var wheelDiameterRawValue: String?
     var popularDrivetrainID: String?
+    
+    // Drivetrain speed count (for chain wear limits)
+    var speedCount: Int?  // 11, 12, etc. Defaults to 11
+    
+    // Relationships
+    @Relationship(deleteRule: .cascade) var wheelsets: [Wheelset] = []
+    @Relationship(deleteRule: .cascade) var maintenanceRecords: [MaintenanceRecord] = []
+    @Relationship(deleteRule: .cascade) var componentTracking: [ComponentTracking] = []
     
     init(
         name: String,
@@ -50,6 +61,8 @@ final class BikeConfiguration {
         self.notes = notes
         self.lastUsed = Date()
         self.createdAt = Date()
+        self.totalMileageKm = 0
+        self.speedCount = 11  // Default to 11-speed
         self.defaultTerrainRawValue = defaultTerrain?.rawValue
         self.defaultCasingRawValue = defaultCasing?.rawValue
         self.defaultRidingStyleRawValue = defaultRidingStyle?.rawValue
@@ -107,5 +120,40 @@ final class BikeConfiguration {
     
     var hasGearing: Bool {
         return smallChainring != nil && cassetteTeeth != nil && !cassetteTeeth!.isEmpty
+    }
+    
+    // MARK: - Maintenance Helpers
+    
+    /// Update bike odometer and all associated components
+    func logDistance(_ distanceKm: Double) {
+        totalMileageKm += distanceKm
+        lastUsed = Date()
+        
+        // Update all components' current odometer
+        for component in componentTracking {
+            component.updateOdometer(totalMileageKm)
+        }
+    }
+    
+    /// Get current chain component if tracked
+    var currentChain: ComponentTracking? {
+        componentTracking.first { $0.component == .chain }
+    }
+    
+    /// Check if any components need attention
+    var maintenanceDue: Bool {
+        let summary = MaintenanceService.calculateBikeMaintenance(
+            components: componentTracking,
+            speedCount: speedCount ?? 11
+        )
+        return summary.needsAttention
+    }
+    
+    /// Get maintenance summary
+    func getMaintenanceSummary() -> MaintenanceService.BikeMaintenanceSummary {
+        MaintenanceService.calculateBikeMaintenance(
+            components: componentTracking,
+            speedCount: speedCount ?? 11
+        )
     }
 }

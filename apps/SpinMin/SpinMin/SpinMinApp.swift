@@ -19,6 +19,8 @@ struct SpinMinApp: App {
             TireTracking.self,
             TireHistory.self,
             RideLog.self,
+            MaintenanceRecord.self,
+            ComponentTracking.self,
             CalculationHistory.self,
             GearConfiguration.self,
             ThemePreference.self,

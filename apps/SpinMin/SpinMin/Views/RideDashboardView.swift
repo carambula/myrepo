@@ -61,6 +61,10 @@ struct RideDashboardView: View {
             .background(DesignSystem.Color.background)
             .navigationTitle("My Bikes")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    QuickLogRideButton()
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { showingAddBike = true }) {
                         Image(systemName: "plus.circle.fill")
@@ -269,11 +273,40 @@ struct WheelsetQuickView: View {
                                     .foregroundColor(DesignSystem.Color.success)
                                     .font(.system(size: 14))
                             }
+                            
+                            // Tire health indicator
+                            if wheelset.needsAttention {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 14))
+                            }
                         }
                         
                         Text(wheelset.tireDescription)
                             .captionMedium()
                             .foregroundStyle(.secondary)
+                        
+                        // Tire health badges (compact)
+                        if wheelset.hasTireTracking {
+                            HStack(spacing: 4) {
+                                if let front = wheelset.frontTire {
+                                    let health = TireHealthService.calculateHealth(for: front)
+                                    TireHealthBadge(position: "F", status: health.status, compact: true)
+                                }
+                                if let rear = wheelset.rearTire {
+                                    let health = TireHealthService.calculateHealth(for: rear)
+                                    TireHealthBadge(position: "R", status: health.status, compact: true)
+                                }
+                                
+                                Text("·")
+                                    .foregroundStyle(.secondary)
+                                
+                                Text("\(String(format: "%.0f", wheelset.totalMileageKm)) km")
+                                    .captionSmall()
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                        }
                     }
                     
                     Spacer()
@@ -351,6 +384,63 @@ struct WheelsetQuickView: View {
                         .padding(DesignSystem.Spacing.md)
                         .background(DesignSystem.Color.background)
                         .cornerRadius(DesignSystem.CornerRadius.sm)
+                    }
+                    
+                    // Tire health section (if tracking is enabled)
+                    if wheelset.hasTireTracking {
+                        Divider()
+                        
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                            Text("TIRE HEALTH")
+                                .captionSmall()
+                                .foregroundStyle(.secondary)
+                            
+                            HStack(spacing: DesignSystem.Spacing.md) {
+                                if let front = wheelset.frontTire {
+                                    TireHealthCard(tire: front, position: "Front")
+                                }
+                                
+                                if let rear = wheelset.rearTire {
+                                    TireHealthCard(tire: rear, position: "Rear")
+                                }
+                            }
+                            
+                            // Quick stats
+                            HStack {
+                                Label("\(wheelset.totalRides) rides", systemImage: "list.bullet")
+                                    .captionMedium()
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                NavigationLink(destination: TireManagementView(wheelset: wheelset)) {
+                                    Text("Manage Tires")
+                                        .captionMedium()
+                                        .foregroundAccent()
+                                }
+                            }
+                        }
+                    } else {
+                        // Offer to start tracking
+                        Divider()
+                        
+                        NavigationLink(destination: TireManagementView(wheelset: wheelset)) {
+                            HStack {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .foregroundAccent()
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Start Tire Tracking")
+                                        .bodyMedium()
+                                    Text("Monitor mileage and replacement timing")
+                                        .captionSmall()
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -463,6 +553,106 @@ struct PressureDisplay: View {
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Tire Health Components
+
+struct TireHealthBadge: View {
+    let position: String
+    let status: TireHealthService.HealthStatus
+    let compact: Bool
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(position)
+                .font(.system(size: compact ? 10 : 12, weight: .semibold))
+            Text(status.emoji)
+                .font(.system(size: compact ? 10 : 12))
+        }
+        .padding(.horizontal, compact ? 4 : 6)
+        .padding(.vertical, compact ? 2 : 4)
+        .background(statusColor.opacity(0.15))
+        .cornerRadius(DesignSystem.CornerRadius.xs)
+    }
+    
+    private var statusColor: Color {
+        switch status.color {
+        case "green": return .green
+        case "yellow": return .yellow
+        case "orange": return .orange
+        case "red": return .red
+        default: return .gray
+        }
+    }
+}
+
+struct TireHealthCard: View {
+    let tire: TireTracking
+    let position: String
+    
+    var body: some View {
+        let health = TireHealthService.calculateHealth(for: tire)
+        
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(position)
+                    .captionSmall()
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(health.status.emoji)
+                    .font(.system(size: 16))
+            }
+            
+            Text(tire.displayName)
+                .captionMedium()
+                .foregroundHeadline()
+            
+            HStack(spacing: 4) {
+                Text("\(String(format: "%.0f", tire.tireMileageKm)) km")
+                    .captionSmall()
+                    .monospacedDigit()
+                Text("·")
+                    .captionSmall()
+                    .foregroundStyle(.secondary)
+                Text("\(tire.tireAgeDays)d")
+                    .captionSmall()
+                    .monospacedDigit()
+            }
+            .foregroundStyle(.secondary)
+            
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 4)
+                    
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(statusColor(for: health.status))
+                        .frame(width: geometry.size.width * min(1.0, health.mileagePercentage / 100), height: 4)
+                }
+            }
+            .frame(height: 4)
+            
+            Text(health.status.displayName)
+                .captionSmall()
+                .foregroundStyle(statusColor(for: health.status))
+        }
+        .padding(DesignSystem.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DesignSystem.Color.background)
+        .cornerRadius(DesignSystem.CornerRadius.sm)
+    }
+    
+    private func statusColor(for status: TireHealthService.HealthStatus) -> Color {
+        switch status.color {
+        case "green": return .green
+        case "yellow": return .yellow
+        case "orange": return .orange
+        case "red": return .red
+        default: return .gray
+        }
     }
 }
 

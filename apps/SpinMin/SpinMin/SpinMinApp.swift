@@ -16,7 +16,11 @@ struct SpinMinApp: App {
         let schema = Schema([
             BikeConfiguration.self,
             Wheelset.self,
+            TireTracking.self,
+            TireHistory.self,
+            RideLog.self,
             CalculationHistory.self,
+            GearConfiguration.self,
             ThemePreference.self,
         ])
         

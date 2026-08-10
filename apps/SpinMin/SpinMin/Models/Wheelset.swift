@@ -29,7 +29,13 @@ final class Wheelset {
     var notes: String
     var isDefault: Bool  // Primary wheelset for this bike
     
-    // Relationship
+    // Odometer tracking for mileage
+    var totalMileageKm: Double  // Total distance on this wheelset
+    
+    // Relationships
+    @Relationship(deleteRule: .cascade) var tireTracking: [TireTracking] = []
+    @Relationship(deleteRule: .cascade) var tireHistory: [TireHistory] = []
+    @Relationship(deleteRule: .nullify) var rides: [RideLog] = []
     var bikeConfiguration: BikeConfiguration?
     
     var createdAt: Date
@@ -56,6 +62,7 @@ final class Wheelset {
         self.wheelsetWeightKg = wheelsetWeightKg
         self.notes = notes
         self.isDefault = isDefault
+        self.totalMileageKm = 0
         self.createdAt = Date()
         self.lastUsed = Date()
     }
@@ -91,6 +98,66 @@ final class Wheelset {
             return "\(brand) \(model) \(tireWidthMM)mm"
         }
         return "\(wheelDiameter.rawValue) × \(tireWidthMM)mm"
+    }
+    
+    // MARK: - Tire Tracking Helpers
+    
+    var frontTire: TireTracking? {
+        tireTracking.first { $0.tirePosition == .front }
+    }
+    
+    var rearTire: TireTracking? {
+        tireTracking.first { $0.tirePosition == .rear }
+    }
+    
+    var hasTireTracking: Bool {
+        !tireTracking.isEmpty
+    }
+    
+    var bothTiresTracked: Bool {
+        frontTire != nil && rearTire != nil
+    }
+    
+    /// Get health status for both tires
+    var tireHealthSummary: (front: TireHealthService.HealthStatus?, rear: TireHealthService.HealthStatus?) {
+        let frontHealth = frontTire.map { TireHealthService.calculateHealth(for: $0).status }
+        let rearHealth = rearTire.map { TireHealthService.calculateHealth(for: $0).status }
+        return (frontHealth, rearHealth)
+    }
+    
+    /// Worst tire health (most critical)
+    var worstTireHealth: TireHealthService.HealthStatus? {
+        let (front, rear) = tireHealthSummary
+        if let f = front, let r = rear {
+            return max(f, r)  // Higher enum value = worse health
+        }
+        return front ?? rear
+    }
+    
+    /// Check if any tire needs immediate attention
+    var needsAttention: Bool {
+        guard let worst = worstTireHealth else { return false }
+        return worst >= .replaceSoon
+    }
+    
+    /// Total rides logged on this wheelset
+    var totalRides: Int {
+        rides.count
+    }
+    
+    /// Recent ride history (last 10)
+    var recentRides: [RideLog] {
+        Array(rides.sorted { $0.rideDate > $1.rideDate }.prefix(10))
+    }
+    
+    /// Add distance to odometer and update tire tracking
+    func logDistance(_ distanceKm: Double) {
+        totalMileageKm += distanceKm
+        lastUsed = Date()
+        
+        // Update tire tracking
+        frontTire?.currentMileageKm = totalMileageKm
+        rearTire?.currentMileageKm = totalMileageKm
     }
 }
 

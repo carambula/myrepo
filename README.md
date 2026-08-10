@@ -10,6 +10,7 @@ Monorepo for the min apps suite and their shared design system.
 | **pod min** | `apps/PodLink` | podlink — podcast app (Swift / Xcode) |
 | **vid min** | `apps/YourTube` | yourtube — video app (Swift / Xcode) |
 | **cyc min** | `apps/Cyclismo` | Cyclismo guide — cycling guide (Swift / Xcode + backend) |
+| **spin min** | `apps/SpinMin` | SpinMin — tire pressure calculator (Swift / Xcode) |
 
 ## Packages
 
@@ -58,6 +59,7 @@ open apps/WatchedIt/WatchedIt.xcodeproj
 open apps/PodLink/PodLink.xcodeproj
 open apps/YourTube/YourTube.xcodeproj
 open "apps/Cyclismo/Cyclismo Guide.xcodeproj"
+open apps/SpinMin/SpinMin.xcodeproj
 ```
 
 ## Structure
@@ -68,11 +70,13 @@ min-apps/
 │   ├── WatchedIt/              # mov min — WatchedIt (Swift)
 │   ├── PodLink/                # pod min — podlink (Swift)
 │   ├── YourTube/               # vid min — yourtube (Swift)
-│   └── Cyclismo/               # cyc min — Cyclismo guide (Swift + backend)
+│   ├── Cyclismo/               # cyc min — Cyclismo guide (Swift + backend)
+│   └── SpinMin/                # spin min — SpinMin tire pressure calculator (Swift)
 ├── packages/
 │   ├── design-system/          # @min-apps/design-system
 │   │   ├── src/                # Tokens, components, layouts (JS)
 │   │   ├── native/             # Generated Swift/Kotlin/XML for iOS & Android
+│   │   ├── swift/              # MinAppKit Swift package (spacing, corner radius, opacity)
 │   │   ├── scripts/            # build-native-tokens.js
 │   │   └── docs/               # Documentation
 │   └── design-studio/          # @min-apps/design-studio (npm run studio)

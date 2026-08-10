@@ -148,13 +148,33 @@ struct BikeSetupCard: View {
                     .foregroundAccent()
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(bike.name)
-                        .headlineLarge()
-                        .foregroundHeadline()
+                    HStack {
+                        Text(bike.name)
+                            .headlineLarge()
+                            .foregroundHeadline()
+                        
+                        // Maintenance indicator
+                        if bike.maintenanceDue {
+                            Image(systemName: "wrench.and.screwdriver.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 14))
+                        }
+                    }
                     
-                    Text(bike.bikeType.rawValue)
-                        .bodySmall()
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text(bike.bikeType.rawValue)
+                            .bodySmall()
+                            .foregroundStyle(.secondary)
+                        
+                        Text("·")
+                            .bodySmall()
+                            .foregroundStyle(.secondary)
+                        
+                        Text(String(format: "%.0f km", bike.totalMileageKm))
+                            .bodySmall()
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
                     
                     if let weight = bike.bikeWeightKg {
                         Text("Bike: \(String(format: "%.1f", weight))kg")
@@ -208,6 +228,19 @@ struct BikeSetupCard: View {
             
             // Quick Actions
             HStack(spacing: DesignSystem.Spacing.sm) {
+                NavigationLink(destination: BikeMaintenanceView(bike: bike)) {
+                    HStack(spacing: 4) {
+                        Label("Maintenance", systemImage: "wrench.and.screwdriver")
+                            .font(DesignSystem.Typography.labelSmall)
+                        if bike.maintenanceDue {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 12))
+                        }
+                    }
+                }
+                .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
+                
                 NavigationLink(destination: Text("Edit Bike")) {
                     Label("Edit", systemImage: "pencil")
                         .font(DesignSystem.Typography.labelSmall)

@@ -136,6 +136,9 @@ struct LogRideView: View {
         
         modelContext.insert(ride)
         
+        // Update bike odometer and components
+        bike.logDistance(distanceKm)
+        
         // Update wheelset odometer and tire tracking
         wheelset.logDistance(distanceKm)
         

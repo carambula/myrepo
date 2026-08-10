@@ -276,27 +276,39 @@ struct ChainComponentCard: View {
             }
             
             // Quick actions
-            HStack(spacing: DesignSystem.Spacing.sm) {
-                Button {
-                    onQuickAction(.chainWax)
-                } label: {
-                    Label("Log Wax", systemImage: "drop")
+            VStack(spacing: DesignSystem.Spacing.sm) {
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    Button {
+                        onQuickAction(.chainWax)
+                    } label: {
+                        Label("Log Wax", systemImage: "drop")
+                    }
+                    .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .small))
+                    
+                    Button {
+                        onQuickAction(.chainClean)
+                    } label: {
+                        Label("Log Clean", systemImage: "sparkles")
+                    }
+                    .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
+                    
+                    Button {
+                        onQuickAction(.chainReplace)
+                    } label: {
+                        Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(DesignSystemButtonStyle(variant: .tertiary, size: .small))
                 }
-                .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .small))
                 
-                Button {
-                    onQuickAction(.chainClean)
-                } label: {
-                    Label("Log Clean", systemImage: "sparkles")
+                // Order replacement button when chain needs replacing
+                if chainStatus.health == .replaceSoon || chainStatus.health == .replaceNow {
+                    OrderReplacementButton(component: chain, style: .prominent)
                 }
-                .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
                 
-                Button {
-                    onQuickAction(.chainReplace)
-                } label: {
-                    Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                // Order chain wax button when wax is due
+                if chainStatus.waxDue, let lube = chain.lubeType {
+                    OrderChainWaxButton(lubeType: lube)
                 }
-                .buttonStyle(DesignSystemButtonStyle(variant: .tertiary, size: .small))
             }
         }
         .padding(DesignSystem.Spacing.lg)
@@ -348,6 +360,11 @@ struct ComponentCard: View {
                         .captionSmall()
                         .foregroundStyle(.secondary)
                 }
+            }
+            
+            // Order button when component needs replacement
+            if health.status == .replaceSoon || health.status == .replaceNow {
+                OrderReplacementButton(component: component, style: .compact)
             }
         }
         .padding(DesignSystem.Spacing.md)

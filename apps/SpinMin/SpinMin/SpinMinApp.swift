@@ -30,6 +30,8 @@ struct SpinMinApp: App {
             WheelsetProduct.self,
             ComponentProduct.self,
             BikeProduct.self,
+            // Vendor preferences
+            VendorPreference.self,
         ])
         
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

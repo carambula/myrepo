@@ -243,16 +243,23 @@ struct TireDetailCard: View {
             }
             
             // Actions
-            HStack(spacing: DesignSystem.Spacing.sm) {
-                Button(action: onInspect) {
-                    Label("Inspect", systemImage: "magnifyingglass")
+            VStack(spacing: DesignSystem.Spacing.sm) {
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    Button(action: onInspect) {
+                        Label("Inspect", systemImage: "magnifyingglass")
+                    }
+                    .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .medium))
+                    
+                    Button(action: onReplace) {
+                        Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(DesignSystemButtonStyle(variant: .tertiary, size: .medium))
                 }
-                .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .medium))
                 
-                Button(action: onReplace) {
-                    Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                // Order button when tire needs replacement
+                if health.status == .replaceSoon || health.status == .replaceNow || health.status == .unsafe {
+                    OrderTireButton(tire: tire, style: .prominent)
                 }
-                .buttonStyle(DesignSystemButtonStyle(variant: .tertiary, size: .medium))
             }
         }
         .padding(DesignSystem.Spacing.lg)

@@ -6,9 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(ThemeManager.self) private var themeManager
+    
+    @Query private var vendorPreferences: [VendorPreference]
     
     var body: some View {
         NavigationStack {
@@ -27,6 +31,25 @@ struct SettingsView: View {
                                 .frame(width: 24, height: 24)
                         }
                     }
+                }
+                
+                Section {
+                    NavigationLink {
+                        VendorPreferencesView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "cart")
+                                .foregroundAccent()
+                            Text("Preferred Vendors")
+                            Spacer()
+                            Text("\(vendorPreferences.first?.vendors.count ?? 3) selected")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Ordering")
+                } footer: {
+                    Text("Choose your preferred retailers for ordering replacement components")
                 }
                 
                 Section("About") {

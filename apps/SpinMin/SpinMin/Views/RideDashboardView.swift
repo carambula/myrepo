@@ -95,6 +95,87 @@ struct RideDashboardView: View {
             .sheet(isPresented: $showingAddBike) {
                 AddBikeConfigurationView()
             }
+            .sheet(item: $selectedRide) { ride in
+                PreRidePreparationView(
+                    ride: ride,
+                    bikes: bikes,
+                    routes: [],
+                    allGear: []
+                )
+            }
+        }
+    }
+    
+    private var headerSubtitle: String {
+        if !todayRides.isEmpty {
+            return "\(todayRides.count) ride\(todayRides.count > 1 ? "s" : "") scheduled today"
+        } else if !upcomingRidesNeedingPrep.isEmpty {
+            return "Upcoming rides need preparation"
+        } else {
+            return "Quick setup for today's ride"
+        }
+    }
+    
+    // MARK: - Today's Rides Section
+    
+    private var todayRidesSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            HStack {
+                Text("Today's Rides")
+                    .h2()
+                Spacer()
+                NavigationLink(destination: RideScheduleView()) {
+                    HStack(spacing: DesignSystem.Spacing.xs) {
+                        Text("View All")
+                            .captionMedium()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                    }
+                    .foregroundAccent()
+                }
+            }
+            
+            ForEach(todayRides) { ride in
+                TodayRideCard(ride: ride) {
+                    selectedRide = ride
+                }
+            }
+        }
+    }
+    
+    // MARK: - Prep Needed Section
+    
+    private var prepNeededSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("Preparation Needed")
+                    .h3()
+                Spacer()
+            }
+            
+            ForEach(upcomingRidesNeedingPrep.prefix(2)) { ride in
+                PrepNeededCard(ride: ride) {
+                    selectedRide = ride
+                }
+            }
+            
+            if upcomingRidesNeedingPrep.count > 2 {
+                NavigationLink(destination: RideScheduleView()) {
+                    HStack {
+                        Text("View \(upcomingRidesNeedingPrep.count - 2) more")
+                            .bodyMedium()
+                            .foregroundAccent()
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(DesignSystem.Spacing.sm)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(DesignSystem.CornerRadius.sm)
+                }
+            }
         }
     }
     

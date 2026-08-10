@@ -15,6 +15,7 @@ struct SpinMinApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             BikeConfiguration.self,
+            Wheelset.self,
             CalculationHistory.self,
             ThemePreference.self,
         ])

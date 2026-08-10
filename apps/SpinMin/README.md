@@ -15,16 +15,43 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 ## Features
 
+### Ride-Ready Dashboard
+- Quick-glance view of all saved bikes and wheelsets
+- Real-time tire pressure recommendations
+- Tire health status at a glance
+- Easy ride logging with automatic mileage tracking
+
 ### Tire Pressure Calculator
 - Science-based calculations using the 15% tire drop rule
 - Empirical data from SILCA, Wolf Tooth, and industry research
 - Separate front and rear pressure recommendations
 - Display in PSI or BAR units
 
-### Bike Profiles
+### Tire Tracking System
+- **Track front and rear tires independently** (rear wears ~2× faster)
+- **Mileage-based wear monitoring** with compound-specific lifespans
+- **Age-based warnings** (5-6 year recommended, 10 year maximum)
+- **Health status calculation**: Excellent → Good → Fair → Worn → Replace Soon → Replace Now → UNSAFE
+- **Visual condition tracking**: squared profile, sidewall cracks, casing exposure, punctures
+- **Ride logging**: Automatic odometer and mileage updates
+- **Tire history**: Complete lifecycle records of replaced tires
+- **Smart warnings**: Based on cycling industry best practices
+
+See [TIRE_TRACKING.md](./TIRE_TRACKING.md) for detailed documentation.
+
+### Gear Ratio Calculator
+- Comprehensive gearing analysis with ratio, gear inches, development
+- Speed at cadence calculations
+- Climbing ability analysis
+- Gap analysis between gears
+- Pre-loaded popular drivetrains (Shimano, SRAM, Campagnolo)
+- Compare mode for side-by-side analysis
+
+### Bike & Wheelset Management
 - Save multiple bike configurations
-- Quick selection for repeated calculations
-- Store tire width, bike type, and custom notes
+- Multiple wheelsets per bike with independent tire specs
+- Weight tracking per wheelset
+- Quick selection for calculations
 - iCloud sync via SwiftData
 
 ### Themes
@@ -72,8 +99,13 @@ The service uses:
 ### Data Persistence
 
 Uses SwiftData with CloudKit sync:
-- `BikeConfiguration` - Saved bike profiles
-- `CalculationHistory` - Past calculations
+- `BikeConfiguration` - Saved bike profiles with optional gearing
+- `Wheelset` - Multiple wheel configurations per bike
+- `TireTracking` - Current tire state (front/rear) with mileage and age
+- `TireHistory` - Historical record of replaced tires
+- `RideLog` - Ride tracking for mileage updates
+- `GearConfiguration` - Standalone gear setups
+- `CalculationHistory` - Past pressure calculations
 - `ThemePreference` - Theme selection
 
 ## Testing

@@ -354,6 +354,11 @@ struct PreRidePreparationView: View {
                             weatherAlertCard(alert)
                         }
                         
+                        // Weather-based clothing recommendations
+                        if let temp = ride.temperature, let precip = ride.precipitationChance {
+                            weatherClothingSection(temperature: temp, precipitation: precip, duration: ride.duration, intensity: ride.rideType.intensityLevel)
+                        }
+                        
                         // Bike checks
                         checksSection(title: "Bike Checks", checks: prep.bikeChecks)
                         
@@ -472,9 +477,10 @@ struct PreRidePreparationView: View {
     }
     
     private func weatherAlertCard(_ alert: String) -> some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            Image(systemName: "cloud.sun.fill")
+        HStack(alignment: .top, spacing: DesignSystem.Spacing.md) {
+            Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
+                .font(.title3)
             Text(alert)
                 .bodyMedium()
             Spacer()
@@ -482,6 +488,146 @@ struct PreRidePreparationView: View {
         .padding(DesignSystem.Spacing.md)
         .background(Color.orange.opacity(0.1))
         .cornerRadius(DesignSystem.CornerRadius.md)
+    }
+    
+    private func weatherClothingSection(temperature: Double, precipitation: Double, duration: TimeInterval, intensity: Int) -> some View {
+        let recommendations = WeatherService.recommendClothing(
+            temperature: temperature,
+            precipitationChance: precipitation,
+            rideDuration: duration
+        )
+        let hydration = WeatherService.recommendHydration(
+            temperature: temperature,
+            rideDuration: duration,
+            rideIntensity: intensity
+        )
+        let tempCategory = WeatherService.TemperatureCategory(celsius: temperature)
+        let precipLevel = WeatherService.PrecipitationLevel(probability: precipitation)
+        
+        return VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            HStack {
+                Text("Weather Gear")
+                    .h3()
+                Spacer()
+                HStack(spacing: DesignSystem.Spacing.xs) {
+                    Text(tempCategory.emoji)
+                    Text(String(format: "%.0f°C", temperature))
+                        .captionMedium()
+                        .foregroundStyle(.secondary)
+                    Text(precipLevel.emoji)
+                    Text("\(Int(precipitation * 100))%")
+                        .captionMedium()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            VStack(spacing: DesignSystem.Spacing.sm) {
+                // Jacket
+                if let jacket = recommendations.jacket {
+                    clothingItemRow(
+                        name: jacket.name,
+                        priority: jacket.priority,
+                        reason: jacket.reason
+                    )
+                }
+                
+                // Gloves
+                if let gloves = recommendations.gloves {
+                    clothingItemRow(
+                        name: gloves.name,
+                        priority: gloves.priority,
+                        reason: gloves.reason
+                    )
+                }
+                
+                // Leg covering
+                if let legs = recommendations.legCovering {
+                    clothingItemRow(
+                        name: legs.name,
+                        priority: legs.priority,
+                        reason: legs.reason
+                    )
+                }
+                
+                // Base layer
+                if let base = recommendations.baseLayer {
+                    clothingItemRow(
+                        name: base.name,
+                        priority: base.priority,
+                        reason: base.reason
+                    )
+                }
+                
+                // Accessories
+                ForEach(recommendations.accessories, id: \.name) { accessory in
+                    clothingItemRow(
+                        name: accessory.name,
+                        priority: accessory.priority,
+                        reason: accessory.reason
+                    )
+                }
+                
+                // Hydration
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    Image(systemName: "drop.fill")
+                        .foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text("Hydration: \(hydration)")
+                            .bodyMedium()
+                    }
+                    Spacer()
+                }
+                .padding(DesignSystem.Spacing.sm)
+                .background(Color(.systemBackground))
+                .cornerRadius(DesignSystem.CornerRadius.sm)
+            }
+        }
+    }
+    
+    private func clothingItemRow(name: String, priority: WeatherService.ClothingRecommendations.ClothingItem.Priority, reason: String) -> some View {
+        HStack(spacing: DesignSystem.Spacing.sm) {
+            Image(systemName: priorityIcon(for: priority))
+                .foregroundStyle(priorityColor(for: priority))
+            
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                HStack {
+                    Text(name)
+                        .bodyMedium()
+                    Spacer()
+                    Text(priority.displayName)
+                        .captionSmall()
+                        .foregroundStyle(priorityColor(for: priority))
+                        .padding(.horizontal, DesignSystem.Spacing.xs)
+                        .padding(.vertical, 2)
+                        .background(priorityColor(for: priority).opacity(0.15))
+                        .cornerRadius(DesignSystem.CornerRadius.xs)
+                }
+                Text(reason)
+                    .captionSmall()
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(DesignSystem.Spacing.sm)
+        .background(Color(.systemBackground))
+        .cornerRadius(DesignSystem.CornerRadius.sm)
+    }
+    
+    private func priorityIcon(for priority: WeatherService.ClothingRecommendations.ClothingItem.Priority) -> String {
+        switch priority {
+        case .essential: return "exclamationmark.circle.fill"
+        case .recommended: return "checkmark.circle.fill"
+        case .optional: return "circle"
+        }
+    }
+    
+    private func priorityColor(for priority: WeatherService.ClothingRecommendations.ClothingItem.Priority) -> Color {
+        switch priority {
+        case .essential: return .red
+        case .recommended: return .orange
+        case .optional: return .secondary.opacity(0.6)
+        }
     }
     
     private func checksSection(title: String, checks: [PreRidePreparation.BikeCheck]) -> some View {

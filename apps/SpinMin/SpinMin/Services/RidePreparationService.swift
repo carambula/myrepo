@@ -142,6 +142,8 @@ struct RidePreparationService {
     ) -> [PreRidePreparation.GearCheck] {
         let rideType = ride.rideType
         let checklistType = rideType.recommendedChecklistType
+        let temperature = ride.temperature
+        let precipChance = ride.precipitationChance
         
         var checks: [PreRidePreparation.GearCheck] = []
         
@@ -149,10 +151,13 @@ struct RidePreparationService {
         checks.append(contentsOf: checkSafetyGear(allGear))
         
         // Electronics with battery checks
-        checks.append(contentsOf: checkElectronics(allGear))
+        checks.append(contentsOf: checkElectronics(allGear, rideType: rideType, precipChance: precipChance))
         
         // Consumables
-        checks.append(contentsOf: checkConsumables(allGear))
+        checks.append(contentsOf: checkConsumables(allGear, temperature: temperature))
+        
+        // Weather-based clothing
+        checks.append(contentsOf: checkWeatherClothing(allGear, temperature: temperature, precipChance: precipChance, rideDuration: ride.duration))
         
         // Ride-specific gear
         if checklistType == .race {
@@ -202,18 +207,32 @@ struct RidePreparationService {
         return checks
     }
     
-    private static func checkElectronics(_ allGear: [GearItem]) -> [PreRidePreparation.GearCheck] {
+    private static func checkElectronics(_ allGear: [GearItem], rideType: RideType, precipChance: Double?) -> [PreRidePreparation.GearCheck] {
         var checks: [PreRidePreparation.GearCheck] = []
+        
+        // Determine if lights are critical based on ride type and time
+        let lightsAreCritical = rideType == .commute || (precipChance ?? 0) > 0.3
         
         for gearType in [GearType.headUnit, .radar, .tailLight, .frontLight] {
             if let item = allGear.first(where: { $0.gearType == gearType && !$0.isRetired }) {
                 let needsCharge = item.needsCharge
                 let issue = needsCharge ? "Battery below 20% - needs charging" : nil
+                
+                // Determine priority based on gear type and conditions
+                let priority: PreRidePreparation.CheckPriority
+                if gearType == .headUnit {
+                    priority = .critical
+                } else if gearType == .radar || (gearType == .tailLight && lightsAreCritical) {
+                    priority = .important
+                } else {
+                    priority = .optional
+                }
+                
                 checks.append(PreRidePreparation.GearCheck(
                     gear: item,
                     isReady: !needsCharge,
                     issue: issue,
-                    priority: gearType == .headUnit ? .critical : .important
+                    priority: priority
                 ))
             }
         }
@@ -221,7 +240,7 @@ struct RidePreparationService {
         return checks
     }
     
-    private static func checkConsumables(_ allGear: [GearItem]) -> [PreRidePreparation.GearCheck] {
+    private static func checkConsumables(_ allGear: [GearItem], temperature: Double?) -> [PreRidePreparation.GearCheck] {
         var checks: [PreRidePreparation.GearCheck] = []
         
         // Chamois cream
@@ -234,14 +253,125 @@ struct RidePreparationService {
             ))
         }
         
-        // Bottles
+        // Bottles - more critical in hot weather
         if let bottles = allGear.first(where: { $0.gearType == .bottles && !$0.isRetired }) {
+            let isHot = (temperature ?? 20) > 30
+            let issue = isHot ? "Hot weather - extra hydration critical" : nil
             checks.append(PreRidePreparation.GearCheck(
                 gear: bottles,
                 isReady: true,
-                issue: nil,
-                priority: .important
+                issue: issue,
+                priority: isHot ? .critical : .important
             ))
+        }
+        
+        // Sunglasses - important in sunny weather
+        if let sunglasses = allGear.first(where: { $0.gearType == .sunglasses && !$0.isRetired }) {
+            let isSunny = (temperature ?? 20) > 15
+            checks.append(PreRidePreparation.GearCheck(
+                gear: sunglasses,
+                isReady: true,
+                issue: nil,
+                priority: isSunny ? .important : .optional
+            ))
+        }
+        
+        return checks
+    }
+    
+    private static func checkWeatherClothing(_ allGear: [GearItem], temperature: Double?, precipChance: Double?, rideDuration: TimeInterval) -> [PreRidePreparation.GearCheck] {
+        var checks: [PreRidePreparation.GearCheck] = []
+        
+        guard let temp = temperature else { return checks }
+        
+        let isLongRide = rideDuration > 7200  // > 2 hours
+        let precipProbable = (precipChance ?? 0) > 0.3
+        
+        // Cold weather gear (< 10°C)
+        if temp < 10 {
+            // Jacket - critical in cold
+            if let jacket = allGear.first(where: { $0.gearType == .jacket && !$0.isRetired }) {
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: jacket,
+                    isReady: true,
+                    issue: temp < 5 ? "Very cold - insulated jacket recommended" : "Cold weather - bring jacket",
+                    priority: temp < 5 ? .critical : .important
+                ))
+            } else if temp < 10 {
+                // No jacket found - create warning
+                let dummyJacket = GearItem(gearType: .jacket)
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: dummyJacket,
+                    isReady: false,
+                    issue: "Cold weather (\(Int(temp))°C) - jacket needed",
+                    priority: temp < 5 ? .critical : .important
+                ))
+            }
+            
+            // Gloves - important in cold
+            if let gloves = allGear.first(where: { $0.gearType == .gloves && !$0.isRetired }) {
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: gloves,
+                    isReady: true,
+                    issue: temp < 5 ? "Very cold - winter gloves recommended" : nil,
+                    priority: temp < 5 ? .critical : .important
+                ))
+            } else if temp < 10 {
+                let dummyGloves = GearItem(gearType: .gloves)
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: dummyGloves,
+                    isReady: false,
+                    issue: "Cold weather - gloves recommended",
+                    priority: temp < 5 ? .important : .optional
+                ))
+            }
+        }
+        
+        // Cool weather (10-15°C) - arm warmers for long rides
+        if temp >= 10 && temp < 15 && isLongRide {
+            if let jacket = allGear.first(where: { $0.gearType == .jacket && !$0.isRetired }) {
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: jacket,
+                    isReady: true,
+                    issue: "Cool weather on long ride - bring vest/arm warmers",
+                    priority: .optional
+                ))
+            }
+        }
+        
+        // Rain gear
+        if precipProbable {
+            if let jacket = allGear.first(where: { $0.gearType == .jacket && !$0.isRetired }) {
+                let rainPriority: PreRidePreparation.CheckPriority = (precipChance ?? 0) > 0.6 ? .critical : .important
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: jacket,
+                    isReady: true,
+                    issue: "Rain likely (\(Int((precipChance ?? 0) * 100))%) - waterproof jacket essential",
+                    priority: rainPriority
+                ))
+            } else {
+                let dummyJacket = GearItem(gearType: .jacket)
+                let rainPriority: PreRidePreparation.CheckPriority = (precipChance ?? 0) > 0.6 ? .critical : .important
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: dummyJacket,
+                    isReady: false,
+                    issue: "Rain forecasted - waterproof jacket needed",
+                    priority: rainPriority
+                ))
+            }
+        }
+        
+        // Hot weather (> 30°C)
+        if temp > 30 {
+            // Jersey - verify breathable kit
+            if let jersey = allGear.first(where: { $0.gearType == .jersey && !$0.isRetired }) {
+                checks.append(PreRidePreparation.GearCheck(
+                    gear: jersey,
+                    isReady: true,
+                    issue: "Hot weather - use lightweight, breathable kit",
+                    priority: .important
+                ))
+            }
         }
         
         return checks
@@ -357,19 +487,40 @@ struct RidePreparationService {
         
         var alerts: [String] = []
         
-        if temp < 5 {
-            alerts.append("⚠️ Cold ride - wear extra layers")
+        // Temperature alerts with specific recommendations
+        if temp < 0 {
+            alerts.append("🥶 Freezing conditions - full winter kit required (thermal layers, winter gloves, shoe covers)")
+        } else if temp < 5 {
+            alerts.append("❄️ Very cold - insulated jacket, winter gloves, and thermal layers essential")
+        } else if temp < 10 {
+            alerts.append("🧥 Cold weather - jacket and gloves recommended")
+        } else if temp < 15 {
+            alerts.append("🌡️ Cool conditions - consider arm warmers or vest for long rides")
         } else if temp > 35 {
-            alerts.append("🔥 Hot ride - stay hydrated")
+            alerts.append("🔥 Extreme heat - lightweight kit, extra water bottles, and electrolytes critical")
+        } else if temp > 30 {
+            alerts.append("☀️ Hot weather - stay well hydrated, use sunscreen, consider earlier start time")
         }
         
-        if precip > 0.5 {
-            alerts.append("☔️ High chance of rain - bring jacket")
+        // Precipitation alerts with gear recommendations
+        if precip > 0.7 {
+            alerts.append("☔️ Rain very likely - waterproof jacket, fenders, and visibility lights essential")
+        } else if precip > 0.5 {
+            alerts.append("🌧️ High chance of rain - bring waterproof jacket and fenders")
         } else if precip > 0.3 {
-            alerts.append("🌧 Possible rain - consider jacket")
+            alerts.append("☁️ Possible rain - pack a light rain jacket")
         }
         
-        return alerts.isEmpty ? nil : alerts.joined(separator: "\n")
+        // Combined weather warnings
+        if temp < 10 && precip > 0.3 {
+            alerts.append("⚠️ Cold & wet conditions - waterproof layers critical to prevent hypothermia")
+        }
+        
+        if temp > 30 && precip < 0.1 {
+            alerts.append("😎 Hot & dry - double-check water supply before departing")
+        }
+        
+        return alerts.isEmpty ? nil : alerts.joined(separator: "\n\n")
     }
     
     // MARK: - Full Preparation

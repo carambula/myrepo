@@ -36,13 +36,30 @@ SpinMin includes a comprehensive ride scheduling system with smart preparation r
 - **Ride-specific gear** - Additional checks for races and long rides
 - **Priority levels** - Critical, important, and optional items clearly marked
 
-### 🌤 Weather Integration
-- **Temperature alerts**
-  - Cold rides (< 5°C): Warning to wear extra layers
-  - Hot rides (> 35°C): Hydration reminder
-- **Precipitation warnings**
-  - High chance (> 50%): Bring rain jacket
-  - Possible rain (> 30%): Consider jacket
+### 🌤 Weather Integration & Smart Gear Selection
+- **Temperature-based clothing recommendations**
+  - Freezing (< 0°C): Full winter kit (insulated jacket, winter gloves, thermal layers, shoe covers)
+  - Very cold (0-5°C): Insulated jacket, winter gloves, thermal leg warmers
+  - Cold (5-10°C): Thermal jacket, full-finger gloves
+  - Cool (10-15°C): Vest or arm warmers for long rides
+  - Hot (> 30°C): Lightweight breathable kit, extra hydration, sunscreen
+  - Extreme (> 35°C): Ice vest, electrolytes, heat management critical
+- **Precipitation-based gear**
+  - Possible (30-50%): Packable rain jacket (optional)
+  - Likely (50-70%): Waterproof jacket (essential), fenders (recommended)
+  - Very likely (> 70%): Full rain kit (jacket + pants), waterproof gloves, shoe covers, visibility lights
+- **Combined weather warnings**
+  - Cold + wet: Hypothermia risk - full waterproof layer system essential
+  - Hot + dry: Double-check water supply before departure
+- **Smart hydration calculations**
+  - Base: 500-750ml per hour
+  - Adjusted for temperature, ride duration, and intensity
+  - Automatic electrolyte recommendations for hot weather
+  - Refill stop planning for rides > 3 hours
+- **Priority system**
+  - Essential: Must have for safety (red)
+  - Recommended: Strongly advised (orange)
+  - Optional: Nice to have (gray)
 
 ### 🗺 Route Management
 - **Route library** - Save and manage your favorite routes
@@ -164,6 +181,52 @@ Each type has:
 
 ## Services
 
+### WeatherService
+
+**Temperature Categorization**
+```swift
+enum TemperatureCategory {
+    case freezing, veryCold, cold, cool, mild, warm, hot, veryHot, extreme
+}
+```
+Each category has specific clothing recommendations and warnings.
+
+**Precipitation Levels**
+```swift
+enum PrecipitationLevel {
+    case none, slight, possible, likely, veryLikely, certain
+}
+```
+Determines rain gear requirements and priority.
+
+**Clothing Recommendations**
+```swift
+static func recommendClothing(temperature: Double, precipitationChance: Double, rideDuration: TimeInterval) -> ClothingRecommendations
+```
+Returns structured recommendations for:
+- Jacket (type based on temp/rain)
+- Gloves (thermal level based on temp)
+- Leg covering (warmers/tights based on temp)
+- Base layer (thermal if cold)
+- Accessories (shoe covers, neck warmer, sunscreen, fenders, lights, etc.)
+
+Each item includes:
+- Name (specific description)
+- Priority (essential/recommended/optional)
+- Reason (why it's needed)
+
+**Hydration Calculation**
+```swift
+static func recommendHydration(temperature: Double, rideDuration: TimeInterval, rideIntensity: Int) -> String
+```
+Calculates:
+- Base: 500ml/hour
+- Temperature adjustment: +100-500ml for heat
+- Intensity adjustment: +50ml per intensity level (1-5 scale)
+- Total bottle count (based on 750ml bottles)
+- Electrolyte recommendation for hot weather
+- Refill stop planning for long rides
+
 ### RidePreparationService
 
 **Bike Recommendation**
@@ -191,11 +254,22 @@ Scores each route based on:
 ```swift
 static func generateGearChecks(for ride: ScheduledRide, allGear: [GearItem]) -> [PreRidePreparation.GearCheck]
 ```
-Generates checks for:
-- **Safety gear**: Helmet (critical), shoes, sunglasses
-- **Electronics**: Head unit, radar, tail light, front light (battery checks)
-- **Consumables**: Chamois cream, water bottles
+Generates weather-aware checks for:
+- **Safety gear**: Helmet (critical), shoes, sunglasses (upgraded to important in sunny weather)
+- **Electronics**: Head unit (critical), radar (important), lights (important if rain or commute, optional otherwise) - all with battery checks
+- **Consumables**: Chamois cream (important), water bottles (critical if hot, important otherwise)
+- **Weather clothing**: 
+  - Jacket (essential if cold/rain, optional if cool on long ride)
+  - Gloves (essential if very cold, important if cold, optional if cool)
+  - Leg warmers/tights (essential if freezing, recommended if very cold)
+  - Base layers (essential if freezing, recommended if very cold)
+  - Accessories (shoe covers, neck warmer, sunscreen, fenders, visibility lights) based on conditions
 - **Ride-specific**: Additional gear for races and long rides
+
+Priority levels dynamically adjust based on weather:
+- Cold + wet: Jacket upgraded to essential (hypothermia risk)
+- Hot weather: Bottles upgraded to critical (dehydration risk)
+- Rain likely: Lights upgraded to important (visibility)
 
 **Bike Checks**
 ```swift
@@ -212,7 +286,12 @@ Generates checks for:
 ```swift
 static func generateWeatherAlert(for ride: ScheduledRide) -> String?
 ```
-Analyzes temperature and precipitation chance to generate actionable alerts.
+Generates detailed, actionable alerts:
+- **Temperature warnings**: Specific gear recommendations for each temperature range
+- **Precipitation alerts**: Rain gear requirements based on probability
+- **Combined warnings**: Special alerts for dangerous combinations (cold + wet)
+- **Hydration reminders**: Extra emphasis in hot/dry conditions
+- **Safety advisories**: Earlier start times, route adjustments for extreme conditions
 
 **Full Preparation**
 ```swift
@@ -248,11 +327,17 @@ Form for creating new rides:
 ### PreRidePreparationView
 Comprehensive preparation interface:
 - **Header**: Ride name, date, progress bar, completion percentage
-- **Recommendations**: Bike and route suggestions
-- **Weather Alert**: Temperature and precipitation warnings
+- **Recommendations**: Bike and route suggestions with reasoning
+- **Weather Alert**: Detailed temperature and precipitation warnings with specific actions
+- **Weather Gear Section**: Smart clothing recommendations based on conditions
+  - Temperature and precipitation display with emojis
+  - Each clothing item with priority badge (Essential/Recommended/Optional)
+  - Specific reasons for each recommendation
+  - Hydration calculation with bottle count and electrolyte guidance
+  - Color-coded priority (red=essential, orange=recommended, gray=optional)
 - **Bike Checks**: List with completion status and priority
 - **Gear Checks**: List with readiness status, issues, and priority
-- **Actions**: Mark as Prepared button (enabled when ready)
+- **Actions**: Mark as Prepared button (enabled when all critical checks complete)
 
 ## Integration Points
 

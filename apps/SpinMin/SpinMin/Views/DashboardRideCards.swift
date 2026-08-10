@@ -17,10 +17,10 @@ struct TodayRideCard: View {
         Button(action: action) {
             HStack(spacing: DesignSystem.Spacing.md) {
                 // Time
-                VStack(spacing: DesignSystem.Spacing.xs) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(ride.scheduledDate, style: .time)
-                        .h3()
-                        .foregroundHeadline()
+                        .bodyLarge()
+                        .monospacedDigit()
                     
                     if let hoursUntil = hoursUntilRide {
                         Text(hoursUntil)
@@ -28,110 +28,84 @@ struct TodayRideCard: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 70)
+                .frame(width: 60, alignment: .leading)
                 
                 // Details
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     HStack {
                         Text(ride.name)
                             .bodyLarge()
-                            .foregroundHeadline()
                         
                         Spacer()
                         
-                        if ride.isPrepared {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        } else {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundStyle(.orange)
-                        }
+                        statusBadge
                     }
                     
-                    HStack(spacing: DesignSystem.Spacing.xs) {
-                        Image(systemName: ride.rideType.icon)
-                            .font(.caption)
+                    HStack {
                         Text(ride.rideType.displayName)
                             .captionMedium()
                         
                         Text("   ")
                         
-                        Image(systemName: "clock")
-                            .font(.caption)
                         Text(formatDuration(ride.duration))
                             .captionMedium()
                         
                         if let distance = ride.distance {
                             Text("   ")
-                            Image(systemName: "map")
-                                .font(.caption)
                             Text(String(format: "%.0f km", distance))
                                 .captionMedium()
                         }
+                        
+                        if hasWeatherAlert {
+                            Text("   ")
+                            Text("⚠️")
+                                .font(.caption)
+                        }
                     }
                     .foregroundStyle(.secondary)
-                    
-                    // Weather alert
-                    if let temp = ride.temperature, let precip = ride.precipitationChance {
-                        HStack(spacing: DesignSystem.Spacing.xs) {
-                            let tempCategory = WeatherService.TemperatureCategory(celsius: temp)
-                            let precipLevel = WeatherService.PrecipitationLevel(probability: precip)
-                            
-                            Text(tempCategory.emoji)
-                            Text(String(format: "%.0f°C", temp))
-                                .captionSmall()
-                            
-                            Text(precipLevel.emoji)
-                            Text("\(Int(precip * 100))%")
-                                .captionSmall()
-                            
-                            if needsWeatherAttention(temp: temp, precip: precip) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.caption2)
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                        .foregroundStyle(.secondary)
-                    }
                 }
                 
                 Image(systemName: "chevron.right")
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
             }
             .padding(DesignSystem.Spacing.md)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        Color(.systemBackground).opacity(0.95)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
-                    .stroke(Color.accentColor.opacity(0.2), lineWidth: 1)
-            )
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(DesignSystem.CornerRadius.md)
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
+    }
+    
+    private var statusBadge: some View {
+        Group {
+            if ride.isPrepared {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(.green)
+            } else {
+                Image(systemName: "circle")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+    
+    private var hasWeatherAlert: Bool {
+        guard let temp = ride.temperature, let precip = ride.precipitationChance else {
+            return false
+        }
+        return temp < 5 || temp > 35 || precip > 0.5
     }
     
     private var hoursUntilRide: String? {
         let hours = ride.hoursUntil
         if hours < 1 {
             let minutes = Int(hours * 60)
-            return "in \(minutes)m"
+            return minutes > 0 ? "in \(minutes)m" : "now"
         } else if hours < 24 {
             return "in \(Int(hours))h"
         }
         return nil
-    }
-    
-    private func needsWeatherAttention(temp: Double, precip: Double) -> Bool {
-        return temp < 5 || temp > 35 || precip > 0.5
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -154,10 +128,10 @@ struct PrepNeededCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: DesignSystem.Spacing.md) {
-                // Icon
-                VStack(spacing: DesignSystem.Spacing.xs) {
-                    Image(systemName: ride.rideType.icon)
-                        .font(.title2)
+                // Icon + time
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.title3)
                         .foregroundStyle(.orange)
                     
                     if let hoursUntil = hoursUntilText {
@@ -166,22 +140,14 @@ struct PrepNeededCard: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 60)
+                .frame(width: 40, alignment: .leading)
                 
                 // Details
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    HStack {
-                        Text(ride.name)
-                            .bodyLarge()
-                        
-                        Spacer()
-                        
-                        Label("Prep", systemImage: "exclamationmark.circle.fill")
-                            .captionSmall()
-                            .foregroundStyle(.orange)
-                    }
+                    Text(ride.name)
+                        .bodyLarge()
                     
-                    HStack(spacing: DesignSystem.Spacing.xs) {
+                    HStack {
                         Text(ride.scheduledDate.formatted(date: .abbreviated, time: .shortened))
                             .captionMedium()
                         
@@ -193,15 +159,14 @@ struct PrepNeededCard: View {
                     .foregroundStyle(.secondary)
                 }
                 
+                Spacer()
+                
                 Image(systemName: "chevron.right")
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
             }
             .padding(DesignSystem.Spacing.md)
-            .background(Color.orange.opacity(0.05))
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
-                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-            )
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(DesignSystem.CornerRadius.md)
         }
         .buttonStyle(.plain)

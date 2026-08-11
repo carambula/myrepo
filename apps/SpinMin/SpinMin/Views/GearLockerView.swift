@@ -12,7 +12,7 @@ struct GearLockerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ThemeManager.self) private var themeManager
     
-    @Query(filter: #Predicate<GearItem> { !$0.isRetired }, sort: \GearItem.purchaseDate, order: .reverse)
+    @Query(filter: #Predicate<GearItem> { $0.retirementDate == nil }, sort: \GearItem.purchaseDate, order: .reverse)
     private var activeGear: [GearItem]
     
     @State private var selectedCategory: GearCategory? = nil
@@ -531,11 +531,13 @@ struct OrderGearSheet: View {
     
     private func mapGearToCategory(_ gearType: GearType) -> ComponentCategory {
         switch gearType {
-        case .helmet, .shoes, .cleats, .pedals, .multiTool, .pumpCO2, .spareKit, .bottles, .saddleBag:
-            return .tools
-        case .computerGPS, .lights:
-            return .tools
-        case .jersey, .bibs, .jacket, .gloves, .sunglasses, .nutrition:
+        case .brakePads, .brakeRotors:
+            return .brakePads
+        case .pumpCO2:
+            return .pumps
+        case .chamoisCream:
+            return .lubricants
+        default:
             return .tools
         }
     }
@@ -546,7 +548,7 @@ struct OrderGearSheet: View {
 struct RetiredGearView: View {
     @Environment(\.dismiss) private var dismiss
     
-    @Query(filter: #Predicate<GearItem> { $0.isRetired }, sort: \GearItem.retirementDate, order: .reverse)
+    @Query(filter: #Predicate<GearItem> { $0.retirementDate != nil }, sort: \GearItem.retirementDate, order: .reverse)
     private var retiredGear: [GearItem]
     
     var body: some View {

@@ -301,7 +301,7 @@ struct ChainComponentCard: View {
                 }
                 
                 // Order replacement button when chain needs replacing
-                if chainStatus.health == .replaceSoon || chainStatus.health == .replaceNow {
+                if chainStatus.overallStatus == .replaceSoon || chainStatus.overallStatus == .replaceNow {
                     OrderReplacementButton(component: chain, style: .prominent)
                 }
                 

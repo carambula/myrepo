@@ -14,7 +14,7 @@ struct RideScheduleView: View {
     @Query(sort: \ScheduledRide.scheduledDate, order: .forward) private var allRides: [ScheduledRide]
     @Query private var bikes: [BikeConfiguration]
     @Query private var routes: [Route]
-    @Query(filter: #Predicate<GearItem> { !$0.isRetired }) private var activeGear: [GearItem]
+    @Query(filter: #Predicate<GearItem> { $0.retirementDate == nil }) private var activeGear: [GearItem]
     
     @State private var showingAddRide = false
     @State private var selectedRide: ScheduledRide?

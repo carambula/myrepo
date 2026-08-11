@@ -15,6 +15,8 @@ struct RideDashboardView: View {
     @Query(sort: \BikeConfiguration.lastUsed, order: .reverse) private var bikes: [BikeConfiguration]
     @Query private var wheelsets: [Wheelset]
     @Query(sort: \ScheduledRide.scheduledDate) private var allRides: [ScheduledRide]
+    @Query private var routes: [Route]
+    @Query(filter: #Predicate<GearItem> { $0.retirementDate == nil }) private var activeGear: [GearItem]
     
     @State private var selectedBike: BikeConfiguration?
     @State private var showingAddBike = false
@@ -99,8 +101,8 @@ struct RideDashboardView: View {
                 PreRidePreparationView(
                     ride: ride,
                     bikes: bikes,
-                    routes: [],
-                    allGear: []
+                    routes: routes,
+                    allGear: activeGear
                 )
             }
         }

@@ -19,18 +19,14 @@ final class BikeConfiguration {
     var lastUsed: Date
     var createdAt: Date
     
-<<<<<<< HEAD
     // Odometer tracking
     var totalMileageKm: Double  // Total distance on this bike
     
-=======
->>>>>>> origin/master
     // Default settings for this bike
     var defaultTerrainRawValue: String?
     var defaultCasingRawValue: String?
     var defaultRidingStyleRawValue: String?
     
-<<<<<<< HEAD
     // Gearing (optional)
     var drivetrainTypeRawValue: String?
     var smallChainring: Int?
@@ -47,8 +43,6 @@ final class BikeConfiguration {
     @Relationship(deleteRule: .cascade) var maintenanceRecords: [MaintenanceRecord] = []
     @Relationship(deleteRule: .cascade) var componentTracking: [ComponentTracking] = []
     
-=======
->>>>>>> origin/master
     init(
         name: String,
         bikeType: TirePressureCalculationService.BikeType,
@@ -67,11 +61,8 @@ final class BikeConfiguration {
         self.notes = notes
         self.lastUsed = Date()
         self.createdAt = Date()
-<<<<<<< HEAD
         self.totalMileageKm = 0
         self.speedCount = 11  // Default to 11-speed
-=======
->>>>>>> origin/master
         self.defaultTerrainRawValue = defaultTerrain?.rawValue
         self.defaultCasingRawValue = defaultCasing?.rawValue
         self.defaultRidingStyleRawValue = defaultRidingStyle?.rawValue
@@ -106,7 +97,6 @@ final class BikeConfiguration {
             defaultRidingStyleRawValue = newValue?.rawValue
         }
     }
-<<<<<<< HEAD
     
     var drivetrainType: DrivetrainType? {
         get {
@@ -166,6 +156,4 @@ final class BikeConfiguration {
             speedCount: speedCount ?? 11
         )
     }
-=======
->>>>>>> origin/master
 }

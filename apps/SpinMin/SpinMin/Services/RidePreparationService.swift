@@ -107,7 +107,8 @@ struct RidePreparationService {
             switch (bike.bikeType, route.surfaceType) {
             case (.road, .paved): score += 40
             case (.gravel, .gravel), (.gravel, .mixed): score += 40
-            case (.mountainBike, .singleTrack), (.mountainBike, .gravel): score += 40
+            case (.mountainXC, .singleTrack), (.mountainTrail, .singleTrack), (.mountainEnduro, .singleTrack): score += 40
+            case (.mountainXC, .gravel), (.mountainTrail, .gravel), (.mountainEnduro, .gravel): score += 40
             case (.road, .mixed): score += 20
             default: score += 10
             }
@@ -446,7 +447,7 @@ struct RidePreparationService {
         // Chain condition
         if let chain = bike.currentChain {
             let status = MaintenanceService.calculateChainMaintenance(for: chain, speedCount: bike.speedCount ?? 11)
-            let needsService = status.health == .replaceSoon || status.health == .replaceNow || status.waxDue
+            let needsService = status.overallStatus == .replaceSoon || status.overallStatus == .replaceNow || status.waxDue
             checks.append(PreRidePreparation.BikeCheck(
                 item: needsService ? "Chain needs service" : "Chain condition OK",
                 isComplete: !needsService,

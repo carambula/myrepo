@@ -16,6 +16,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
+<<<<<<< HEAD
             RideDashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "house.fill")
@@ -39,11 +40,19 @@ struct ContentView: View {
                     Label("Gearing", systemImage: "gearshape.2")
                 }
                 .tag(3)
+=======
+            CalculatorView()
+                .tabItem {
+                    Label("Calculator", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                }
+                .tag(0)
+>>>>>>> origin/master
             
             BikeConfigurationsView()
                 .tabItem {
                     Label("Bikes", systemImage: "bicycle")
                 }
+<<<<<<< HEAD
                 .tag(4)
             
             GearLockerView()
@@ -57,12 +66,19 @@ struct ContentView: View {
                     Label("Checklists", systemImage: "checklist")
                 }
                 .tag(6)
+=======
+                .tag(1)
+>>>>>>> origin/master
             
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
+<<<<<<< HEAD
                 .tag(7)
+=======
+                .tag(2)
+>>>>>>> origin/master
         }
         .tint(themeManager.currentTheme.accent)
     }

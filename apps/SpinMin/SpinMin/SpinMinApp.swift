@@ -15,6 +15,7 @@ struct SpinMinApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             BikeConfiguration.self,
+<<<<<<< HEAD
             Wheelset.self,
             TireTracking.self,
             TireHistory.self,
@@ -40,6 +41,10 @@ struct SpinMinApp: App {
             // Ride scheduling
             ScheduledRide.self,
             Route.self,
+=======
+            CalculationHistory.self,
+            ThemePreference.self,
+>>>>>>> origin/master
         ])
         
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -85,10 +90,13 @@ struct SpinMinApp: App {
             ContentView()
                 .environment(themeManager)
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : nil)
+<<<<<<< HEAD
                 .onAppear {
                     // Seed product database on first launch
                     ProductDatabaseSeeder.seedDatabaseIfNeeded(context: sharedModelContainer.mainContext)
                 }
+=======
+>>>>>>> origin/master
         }
         .modelContainer(sharedModelContainer)
     }

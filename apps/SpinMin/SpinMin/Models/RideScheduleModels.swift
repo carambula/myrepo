@@ -23,6 +23,7 @@ final class ScheduledRide {
     // Training platform sync
     var trainingPeaksWorkoutId: String?
     var garminWorkoutId: String?
+    var calendarEventId: String?  // ICS feed event UID (TrainingPeaks, intervals.icu, etc.)
     var lastSynced: Date?
     
     // Route
@@ -254,37 +255,13 @@ enum SurfaceType: String, CaseIterable, Codable {
 }
 
 // MARK: - Training Platform Integration
-
-struct TrainingPeaksIntegration {
-    var isConnected: Bool
-    var username: String?
-    var lastSync: Date?
-    
-    // API credentials (stored securely in keychain)
-    static func syncWorkouts() async throws -> [ScheduledRide] {
-        // TODO: Implement TrainingPeaks API integration
-        // 1. Authenticate with TrainingPeaks
-        // 2. Fetch upcoming workouts
-        // 3. Convert to ScheduledRide objects
-        // 4. Return rides
-        return []
-    }
-}
-
-struct GarminIntegration {
-    var isConnected: Bool
-    var lastSync: Date?
-    
-    // API credentials (stored securely in keychain)
-    static func syncCalendar() async throws -> [ScheduledRide] {
-        // TODO: Implement Garmin Connect API integration
-        // 1. Authenticate with Garmin
-        // 2. Fetch calendar events
-        // 3. Convert to ScheduledRide objects
-        // 4. Return rides
-        return []
-    }
-}
+//
+// Workout sync is implemented via iCalendar (ICS) feeds in
+// TrainingCalendarSyncService. TrainingPeaks, intervals.icu, TrainerRoad,
+// and Final Surge all publish per-user ICS feed URLs, so sync works without
+// partner API access. Weather forecasts come from WeatherForecastService
+// (WeatherKit). Direct TrainingPeaks/Garmin OAuth APIs require partner
+// program approval and can be layered on later using the same merge logic.
 
 // MARK: - Pre-Ride Preparation
 

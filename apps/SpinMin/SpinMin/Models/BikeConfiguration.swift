@@ -19,11 +19,36 @@ final class BikeConfiguration {
     var lastUsed: Date
     var createdAt: Date
     
+<<<<<<< HEAD
+    // Odometer tracking
+    var totalMileageKm: Double  // Total distance on this bike
+    
+=======
+>>>>>>> origin/master
     // Default settings for this bike
     var defaultTerrainRawValue: String?
     var defaultCasingRawValue: String?
     var defaultRidingStyleRawValue: String?
     
+<<<<<<< HEAD
+    // Gearing (optional)
+    var drivetrainTypeRawValue: String?
+    var smallChainring: Int?
+    var largeChainring: Int?
+    var cassetteTeeth: [Int]?
+    var wheelDiameterRawValue: String?
+    var popularDrivetrainID: String?
+    
+    // Drivetrain speed count (for chain wear limits)
+    var speedCount: Int?  // 11, 12, etc. Defaults to 11
+    
+    // Relationships
+    @Relationship(deleteRule: .cascade) var wheelsets: [Wheelset] = []
+    @Relationship(deleteRule: .cascade) var maintenanceRecords: [MaintenanceRecord] = []
+    @Relationship(deleteRule: .cascade) var componentTracking: [ComponentTracking] = []
+    
+=======
+>>>>>>> origin/master
     init(
         name: String,
         bikeType: TirePressureCalculationService.BikeType,
@@ -42,6 +67,11 @@ final class BikeConfiguration {
         self.notes = notes
         self.lastUsed = Date()
         self.createdAt = Date()
+<<<<<<< HEAD
+        self.totalMileageKm = 0
+        self.speedCount = 11  // Default to 11-speed
+=======
+>>>>>>> origin/master
         self.defaultTerrainRawValue = defaultTerrain?.rawValue
         self.defaultCasingRawValue = defaultCasing?.rawValue
         self.defaultRidingStyleRawValue = defaultRidingStyle?.rawValue
@@ -76,4 +106,66 @@ final class BikeConfiguration {
             defaultRidingStyleRawValue = newValue?.rawValue
         }
     }
+<<<<<<< HEAD
+    
+    var drivetrainType: DrivetrainType? {
+        get {
+            guard let raw = drivetrainTypeRawValue else { return nil }
+            return DrivetrainType(rawValue: raw)
+        }
+        set {
+            drivetrainTypeRawValue = newValue?.rawValue
+        }
+    }
+    
+    var wheelDiameter: WheelSize? {
+        get {
+            guard let raw = wheelDiameterRawValue else { return nil }
+            return WheelSize(rawValue: raw)
+        }
+        set {
+            wheelDiameterRawValue = newValue?.rawValue
+        }
+    }
+    
+    var hasGearing: Bool {
+        return smallChainring != nil && cassetteTeeth != nil && !cassetteTeeth!.isEmpty
+    }
+    
+    // MARK: - Maintenance Helpers
+    
+    /// Update bike odometer and all associated components
+    func logDistance(_ distanceKm: Double) {
+        totalMileageKm += distanceKm
+        lastUsed = Date()
+        
+        // Update all components' current odometer
+        for component in componentTracking {
+            component.updateOdometer(totalMileageKm)
+        }
+    }
+    
+    /// Get current chain component if tracked
+    var currentChain: ComponentTracking? {
+        componentTracking.first { $0.component == .chain }
+    }
+    
+    /// Check if any components need attention
+    var maintenanceDue: Bool {
+        let summary = MaintenanceService.calculateBikeMaintenance(
+            components: componentTracking,
+            speedCount: speedCount ?? 11
+        )
+        return summary.needsAttention
+    }
+    
+    /// Get maintenance summary
+    func getMaintenanceSummary() -> MaintenanceService.BikeMaintenanceSummary {
+        MaintenanceService.calculateBikeMaintenance(
+            components: componentTracking,
+            speedCount: speedCount ?? 11
+        )
+    }
+=======
+>>>>>>> origin/master
 }

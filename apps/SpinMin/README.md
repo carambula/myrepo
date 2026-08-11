@@ -15,16 +15,113 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 ## Features
 
+<<<<<<< HEAD
+### Gear Tracking & Checklists
+- **Gear Locker**: Track helmets, shoes, cleats, tools, and accessories
+- **Lifespan tracking**: Auto-calculated expiry dates (helmets: 5 years, shoes: 2 years, etc.)
+- **Safety alerts**: Critical warnings for expired helmets, worn shoes
+- **Usage tracking**: Record rides and hours for wear calculations
+- **Consumables monitoring**: Track nutrition, bottles, spare kits
+- **Pre-ride checklists**: Templates for training, races, long rides, bikepacking
+- **Race day preparation**: Comprehensive race checklist with categories
+- **Quick check-in**: Mark items complete, track progress
+- **Gear ordering**: Direct links to replace expired/worn gear
+
+See [GEAR_TRACKING.md](./GEAR_TRACKING.md) for complete documentation.
+
+### Ride Scheduling & Preparation
+- **Ride planning**: Create rides with type, duration, distance, and notes
+- **Training platform sync**: *Coming soon* - TrainingPeaks and Garmin Connect integration
+- **Smart recommendations**: Algorithm suggests best bike and route for each ride
+- **Pre-ride preparation**: Comprehensive checklist with bike and gear checks
+- **Battery tracking**: Monitor charge levels for head unit, radar, and lights
+- **Weather alerts**: Warnings for extreme temperatures and precipitation
+- **Route management**: Save routes with distance, surface type, and difficulty ratings
+- **Readiness scoring**: Visual progress tracking for preparation
+- **Priority system**: Critical, important, and optional checks clearly marked
+
+See [RIDE_SCHEDULING.md](./RIDE_SCHEDULING.md) for complete documentation.
+
+### Vendor Ordering System
+- **One-tap ordering** of replacement components from trusted retailers
+- **7 supported vendors**: Competitive Cyclist, Jenson USA, Silca, REI, Backcountry, Chain Reaction, Modern Bike
+- **Smart vendor recommendations** based on component type
+- **Context-aware buttons** (appear when replacement is needed)
+- **Direct links** to Silca chain wax and popular products
+- **User preferences** for favorite vendors
+- **Deep linking** opens Safari with product search
+
+See [VENDOR_ORDERING.md](./VENDOR_ORDERING.md) for complete documentation.
+
+### Product Lookup Database
+- **Autocomplete search** for tires, chains, wheelsets, and components
+- **Pre-populated database** with 20+ popular products (Continental, Schwalbe, Shimano, SRAM, etc.)
+- **Smart filtering** by wheel size, speed count, compatibility
+- **Offline-first** operation with local database
+- **Extensible** - add custom products via manual entry
+- **Relevance scoring** for best search results
+
+See [PRODUCT_DATABASE.md](./PRODUCT_DATABASE.md) for complete documentation.
+
+### Ride-Ready Dashboard
+- Quick-glance view of all saved bikes and wheelsets
+- Real-time tire pressure recommendations
+- Tire health status at a glance
+- Easy ride logging with automatic mileage tracking
+
+=======
+>>>>>>> origin/master
 ### Tire Pressure Calculator
 - Science-based calculations using the 15% tire drop rule
 - Empirical data from SILCA, Wolf Tooth, and industry research
 - Separate front and rear pressure recommendations
 - Display in PSI or BAR units
 
+<<<<<<< HEAD
+### Tire Tracking System
+- **Track front and rear tires independently** (rear wears ~2× faster)
+- **Mileage-based wear monitoring** with compound-specific lifespans
+- **Age-based warnings** (5-6 year recommended, 10 year maximum)
+- **Health status calculation**: Excellent → Good → Fair → Worn → Replace Soon → Replace Now → UNSAFE
+- **Visual condition tracking**: squared profile, sidewall cracks, casing exposure, punctures
+- **Ride logging**: Automatic odometer and mileage updates
+- **Tire history**: Complete lifecycle records of replaced tires
+- **Smart warnings**: Based on cycling industry best practices
+
+See [TIRE_TRACKING.md](./TIRE_TRACKING.md) for detailed documentation.
+
+### Bike Maintenance Tracking
+**Chain-focused maintenance** with quick waxing/lubing workflows:
+- **Chain wax/lube intervals**: Hot wax (500 km), drip wax (300 km), wet/dry lube tracking
+- **Chain wear monitoring**: 0.5% limit for 11+ speed, prevents cassette damage
+- **Quick actions**: One-tap chain wax, clean, and replace logging
+- **Component lifespan tracking**: Chain, cassette, brake pads, cables, bearings, etc.
+- **Health status system**: 🟢 Excellent → 🟡 Good → 🟠 Service Due → 🔴 Replace Soon → ⛔️ Replace Now
+- **Maintenance history**: Chronological records with costs and notes
+- **Bike odometer**: Automatic updates from ride logging
+- **Dashboard indicators**: Maintenance due warnings on bike cards
+
+See [MAINTENANCE_TRACKING.md](./MAINTENANCE_TRACKING.md) for detailed documentation.
+
+### Gear Ratio Calculator
+- Comprehensive gearing analysis with ratio, gear inches, development
+- Speed at cadence calculations
+- Climbing ability analysis
+- Gap analysis between gears
+- Pre-loaded popular drivetrains (Shimano, SRAM, Campagnolo)
+- Compare mode for side-by-side analysis
+
+### Bike & Wheelset Management
+- Save multiple bike configurations
+- Multiple wheelsets per bike with independent tire specs
+- Weight tracking per wheelset
+- Quick selection for calculations
+=======
 ### Bike Profiles
 - Save multiple bike configurations
 - Quick selection for repeated calculations
 - Store tire width, bike type, and custom notes
+>>>>>>> origin/master
 - iCloud sync via SwiftData
 
 ### Themes
@@ -72,9 +169,28 @@ The service uses:
 ### Data Persistence
 
 Uses SwiftData with CloudKit sync:
+<<<<<<< HEAD
+- `BikeConfiguration` - Saved bike profiles with optional gearing, bike odometer, and maintenance relationships
+- `Wheelset` - Multiple wheel configurations per bike
+- `TireTracking` - Current tire state (front/rear) with mileage and age
+- `TireHistory` - Historical record of replaced tires
+- `ComponentTracking` - Current components installed on bike (chain, cassette, brake pads, etc.)
+- `MaintenanceRecord` - Historical maintenance activities with costs and notes
+- `RideLog` - Ride tracking for mileage updates (updates bike + wheelset + component odometers)
+- `GearConfiguration` - Standalone gear setups
+- `CalculationHistory` - Past pressure calculations
+- `ThemePreference` - Theme selection
+- **Product Database**:
+  - `TireProduct` - Pre-populated tire catalog with specs
+  - `ChainProduct` - Chain specifications and compatibility
+  - `WheelsetProduct` - Wheelset specifications
+  - `ComponentProduct` - Generic component catalog
+  - `BikeProduct` - Complete bike specifications
+=======
 - `BikeConfiguration` - Saved bike profiles
 - `CalculationHistory` - Past calculations
 - `ThemePreference` - Theme selection
+>>>>>>> origin/master
 
 ## Testing
 

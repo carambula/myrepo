@@ -15,9 +15,7 @@ struct GearTrackingService {
         case new
         case good
         case aging
-        case replaceS
-
-oon
+        case replaceSoon
         case replaceNow
         case expired
         case unsafe
@@ -289,7 +287,7 @@ oon
         }
         
         // Safety items
-        if gearType == .helmet || gearType == .lights {
+        if gearType == .helmet || gearType == .tailLight || gearType == .frontLight {
             if maxPercentage >= 100 { return .expired }
             if maxPercentage >= 85 { return .replaceNow }
             if maxPercentage >= 70 { return .replaceSoon }

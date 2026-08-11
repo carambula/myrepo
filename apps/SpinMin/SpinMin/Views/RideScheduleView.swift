@@ -14,10 +14,17 @@ struct RideScheduleView: View {
     @Query(sort: \ScheduledRide.scheduledDate, order: .forward) private var allRides: [ScheduledRide]
     @Query private var bikes: [BikeConfiguration]
     @Query private var routes: [Route]
-    @Query(filter: #Predicate<GearItem> { !$0.isRetired }) private var activeGear: [GearItem]
+    @Query(filter: #Predicate<GearItem> { $0.retirementDate == nil }) private var activeGear: [GearItem]
+    
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("trainingCalendarFeedURL") private var calendarFeedURL = ""
+    @AppStorage("trainingCalendarLastSync") private var lastSyncTimestamp = 0.0
     
     @State private var showingAddRide = false
+    @State private var showingCalendarSettings = false
     @State private var selectedRide: ScheduledRide?
+    @State private var isSyncing = false
+    @State private var syncErrorMessage: String?
     
     var upcomingRides: [ScheduledRide] {
         allRides.filter { $0.isUpcoming && !$0.isCompleted }
@@ -56,7 +63,33 @@ struct RideScheduleView: View {
                 .padding(.vertical, DesignSystem.Spacing.lg)
             }
             .navigationTitle("Ride Schedule")
+            .refreshable {
+                await syncCalendarAndWeather()
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        if calendarFeedURL.trimmingCharacters(in: .whitespaces).isEmpty {
+                            showingCalendarSettings = true
+                        } else {
+                            Task { await syncCalendarAndWeather() }
+                        }
+                    } label: {
+                        if isSyncing {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    .disabled(isSyncing)
+                    .contextMenu {
+                        Button {
+                            showingCalendarSettings = true
+                        } label: {
+                            Label("Calendar Settings", systemImage: "gearshape")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingAddRide = true
@@ -65,8 +98,20 @@ struct RideScheduleView: View {
                     }
                 }
             }
+            .alert("Sync Failed", isPresented: .init(
+                get: { syncErrorMessage != nil },
+                set: { if !$0 { syncErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+                Button("Settings") { showingCalendarSettings = true }
+            } message: {
+                Text(syncErrorMessage ?? "")
+            }
             .sheet(isPresented: $showingAddRide) {
                 AddRideView()
+            }
+            .sheet(isPresented: $showingCalendarSettings) {
+                CalendarSyncSettingsView()
             }
             .sheet(item: $selectedRide) { ride in
                 PreRidePreparationView(
@@ -77,6 +122,34 @@ struct RideScheduleView: View {
                 )
             }
         }
+    }
+    
+    // MARK: - Sync
+    
+    private func syncCalendarAndWeather() async {
+        isSyncing = true
+        defer { isSyncing = false }
+        
+        // 1. Pull scheduled workouts from the connected calendar feed
+        let feedURL = calendarFeedURL.trimmingCharacters(in: .whitespaces)
+        if !feedURL.isEmpty {
+            do {
+                _ = try await TrainingCalendarSyncService.sync(
+                    feedURLString: feedURL,
+                    context: modelContext
+                )
+                lastSyncTimestamp = Date().timeIntervalSince1970
+            } catch {
+                syncErrorMessage = error.localizedDescription
+            }
+        }
+        
+        // 2. Refresh weather forecasts for upcoming rides (best effort)
+        let location = await LocationProvider.shared.currentLocation()
+        await WeatherForecastService.refreshForecasts(
+            for: upcomingRides,
+            fallbackLocation: location
+        )
     }
     
     private var todaySection: some View {

@@ -6,7 +6,7 @@ SpinMin includes a comprehensive ride scheduling system with smart preparation r
 
 ### 📅 Ride Scheduling
 - **Manual ride entry** - Create rides with date, time, type, duration, and distance
-- **Training platform integration** - *Coming soon:* Sync with TrainingPeaks and Garmin Connect
+- **Training platform sync** - Import scheduled workouts from any iCalendar (ICS) feed: TrainingPeaks, intervals.icu, TrainerRoad, Final Surge. Ride type, duration, and distance are inferred from the workout title and description
 - **Ride types** - Training, race, recovery, intervals, endurance, tempo, threshold, VO2 max, sprint, long ride, group ride, commute
 - **Notes and details** - Add ride-specific notes and planning details
 
@@ -126,8 +126,9 @@ SpinMin includes a comprehensive ride scheduling system with smart preparation r
 - distance: Double?
 - rideType: RideType
 - notes: String
-- trainingPeaksWorkoutId: String?  // For sync
-- garminWorkoutId: String?  // For sync
+- trainingPeaksWorkoutId: String?  // For future OAuth API sync
+- garminWorkoutId: String?  // For future OAuth API sync
+- calendarEventId: String?  // ICS feed event UID (dedupe key for calendar sync)
 - route: Route?
 - recommendedBike: BikeConfiguration?
 - selectedBike: BikeConfiguration?
@@ -349,10 +350,28 @@ Comprehensive preparation interface:
 - **Tire tracking** - Checks tire health
 - **Checklists** - Uses ride type to determine checklist recommendations
 
+### Calendar Feed Sync (implemented)
+`TrainingCalendarSyncService` downloads and parses an iCalendar (ICS) feed and merges its events into scheduled rides:
+
+- **Works today, no partner API required** - TrainingPeaks, intervals.icu, TrainerRoad, and Final Surge all publish per-user ICS feed URLs
+- **Setup** - Ride Schedule tab → sync button → paste your feed URL (webcal:// or https://). In TrainingPeaks: Settings → Calendar Sync
+- **Smart import** - Ride type inferred from workout keywords (race, recovery, VO2, threshold, tempo, etc.); distance parsed from text like "60km" or "40 mi"
+- **Safe merge** - Events are deduplicated by calendar UID. Re-syncing updates changed workouts; completed rides are never modified
+- **Sync window** - Imports rides from today through the next 60 days
+- **Pull to refresh** - Swipe down on the schedule to sync
+
+Garmin Connect does not publish a calendar feed; push Garmin-planned workouts to TrainingPeaks or intervals.icu and sync from there.
+
+### Weather Forecasts (implemented)
+`WeatherForecastService` uses Apple WeatherKit to populate ride temperature, precipitation chance, and conditions:
+
+- **No API keys** - WeatherKit is built into iOS; enable the WeatherKit capability on the app target in Xcode (Signing & Capabilities)
+- **Location** - Uses the ride's route start coordinates when set, otherwise the device location (add `NSLocationWhenInUseUsageDescription` to Info.plist)
+- **Forecast window** - Rides within the next 10 days get hourly forecasts matched to the ride start time
+- **Feeds recommendations** - The stored temperature and precipitation drive weather-based clothing and hydration suggestions
+
 ### Future Integrations
-- **TrainingPeaks API** - Sync workouts and training plans
-- **Garmin Connect API** - Sync calendar and completed activities
-- **Weather API** - Live weather forecasts
+- **TrainingPeaks / Garmin OAuth APIs** - Direct API sync (requires partner program approval); the ICS merge logic is reusable
 - **Notifications** - Daily prep reminders and ride alerts
 - **Apple Calendar** - Sync rides to device calendar
 - **Route planning** - GPX import/export, turn-by-turn navigation

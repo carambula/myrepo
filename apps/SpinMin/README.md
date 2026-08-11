@@ -15,7 +15,6 @@ SpinMin helps cyclists find their optimal tire pressure based on:
 
 ## Features
 
-<<<<<<< HEAD
 ### Gear Tracking & Checklists
 - **Gear Locker**: Track helmets, shoes, cleats, tools, and accessories
 - **Lifespan tracking**: Auto-calculated expiry dates (helmets: 5 years, shoes: 2 years, etc.)
@@ -69,15 +68,12 @@ See [PRODUCT_DATABASE.md](./PRODUCT_DATABASE.md) for complete documentation.
 - Tire health status at a glance
 - Easy ride logging with automatic mileage tracking
 
-=======
->>>>>>> origin/master
 ### Tire Pressure Calculator
 - Science-based calculations using the 15% tire drop rule
 - Empirical data from SILCA, Wolf Tooth, and industry research
 - Separate front and rear pressure recommendations
 - Display in PSI or BAR units
 
-<<<<<<< HEAD
 ### Tire Tracking System
 - **Track front and rear tires independently** (rear wears ~2× faster)
 - **Mileage-based wear monitoring** with compound-specific lifespans
@@ -116,12 +112,6 @@ See [MAINTENANCE_TRACKING.md](./MAINTENANCE_TRACKING.md) for detailed documentat
 - Multiple wheelsets per bike with independent tire specs
 - Weight tracking per wheelset
 - Quick selection for calculations
-=======
-### Bike Profiles
-- Save multiple bike configurations
-- Quick selection for repeated calculations
-- Store tire width, bike type, and custom notes
->>>>>>> origin/master
 - iCloud sync via SwiftData
 
 ### Themes
@@ -169,7 +159,6 @@ The service uses:
 ### Data Persistence
 
 Uses SwiftData with CloudKit sync:
-<<<<<<< HEAD
 - `BikeConfiguration` - Saved bike profiles with optional gearing, bike odometer, and maintenance relationships
 - `Wheelset` - Multiple wheel configurations per bike
 - `TireTracking` - Current tire state (front/rear) with mileage and age
@@ -186,11 +175,6 @@ Uses SwiftData with CloudKit sync:
   - `WheelsetProduct` - Wheelset specifications
   - `ComponentProduct` - Generic component catalog
   - `BikeProduct` - Complete bike specifications
-=======
-- `BikeConfiguration` - Saved bike profiles
-- `CalculationHistory` - Past calculations
-- `ThemePreference` - Theme selection
->>>>>>> origin/master
 
 ## Testing
 

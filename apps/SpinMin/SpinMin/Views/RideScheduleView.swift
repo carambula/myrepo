@@ -23,6 +23,7 @@ struct RideScheduleView: View {
     @State private var showingAddRide = false
     @State private var showingCalendarSettings = false
     @State private var selectedRide: ScheduledRide?
+    @State private var rideToComplete: ScheduledRide?
     @State private var isSyncing = false
     @State private var syncErrorMessage: String?
     
@@ -38,10 +39,23 @@ struct RideScheduleView: View {
         upcomingRides.filter { $0.needsPreparation }
     }
     
+    /// Past rides never completed (last 7 days) awaiting manual completion
+    var ridesAwaitingCompletion: [ScheduledRide] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return allRides.filter {
+            !$0.isCompleted && $0.scheduledDate < Date() && $0.scheduledDate > weekAgo
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: DesignSystem.Spacing.lg) {
+                    // Past rides awaiting completion
+                    if !ridesAwaitingCompletion.isEmpty {
+                        awaitingCompletionSection
+                    }
+                    
                     // Today's rides
                     if !todayRides.isEmpty {
                         todaySection
@@ -113,6 +127,9 @@ struct RideScheduleView: View {
             .sheet(isPresented: $showingCalendarSettings) {
                 CalendarSyncSettingsView()
             }
+            .sheet(item: $rideToComplete) { ride in
+                CompleteRideView(ride: ride)
+            }
             .sheet(item: $selectedRide) { ride in
                 PreRidePreparationView(
                     ride: ride,
@@ -120,6 +137,38 @@ struct RideScheduleView: View {
                     routes: routes,
                     allGear: activeGear
                 )
+            }
+        }
+    }
+    
+    private var awaitingCompletionSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("Awaiting Completion")
+                .h3()
+            
+            ForEach(ridesAwaitingCompletion) { ride in
+                Button {
+                    rideToComplete = ride
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text(ride.name)
+                                .bodyMedium()
+                                .foregroundStyle(.primary)
+                            Text(ride.scheduledDate.formatted(date: .abbreviated, time: .shortened))
+                                .captionMedium()
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text("Complete")
+                            .bodySmall()
+                            .foregroundAccent()
+                    }
+                    .padding(DesignSystem.Spacing.md)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -150,6 +199,9 @@ struct RideScheduleView: View {
             for: upcomingRides,
             fallbackLocation: location
         )
+        
+        // 3. Reschedule notifications against the fresh data
+        await NotificationService.refreshAll(context: modelContext)
     }
     
     private var todaySection: some View {

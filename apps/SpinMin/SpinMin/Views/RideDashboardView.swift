@@ -22,6 +22,7 @@ struct RideDashboardView: View {
     @State private var showingAddBike = false
     @State private var riderWeight: Double = 70
     @State private var selectedRide: ScheduledRide?
+    @State private var rideToComplete: ScheduledRide?
     
     var todayRides: [ScheduledRide] {
         allRides.filter { Calendar.current.isDateInToday($0.scheduledDate) && !$0.isCompleted }
@@ -29,6 +30,14 @@ struct RideDashboardView: View {
     
     var upcomingRidesNeedingPrep: [ScheduledRide] {
         allRides.filter { $0.needsPreparation && !$0.isToday }
+    }
+    
+    /// Past rides (last 7 days) never marked complete
+    var ridesAwaitingCompletion: [ScheduledRide] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return allRides.filter {
+            !$0.isCompleted && $0.scheduledDate < Date() && $0.scheduledDate > weekAgo
+        }
     }
     
     var body: some View {
@@ -59,6 +68,31 @@ struct RideDashboardView: View {
                     // Rides needing preparation (next 24 hours)
                     if !upcomingRidesNeedingPrep.isEmpty {
                         prepNeededSection
+                    }
+                    
+                    // Prompt to complete past rides so mileage stays accurate
+                    if let pastRide = ridesAwaitingCompletion.first {
+                        Button {
+                            rideToComplete = pastRide
+                        } label: {
+                            HStack {
+                                Image(systemName: "checkmark.circle")
+                                    .foregroundAccent()
+                                Text(ridesAwaitingCompletion.count == 1
+                                     ? "Complete \(pastRide.name)?"
+                                     : "\(ridesAwaitingCompletion.count) rides need completing")
+                                    .bodyMedium()
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .captionMedium()
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(DesignSystem.Spacing.md)
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                        }
+                        .buttonStyle(.plain)
                     }
                     
                     if bikes.isEmpty {
@@ -109,6 +143,9 @@ struct RideDashboardView: View {
                     routes: routes,
                     allGear: activeGear
                 )
+            }
+            .sheet(item: $rideToComplete) { ride in
+                CompleteRideView(ride: ride)
             }
         }
     }

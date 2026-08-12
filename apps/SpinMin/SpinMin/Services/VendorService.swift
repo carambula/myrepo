@@ -24,22 +24,7 @@ struct VendorService {
         )
     }
     
-    /// Generate order links for a chain
-    static func orderLinks(
-        for chain: ComponentTracking,
-        vendors: [Vendor] = Vendor.allCases
-    ) -> [OrderLink] {
-        guard chain.componentType == .chain else { return [] }
-        
-        let searchQuery = buildChainSearchQuery(chain)
-        return generateLinks(
-            query: searchQuery,
-            category: .chains,
-            vendors: vendors.filter { $0.specialties.contains(.chains) }
-        )
-    }
-    
-    /// Generate order links for any component
+    /// Generate order links for any component (chains map to the chains category)
     static func orderLinks(
         for component: ComponentTracking,
         vendors: [Vendor] = Vendor.allCases
@@ -103,21 +88,6 @@ struct VendorService {
         if parts.isEmpty {
             parts.append("road tire \(tire.widthMM)mm")
         }
-        
-        return parts.joined(separator: " ")
-    }
-    
-    private static func buildChainSearchQuery(_ chain: ComponentTracking) -> String {
-        var parts: [String] = []
-        
-        if let brand = chain.brand {
-            parts.append(brand)
-        }
-        if let model = chain.model {
-            parts.append(model)
-        }
-        
-        parts.append("chain")
         
         return parts.joined(separator: " ")
     }

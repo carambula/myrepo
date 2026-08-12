@@ -28,13 +28,13 @@ final class ThemeManager {
 struct AppTheme: Identifiable, Codable, Hashable {
     let id: String
     let name: String
-    let accent: CodableColor
-    let secondaryAccent: CodableColor?
-    let headlineColor: CodableColor
+    let accentValue: CodableColor
+    let secondaryAccentValue: CodableColor?
+    let headlineColorValue: CodableColor
     let isDark: Bool
     let supportsLightMode: Bool
-    let darkModeBackground: CodableColor?
-    let lightModeBackground: CodableColor?
+    let darkModeBackgroundValue: CodableColor?
+    let lightModeBackgroundValue: CodableColor?
     
     init(
         id: String,
@@ -49,13 +49,13 @@ struct AppTheme: Identifiable, Codable, Hashable {
     ) {
         self.id = id
         self.name = name
-        self.accent = CodableColor(accent)
-        self.secondaryAccent = secondaryAccent.map { CodableColor($0) }
-        self.headlineColor = CodableColor(headlineColor)
+        self.accentValue = CodableColor(accent)
+        self.secondaryAccentValue = secondaryAccent.map { CodableColor($0) }
+        self.headlineColorValue = CodableColor(headlineColor)
         self.isDark = isDark
         self.supportsLightMode = supportsLightMode
-        self.darkModeBackground = darkModeBackground.map { CodableColor($0) }
-        self.lightModeBackground = lightModeBackground.map { CodableColor($0) }
+        self.darkModeBackgroundValue = darkModeBackground.map { CodableColor($0) }
+        self.lightModeBackgroundValue = lightModeBackground.map { CodableColor($0) }
     }
     
     static let defaultThemes: [AppTheme] = [
@@ -145,22 +145,22 @@ struct CodableColor: Codable, Hashable {
 
 extension AppTheme {
     var accent: Color {
-        self.accent.color
+        accentValue.color
     }
     
     var secondaryAccent: Color? {
-        self.secondaryAccent?.color
+        secondaryAccentValue?.color
     }
     
     var headlineColor: Color {
-        self.headlineColor.color
+        headlineColorValue.color
     }
     
     var darkModeBackground: Color? {
-        self.darkModeBackground?.color
+        darkModeBackgroundValue?.color
     }
     
     var lightModeBackground: Color? {
-        self.lightModeBackground?.color
+        lightModeBackgroundValue?.color
     }
 }

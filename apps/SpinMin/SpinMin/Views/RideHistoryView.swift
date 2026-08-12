@@ -54,7 +54,7 @@ struct RideHistoryView: View {
                 } else {
                     VStack(spacing: DesignSystem.Spacing.md) {
                         ForEach(sortedRides) { ride in
-                            RideCard(ride: ride)
+                            RideLogCard(ride: ride)
                         }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
@@ -112,7 +112,7 @@ struct StatCard: View {
     }
 }
 
-struct RideCard: View {
+private struct RideLogCard: View {
     let ride: RideLog
     
     var body: some View {

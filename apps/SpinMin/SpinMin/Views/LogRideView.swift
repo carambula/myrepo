@@ -22,7 +22,7 @@ struct LogRideView: View {
     @State private var distanceKm: Double = 0
     @State private var rideName: String = ""
     @State private var notes: String = ""
-    @State private var terrain: TirePressureCalculationService.TerrainType = .pavedSmooth
+    @State private var terrain: TirePressureCalculationService.TerrainType = .smooth
     
     var body: some View {
         NavigationStack {

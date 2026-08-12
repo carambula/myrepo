@@ -111,6 +111,13 @@ struct RideScheduleView: View {
                         Image(systemName: "plus")
                     }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        RoutesView()
+                    } label: {
+                        Image(systemName: "map")
+                    }
+                }
             }
             .alert("Sync Failed", isPresented: .init(
                 get: { syncErrorMessage != nil },

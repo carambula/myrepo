@@ -25,7 +25,7 @@ final class StravaSyncTests: XCTestCase {
     }
     
     private func makeBike(name: String) -> BikeConfiguration {
-        BikeConfiguration(name: name, bikeType: .roadRacing, tireWidthMM: 28)
+        BikeConfiguration(name: name, bikeType: .road, tireWidthMM: 28)
     }
     
     private func makeActivity(

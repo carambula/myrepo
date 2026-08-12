@@ -14,6 +14,17 @@ struct SettingsView: View {
     
     @Query private var vendorPreferences: [VendorPreference]
     
+    @AppStorage(NotificationService.ridePrepEnabledKey) private var notifyRidePrep = true
+    @AppStorage(NotificationService.batteryEnabledKey) private var notifyBattery = true
+    @AppStorage(NotificationService.maintenanceEnabledKey) private var notifyMaintenance = true
+    
+    private func refreshNotifications() {
+        Task {
+            _ = await NotificationService.requestPermission()
+            await NotificationService.refreshAll(context: modelContext)
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -70,6 +81,19 @@ struct SettingsView: View {
                 } footer: {
                     Text("Import rides automatically to keep bike and component mileage up to date")
                 }
+                
+                Section {
+                    Toggle("Ride prep reminders", isOn: $notifyRidePrep)
+                    Toggle("Battery charge reminders", isOn: $notifyBattery)
+                    Toggle("Maintenance alerts", isOn: $notifyMaintenance)
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Prep reminders arrive the evening before a scheduled ride. Notifications are asked for permission on first use.")
+                }
+                .onChange(of: notifyRidePrep) { refreshNotifications() }
+                .onChange(of: notifyBattery) { refreshNotifications() }
+                .onChange(of: notifyMaintenance) { refreshNotifications() }
                 
                 Section("About") {
                     HStack {

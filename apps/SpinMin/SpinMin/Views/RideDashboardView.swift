@@ -119,7 +119,7 @@ struct RideDashboardView: View {
                 if StravaAuthService.shared.isConnected {
                     _ = try? await StravaSyncService.sync(context: modelContext)
                 }
-                WidgetDataService.refreshSnapshot(context: modelContext)
+                await WidgetDataService.refreshSnapshot(context: modelContext)
             }
             .navigationTitle("My Bikes")
             .toolbar {

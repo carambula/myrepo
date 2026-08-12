@@ -209,7 +209,7 @@ struct RideScheduleView: View {
         
         // 3. Reschedule notifications and widget data against the fresh data
         await NotificationService.refreshAll(context: modelContext)
-        WidgetDataService.refreshSnapshot(context: modelContext)
+        await WidgetDataService.refreshSnapshot(context: modelContext)
     }
     
     private var todaySection: some View {

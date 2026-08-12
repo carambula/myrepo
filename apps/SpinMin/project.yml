@@ -33,8 +33,6 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: SpinMin/Info.plist
-    info:
-      path: SpinMin/Info.plist
     entitlements:
       path: SpinMin.entitlements
 

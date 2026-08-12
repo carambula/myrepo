@@ -237,7 +237,7 @@ final class TirePressureCalculationServiceTests: XCTestCase {
     
     // MARK: - BAR Conversion Tests
     
-    func testPSItoBAR Conversion() {
+    func testPSItoBARConversion() {
         let result = TirePressureCalculationService.calculatePressure(
             riderWeightKg: 70,
             bikeType: .road,

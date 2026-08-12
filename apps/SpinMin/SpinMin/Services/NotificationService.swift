@@ -129,7 +129,7 @@ struct NotificationService {
             bySettingHour: eveningReminderHour, minute: 30, second: 0, of: Date()
         ), tonight > Date() else { return }
         
-        let names = needingCharge.map { $0.name }.joined(separator: ", ")
+        let names = needingCharge.map { $0.displayName }.joined(separator: ", ")
         let content = UNMutableNotificationContent()
         content.title = "Charge before your ride"
         content.body = "Low battery: \(names)"
@@ -159,7 +159,7 @@ struct NotificationService {
             for item in gear {
                 let health = GearTrackingService.calculateHealth(for: item)
                 if health.health == .expired || health.health == .unsafe || health.health == .replaceNow {
-                    dueItems.append(item.name)
+                    dueItems.append(item.displayName)
                 }
             }
         }

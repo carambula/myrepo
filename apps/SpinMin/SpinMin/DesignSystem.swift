@@ -231,6 +231,11 @@ extension View {
     func captionSmall() -> some View { self.font(DesignSystem.Typography.captionSmall) }
     func overline() -> some View { self.font(DesignSystem.Typography.overline) }
 
+    // Heading shorthands used across section titles
+    func h1() -> some View { self.font(DesignSystem.Typography.headlineLarge) }
+    func h2() -> some View { self.font(DesignSystem.Typography.headlineMedium) }
+    func h3() -> some View { self.font(DesignSystem.Typography.headlineSmall) }
+
     func foregroundAccent() -> some View { self.foregroundColor(DesignSystem.Color.accent) }
     func foregroundSuccess() -> some View { self.foregroundColor(DesignSystem.Color.success) }
     func foregroundError() -> some View { self.foregroundColor(DesignSystem.Color.error) }

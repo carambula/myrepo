@@ -35,6 +35,14 @@ targets:
         INFOPLIST_FILE: SpinMin/Info.plist
     entitlements:
       path: SpinMin.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.$(CFBundleIdentifier)
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
+        com.apple.security.application-groups:
+          - group.Carambula-Projects.SpinMin
 
   SpinMinWidget:
     type: app-extension
@@ -44,6 +52,9 @@ targets:
       - path: Shared
     entitlements:
       path: SpinMinWidget/SpinMinWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.Carambula-Projects.SpinMin
     info:
       path: SpinMinWidget/Info.plist
       properties:

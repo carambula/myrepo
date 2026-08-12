@@ -31,6 +31,8 @@ final class ComponentTracking {
     var lastCleanDate: Date?
     var lastCleanOdometerKm: Double?
     var chainWearPercentage: Double?  // 0.5% = replace for 11-speed
+    var chainWearMeasuredDate: Date?  // When wear was last measured with a gauge
+    var chainWearMeasuredOdometerKm: Double?  // Component odometer at measurement
     
     // Notes
     var notes: String
@@ -62,6 +64,21 @@ final class ComponentTracking {
         self.lastCleanDate = nil
         self.lastCleanOdometerKm = nil
         self.chainWearPercentage = 0.0
+        self.chainWearMeasuredDate = nil
+        self.chainWearMeasuredOdometerKm = nil
+    }
+    
+    /// Records a chain-checker gauge measurement.
+    func recordWearMeasurement(_ percentage: Double) {
+        chainWearPercentage = percentage
+        chainWearMeasuredDate = Date()
+        chainWearMeasuredOdometerKm = currentOdometerKm
+    }
+    
+    /// Kilometers ridden since the last gauge measurement, if any
+    var kmSinceWearMeasurement: Double? {
+        guard let measuredAt = chainWearMeasuredOdometerKm else { return nil }
+        return max(0, currentOdometerKm - measuredAt)
     }
     
     // MARK: - Computed Properties

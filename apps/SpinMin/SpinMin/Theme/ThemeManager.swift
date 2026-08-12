@@ -16,8 +16,9 @@ final class ThemeManager {
     private(set) var availableThemes: [AppTheme]
     
     private init() {
-        self.availableThemes = AppTheme.defaultThemes
-        self.currentTheme = availableThemes.first { $0.id == "default-cyan" } ?? availableThemes[0]
+        let themes = AppTheme.defaultThemes
+        self.availableThemes = themes
+        self.currentTheme = themes.first { $0.id == "default-cyan" } ?? themes[0]
     }
     
     func setTheme(_ theme: AppTheme) {

@@ -70,7 +70,7 @@ struct TireInspectionView: View {
                         }
                     }
                     
-                    Section("Visual Inspection") {
+                    Section {
                         DatePicker("Inspection Date", selection: $inspectionDate, displayedComponents: [.date])
                         
                         Toggle("Visible Wear", isOn: $hasVisibleWear)
@@ -78,19 +78,25 @@ struct TireInspectionView: View {
                         Toggle("Sidewall Cracks", isOn: $hasSidewallCracks)
                         Toggle("Casing Exposure", isOn: $hasCasingExposure)
                         Toggle("Cuts", isOn: $hasCuts)
+                    } header: {
+                        Text("Visual Inspection")
                     } footer: {
                         Text("Check these indicators based on visual inspection. Casing exposure means the tire should be replaced immediately.")
                     }
                     
-                    Section("Punctures") {
+                    Section {
                         Stepper("Puncture Count: \(punctureCount)", value: $punctureCount, in: 0...50)
+                    } header: {
+                        Text("Punctures")
                     } footer: {
                         Text("Total number of punctures this tire has experienced")
                     }
                     
-                    Section("Notes") {
+                    Section {
                         TextField("Condition notes", text: $conditionNotes, axis: .vertical)
                             .lineLimit(4...8)
+                    } header: {
+                        Text("Notes")
                     } footer: {
                         Text("Record any additional observations about tire condition")
                     }

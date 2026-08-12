@@ -219,6 +219,16 @@ struct MaintenanceService {
             warnings.append("Chain wear at \(String(format: "%.2f%%", wearPercentage)) - Check more frequently")
         }
         
+        // Measurement staleness: mileage-based estimates drift, so prompt
+        // for a fresh gauge reading when it has been a while
+        if let kmSinceMeasurement = chain.kmSinceWearMeasurement {
+            if kmSinceMeasurement > 500 {
+                warnings.append("Wear last measured \(String(format: "%.0f km", kmSinceMeasurement)) ago - Re-check with a gauge")
+            }
+        } else if chain.componentMileageKm > 500 {
+            warnings.append("Chain wear never measured - Check with a chain gauge")
+        }
+        
         // Overall status
         let overallStatus: ComponentHealth
         if replacementDue {

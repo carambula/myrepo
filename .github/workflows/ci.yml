@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  spinmin:
+    name: SpinMin build and test
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/SpinMin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SpinMin.xcodeproj \
+            -scheme SpinMin \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions || exit 1
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project SpinMin.xcodeproj \
+            -scheme SpinMin \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions || exit 1
+
+      - name: Show crash reports
+        if: failure()
+        run: |
+          echo "== DiagnosticReports =="
+          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null || true
+          for f in ~/Library/Logs/DiagnosticReports/*; do
+            echo "===== $f ====="
+            head -120 "$f" || true
+          done 2>/dev/null || true

@@ -301,17 +301,17 @@ struct GearDetailView: View {
                         .titleMedium()
                         .foregroundHeadline()
                     
-                    StatRow(label: "Age", value: "\(gear.ageMonths) months (\(gear.ageDays) days)")
-                    StatRow(label: "Usage Count", value: "\(gear.usageCount) rides")
-                    StatRow(label: "Total Hours", value: String(format: "%.1f hours", gear.totalHours))
-                    StatRow(label: "Purchase Date", value: gear.purchaseDate.formatted(date: .abbreviated, time: .omitted))
+                    GearStatRow(label: "Age", value: "\(gear.ageMonths) months (\(gear.ageDays) days)")
+                    GearStatRow(label: "Usage Count", value: "\(gear.usageCount) rides")
+                    GearStatRow(label: "Total Hours", value: String(format: "%.1f hours", gear.totalHours))
+                    GearStatRow(label: "Purchase Date", value: gear.purchaseDate.formatted(date: .abbreviated, time: .omitted))
                     
                     if let price = gear.purchasePrice {
-                        StatRow(label: "Purchase Price", value: String(format: "$%.2f", price))
+                        GearStatRow(label: "Purchase Price", value: String(format: "$%.2f", price))
                     }
                     
                     if let expiry = health.daysUntilExpiry {
-                        StatRow(label: "Days Until Expiry", value: "\(expiry) days")
+                        GearStatRow(label: "Days Until Expiry", value: "\(expiry) days")
                     }
                 }
                 .padding(DesignSystem.Spacing.lg)
@@ -490,7 +490,7 @@ struct AddGearView: View {
 
 // MARK: - Stat Row
 
-struct StatRow: View {
+private struct GearStatRow: View {
     let label: String
     let value: String
     

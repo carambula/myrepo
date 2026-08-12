@@ -89,6 +89,12 @@ struct SpinMinApp: App {
                     // Seed product database on first launch
                     ProductDatabaseSeeder.seedDatabaseIfNeeded(context: sharedModelContainer.mainContext)
                 }
+                .task {
+                    // Keep pending notifications in sync with current data
+                    await NotificationService.refreshAll(context: sharedModelContainer.mainContext)
+                    // Publish fresh data for the widget and Siri
+                    WidgetDataService.refreshSnapshot(context: sharedModelContainer.mainContext)
+                }
         }
         .modelContainer(sharedModelContainer)
     }

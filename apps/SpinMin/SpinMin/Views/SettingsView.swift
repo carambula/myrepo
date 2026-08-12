@@ -14,6 +14,46 @@ struct SettingsView: View {
     
     @Query private var vendorPreferences: [VendorPreference]
     
+    @AppStorage(NotificationService.ridePrepEnabledKey) private var notifyRidePrep = true
+    @AppStorage(NotificationService.batteryEnabledKey) private var notifyBattery = true
+    @AppStorage(NotificationService.maintenanceEnabledKey) private var notifyMaintenance = true
+    
+    private func refreshNotifications() {
+        Task {
+            _ = await NotificationService.requestPermission()
+            await NotificationService.refreshAll(context: modelContext)
+        }
+    }
+    
+    @State private var exportFormat: ExportFormat = .csv
+    @State private var exportURL: ExportedFile?
+    @State private var exportError: String?
+    
+    private func exportButton(
+        _ title: String,
+        icon: String,
+        action: @escaping () throws -> URL
+    ) -> some View {
+        Button {
+            do {
+                exportError = nil
+                exportURL = ExportedFile(url: try action())
+            } catch {
+                exportError = "Export failed: \(error.localizedDescription)"
+            }
+        } label: {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundAccent()
+                Text(title)
+                Spacer()
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .foregroundStyle(.primary)
+    }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -52,6 +92,61 @@ struct SettingsView: View {
                     Text("Choose your preferred retailers for ordering replacement components")
                 }
                 
+                Section {
+                    NavigationLink {
+                        StravaSettingsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "figure.outdoor.cycle")
+                                .foregroundAccent()
+                            Text("Strava")
+                            Spacer()
+                            Text(StravaAuthService.shared.isConnected ? "Connected" : "Not connected")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Connections")
+                } footer: {
+                    Text("Import rides automatically to keep bike and component mileage up to date")
+                }
+                
+                Section {
+                    Toggle("Ride prep reminders", isOn: $notifyRidePrep)
+                    Toggle("Battery charge reminders", isOn: $notifyBattery)
+                    Toggle("Maintenance alerts", isOn: $notifyMaintenance)
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Prep reminders arrive the evening before a scheduled ride. Notifications are asked for permission on first use.")
+                }
+                .onChange(of: notifyRidePrep) { refreshNotifications() }
+                .onChange(of: notifyBattery) { refreshNotifications() }
+                .onChange(of: notifyMaintenance) { refreshNotifications() }
+                
+                Section {
+                    Picker("Format", selection: $exportFormat) {
+                        ForEach(ExportFormat.allCases) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    exportButton("Maintenance Records", icon: "wrench.and.screwdriver") {
+                        try DataExportService.exportMaintenanceRecords(context: modelContext, format: exportFormat)
+                    }
+                    exportButton("Tire History", icon: "circle.circle") {
+                        try DataExportService.exportTireHistory(context: modelContext, format: exportFormat)
+                    }
+                    exportButton("Ride Logs", icon: "figure.outdoor.cycle") {
+                        try DataExportService.exportRideLogs(context: modelContext, format: exportFormat)
+                    }
+                } header: {
+                    Text("Export Data")
+                } footer: {
+                    Text(exportError ?? "Your data stays yours: export it any time as \(exportFormat.rawValue).")
+                }
+                
                 Section("About") {
                     HStack {
                         Text("Version")
@@ -88,7 +183,48 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .sheet(item: $exportURL) { exported in
+                ExportShareSheet(url: exported.url)
+            }
         }
+    }
+}
+
+struct ExportedFile: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+/// Simple share screen for an exported file
+private struct ExportShareSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let url: URL
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: DesignSystem.Spacing.lg) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 44))
+                    .foregroundAccent()
+                
+                Text(url.lastPathComponent)
+                    .bodyMedium()
+                    .multilineTextAlignment(.center)
+                
+                ShareLink(item: url) {
+                    Label("Share File", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .large))
+            }
+            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
@@ -103,7 +239,7 @@ struct ThemeSelectionView: View {
                 }) {
                     HStack {
                         Circle()
-                            .fill(theme.accent.color)
+                            .fill(theme.accent)
                             .frame(width: 32, height: 32)
                         
                         Text(theme.name)

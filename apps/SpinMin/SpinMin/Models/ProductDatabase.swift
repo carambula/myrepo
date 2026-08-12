@@ -66,7 +66,7 @@ final class TireProduct {
     var weight: Int?  // grams
     var treadPattern: String?
     var maxPSI: Int?
-    var description: String
+    var productDescription: String
     var isPopular: Bool
     
     init(
@@ -94,7 +94,7 @@ final class TireProduct {
         self.casingRawValue = casing?.rawValue
         self.weight = weight
         self.maxPSI = maxPSI
-        self.description = description
+        self.productDescription = description
         self.isPopular = isPopular
     }
     
@@ -137,7 +137,7 @@ final class ChainProduct {
     // Details
     var weight: Int?  // grams
     var coating: String?  // "nickel", "chrome", "gold"
-    var description: String
+    var productDescription: String
     var isPopular: Bool
     
     init(
@@ -161,7 +161,7 @@ final class ChainProduct {
         self.linksCount = linksCount
         self.weight = weight
         self.coating = coating
-        self.description = description
+        self.productDescription = description
         self.isPopular = isPopular
     }
     
@@ -205,7 +205,7 @@ final class WheelsetProduct {
     // Details
     var weight: Int?  // grams (pair)
     var material: String?  // "carbon", "aluminum", "alloy"
-    var description: String
+    var productDescription: String
     var isPopular: Bool
     
     init(
@@ -233,7 +233,7 @@ final class WheelsetProduct {
         self.freehubTypeRawValue = freehubType
         self.weight = weight
         self.material = material
-        self.description = description
+        self.productDescription = description
         self.isPopular = isPopular
     }
     
@@ -272,7 +272,7 @@ final class ComponentProduct {
     var specifications: [String: String]  // e.g., ["speed": "12", "teeth": "10-52"]
     
     var weight: Int?  // grams
-    var description: String
+    var productDescription: String
     var isPopular: Bool
     
     init(
@@ -292,7 +292,7 @@ final class ComponentProduct {
         self.componentTypeRawValue = componentType.rawValue
         self.specifications = specifications
         self.weight = weight
-        self.description = description
+        self.productDescription = description
         self.isPopular = isPopular
     }
     
@@ -338,7 +338,7 @@ final class BikeProduct {
     // Details
     var weight: Int?  // grams
     var msrp: Double?  // USD
-    var description: String
+    var productDescription: String
     var isPopular: Bool
     
     init(
@@ -366,7 +366,7 @@ final class BikeProduct {
         self.groupsetModel = groupsetModel
         self.weight = weight
         self.msrp = msrp
-        self.description = description
+        self.productDescription = description
         self.isPopular = isPopular
     }
     

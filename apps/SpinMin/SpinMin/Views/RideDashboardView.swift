@@ -20,8 +20,9 @@ struct RideDashboardView: View {
     
     @State private var selectedBike: BikeConfiguration?
     @State private var showingAddBike = false
-    @State private var riderWeight: Double = 70
+    @AppStorage("riderWeightKg") private var riderWeight: Double = 70
     @State private var selectedRide: ScheduledRide?
+    @State private var rideToComplete: ScheduledRide?
     
     var todayRides: [ScheduledRide] {
         allRides.filter { Calendar.current.isDateInToday($0.scheduledDate) && !$0.isCompleted }
@@ -29,6 +30,14 @@ struct RideDashboardView: View {
     
     var upcomingRidesNeedingPrep: [ScheduledRide] {
         allRides.filter { $0.needsPreparation && !$0.isToday }
+    }
+    
+    /// Past rides (last 7 days) never marked complete
+    var ridesAwaitingCompletion: [ScheduledRide] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return allRides.filter {
+            !$0.isCompleted && $0.scheduledDate < Date() && $0.scheduledDate > weekAgo
+        }
     }
     
     var body: some View {
@@ -61,6 +70,31 @@ struct RideDashboardView: View {
                         prepNeededSection
                     }
                     
+                    // Prompt to complete past rides so mileage stays accurate
+                    if let pastRide = ridesAwaitingCompletion.first {
+                        Button {
+                            rideToComplete = pastRide
+                        } label: {
+                            HStack {
+                                Image(systemName: "checkmark.circle")
+                                    .foregroundAccent()
+                                Text(ridesAwaitingCompletion.count == 1
+                                     ? "Complete \(pastRide.name)?"
+                                     : "\(ridesAwaitingCompletion.count) rides need completing")
+                                    .bodyMedium()
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .captionMedium()
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(DesignSystem.Spacing.md)
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
                     if bikes.isEmpty {
                         emptyStateView
                     } else {
@@ -81,6 +115,12 @@ struct RideDashboardView: View {
                 .padding(.bottom, DesignSystem.Spacing.xl)
             }
             .background(DesignSystem.Color.background)
+            .refreshable {
+                if StravaAuthService.shared.isConnected {
+                    _ = try? await StravaSyncService.sync(context: modelContext)
+                }
+                await WidgetDataService.refreshSnapshot(context: modelContext)
+            }
             .navigationTitle("My Bikes")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -104,6 +144,9 @@ struct RideDashboardView: View {
                     routes: routes,
                     allGear: activeGear
                 )
+            }
+            .sheet(item: $rideToComplete) { ride in
+                CompleteRideView(ride: ride)
             }
         }
     }
@@ -241,6 +284,7 @@ struct BikeSetupCard: View {
     @State private var selectedWheelset: Wheelset?
     @State private var terrain: TirePressureCalculationService.TerrainType = .mixed
     @State private var expandedSections: Set<String> = []
+    @State private var showingAddWheelset = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
@@ -321,7 +365,7 @@ struct BikeSetupCard: View {
                 }
                 
                 Button(action: {
-                    // Add wheelset
+                    showingAddWheelset = true
                 }) {
                     Label("Add Wheelset", systemImage: "plus.circle")
                         .font(DesignSystem.Typography.labelMedium)
@@ -363,6 +407,9 @@ struct BikeSetupCard: View {
         .background(DesignSystem.Color.surface)
         .cornerRadius(DesignSystem.CornerRadius.lg)
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+        .sheet(isPresented: $showingAddWheelset) {
+            WheelsetEditView(bike: bike)
+        }
     }
     
     private var bikeIcon: String {
@@ -603,7 +650,9 @@ struct WheelsetQuickView: View {
             tireWidthMM: Double(wheelset.tireWidthMM),
             terrain: terrain,
             tireCasing: wheelset.tireCasing ?? .standard,
-            ridingStyle: bike.defaultRidingStyle ?? .balanced
+            ridingStyle: bike.defaultRidingStyle ?? .balanced,
+            rimType: wheelset.rimType,
+            internalRimWidthMM: wheelset.internalRimWidthMM
         )
         
         wheelset.lastUsed = Date()
@@ -616,6 +665,7 @@ struct LegacyTireSetupView: View {
     @Binding var terrain: TirePressureCalculationService.TerrainType
     
     @State private var calculatedPressure: TirePressureCalculationService.PressureResult?
+    @State private var showingAddWheelset = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
@@ -644,9 +694,12 @@ struct LegacyTireSetupView: View {
             }
             
             Button("Add Wheelsets") {
-                // Navigate to wheelset management
+                showingAddWheelset = true
             }
             .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
+        }
+        .sheet(isPresented: $showingAddWheelset) {
+            WheelsetEditView(bike: bike)
         }
         .onAppear {
             calculatePressure()

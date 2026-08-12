@@ -268,49 +268,63 @@ struct GearCalculatorView: View {
     @ViewBuilder
     private var popularDrivetrainSection: some View {
         VStack(spacing: DesignSystem.Spacing.md) {
-            Picker("Select Drivetrain", selection: $selectedPopularDrivetrain) {
-                Text("Choose drivetrain...").tag(nil as PopularDrivetrain?)
-                
-                ForEach(PopularDrivetrain.Manufacturer.allCases, id: \.self) { manufacturer in
-                    Section(manufacturer.rawValue) {
-                        ForEach(PopularDrivetrain.database.filter { $0.manufacturer == manufacturer }, id: \.id) { drivetrain in
-                            Text("\(drivetrain.groupsetName) (\(drivetrain.chainringDescription))").tag(drivetrain as PopularDrivetrain?)
-                        }
-                    }
-                }
-            }
-            .pickerStyle(.menu)
-            .padding(DesignSystem.Spacing.md)
-            .background(DesignSystem.Color.surface)
-            .cornerRadius(DesignSystem.CornerRadius.md)
+            drivetrainPicker
             
             if let drivetrain = selectedPopularDrivetrain {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-                    HStack {
-                        Text(drivetrain.displayName)
-                            .headlineSmall()
-                        Spacer()
-                        Text(drivetrain.category.rawValue)
-                            .captionMedium()
-                            .foregroundAccent()
-                    }
-                    
-                    Text("\(drivetrain.speeds)-speed   \(drivetrain.chainringDescription)")
-                        .bodySmall()
-                        .foregroundStyle(.secondary)
-                    
-                    if drivetrain.cassettes.count > 1 {
-                        Text("Multiple cassette options available")
-                            .captionSmall()
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(DesignSystem.Spacing.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(DesignSystem.Color.surfaceElevated)
-                .cornerRadius(DesignSystem.CornerRadius.md)
+                selectedDrivetrainSummary(drivetrain)
             }
         }
+    }
+    
+    private var drivetrainPicker: some View {
+        Picker("Select Drivetrain", selection: $selectedPopularDrivetrain) {
+            Text("Choose drivetrain...").tag(nil as PopularDrivetrain?)
+            
+            ForEach(PopularDrivetrain.Manufacturer.allCases, id: \.self) { manufacturer in
+                Section(manufacturer.rawValue) {
+                    drivetrainOptions(for: manufacturer)
+                }
+            }
+        }
+        .pickerStyle(.menu)
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Color.surface)
+        .cornerRadius(DesignSystem.CornerRadius.md)
+    }
+    
+    private func drivetrainOptions(for manufacturer: PopularDrivetrain.Manufacturer) -> some View {
+        let drivetrains = PopularDrivetrain.database.filter { $0.manufacturer == manufacturer }
+        return ForEach(drivetrains, id: \.id) { drivetrain in
+            Text("\(drivetrain.groupsetName) (\(drivetrain.chainringDescription))")
+                .tag(drivetrain as PopularDrivetrain?)
+        }
+    }
+    
+    private func selectedDrivetrainSummary(_ drivetrain: PopularDrivetrain) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            HStack {
+                Text(drivetrain.displayName)
+                    .headlineSmall()
+                Spacer()
+                Text(drivetrain.category.rawValue)
+                    .captionMedium()
+                    .foregroundAccent()
+            }
+            
+            Text("\(drivetrain.speeds)-speed   \(drivetrain.chainringDescription)")
+                .bodySmall()
+                .foregroundStyle(.secondary)
+            
+            if drivetrain.cassettes.count > 1 {
+                Text("Multiple cassette options available")
+                    .captionSmall()
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(DesignSystem.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DesignSystem.Color.surfaceElevated)
+        .cornerRadius(DesignSystem.CornerRadius.md)
     }
     
     @ViewBuilder

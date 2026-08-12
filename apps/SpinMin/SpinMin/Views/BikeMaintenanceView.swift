@@ -52,6 +52,13 @@ struct BikeMaintenanceView: View {
         .navigationTitle("\(bike.name) Maintenance")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    CostReportView(bike: bike)
+                } label: {
+                    Image(systemName: "chart.bar")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingLogMaintenance = true
@@ -150,6 +157,8 @@ struct ChainComponentCard: View {
     let chain: ComponentTracking
     let bike: BikeConfiguration
     let onQuickAction: (MaintenanceType) -> Void
+    
+    @State private var showingWearMeasurement = false
     
     var body: some View {
         let chainStatus = MaintenanceService.calculateChainMaintenance(
@@ -300,6 +309,13 @@ struct ChainComponentCard: View {
                     .buttonStyle(DesignSystemButtonStyle(variant: .tertiary, size: .small))
                 }
                 
+                Button {
+                    showingWearMeasurement = true
+                } label: {
+                    Label("Measure Wear", systemImage: "ruler")
+                }
+                .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
+                
                 // Order replacement button when chain needs replacing
                 if chainStatus.overallStatus == .replaceSoon || chainStatus.overallStatus == .replaceNow {
                     OrderReplacementButton(component: chain, style: .prominent)
@@ -315,6 +331,9 @@ struct ChainComponentCard: View {
         .background(DesignSystem.Color.surface)
         .cornerRadius(DesignSystem.CornerRadius.lg)
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+        .sheet(isPresented: $showingWearMeasurement) {
+            ChainWearMeasurementView(chain: chain, speedCount: bike.speedCount ?? 11)
+        }
     }
     
     private func statusColor(for status: MaintenanceService.ComponentHealth) -> Color {

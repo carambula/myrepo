@@ -92,6 +92,8 @@ struct SpinMinApp: App {
                 .task {
                     // Keep pending notifications in sync with current data
                     await NotificationService.refreshAll(context: sharedModelContainer.mainContext)
+                    // Publish fresh data for the widget and Siri
+                    WidgetDataService.refreshSnapshot(context: sharedModelContainer.mainContext)
                 }
         }
         .modelContainer(sharedModelContainer)

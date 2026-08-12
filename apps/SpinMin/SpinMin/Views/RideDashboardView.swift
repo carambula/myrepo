@@ -20,7 +20,7 @@ struct RideDashboardView: View {
     
     @State private var selectedBike: BikeConfiguration?
     @State private var showingAddBike = false
-    @State private var riderWeight: Double = 70
+    @AppStorage("riderWeightKg") private var riderWeight: Double = 70
     @State private var selectedRide: ScheduledRide?
     @State private var rideToComplete: ScheduledRide?
     
@@ -119,6 +119,7 @@ struct RideDashboardView: View {
                 if StravaAuthService.shared.isConnected {
                     _ = try? await StravaSyncService.sync(context: modelContext)
                 }
+                WidgetDataService.refreshSnapshot(context: modelContext)
             }
             .navigationTitle("My Bikes")
             .toolbar {

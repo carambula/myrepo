@@ -22,8 +22,10 @@ targets:
     platform: iOS
     sources:
       - path: SpinMin
+      - path: Shared
     dependencies:
       - package: MinAppKit
+      - target: SpinMinWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: Carambula-Projects.SpinMin
@@ -35,6 +37,26 @@ targets:
       path: SpinMin/Info.plist
     entitlements:
       path: SpinMin.entitlements
+
+  SpinMinWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SpinMinWidget
+      - path: Shared
+    entitlements:
+      path: SpinMinWidget/SpinMinWidget.entitlements
+    info:
+      path: SpinMinWidget/Info.plist
+      properties:
+        CFBundleDisplayName: SpinMin
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: Carambula-Projects.SpinMin.widget
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
 
   SpinMinTests:
     type: bundle.unit-test

@@ -106,7 +106,7 @@ struct PopularDrivetrain: Identifiable, Codable, Hashable {
     let cassettes: [[Int]] // Common cassette options
     let speeds: Int        // 11-speed, 12-speed, etc.
     
-    enum Manufacturer: String, Codable {
+    enum Manufacturer: String, Codable, CaseIterable {
         case shimano = "Shimano"
         case sram = "SRAM"
         case campagnolo = "Campagnolo"

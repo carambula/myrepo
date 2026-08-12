@@ -176,6 +176,14 @@ enum DesignSystem {
         static let round: CGFloat = MinCornerRadius.round
     }
 
+    // MARK: - Icon Size Tokens
+
+    enum IconSize {
+        static let sm: CGFloat = 16
+        static let md: CGFloat = 20
+        static let lg: CGFloat = 24
+    }
+
     // MARK: - Shadow Tokens
 
     enum Shadow {

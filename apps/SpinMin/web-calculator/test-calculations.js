@@ -72,7 +72,18 @@ const TirePressureCalculator = {
         return Math.max(minPressure, Math.min(maxPressure, pressure));
     },
     
-    calculate(riderWeightKg, bikeType, tireWidthMM, terrain, casing, ridingStyle, temperatureCelsius = null) {
+    // Measured tire width grows ~0.4mm per 1mm of internal rim width
+    // above the 19mm reference
+    effectiveTireWidth(labeledWidthMM, internalRimWidthMM = null) {
+        if (internalRimWidthMM === null) return labeledWidthMM;
+        const delta = (internalRimWidthMM - 19.0) * 0.4;
+        return Math.max(labeledWidthMM * 0.8, labeledWidthMM + delta);
+    },
+    
+    calculate(riderWeightKg, bikeType, tireWidthMM, terrain, casing, ridingStyle, temperatureCelsius = null, rimType = 'hooked', internalRimWidthMM = null) {
+        const warnings = [];
+        const effectiveWidthMM = this.effectiveTireWidth(tireWidthMM, internalRimWidthMM);
+        
         const bikeWeightKg = this.bikeTypes[bikeType].weight;
         const totalWeightKg = riderWeightKg + bikeWeightKg;
         const totalWeightLbs = totalWeightKg * 2.20462;
@@ -81,8 +92,8 @@ const TirePressureCalculator = {
         const frontWeightLbs = totalWeightLbs * distribution.front;
         const rearWeightLbs = totalWeightLbs * distribution.rear;
         
-        let frontPressure = this.calculateBasePressure(frontWeightLbs, tireWidthMM, bikeType);
-        let rearPressure = this.calculateBasePressure(rearWeightLbs, tireWidthMM, bikeType);
+        let frontPressure = this.calculateBasePressure(frontWeightLbs, effectiveWidthMM, bikeType);
+        let rearPressure = this.calculateBasePressure(rearWeightLbs, effectiveWidthMM, bikeType);
         
         const terrainMultiplier = this.terrainMultipliers[terrain];
         frontPressure *= terrainMultiplier;
@@ -104,8 +115,22 @@ const TirePressureCalculator = {
             rearPressure += tempAdjustment;
         }
         
-        frontPressure = this.clampPressure(frontPressure, tireWidthMM, bikeType);
-        rearPressure = this.clampPressure(rearPressure, tireWidthMM, bikeType);
+        frontPressure = this.clampPressure(frontPressure, effectiveWidthMM, bikeType);
+        rearPressure = this.clampPressure(rearPressure, effectiveWidthMM, bikeType);
+        
+        // Hookless rims: hard safety cap (ETRTO 5 bar / 72.5 psi)
+        if (rimType === 'hookless') {
+            const hooklessCap = 72.5;
+            if (frontPressure > hooklessCap || rearPressure > hooklessCap) {
+                warnings.push('Pressure capped at 72.5 psi: hookless rims must never exceed 72.5 psi (ETRTO). Consider a wider tire.');
+            }
+            frontPressure = Math.min(frontPressure, hooklessCap);
+            rearPressure = Math.min(rearPressure, hooklessCap);
+            
+            if (tireWidthMM < 28) {
+                warnings.push('Tires narrower than 28mm are not recommended on hookless rims.');
+            }
+        }
         
         frontPressure = Math.round(frontPressure * 2) / 2;
         rearPressure = Math.round(rearPressure * 2) / 2;
@@ -114,7 +139,8 @@ const TirePressureCalculator = {
             frontPSI: frontPressure,
             rearPSI: rearPressure,
             frontBAR: frontPressure / 14.5038,
-            rearBAR: rearPressure / 14.5038
+            rearBAR: rearPressure / 14.5038,
+            warnings
         };
     }
 };

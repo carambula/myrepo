@@ -285,4 +285,109 @@ final class TirePressureCalculationServiceTests: XCTestCase {
         // Should be capped at maximum
         XCTAssertLessThanOrEqual(extremelyHeavy.rearPressurePSI, 130)
     }
+    
+    // MARK: - Hookless Rim Safety
+    
+    func testHooklessCapsPressureAt72_5PSI() {
+        // Heavy rider on narrow road tires would exceed 72.5 psi
+        let result = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 100,
+            bikeType: .road,
+            tireWidthMM: 25,
+            terrain: .smooth,
+            ridingStyle: .performance,
+            rimType: .hookless
+        )
+        
+        XCTAssertLessThanOrEqual(result.frontPressurePSI, 72.5)
+        XCTAssertLessThanOrEqual(result.rearPressurePSI, 72.5)
+        XCTAssertTrue(result.warnings.contains { $0.contains("72.5") })
+    }
+    
+    func testHookedRimNotCapped() {
+        let result = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 100,
+            bikeType: .road,
+            tireWidthMM: 25,
+            terrain: .smooth,
+            ridingStyle: .performance,
+            rimType: .hooked
+        )
+        
+        XCTAssertGreaterThan(result.rearPressurePSI, 72.5)
+        XCTAssertTrue(result.warnings.isEmpty)
+    }
+    
+    func testHooklessNarrowTireWarning() {
+        let result = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 60,
+            bikeType: .road,
+            tireWidthMM: 25,
+            terrain: .smooth,
+            rimType: .hookless
+        )
+        
+        XCTAssertTrue(result.warnings.contains { $0.contains("28mm") })
+    }
+    
+    func testHooklessLowPressureSetupHasNoCapWarning() {
+        // Wide gravel tires run well under the cap: no warnings expected
+        let result = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 75,
+            bikeType: .gravel,
+            tireWidthMM: 45,
+            terrain: .gravel2,
+            rimType: .hookless
+        )
+        
+        XCTAssertLessThan(result.rearPressurePSI, 72.5)
+        XCTAssertFalse(result.warnings.contains { $0.contains("capped") })
+    }
+    
+    // MARK: - Rim Width Compensation
+    
+    func testWiderRimGrowsEffectiveWidth() {
+        // 25mm above the 19mm reference: +2.4mm effective width
+        let effective = TirePressureCalculationService.effectiveTireWidth(
+            labeledWidthMM: 28,
+            internalRimWidthMM: 25
+        )
+        XCTAssertEqual(effective, 30.4, accuracy: 0.01)
+    }
+    
+    func testNarrowerRimShrinksEffectiveWidth() {
+        let effective = TirePressureCalculationService.effectiveTireWidth(
+            labeledWidthMM: 28,
+            internalRimWidthMM: 17
+        )
+        XCTAssertEqual(effective, 27.2, accuracy: 0.01)
+    }
+    
+    func testNilRimWidthLeavesLabeledWidth() {
+        let effective = TirePressureCalculationService.effectiveTireWidth(
+            labeledWidthMM: 28,
+            internalRimWidthMM: nil
+        )
+        XCTAssertEqual(effective, 28)
+    }
+    
+    func testWiderRimLowersRecommendedPressure() {
+        let narrow = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 75,
+            bikeType: .road,
+            tireWidthMM: 28,
+            terrain: .smooth,
+            internalRimWidthMM: 19
+        )
+        let wide = TirePressureCalculationService.calculatePressure(
+            riderWeightKg: 75,
+            bikeType: .road,
+            tireWidthMM: 28,
+            terrain: .smooth,
+            internalRimWidthMM: 25
+        )
+        
+        // Same tire on a wider rim measures wider, so it needs less pressure
+        XCTAssertLessThan(wide.rearPressurePSI, narrow.rearPressurePSI)
+    }
 }

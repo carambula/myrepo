@@ -283,6 +283,7 @@ struct BikeSetupCard: View {
     @State private var selectedWheelset: Wheelset?
     @State private var terrain: TirePressureCalculationService.TerrainType = .mixed
     @State private var expandedSections: Set<String> = []
+    @State private var showingAddWheelset = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
@@ -363,7 +364,7 @@ struct BikeSetupCard: View {
                 }
                 
                 Button(action: {
-                    // Add wheelset
+                    showingAddWheelset = true
                 }) {
                     Label("Add Wheelset", systemImage: "plus.circle")
                         .font(DesignSystem.Typography.labelMedium)
@@ -405,6 +406,9 @@ struct BikeSetupCard: View {
         .background(DesignSystem.Color.surface)
         .cornerRadius(DesignSystem.CornerRadius.lg)
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+        .sheet(isPresented: $showingAddWheelset) {
+            WheelsetEditView(bike: bike)
+        }
     }
     
     private var bikeIcon: String {
@@ -645,7 +649,9 @@ struct WheelsetQuickView: View {
             tireWidthMM: Double(wheelset.tireWidthMM),
             terrain: terrain,
             tireCasing: wheelset.tireCasing ?? .standard,
-            ridingStyle: bike.defaultRidingStyle ?? .balanced
+            ridingStyle: bike.defaultRidingStyle ?? .balanced,
+            rimType: wheelset.rimType,
+            internalRimWidthMM: wheelset.internalRimWidthMM
         )
         
         wheelset.lastUsed = Date()
@@ -658,6 +664,7 @@ struct LegacyTireSetupView: View {
     @Binding var terrain: TirePressureCalculationService.TerrainType
     
     @State private var calculatedPressure: TirePressureCalculationService.PressureResult?
+    @State private var showingAddWheelset = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
@@ -686,9 +693,12 @@ struct LegacyTireSetupView: View {
             }
             
             Button("Add Wheelsets") {
-                // Navigate to wheelset management
+                showingAddWheelset = true
             }
             .buttonStyle(DesignSystemButtonStyle(variant: .secondary, size: .small))
+        }
+        .sheet(isPresented: $showingAddWheelset) {
+            WheelsetEditView(bike: bike)
         }
         .onAppear {
             calculatePressure()

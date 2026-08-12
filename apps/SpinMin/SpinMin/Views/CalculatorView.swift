@@ -23,6 +23,9 @@ struct CalculatorView: View {
     @State private var ridingStyle: TirePressureCalculationService.RidingStyle = .balanced
     @State private var temperatureCelsius: Double?
     @State private var useTemperature = false
+    @State private var rimType: TirePressureCalculationService.RimType = .hooked
+    @State private var useRimWidth = false
+    @State private var internalRimWidthMM: Double = 21
     @State private var calculationResult: TirePressureCalculationService.PressureResult?
     @State private var showingUnitPicker = false
     @State private var usePounds = false
@@ -168,6 +171,31 @@ struct CalculatorView: View {
                         .background(DesignSystem.Color.surface)
                         .cornerRadius(DesignSystem.CornerRadius.md)
                         
+                        Picker("Rim Type", selection: $rimType) {
+                            ForEach(TirePressureCalculationService.RimType.allCases, id: \.self) { type in
+                                Text(type.rawValue).tag(type)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .padding(DesignSystem.Spacing.md)
+                        .background(DesignSystem.Color.surface)
+                        .cornerRadius(DesignSystem.CornerRadius.md)
+                        
+                        Toggle("Include Rim Width", isOn: $useRimWidth)
+                            .padding(DesignSystem.Spacing.md)
+                            .background(DesignSystem.Color.surface)
+                            .cornerRadius(DesignSystem.CornerRadius.md)
+                        
+                        if useRimWidth {
+                            SliderInputView(
+                                title: "Internal Rim Width",
+                                value: $internalRimWidthMM,
+                                range: 15...35,
+                                unit: "mm",
+                                step: 0.5
+                            )
+                        }
+                        
                         Toggle("Include Temperature", isOn: $useTemperature)
                             .padding(DesignSystem.Spacing.md)
                             .background(DesignSystem.Color.surface)
@@ -220,7 +248,9 @@ struct CalculatorView: View {
             terrain: terrain,
             tireCasing: casing,
             ridingStyle: ridingStyle,
-            temperatureCelsius: useTemperature ? temperatureCelsius : nil
+            temperatureCelsius: useTemperature ? temperatureCelsius : nil,
+            rimType: rimType,
+            internalRimWidthMM: useRimWidth ? internalRimWidthMM : nil
         )
         
         calculationResult = result
@@ -363,6 +393,23 @@ struct PressureResultView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+            }
+            
+            // Safety warnings (hookless cap, narrow tire compatibility)
+            if !result.warnings.isEmpty {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                    ForEach(result.warnings, id: \.self) { warning in
+                        HStack(alignment: .top, spacing: DesignSystem.Spacing.sm) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.system(size: 14))
+                            Text(warning)
+                                .captionMedium()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.top, DesignSystem.Spacing.sm)
             }
             
             Text("Always check your tire and rim manufacturer's min/max pressure recommendations")

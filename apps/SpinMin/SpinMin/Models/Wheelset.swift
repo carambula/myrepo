@@ -25,6 +25,10 @@ final class Wheelset {
     // Weight (affects total bike weight)
     var wheelsetWeightKg: Double?
     
+    // Rim specs (affect pressure safety and effective tire width)
+    var rimTypeRawValue: String?  // TirePressureCalculationService.RimType
+    var internalRimWidthMM: Double?
+    
     // Visual/organizational
     var notes: String
     var isDefault: Bool  // Primary wheelset for this bike
@@ -73,6 +77,16 @@ final class Wheelset {
         }
         set {
             wheelDiameterRawValue = newValue.rawValue
+        }
+    }
+    
+    var rimType: TirePressureCalculationService.RimType {
+        get {
+            guard let raw = rimTypeRawValue else { return .hooked }
+            return TirePressureCalculationService.RimType(rawValue: raw) ?? .hooked
+        }
+        set {
+            rimTypeRawValue = newValue.rawValue
         }
     }
     

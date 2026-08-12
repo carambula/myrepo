@@ -98,17 +98,38 @@ public struct TirePressureCalculationService {
         }
     }
     
+    public enum RimType: String, CaseIterable, Codable {
+        case hooked = "Hooked (Standard)"
+        case hookless = "Hookless"
+        
+        /// ETRTO caps hookless rims at 5 bar (72.5 psi) regardless of tire
+        public var maxPressurePSI: Double? {
+            switch self {
+            case .hooked: return nil
+            case .hookless: return 72.5
+            }
+        }
+    }
+    
+    /// Reference internal rim width (mm) at which labeled tire width is
+    /// assumed accurate. Wider rims spread the tire; ~0.4mm measured width
+    /// per 1mm of internal width difference.
+    public static let referenceInternalRimWidthMM = 19.0
+    public static let widthGrowthPerRimMM = 0.4
+    
     public struct PressureResult: Codable, Equatable {
         public let frontPressurePSI: Double
         public let rearPressurePSI: Double
         public let frontPressureBAR: Double
         public let rearPressureBAR: Double
+        public let warnings: [String]
         
-        public init(frontPSI: Double, rearPSI: Double) {
+        public init(frontPSI: Double, rearPSI: Double, warnings: [String] = []) {
             self.frontPressurePSI = frontPSI
             self.rearPressurePSI = rearPSI
             self.frontPressureBAR = frontPSI / 14.5038
             self.rearPressureBAR = rearPSI / 14.5038
+            self.warnings = warnings
         }
     }
     
@@ -125,7 +146,10 @@ public struct TirePressureCalculationService {
     ///   - tireCasing: Tire casing type
     ///   - ridingStyle: Riding style preference
     ///   - temperatureCelsius: Ambient temperature (optional, for fine-tuning)
-    /// - Returns: Recommended front and rear tire pressures
+    ///   - rimType: Hooked or hookless rim (hookless caps pressure at 72.5 psi)
+    ///   - internalRimWidthMM: Internal rim width; wider rims grow the
+    ///     measured tire width, lowering the required pressure
+    /// - Returns: Recommended front and rear tire pressures with safety warnings
     public static func calculatePressure(
         riderWeightKg: Double,
         bikeWeightKg: Double? = nil,
@@ -134,8 +158,18 @@ public struct TirePressureCalculationService {
         terrain: TerrainType,
         tireCasing: TireCasingType = .standard,
         ridingStyle: RidingStyle = .balanced,
-        temperatureCelsius: Double? = nil
+        temperatureCelsius: Double? = nil,
+        rimType: RimType = .hooked,
+        internalRimWidthMM: Double? = nil
     ) -> PressureResult {
+        var warnings: [String] = []
+        
+        // Compensate labeled tire width for internal rim width
+        let effectiveTireWidthMM = effectiveTireWidth(
+            labeledWidthMM: tireWidthMM,
+            internalRimWidthMM: internalRimWidthMM
+        )
+        
         // Use typical bike weight if not provided
         let actualBikeWeight = bikeWeightKg ?? typicalBikeWeight(for: bikeType)
         let totalWeightKg = riderWeightKg + actualBikeWeight
@@ -150,12 +184,12 @@ public struct TirePressureCalculationService {
         // This is based on the 15% tire drop rule and tire contact patch physics
         let baseFrontPressure = calculateBasePressure(
             weightLbs: frontWeightLbs,
-            tireWidthMM: tireWidthMM,
+            tireWidthMM: effectiveTireWidthMM,
             bikeType: bikeType
         )
         let baseRearPressure = calculateBasePressure(
             weightLbs: rearWeightLbs,
-            tireWidthMM: tireWidthMM,
+            tireWidthMM: effectiveTireWidthMM,
             bikeType: bikeType
         )
         
@@ -179,14 +213,38 @@ public struct TirePressureCalculationService {
         }
         
         // Ensure pressures are within safe ranges
-        frontPressure = clampPressure(frontPressure, tireWidthMM: tireWidthMM, bikeType: bikeType)
-        rearPressure = clampPressure(rearPressure, tireWidthMM: tireWidthMM, bikeType: bikeType)
+        frontPressure = clampPressure(frontPressure, tireWidthMM: effectiveTireWidthMM, bikeType: bikeType)
+        rearPressure = clampPressure(rearPressure, tireWidthMM: effectiveTireWidthMM, bikeType: bikeType)
+        
+        // Hookless rims: hard safety cap (ETRTO 5 bar / 72.5 psi)
+        if let hooklessCap = rimType.maxPressurePSI {
+            if frontPressure > hooklessCap || rearPressure > hooklessCap {
+                warnings.append("Pressure capped at \(hooklessCap) psi: hookless rims must never exceed 72.5 psi (ETRTO). Consider a wider tire.")
+            }
+            frontPressure = min(frontPressure, hooklessCap)
+            rearPressure = min(rearPressure, hooklessCap)
+            
+            if tireWidthMM < 28 {
+                warnings.append("Tires narrower than 28mm are not recommended on hookless rims.")
+            }
+        }
         
         // Round to nearest 0.5 psi for practical use
         frontPressure = round(frontPressure * 2) / 2
         rearPressure = round(rearPressure * 2) / 2
         
-        return PressureResult(frontPSI: frontPressure, rearPSI: rearPressure)
+        return PressureResult(frontPSI: frontPressure, rearPSI: rearPressure, warnings: warnings)
+    }
+    
+    /// Measured tire width grows ~0.4mm for every 1mm of internal rim
+    /// width above the 19mm reference (and shrinks below it).
+    public static func effectiveTireWidth(
+        labeledWidthMM: Double,
+        internalRimWidthMM: Double?
+    ) -> Double {
+        guard let rimWidth = internalRimWidthMM else { return labeledWidthMM }
+        let delta = (rimWidth - referenceInternalRimWidthMM) * widthGrowthPerRimMM
+        return max(labeledWidthMM * 0.8, labeledWidthMM + delta)
     }
     
     // MARK: - Private Helper Methods

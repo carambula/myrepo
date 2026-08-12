@@ -52,6 +52,13 @@ struct BikeMaintenanceView: View {
         .navigationTitle("\(bike.name) Maintenance")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    CostReportView(bike: bike)
+                } label: {
+                    Image(systemName: "chart.bar")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingLogMaintenance = true

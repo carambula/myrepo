@@ -98,25 +98,19 @@ struct TireHealthService {
         
         var severity: WarningSeverity {
             switch self {
-            case .casingExposure, .aged where ageYears >= 10:
+            case .casingExposure:
                 return .critical
-            case .sidewallCracks, .overMileage where percentage >= 100, .aged:
+            case .aged(let years):
+                return years >= 10 ? .critical : .high
+            case .sidewallCracks:
                 return .high
+            case .overMileage(let percentage):
+                return percentage >= 100 ? .high : .medium
             case .squaredProfile, .frequentPunctures, .cuts:
                 return .medium
             case .inspectionOverdue:
                 return .low
             }
-        }
-        
-        private var ageYears: Double {
-            if case .aged(let years) = self { return years }
-            return 0
-        }
-        
-        private var percentage: Double {
-            if case .overMileage(let pct) = self { return pct }
-            return 0
         }
         
         var message: String {

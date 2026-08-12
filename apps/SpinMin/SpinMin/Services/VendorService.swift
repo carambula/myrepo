@@ -29,7 +29,7 @@ struct VendorService {
         for component: ComponentTracking,
         vendors: [Vendor] = Vendor.allCases
     ) -> [OrderLink] {
-        let category = mapComponentToCategory(component.componentType)
+        let category = mapComponentToCategory(component.component)
         let searchQuery = buildComponentSearchQuery(component)
         
         return generateLinks(
@@ -72,21 +72,23 @@ struct VendorService {
     private static func buildTireSearchQuery(_ tire: TireTracking) -> String {
         var parts: [String] = []
         
-        if let brand = tire.brand {
+        if let brand = tire.tireBrand {
             parts.append(brand)
         }
-        if let model = tire.model {
+        if let model = tire.tireModel {
             parts.append(model)
         }
         
+        let widthMM = tire.wheelset?.tireWidthMM
+        
         // Add tire width if no model specified
-        if tire.model == nil {
-            parts.append("\(tire.widthMM)mm")
+        if tire.tireModel == nil, let widthMM {
+            parts.append("\(widthMM)mm")
         }
         
         // Fallback to generic search
         if parts.isEmpty {
-            parts.append("road tire \(tire.widthMM)mm")
+            parts.append("road tire")
         }
         
         return parts.joined(separator: " ")
@@ -102,7 +104,7 @@ struct VendorService {
             parts.append(model)
         }
         
-        parts.append(component.componentType.displayName)
+        parts.append(component.component.displayName)
         
         return parts.joined(separator: " ")
     }
@@ -113,12 +115,10 @@ struct VendorService {
             return "Silca Super Secret chain wax"
         case .dripWax:
             return "chain drip wax"
-        case .wetLube:
+        case .wet:
             return "wet chain lube"
-        case .dryLube:
+        case .dry:
             return "dry chain lube"
-        case .ceramic:
-            return "ceramic chain lube"
         }
     }
     
@@ -219,19 +219,14 @@ struct VendorService {
     
     // MARK: - Helper Functions
     
-    private static func mapComponentToCategory(_ componentType: ComponentType) -> ComponentCategory {
+    static func mapComponentToCategory(_ componentType: ComponentType) -> ComponentCategory {
         switch componentType {
         case .chain: return .chains
         case .cassette: return .cassettes
         case .chainring: return .chainrings
-        case .brakePads: return .brakePads
-        case .cables: return .cables
-        case .derailleur: return .tools
-        case .brakes: return .tools
-        case .crankset: return .tools
-        case .bottomBracket: return .tools
-        case .headset: return .tools
-        case .bearings: return .tools
+        case .brakePads, .brakeRotor: return .brakePads
+        case .cables, .shiftCable, .brakeCable, .housing: return .cables
+        case .derailleur, .bottomBracket, .headset, .wheelBearing, .handlebarTape: return .tools
         }
     }
     

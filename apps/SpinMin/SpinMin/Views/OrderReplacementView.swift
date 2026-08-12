@@ -169,13 +169,13 @@ struct OrderReplacementButton: View {
         }
         .sheet(isPresented: $showingOrderSheet) {
             let links = VendorService.orderLinks(for: component)
-            let recommended = VendorService.recommendedVendors(for: VendorService.mapComponentToCategory(component.componentType))
+            let recommended = VendorService.recommendedVendors(for: VendorService.mapComponentToCategory(component.component))
             let filteredLinks = links.filter { link in
                 recommended.contains(link.vendor)
             }
             
             OrderReplacementSheet(
-                title: "Order \(component.componentType.displayName)",
+                title: "Order \(component.component.displayName)",
                 subtitle: component.displayName,
                 orderLinks: filteredLinks.isEmpty ? links : filteredLinks
             )

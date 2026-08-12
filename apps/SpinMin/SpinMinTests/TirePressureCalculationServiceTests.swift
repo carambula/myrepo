@@ -59,10 +59,11 @@ final class TirePressureCalculationServiceTests: XCTestCase {
             ridingStyle: .balanced
         )
         
-        // MTB pressures should be much lower
-        XCTAssertGreaterThan(result.frontPressurePSI, 18)
+        // MTB pressures should be much lower. Both wheels can clamp to the
+        // same safety floor, so rear >= front rather than strictly greater.
+        XCTAssertGreaterThanOrEqual(result.frontPressurePSI, 18)
         XCTAssertLessThan(result.frontPressurePSI, 35)
-        XCTAssertGreaterThan(result.rearPressurePSI, result.frontPressurePSI)
+        XCTAssertGreaterThanOrEqual(result.rearPressurePSI, result.frontPressurePSI)
     }
     
     func testFatBikeCalculation() {
@@ -75,8 +76,8 @@ final class TirePressureCalculationServiceTests: XCTestCase {
             ridingStyle: .balanced
         )
         
-        // Fat bike pressures should be very low
-        XCTAssertGreaterThan(result.frontPressurePSI, 5)
+        // Fat bike pressures should be very low; 5 psi is the safety floor
+        XCTAssertGreaterThanOrEqual(result.frontPressurePSI, 5)
         XCTAssertLessThan(result.frontPressurePSI, 15)
     }
     

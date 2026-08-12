@@ -134,14 +134,15 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     // MARK: - Merge Logic
     
+    // The container must stay alive for the whole test; returning only the
+    // mainContext lets the container deallocate and crashes SwiftData.
     @MainActor
-    private func makeContext() throws -> ModelContext {
+    private func makeContainer() throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
+        return try ModelContainer(
             for: ScheduledRide.self, Route.self, BikeConfiguration.self,
             configurations: config
         )
-        return container.mainContext
     }
     
     @MainActor
@@ -159,7 +160,8 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     @MainActor
     func testMergeImportsNewEvents() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let events = [
             futureEvent(uid: "a", daysAhead: 1, summary: "Threshold 2x20"),
             futureEvent(uid: "b", daysAhead: 3, summary: "Recovery spin"),
@@ -177,7 +179,8 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     @MainActor
     func testMergeIsIdempotent() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let events = [futureEvent(uid: "a", daysAhead: 1, summary: "Threshold 2x20")]
         
         _ = try TrainingCalendarSyncService.mergeEvents(events, context: context)
@@ -193,7 +196,8 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     @MainActor
     func testMergeUpdatesChangedEvents() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         _ = try TrainingCalendarSyncService.mergeEvents(
             [futureEvent(uid: "a", daysAhead: 1, summary: "Threshold 2x20")],
             context: context
@@ -212,7 +216,8 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     @MainActor
     func testMergeNeverTouchesCompletedRides() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         _ = try TrainingCalendarSyncService.mergeEvents(
             [futureEvent(uid: "a", daysAhead: 1, summary: "Threshold 2x20")],
             context: context
@@ -233,7 +238,8 @@ final class TrainingCalendarSyncTests: XCTestCase {
     
     @MainActor
     func testMergeIgnoresPastAndFarFutureEvents() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let events = [
             futureEvent(uid: "past", daysAhead: -2, summary: "Old ride"),
             futureEvent(uid: "far", daysAhead: 90, summary: "Way out"),

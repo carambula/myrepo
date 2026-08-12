@@ -43,3 +43,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             | xcbeautify --renderer github-actions || exit 1
+
+      - name: Show crash reports
+        if: failure()
+        run: |
+          echo "== DiagnosticReports =="
+          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null || true
+          for f in ~/Library/Logs/DiagnosticReports/*; do
+            echo "===== $f ====="
+            head -120 "$f" || true
+          done 2>/dev/null || true

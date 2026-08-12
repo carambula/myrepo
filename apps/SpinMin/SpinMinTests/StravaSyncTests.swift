@@ -13,15 +13,16 @@ final class StravaSyncTests: XCTestCase {
     
     // MARK: - Helpers
     
+    // The container must stay alive for the whole test; returning only the
+    // mainContext lets the container deallocate and crashes SwiftData.
     @MainActor
-    private func makeContext() throws -> ModelContext {
+    private func makeContainer() throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
+        return try ModelContainer(
             for: BikeConfiguration.self, Wheelset.self, RideLog.self,
             ScheduledRide.self, TireTracking.self, ComponentTracking.self,
             configurations: config
         )
-        return container.mainContext
     }
     
     private func makeBike(name: String) -> BikeConfiguration {
@@ -107,7 +108,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testImportCreatesRideLogAndUpdatesOdometer() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let bike = makeBike(name: "Road Bike")
         bike.stravaGearId = "b1"
         context.insert(bike)
@@ -129,7 +131,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testImportDedupesByActivityId() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let bike = makeBike(name: "Road Bike")
         bike.stravaGearId = "b1"
         context.insert(bike)
@@ -149,7 +152,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testUnknownGearImportsUnassignedWithoutOdometerUpdate() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let bike = makeBike(name: "Road Bike")
         context.insert(bike)
         
@@ -168,7 +172,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testAssignBikeAppliesDeferredMileage() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let bike = makeBike(name: "Road Bike")
         context.insert(bike)
         
@@ -190,7 +195,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testNonCyclingActivitiesAreIgnored() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         
         let result = try StravaSyncService.importActivities(
             [makeActivity(id: 103, sportType: "Run")],
@@ -204,7 +210,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testSameDayScheduledRideAutoCompletes() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let scheduled = ScheduledRide(
             name: "Threshold intervals",
             scheduledDate: Date(),
@@ -226,7 +233,8 @@ final class StravaSyncTests: XCTestCase {
     
     @MainActor
     func testScheduledRideOnDifferentDayNotCompleted() throws {
-        let context = try makeContext()
+        let container = try makeContainer()
+        let context = container.mainContext
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
         let scheduled = ScheduledRide(
             name: "Tomorrow's ride",

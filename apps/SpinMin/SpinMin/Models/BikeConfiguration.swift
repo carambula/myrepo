@@ -38,6 +38,9 @@ final class BikeConfiguration {
     // Drivetrain speed count (for chain wear limits)
     var speedCount: Int?  // 11, 12, etc. Defaults to 11
     
+    // Strava gear id (e.g. "b1234567") linking this bike to a Strava bike
+    var stravaGearId: String?
+    
     // Relationships
     @Relationship(deleteRule: .cascade) var wheelsets: [Wheelset] = []
     @Relationship(deleteRule: .cascade) var maintenanceRecords: [MaintenanceRecord] = []

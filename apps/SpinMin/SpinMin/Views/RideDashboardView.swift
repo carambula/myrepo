@@ -81,6 +81,11 @@ struct RideDashboardView: View {
                 .padding(.bottom, DesignSystem.Spacing.xl)
             }
             .background(DesignSystem.Color.background)
+            .refreshable {
+                if StravaAuthService.shared.isConnected {
+                    _ = try? await StravaSyncService.sync(context: modelContext)
+                }
+            }
             .navigationTitle("My Bikes")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

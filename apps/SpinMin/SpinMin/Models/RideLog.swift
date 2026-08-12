@@ -24,6 +24,9 @@ final class RideLog {
     var terrainType: String?  // TerrainType
     var weatherConditions: String?
     
+    // Strava activity id when imported from Strava (dedupe key)
+    var stravaActivityId: String?
+    
     init(
         rideDate: Date = Date(),
         distanceKm: Double,
@@ -57,7 +60,12 @@ final class RideLog {
     var displayName: String {
         let km = String(format: "%.1f", distanceKm)
         let date = rideDate.formatted(date: .abbreviated, time: .omitted)
-        return "\(rideName) · \(km) km · \(date)"
+        return "\(rideName)   \(km) km   \(date)"
+    }
+    
+    /// Imported from Strava with unrecognized gear; needs a bike assigned
+    var needsBikeAssignment: Bool {
+        stravaActivityId != nil && bikeConfiguration == nil
     }
     
     var bikeName: String {

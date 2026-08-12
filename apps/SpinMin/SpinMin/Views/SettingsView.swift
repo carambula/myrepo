@@ -52,6 +52,25 @@ struct SettingsView: View {
                     Text("Choose your preferred retailers for ordering replacement components")
                 }
                 
+                Section {
+                    NavigationLink {
+                        StravaSettingsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "figure.outdoor.cycle")
+                                .foregroundAccent()
+                            Text("Strava")
+                            Spacer()
+                            Text(StravaAuthService.shared.isConnected ? "Connected" : "Not connected")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Connections")
+                } footer: {
+                    Text("Import rides automatically to keep bike and component mileage up to date")
+                }
+                
                 Section("About") {
                     HStack {
                         Text("Version")

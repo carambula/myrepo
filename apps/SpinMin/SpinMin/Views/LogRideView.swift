@@ -123,24 +123,16 @@ struct LogRideView: View {
             return
         }
         
-        // Create ride log
-        let ride = RideLog(
-            rideDate: rideDate,
+        RideLogger.log(
+            context: modelContext,
+            date: rideDate,
             distanceKm: distanceKm,
-            rideName: rideName.isEmpty ? "Ride" : rideName,
+            name: rideName.isEmpty ? "Ride" : rideName,
             notes: notes,
             bike: bike,
             wheelset: wheelset,
             terrain: terrain
         )
-        
-        modelContext.insert(ride)
-        
-        // Update bike odometer and components
-        bike.logDistance(distanceKm)
-        
-        // Update wheelset odometer and tire tracking
-        wheelset.logDistance(distanceKm)
         
         dismiss()
     }

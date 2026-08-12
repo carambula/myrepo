@@ -226,7 +226,7 @@ public struct GearCalculationService {
     }
     
     /// Get recommended gearing for different disciplines
-    public static func recommendedGearing(for discipline: PopularDrivetrain.BikeCategory) -> String {
+    static func recommendedGearing(for discipline: PopularDrivetrain.BikeCategory) -> String {
         switch discipline {
         case .road:
             return """

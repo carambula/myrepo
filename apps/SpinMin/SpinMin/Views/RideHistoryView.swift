@@ -146,7 +146,7 @@ private struct RideLogCard: View {
                     Image(systemName: "mountain.2")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                    Text(terrain.displayName)
+                    Text(terrain.rawValue)
                         .captionMedium()
                         .foregroundStyle(.secondary)
                 }

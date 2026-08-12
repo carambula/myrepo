@@ -239,7 +239,7 @@ struct ThemeSelectionView: View {
                 }) {
                     HStack {
                         Circle()
-                            .fill(theme.accent.color)
+                            .fill(theme.accent)
                             .frame(width: 32, height: 32)
                         
                         Text(theme.name)

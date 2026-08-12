@@ -27,72 +27,9 @@ struct LogRideView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Ride Details") {
-                    DatePicker("Date", selection: $rideDate, displayedComponents: [.date])
-                    
-                    HStack {
-                        Text("Distance")
-                        Spacer()
-                        TextField("0", value: $distanceKm, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                        Text("km")
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    TextField("Ride Name (optional)", text: $rideName)
-                }
-                
-                Section("Bike & Wheels") {
-                    Picker("Bike", selection: $selectedBike) {
-                        Text("Select Bike").tag(nil as BikeConfiguration?)
-                        ForEach(bikes) { bike in
-                            Text(bike.name).tag(bike as BikeConfiguration?)
-                        }
-                    }
-                    
-                    if let bike = selectedBike {
-                        Picker("Wheelset", selection: $selectedWheelset) {
-                            Text("Select Wheelset").tag(nil as Wheelset?)
-                            ForEach(bike.wheelsets) { wheelset in
-                                Text(wheelset.name).tag(wheelset as Wheelset?)
-                            }
-                        }
-                        
-                        if let wheelset = selectedWheelset {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Current Odometer")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(String(format: "%.1f km", wheelset.totalMileageKm))
-                                    .font(.body.monospacedDigit())
-                            }
-                            
-                            if distanceKm > 0 {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("New Odometer")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text(String(format: "%.1f km", wheelset.totalMileageKm + distanceKm))
-                                        .font(.body.monospacedDigit())
-                                        .foregroundStyle(themeManager.currentTheme.accent)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Section("Conditions") {
-                    Picker("Terrain", selection: $terrain) {
-                        ForEach(TirePressureCalculationService.TerrainType.allCases, id: \.self) { terrain in
-                            Text(terrain.displayName).tag(terrain)
-                        }
-                    }
-                    
-                    TextField("Notes (optional)", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+                rideDetailsSection
+                bikeAndWheelsSection
+                conditionsSection
             }
             .navigationTitle("Log Ride")
             .navigationBarTitleDisplayMode(.inline)
@@ -110,6 +47,79 @@ struct LogRideView: View {
                     .disabled(!canSave)
                 }
             }
+        }
+    }
+    
+    private var rideDetailsSection: some View {
+        Section("Ride Details") {
+            DatePicker("Date", selection: $rideDate, displayedComponents: [.date])
+            
+            HStack {
+                Text("Distance")
+                Spacer()
+                TextField("0", value: $distanceKm, format: .number)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+                Text("km")
+                    .foregroundStyle(.secondary)
+            }
+            
+            TextField("Ride Name (optional)", text: $rideName)
+        }
+    }
+    
+    private var bikeAndWheelsSection: some View {
+        Section("Bike & Wheels") {
+            Picker("Bike", selection: $selectedBike) {
+                Text("Select Bike").tag(nil as BikeConfiguration?)
+                ForEach(bikes) { bike in
+                    Text(bike.name).tag(bike as BikeConfiguration?)
+                }
+            }
+            
+            if let bike = selectedBike {
+                Picker("Wheelset", selection: $selectedWheelset) {
+                    Text("Select Wheelset").tag(nil as Wheelset?)
+                    ForEach(bike.wheelsets) { wheelset in
+                        Text(wheelset.name).tag(wheelset as Wheelset?)
+                    }
+                }
+                
+                if let wheelset = selectedWheelset {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Current Odometer")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(String(format: "%.1f km", wheelset.totalMileageKm))
+                            .font(.body.monospacedDigit())
+                    }
+                    
+                    if distanceKm > 0 {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("New Odometer")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(String(format: "%.1f km", wheelset.totalMileageKm + distanceKm))
+                                .font(.body.monospacedDigit())
+                                .foregroundStyle(themeManager.currentTheme.accent)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private var conditionsSection: some View {
+        Section("Conditions") {
+            Picker("Terrain", selection: $terrain) {
+                ForEach(TirePressureCalculationService.TerrainType.allCases, id: \.self) { terrain in
+                    Text(terrain.rawValue).tag(terrain)
+                }
+            }
+            
+            TextField("Notes (optional)", text: $notes, axis: .vertical)
+                .lineLimit(3...6)
         }
     }
     

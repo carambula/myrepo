@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpinMin - Tire Pressure Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 24px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 32px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .form-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        
+        .form-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .value-display .value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .pressure-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+        
+        .pressure-card {
+            text-align: center;
+            padding: 24px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+        }
+        
+        .pressure-card .icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+        
+        .pressure-card .label {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .pressure-card .pressure {
+            font-size: 3em;
+            font-weight: 700;
+            color: #667eea;
+            line-height: 1;
+        }
+        
+        .pressure-card .unit {
+            font-size: 1em;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .pressure-card .alt-unit {
+            font-size: 0.9em;
+            color: #999;
+            margin-top: 8px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 0.9em;
+            color: #856404;
+        }
+        
+        @media (max-width: 600px) {
+            .pressure-display {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚴 SpinMin</h1>
+            <p>Cycling Tire Pressure Calculator</p>
+        </div>
+        
+        <div class="card">
+            <div class="section-title">Bike Setup</div>
+            
+            <div class="form-group">
+                <label for="bikeType">Bike Type</label>
+                <select id="bikeType">
+                    <option value="road">Road</option>
+                    <option value="gravel">Gravel</option>
+                    <option value="mountainXC">Mountain (XC)</option>
+                    <option value="mountainTrail">Mountain (Trail)</option>
+                    <option value="mountainEnduro">Mountain (Enduro)</option>
+                    <option value="fat">Fat Bike</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <div class="value-display">
+                    <label for="tireWidth">Tire Width</label>
+                    <span class="value"><span id="tireWidthValue">28</span> mm</span>
+                </div>
+                <input type="range" id="tireWidth" min="18" max="75" value="28" step="1">
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="section-title">Rider</div>
+            
+            <div class="form-group">
+                <div class="value-display">
+                    <label for="riderWeight">Rider Weight</label>
+                    <span class="value"><span id="riderWeightValue">70</span> kg</span>
+                </div>
+                <input type="range" id="riderWeight" min="40" max="150" value="70" step="0.5">
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="section-title">Conditions</div>
+            
+            <div class="form-group">
+                <label for="terrain">Terrain</label>
+                <select id="terrain">
+                    <option value="smooth">Smooth (New Pavement)</option>
+                    <option value="mixed" selected>Mixed (Worn Pavement)</option>
+                    <option value="rough">Rough (Poor Pavement/Chipseal)</option>
+                    <option value="gravel1">Gravel (Category 1)</option>
+                    <option value="gravel2">Gravel (Category 2)</option>
+                    <option value="gravel3">Gravel (Category 3)</option>
+                    <option value="gravel4">Gravel (Category 4)</option>
+                    <option value="trail">Trail (Singletrack)</option>
+                    <option value="technical">Technical (Roots/Rocks)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="casing">Tire Casing</label>
+                <select id="casing">
+                    <option value="supple">Supple/High TPI</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="reinforced">Reinforced/Heavy Duty</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="ridingStyle">Riding Style</label>
+                <select id="ridingStyle">
+                    <option value="comfort">Comfort/Recreational</option>
+                    <option value="balanced" selected>Balanced</option>
+                    <option value="performance">Performance/Racing</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="useTemp">
+                    <label for="useTemp" style="margin: 0;">Include Temperature</label>
+                </div>
+            </div>
+            
+            <div class="form-group" id="tempGroup" style="display: none;">
+                <div class="value-display">
+                    <label for="temperature">Temperature</label>
+                    <span class="value"><span id="temperatureValue">20</span> °C</span>
+                </div>
+                <input type="range" id="temperature" min="-10" max="45" value="20" step="1">
+            </div>
+        </div>
+        
+        <button class="calculate-btn" onclick="calculatePressure()">
+            Calculate Pressure
+        </button>
+        
+        <div class="card results" id="results">
+            <div class="section-title">Recommended Pressure</div>
+            
+            <div class="pressure-display">
+                <div class="pressure-card">
+                    <div class="icon">🚴</div>
+                    <div class="label">Front</div>
+                    <div class="pressure" id="frontPSI">--</div>
+                    <div class="unit">PSI</div>
+                    <div class="alt-unit" id="frontBAR">-- BAR</div>
+                </div>
+                
+                <div class="pressure-card">
+                    <div class="icon">🚴</div>
+                    <div class="label">Rear</div>
+                    <div class="pressure" id="rearPSI">--</div>
+                    <div class="unit">PSI</div>
+                    <div class="alt-unit" id="rearBAR">-- BAR</div>
+                </div>
+            </div>
+            
+            <div class="warning">
+                ⚠️ Always check your tire and rim manufacturer's min/max pressure recommendations
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Update value displays
+        document.getElementById('tireWidth').addEventListener('input', function() {
+            document.getElementById('tireWidthValue').textContent = this.value;
+        });
+        
+        document.getElementById('riderWeight').addEventListener('input', function() {
+            document.getElementById('riderWeightValue').textContent = this.value;
+        });
+        
+        document.getElementById('temperature').addEventListener('input', function() {
+            document.getElementById('temperatureValue').textContent = this.value;
+        });
+        
+        document.getElementById('useTemp').addEventListener('change', function() {
+            document.getElementById('tempGroup').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Tire Pressure Calculation Service (JavaScript port from Swift)
+        const TirePressureCalculator = {
+            bikeTypes: {
+                road: { weight: 8.0, distribution: { front: 0.48, rear: 0.52 }, multiplier: 0.95 },
+                gravel: { weight: 9.5, distribution: { front: 0.47, rear: 0.53 }, multiplier: 0.85 },
+                mountainXC: { weight: 12.0, distribution: { front: 0.465, rear: 0.535 }, multiplier: 0.75 },
+                mountainTrail: { weight: 13.5, distribution: { front: 0.465, rear: 0.535 }, multiplier: 0.65 },
+                mountainEnduro: { weight: 15.0, distribution: { front: 0.465, rear: 0.535 }, multiplier: 0.55 },
+                fat: { weight: 16.0, distribution: { front: 0.47, rear: 0.53 }, multiplier: 0.35 }
+            },
+            
+            terrainMultipliers: {
+                smooth: 1.0,
+                mixed: 0.95,
+                rough: 0.90,
+                gravel1: 0.88,
+                gravel2: 0.85,
+                gravel3: 0.82,
+                gravel4: 0.78,
+                trail: 0.75,
+                technical: 0.70
+            },
+            
+            casingAdjustments: {
+                supple: -2.0,
+                standard: 0.0,
+                reinforced: 3.0
+            },
+            
+            ridingStyleAdjustments: {
+                comfort: -3.0,
+                balanced: 0.0,
+                performance: 2.0
+            },
+            
+            calculateBasePressure(weightLbs, tireWidthMM, bikeType) {
+                const tireWidthInches = tireWidthMM / 25.4;
+                const baseMultiplier = this.bikeTypes[bikeType].multiplier;
+                return (weightLbs * baseMultiplier) / Math.pow(tireWidthInches, 1.5);
+            },
+            
+            clampPressure(pressure, tireWidthMM, bikeType) {
+                let minPressure, maxPressure;
+                
+                if (bikeType === 'road') {
+                    if (tireWidthMM < 25) {
+                        [minPressure, maxPressure] = [80, 130];
+                    } else if (tireWidthMM < 32) {
+                        [minPressure, maxPressure] = [60, 100];
+                    } else {
+                        [minPressure, maxPressure] = [45, 85];
+                    }
+                } else if (bikeType === 'gravel') {
+                    if (tireWidthMM < 35) {
+                        [minPressure, maxPressure] = [40, 70];
+                    } else if (tireWidthMM < 45) {
+                        [minPressure, maxPressure] = [30, 55];
+                    } else {
+                        [minPressure, maxPressure] = [20, 45];
+                    }
+                } else if (bikeType === 'mountainXC') {
+                    [minPressure, maxPressure] = [22, 35];
+                } else if (bikeType === 'mountainTrail') {
+                    [minPressure, maxPressure] = [20, 32];
+                } else if (bikeType === 'mountainEnduro') {
+                    [minPressure, maxPressure] = [18, 30];
+                } else if (bikeType === 'fat') {
+                    [minPressure, maxPressure] = [5, 15];
+                }
+                
+                return Math.max(minPressure, Math.min(maxPressure, pressure));
+            },
+            
+            calculate(riderWeightKg, bikeType, tireWidthMM, terrain, casing, ridingStyle, temperatureCelsius = null) {
+                const bikeWeightKg = this.bikeTypes[bikeType].weight;
+                const totalWeightKg = riderWeightKg + bikeWeightKg;
+                const totalWeightLbs = totalWeightKg * 2.20462;
+                
+                const distribution = this.bikeTypes[bikeType].distribution;
+                const frontWeightLbs = totalWeightLbs * distribution.front;
+                const rearWeightLbs = totalWeightLbs * distribution.rear;
+                
+                let frontPressure = this.calculateBasePressure(frontWeightLbs, tireWidthMM, bikeType);
+                let rearPressure = this.calculateBasePressure(rearWeightLbs, tireWidthMM, bikeType);
+                
+                // Apply terrain multiplier
+                const terrainMultiplier = this.terrainMultipliers[terrain];
+                frontPressure *= terrainMultiplier;
+                rearPressure *= terrainMultiplier;
+                
+                // Apply casing adjustment
+                const casingAdjustment = this.casingAdjustments[casing];
+                frontPressure += casingAdjustment;
+                rearPressure += casingAdjustment;
+                
+                // Apply riding style adjustment
+                const styleAdjustment = this.ridingStyleAdjustments[ridingStyle];
+                frontPressure += styleAdjustment;
+                rearPressure += styleAdjustment;
+                
+                // Apply temperature adjustment
+                if (temperatureCelsius !== null) {
+                    const baseTemp = 20.0;
+                    const tempDiff = temperatureCelsius - baseTemp;
+                    const tempAdjustment = tempDiff * 0.15;
+                    frontPressure += tempAdjustment;
+                    rearPressure += tempAdjustment;
+                }
+                
+                // Clamp to safe ranges
+                frontPressure = this.clampPressure(frontPressure, tireWidthMM, bikeType);
+                rearPressure = this.clampPressure(rearPressure, tireWidthMM, bikeType);
+                
+                // Round to nearest 0.5 psi
+                frontPressure = Math.round(frontPressure * 2) / 2;
+                rearPressure = Math.round(rearPressure * 2) / 2;
+                
+                return {
+                    frontPSI: frontPressure,
+                    rearPSI: rearPressure,
+                    frontBAR: frontPressure / 14.5038,
+                    rearBAR: rearPressure / 14.5038
+                };
+            }
+        };
+        
+        function calculatePressure() {
+            const riderWeight = parseFloat(document.getElementById('riderWeight').value);
+            const bikeType = document.getElementById('bikeType').value;
+            const tireWidth = parseFloat(document.getElementById('tireWidth').value);
+            const terrain = document.getElementById('terrain').value;
+            const casing = document.getElementById('casing').value;
+            const ridingStyle = document.getElementById('ridingStyle').value;
+            const useTemp = document.getElementById('useTemp').checked;
+            const temperature = useTemp ? parseFloat(document.getElementById('temperature').value) : null;
+            
+            const result = TirePressureCalculator.calculate(
+                riderWeight,
+                bikeType,
+                tireWidth,
+                terrain,
+                casing,
+                ridingStyle,
+                temperature
+            );
+            
+            document.getElementById('frontPSI').textContent = result.frontPSI.toFixed(1);
+            document.getElementById('rearPSI').textContent = result.rearPSI.toFixed(1);
+            document.getElementById('frontBAR').textContent = result.frontBAR.toFixed(2) + ' BAR';
+            document.getElementById('rearBAR').textContent = result.rearBAR.toFixed(2) + ' BAR';
+            
+            document.getElementById('results').classList.add('show');
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

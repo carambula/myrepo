@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import fit_min
 
@@ -42,6 +43,11 @@ struct fit_minTests {
         #expect(SetTimerTitleFormatter.clockDuration(3661) == "01:01:01")
     }
 
+    @Test func timingDisplayModesExposeInclusiveAndExclusiveTitles() {
+        #expect(TimingDisplayMode.inclusive.title == "Inclusive")
+        #expect(TimingDisplayMode.exclusive.title == "Exclusive")
+    }
+
     @Test func extendingSessionAddsRestAndNextWork() {
         let configuration = SetTimerConfiguration(reps: 1, workSeconds: 20, restSeconds: 10)
         let original = SetTimerScheduleBuilder.segments(for: configuration)
@@ -50,6 +56,18 @@ struct fit_minTests {
         #expect(original.map(\.durationSeconds) == [20])
         #expect(extended.map(\.kind) == [.work, .rest, .work])
         #expect(extended.map(\.durationSeconds) == [20, 10, 20])
+    }
+
+    @Test func forwardingFromLastIntervalCompletesSet() {
+        UserDefaults.standard.set(false, forKey: "fitMin.timerSoundsEnabled")
+        let configuration = SetTimerConfiguration(reps: 1, workSeconds: 20, restSeconds: 10)
+        let session = SetTimerSessionController(configuration: configuration, startsImmediately: false)
+
+        session.skipForward()
+
+        #expect(session.elapsedSeconds == session.totalSeconds)
+        #expect(session.isComplete)
+        UserDefaults.standard.removeObject(forKey: "fitMin.timerSoundsEnabled")
     }
 
     @Test func finalFourSecondsUseBoopCue() {
@@ -65,6 +83,18 @@ struct fit_minTests {
         #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 9, segments: segments) == .boop)
         #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 12, segments: segments) == .boop)
         #expect(TimerSoundCueResolver.cue(forCompletedElapsedSecond: 13, segments: segments) == nil)
+    }
+
+    @Test func activeTickCuePlacesFourthBoopOnLastTickOfInterval() {
+        let segments = [
+            IntervalSegment(kind: .work, durationSeconds: 8, repIndex: 0),
+            IntervalSegment(kind: .rest, durationSeconds: 8, repIndex: 0),
+        ]
+
+        #expect(TimerSoundCueResolver.cue(forActiveMarkID: 3, segments: segments) == .tick)
+        #expect(TimerSoundCueResolver.cue(forActiveMarkID: 4, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forActiveMarkID: 7, segments: segments) == .boop)
+        #expect(TimerSoundCueResolver.cue(forActiveMarkID: 8, segments: segments) == .tick)
     }
 
     @Test func defaultPresetListIncludesRequestedStarterTimersInOrder() {

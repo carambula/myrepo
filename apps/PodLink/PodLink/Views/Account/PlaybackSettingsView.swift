@@ -182,5 +182,11 @@ struct PlaybackSettingsView: View {
         .onChange(of: playbackSpeed) { _, newValue in
             playbackService.setRate(Float(newValue))
         }
+        .onChange(of: skipForwardInterval) { _, _ in
+            playbackService.refreshRemoteCommandSettings()
+        }
+        .onChange(of: skipBackwardInterval) { _, _ in
+            playbackService.refreshRemoteCommandSettings()
+        }
     }
 }

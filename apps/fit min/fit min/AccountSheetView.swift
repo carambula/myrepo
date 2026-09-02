@@ -8,7 +8,12 @@ struct AccountSheetView: View {
     @AppStorage(TimerSoundSettingsKey.enabled) private var timerSoundsEnabled = true
     @AppStorage(TimerSoundSettingsKey.volume) private var timerSoundVolumeRawValue = TimerSoundVolume.standard.rawValue
     @AppStorage(TimerSoundSettingsKey.tone) private var timerSoundToneRawValue = TimerSoundTone.balanced.rawValue
+    @AppStorage(TimerSoundSettingsKey.celebrationSound) private var celebrationSoundRawValue = TimerCelebrationSound.threeBeeps.rawValue
     @AppStorage("fitMin.clockDisplayMode") private var clockDisplayModeRawValue = ClockDisplayMode.repsOnly.rawValue
+    @AppStorage("fitMin.timingDisplayMode") private var timingDisplayModeRawValue = TimingDisplayMode.inclusive.rawValue
+    @AppStorage("fitMin.celebrationAnimation") private var celebrationAnimationRawValue = TimerCelebrationAnimation.clockWave.rawValue
+    @AppStorage("fitMin.detailEditButtonPlacement") private var detailEditButtonPlacementRawValue = TimerDetailEditButtonPlacement.bottomRight.rawValue
+    @AppStorage("fitMin.detailControlsPlacement") private var detailControlsPlacementRawValue = TimerDetailControlsPlacement.belowMetadata.rawValue
     @AppStorage("fitMin.bouncesFinalIntervalTicks") private var bouncesFinalIntervalTicks = false
     @AppStorage("fitMin.readySetGoEnabled") private var readySetGoEnabled = false
     @State private var showsThemes = false
@@ -51,6 +56,34 @@ struct AccountSheetView: View {
                     }
                     .pickerStyle(.menu)
 
+                    Picker("Timing", selection: $timingDisplayModeRawValue) {
+                        ForEach(TimingDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Celebration Animation", selection: $celebrationAnimationRawValue) {
+                        ForEach(TimerCelebrationAnimation.allCases) { animation in
+                            Text(animation.title).tag(animation.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Edit Button", selection: $detailEditButtonPlacementRawValue) {
+                        ForEach(TimerDetailEditButtonPlacement.allCases) { placement in
+                            Text(placement.title).tag(placement.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Timer Controls", selection: $detailControlsPlacementRawValue) {
+                        ForEach(TimerDetailControlsPlacement.allCases) { placement in
+                            Text(placement.title).tag(placement.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
                     Toggle("Bounce final interval ticks", isOn: $bouncesFinalIntervalTicks)
                 }
                 .designSystemGroupedListRow()
@@ -78,6 +111,14 @@ struct AccountSheetView: View {
                     .pickerStyle(.menu)
                     .disabled(!timerSoundsEnabled)
 
+                    Picker("Celebration sound", selection: $celebrationSoundRawValue) {
+                        ForEach(TimerCelebrationSound.allCases) { sound in
+                            Text(sound.title).tag(sound.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(!timerSoundsEnabled)
+
                     Button {
                         TimerSoundService.shared.play(.tick)
                         Task { @MainActor in
@@ -86,6 +127,13 @@ struct AccountSheetView: View {
                         }
                     } label: {
                         Label("Preview sound", systemImage: "speaker.wave.2.circle")
+                    }
+                    .disabled(!timerSoundsEnabled)
+
+                    Button {
+                        TimerSoundService.shared.playCompletion()
+                    } label: {
+                        Label("Preview celebration", systemImage: "party.popper")
                     }
                     .disabled(!timerSoundsEnabled)
                 }

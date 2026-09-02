@@ -9,6 +9,8 @@ struct SetTimerDetailSheet: View {
     let session: SetTimerSessionController
     var onEdit: () -> Void
     @AppStorage("fitMin.timerSoundsEnabled") private var timerSoundsEnabled = true
+    @AppStorage("fitMin.detailEditButtonPlacement") private var editButtonPlacementRawValue = TimerDetailEditButtonPlacement.bottomRight.rawValue
+    @AppStorage("fitMin.detailControlsPlacement") private var controlsPlacementRawValue = TimerDetailControlsPlacement.belowMetadata.rawValue
 
     init(timer: SetTimer, session: SetTimerSessionController, onEdit: @escaping () -> Void) {
         self.timer = timer
@@ -17,8 +19,9 @@ struct SetTimerDetailSheet: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: DesignSystem.Spacing.lg) {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.lg) {
                 SetTimerClockView(session: session)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: .infinity)
@@ -41,30 +44,28 @@ struct SetTimerDetailSheet: View {
                 }
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
 
-                SetTimerTransportControls(
-                    isPlaying: session.isPlaying,
-                    isSoundEnabled: timerSoundsEnabled,
-                    canSkipBackward: session.currentSegmentIndex > 0 || session.elapsedSeconds > 0,
-                    canSkipForward: session.currentSegmentIndex < session.segments.count - 1,
-                    onToggleSound: toggleTimerSounds,
-                    onBack: session.skipBackward,
-                    onPlayPause: session.togglePlayPause,
-                    onForward: session.skipForward,
-                    onAdd: session.addRepAndRest
-                )
-                .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                    if controlsPlacement == .belowMetadata {
+                        transportControls
+                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                    } else {
+                        Spacer(minLength: max(DesignSystem.Spacing.xxl, proxy.size.height * 0.12))
+                    }
+                }
+                .padding(.top, DesignSystem.Spacing.lg)
+                .padding(.bottom, controlsPlacement == .lowerCenter ? MinSpacing.bottomSafeArea + 124 : MinSpacing.bottomSafeArea)
             }
-            .padding(.top, DesignSystem.Spacing.lg)
-            .padding(.bottom, MinSpacing.bottomSafeArea)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            Button(action: onEdit) {
-                Image(systemName: DesignSystem.Icon.edit)
+
+            if controlsPlacement == .lowerCenter {
+                VStack {
+                    Spacer()
+                    transportControls
+                        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                        .padding(.bottom, max(DesignSystem.Spacing.xl, proxy.safeAreaInsets.bottom + 72))
+                }
+                .allowsHitTesting(true)
             }
-            .buttonStyle(CircularGlassIconButtonStyle(size: MinSpacing.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
-            .accessibilityLabel("Edit timer")
-            .padding(.trailing, DesignSystem.Spacing.lg)
-            .padding(.bottom, DesignSystem.Spacing.lg)
+
+            editButton
         }
         .themeBackground()
         .onAppear {
@@ -75,9 +76,56 @@ struct SetTimerDetailSheet: View {
         }
     }
 
+    private var editButtonPlacement: TimerDetailEditButtonPlacement {
+        TimerDetailEditButtonPlacement(rawValue: editButtonPlacementRawValue) ?? .bottomRight
+    }
+
+    private var controlsPlacement: TimerDetailControlsPlacement {
+        TimerDetailControlsPlacement(rawValue: controlsPlacementRawValue) ?? .belowMetadata
+    }
+
     private var detailMetadata: String {
         "\(SetTimerTitleFormatter.clockDuration(session.totalSeconds)) total workout   Set completed \(timer.completedCount) times"
     }
+
+    private var transportControls: some View {
+        SetTimerTransportControls(
+            isPlaying: session.isPlaying,
+            isSoundEnabled: timerSoundsEnabled,
+            canSkipBackward: session.currentSegmentIndex > 0 || session.elapsedSeconds > 0,
+            canSkipForward: session.elapsedSeconds < session.totalSeconds,
+            onToggleSound: toggleTimerSounds,
+            onBack: session.skipBackward,
+            onPlayPause: session.togglePlayPause,
+            onForward: session.skipForward,
+            onAdd: session.addRepAndRest
+        )
+    }
+
+    private var editButton: some View {
+        VStack {
+            if editButtonPlacement == .bottomRight {
+                Spacer()
+            }
+
+            HStack {
+                Spacer()
+                Button(action: onEdit) {
+                    Image(systemName: DesignSystem.Icon.edit)
+                }
+                .buttonStyle(CircularGlassIconButtonStyle(size: MinSpacing.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
+                .accessibilityLabel("Edit timer")
+                .padding(.trailing, DesignSystem.Spacing.lg)
+            }
+
+            if editButtonPlacement == .topRight {
+                Spacer()
+            }
+        }
+        .padding(.top, editButtonPlacement == .topRight ? DesignSystem.Spacing.lg : 0)
+        .padding(.bottom, editButtonPlacement == .bottomRight ? DesignSystem.Spacing.lg : 0)
+    }
+
 
     private func toggleTimerSounds() {
         timerSoundsEnabled.toggle()
@@ -88,6 +136,8 @@ struct SetTimerDetailSheet: View {
 struct SetTimerClockView: View {
     let session: SetTimerSessionController
     @AppStorage("fitMin.clockDisplayMode") private var clockDisplayModeRawValue = ClockDisplayMode.repsOnly.rawValue
+    @AppStorage("fitMin.timingDisplayMode") private var timingDisplayModeRawValue = TimingDisplayMode.inclusive.rawValue
+    @AppStorage("fitMin.celebrationAnimation") private var celebrationAnimationRawValue = TimerCelebrationAnimation.clockWave.rawValue
     @AppStorage("fitMin.bouncesFinalIntervalTicks") private var bouncesFinalIntervalTicks = false
     @State private var finalIntervalTickScale = false
     @State private var readyCountdownScale = false
@@ -96,8 +146,30 @@ struct SetTimerClockView: View {
         ClockDisplayMode(rawValue: clockDisplayModeRawValue) ?? .repsOnly
     }
 
+    private var timingDisplayMode: TimingDisplayMode {
+        TimingDisplayMode(rawValue: timingDisplayModeRawValue) ?? .inclusive
+    }
+
+    private var celebrationAnimation: TimerCelebrationAnimation {
+        TimerCelebrationAnimation(rawValue: celebrationAnimationRawValue) ?? .clockWave
+    }
+
     private var shouldEmphasizeFinalIntervalTick: Bool {
         clockDisplayMode == .intervalTimeOverReps && session.isInFinalIntervalCueWindow
+    }
+
+    private var intervalDisplaySeconds: Int {
+        guard let currentSegment = session.currentSegment else { return 0 }
+        if session.showsCompletedReps {
+            switch timingDisplayMode {
+            case .inclusive:
+                return min(currentSegment.durationSeconds, session.currentSegmentElapsedSeconds + 1)
+            case .exclusive:
+                return session.currentSegmentElapsedSeconds
+            }
+        }
+
+        return max(0, session.currentSegmentRemainingSeconds - 1)
     }
 
     private var countdownNumber: Int? {
@@ -140,9 +212,13 @@ struct SetTimerClockView: View {
                     return (total - Double(mark.id)) / total
                 }
 
+                func clockwiseProgress(for mark: TimerSecondMark) -> Double {
+                    Double(mark.id) / total
+                }
+
                 for mark in marks where mark.id != 0 && mark.id != currentMarkID {
                     let isComplete = mark.id < session.elapsedSeconds
-                    let length: CGFloat = mark.segmentKind == .work ? 16 : 8
+                    let length: CGFloat = mark.segmentKind == .work ? 16 : 5
                     draw(
                         mark,
                         color: isComplete ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.accent,
@@ -152,13 +228,13 @@ struct SetTimerClockView: View {
                 }
 
                 if let zeroMark = marks.first {
-                    draw(zeroMark, color: DesignSystem.Colors.headlineColor, length: 24, lineWidth: 3.0)
+                    draw(zeroMark, color: DesignSystem.Colors.headlineColor, length: 34, lineWidth: 3.4)
                 }
 
                 if let currentMarkID,
                    let currentMark = marks.first(where: { $0.id == currentMarkID }) {
-                    let baseLength: CGFloat = currentMark.segmentKind == .work ? 16 : 8
-                    draw(currentMark, color: DesignSystem.Colors.index, length: baseLength + 8, lineWidth: 3.2)
+                    let baseLength: CGFloat = currentMark.segmentKind == .work ? 16 : 5
+                    draw(currentMark, color: DesignSystem.Colors.index, length: baseLength + 18, lineWidth: 3.6)
                 }
 
                 if session.isReadyCountdownActive {
@@ -166,13 +242,43 @@ struct SetTimerClockView: View {
                         let distanceBehindWave = countdownProgress - anticlockwiseProgress(for: mark)
                         guard distanceBehindWave >= 0, distanceBehindWave <= 0.18 else { continue }
                         let intensity = 1 - distanceBehindWave / 0.18
-                        let baseLength: CGFloat = mark.segmentKind == .work ? 16 : 8
+                        let baseLength: CGFloat = mark.segmentKind == .work ? 16 : 5
                         draw(
                             mark,
                             color: DesignSystem.Colors.highlight.opacity(0.35 + 0.65 * intensity),
                             length: baseLength + 10 * intensity,
                             lineWidth: 1.8 + 2.0 * intensity
                         )
+                    }
+                }
+
+                if session.isCelebrating {
+                    switch celebrationAnimation {
+                    case .clockWave:
+                        for mark in marks {
+                            let distanceBehindWave = session.celebrationProgress - clockwiseProgress(for: mark)
+                            guard distanceBehindWave >= 0, distanceBehindWave <= 0.2 else { continue }
+                            let intensity = 1 - distanceBehindWave / 0.2
+                            let baseLength: CGFloat = mark.segmentKind == .work ? 16 : 5
+                            draw(
+                                mark,
+                                color: DesignSystem.Colors.highlight.opacity(0.4 + 0.6 * intensity),
+                                length: baseLength + 14 * intensity,
+                                lineWidth: 2.0 + 2.2 * intensity
+                            )
+                        }
+                    case .dancingLines:
+                        for mark in marks {
+                            let phase = session.celebrationProgress * Double.pi * 8 + Double(mark.id) * 0.55
+                            let intensity = (sin(phase) + 1) / 2
+                            let baseLength: CGFloat = mark.segmentKind == .work ? 16 : 5
+                            draw(
+                                mark,
+                                color: DesignSystem.Colors.highlight.opacity(0.35 + 0.65 * intensity),
+                                length: baseLength + 12 * intensity,
+                                lineWidth: 1.6 + 2.2 * intensity
+                            )
+                        }
                     }
                 }
             }
@@ -190,7 +296,7 @@ struct SetTimerClockView: View {
                             .contentTransition(.numericText())
                     } else {
                         if clockDisplayMode == .intervalTimeOverReps {
-                            Text(SetTimerTitleFormatter.clockDuration(session.currentIntervalDisplaySeconds))
+                            Text(SetTimerTitleFormatter.clockDuration(intervalDisplaySeconds))
                                 .font(DesignSystem.Typography.headlineLarge())
                                 .monospacedDigit()
                                 .foregroundStyle(shouldEmphasizeFinalIntervalTick ? DesignSystem.Colors.index : DesignSystem.Colors.headlineColor)
@@ -282,7 +388,7 @@ struct SetTimerTransportControls: View {
             controlButton(
                 systemName: isSoundEnabled ? DesignSystem.Icon.sound : DesignSystem.Icon.soundOff,
                 label: isSoundEnabled ? "Turn sounds off" : "Turn sounds on",
-                foregroundColor: isSoundEnabled ? DesignSystem.Colors.accent : DesignSystem.Colors.textTertiary,
+                foregroundColor: isSoundEnabled ? DesignSystem.Colors.textPrimary : DesignSystem.Colors.textTertiary,
                 action: onToggleSound
             )
             controlButton(systemName: DesignSystem.Icon.back, label: "Previous interval", isEnabled: canSkipBackward, action: onBack)

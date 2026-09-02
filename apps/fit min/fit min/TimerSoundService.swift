@@ -9,6 +9,7 @@ final class TimerSoundService {
     private var boopPlayer: AVAudioPlayer?
     private let backgroundPlayer: AVAudioPlayer?
     private var loadedTone: TimerSoundTone?
+    private var celebrationPlayers: [AVAudioPlayer] = []
     private var tickCount = 0
 
     private init() {
@@ -65,14 +66,35 @@ final class TimerSoundService {
 
     func playCompletion() {
         guard Self.soundsEnabled else { return }
-        Task { [weak self] in
-            for index in 0..<3 {
+        Self.configureAudioSession()
+        let notes = Self.selectedCelebrationSound.notes
+        let volume = Self.selectedVolume.multiplier
+        Task { [weak self, notes] in
+            await MainActor.run {
+                self?.celebrationPlayers.removeAll()
+            }
+
+            for note in notes {
                 await MainActor.run {
-                    self?.play(.tick)
+                    guard let self,
+                          let player = Self.makePlayer(
+                            frequency: note.frequency,
+                            duration: note.duration,
+                            waveform: note.waveform
+                          ) else { return }
+                    player.volume = volume
+                    self.celebrationPlayers.append(player)
+                    player.play()
                 }
-                if index < 2 {
-                    try? await Task.sleep(nanoseconds: 110_000_000)
+                let delay = note.duration + note.delayAfter
+                if delay > 0 {
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
+            }
+
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await MainActor.run {
+                self?.celebrationPlayers.removeAll()
             }
         }
     }
@@ -90,6 +112,11 @@ final class TimerSoundService {
     private static var selectedTone: TimerSoundTone {
         let rawValue = UserDefaults.standard.string(forKey: TimerSoundSettingsKey.tone) ?? TimerSoundTone.balanced.rawValue
         return TimerSoundTone(rawValue: rawValue) ?? .balanced
+    }
+
+    private static var selectedCelebrationSound: TimerCelebrationSound {
+        let rawValue = UserDefaults.standard.string(forKey: TimerSoundSettingsKey.celebrationSound) ?? TimerCelebrationSound.threeBeeps.rawValue
+        return TimerCelebrationSound(rawValue: rawValue) ?? .threeBeeps
     }
 
     private func reloadPlayersIfNeeded() {

@@ -390,6 +390,20 @@ enum TimerSoundCue: Equatable {
 }
 
 enum TimerSoundCueResolver {
+    static func cue(forActiveMarkID activeMarkID: Int, segments: [IntervalSegment]) -> TimerSoundCue? {
+        guard activeMarkID >= 0 else { return nil }
+        var boundary = 0
+        for segment in segments {
+            let nextBoundary = boundary + segment.durationSeconds
+            if activeMarkID < nextBoundary {
+                let remainingIncludingCurrent = nextBoundary - activeMarkID
+                return remainingIncludingCurrent <= 4 ? .boop : .tick
+            }
+            boundary = nextBoundary
+        }
+        return nil
+    }
+
     static func cue(forCompletedElapsedSecond elapsedSecond: Int, segments: [IntervalSegment]) -> TimerSoundCue? {
         guard elapsedSecond > 0 else { return nil }
         let completedSecond = elapsedSecond - 1

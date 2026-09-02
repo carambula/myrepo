@@ -195,16 +195,16 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
                         }
                         .disabled(!isSkipForwardEnabled)
 
-                        if hasQueuedEpisodes, let onPlayNextInQueue {
+                        if let onPlayNextInQueue {
                             Button(action: onPlayNextInQueue) {
                                 Image(systemName: "forward.end.fill")
                                     .font(.system(size: 24))
-                                    .foregroundColor(isPlayNextInQueueEnabled
+                                    .foregroundColor(hasQueuedEpisodes && isPlayNextInQueueEnabled
                                         ? DesignSystem.Colors.textPrimary
                                         : DesignSystem.Colors.textTertiary)
                             }
                             .accessibilityLabel("Play next in queue")
-                            .disabled(!isPlayNextInQueueEnabled)
+                            .disabled(!hasQueuedEpisodes || !isPlayNextInQueueEnabled)
                         }
                     }
 

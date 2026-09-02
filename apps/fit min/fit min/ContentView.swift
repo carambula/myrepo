@@ -425,18 +425,18 @@ struct SetTimerClockAssetView: View {
                     draw(
                         mark,
                         color: isComplete ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.accent,
-                        length: mark.segmentKind == .work ? 8 : 4,
+                        length: mark.segmentKind == .work ? 8 : 2.5,
                         lineWidth: mark.segmentKind == .work ? 1.4 : 1
                     )
                 }
 
                 if let zeroMark = marks.first {
-                    draw(zeroMark, color: DesignSystem.Colors.headlineColor, length: 12, lineWidth: 2.2)
+                    draw(zeroMark, color: DesignSystem.Colors.headlineColor, length: 18, lineWidth: 2.6)
                 }
 
                 if let currentMarkID,
                    let currentMark = marks.first(where: { $0.id == currentMarkID }) {
-                    draw(currentMark, color: DesignSystem.Colors.index, length: 12, lineWidth: 2.2)
+                    draw(currentMark, color: DesignSystem.Colors.index, length: 18, lineWidth: 2.6)
                 }
 
                 if liveSession?.isReadyCountdownActive == true {
@@ -447,7 +447,7 @@ struct SetTimerClockAssetView: View {
                         draw(
                             mark,
                             color: DesignSystem.Colors.highlight.opacity(0.35 + 0.65 * intensity),
-                            length: (mark.segmentKind == .work ? 8 : 4) + 6 * intensity,
+                            length: (mark.segmentKind == .work ? 8 : 2.5) + 6 * intensity,
                             lineWidth: 1.4 + 1.4 * intensity
                         )
                     }

@@ -9,11 +9,14 @@ final class SetTimerSessionController {
     private(set) var isPlaying: Bool
     private(set) var readyCountdownRemaining: Int?
     private(set) var readyCountdownWindProgress: Double = 0
+    private(set) var isCelebrating = false
+    private(set) var celebrationProgress: Double = 0
     var showsCompletedReps = false
     var onComplete: (() -> Void)?
 
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var resetTask: Task<Void, Never>?
+    @ObservationIgnored private var celebrationTask: Task<Void, Never>?
     @ObservationIgnored private let soundService = TimerSoundService.shared
     @ObservationIgnored private var didNotifyCompletion = false
     @ObservationIgnored private var playbackStartDate: Date?
@@ -34,6 +37,7 @@ final class SetTimerSessionController {
     deinit {
         timer?.invalidate()
         resetTask?.cancel()
+        celebrationTask?.cancel()
         soundService.endTimerPlayback()
     }
 
@@ -89,7 +93,8 @@ final class SetTimerSessionController {
     }
 
     var isInFinalIntervalCueWindow: Bool {
-        TimerSoundCueResolver.cue(forCompletedElapsedSecond: elapsedSeconds, segments: segments) == .boop
+        guard let currentMarkID else { return false }
+        return TimerSoundCueResolver.cue(forActiveMarkID: currentMarkID, segments: segments) == .boop
     }
 
     var completedReps: Int {
@@ -124,13 +129,14 @@ final class SetTimerSessionController {
 
     private func beginPlayback(playsStartCue: Bool = true) {
         clearReadyCountdown()
+        clearCelebration()
         isPlaying = true
         playbackStartDate = Date()
         playbackStartElapsedSeconds = elapsedSeconds
         lastSoundElapsedSecond = elapsedSeconds
         soundService.beginTimerPlayback()
         if playsStartCue {
-            soundService.play(.tick)
+            playCurrentTickCue()
         }
         scheduleTimer()
     }
@@ -139,6 +145,7 @@ final class SetTimerSessionController {
         syncElapsedWithClock(playsSound: false)
         isPlaying = false
         clearReadyCountdown()
+        clearCelebration()
         playbackStartDate = nil
         timer?.invalidate()
         timer = nil
@@ -160,7 +167,14 @@ final class SetTimerSessionController {
     func skipForward() {
         resetTask?.cancel()
         clearReadyCountdown()
-        let nextIndex = min(currentSegmentIndex + 1, max(segments.count - 1, 0))
+        guard currentSegmentIndex < segments.count - 1 else {
+            didNotifyCompletion = false
+            elapsedSeconds = totalSeconds
+            completeSet()
+            return
+        }
+
+        let nextIndex = currentSegmentIndex + 1
         elapsedSeconds = startSecond(forSegmentAt: nextIndex)
         preservePlaybackCadenceAfterManualElapsedChange()
         didNotifyCompletion = false
@@ -211,23 +225,13 @@ final class SetTimerSessionController {
         elapsedSeconds = clockElapsedSeconds
         if playsSound,
            elapsedSeconds > lastSoundElapsedSecond,
-           let cue = TimerSoundCueResolver.cue(forCompletedElapsedSecond: elapsedSeconds, segments: segments) {
-            soundService.play(cue)
+           elapsedSeconds < totalSeconds {
+            playCurrentTickCue()
         }
         lastSoundElapsedSecond = max(lastSoundElapsedSecond, elapsedSeconds)
 
         if isComplete {
-            isPlaying = false
-            self.playbackStartDate = nil
-            timer?.invalidate()
-            timer = nil
-            soundService.playCompletion()
-            Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 450_000_000)
-                self?.soundService.endTimerPlayback()
-            }
-            notifyCompletionIfNeeded()
-            scheduleResetAfterCompletion()
+            completeSet()
         }
     }
 
@@ -303,24 +307,74 @@ final class SetTimerSessionController {
         readyCountdownLastSecond = 0
     }
 
+    private func playCurrentTickCue() {
+        guard let currentMarkID,
+              let cue = TimerSoundCueResolver.cue(forActiveMarkID: currentMarkID, segments: segments) else { return }
+        soundService.play(cue)
+    }
+
     private func notifyCompletionIfNeeded() {
         guard !didNotifyCompletion else { return }
         didNotifyCompletion = true
         onComplete?()
     }
 
+    private func completeSet() {
+        isPlaying = false
+        playbackStartDate = nil
+        timer?.invalidate()
+        timer = nil
+        soundService.playCompletion()
+        startCelebrationAnimation()
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_250_000_000)
+            self?.soundService.endTimerPlayback()
+        }
+        notifyCompletionIfNeeded()
+        scheduleResetAfterCompletion()
+    }
+
     private func scheduleResetAfterCompletion() {
         resetTask?.cancel()
         resetTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            try? await Task.sleep(nanoseconds: 1_250_000_000)
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self, self.isComplete, !self.isPlaying else { return }
                 self.elapsedSeconds = 0
                 self.lastSoundElapsedSecond = 0
                 self.didNotifyCompletion = false
+                self.clearCelebration()
             }
         }
+    }
+
+    private func startCelebrationAnimation() {
+        celebrationTask?.cancel()
+        isCelebrating = true
+        celebrationProgress = 0
+        celebrationTask = Task { [weak self] in
+            let duration: Double = 1.1
+            let start = Date()
+            while !Task.isCancelled {
+                let progress = min(1, Date().timeIntervalSince(start) / duration)
+                await MainActor.run {
+                    self?.celebrationProgress = progress
+                }
+                if progress >= 1 { break }
+                try? await Task.sleep(nanoseconds: 16_000_000)
+            }
+            await MainActor.run {
+                self?.isCelebrating = false
+            }
+        }
+    }
+
+    private func clearCelebration() {
+        celebrationTask?.cancel()
+        celebrationTask = nil
+        isCelebrating = false
+        celebrationProgress = 0
     }
 
     private func startSecond(forSegmentAt index: Int) -> Int {

@@ -164,7 +164,7 @@ struct ContentView: View {
             autoQueueRefreshTask?.cancel()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background {
+            if phase == .inactive || phase == .background {
                 autoQueueRefreshTask?.cancel()
                 playbackService.saveResumeSessionNow()
             } else if phase == .active {

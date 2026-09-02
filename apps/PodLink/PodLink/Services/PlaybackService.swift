@@ -19,6 +19,12 @@ class PlaybackService {
 
     /// Must match `@AppStorage("playbackSpeed")` in `PlaybackSettingsView`.
     private static let playbackSpeedUserDefaultsKey = "playbackSpeed"
+    /// Must match `@AppStorage("skipForwardInterval")` in `PlaybackSettingsView`.
+    private static let skipForwardIntervalUserDefaultsKey = "skipForwardInterval"
+    /// Must match `@AppStorage("skipBackwardInterval")` in `PlaybackSettingsView`.
+    private static let skipBackwardIntervalUserDefaultsKey = "skipBackwardInterval"
+    /// Must match `@AppStorage("autoPlayNext")` in `PlaybackSettingsView`.
+    private static let autoPlayNextUserDefaultsKey = "autoPlayNext"
 
     /// Persisted so cold launch can show the mini player with the last episode and scrub position.
     private static let lastResumeSessionDefaultsKey = "lastPlaybackResumeSessionV1"
@@ -26,6 +32,13 @@ class PlaybackService {
     private struct LastResumeSessionArchive: Codable {
         var episode: Episode
         var podcast: Podcast
+    }
+
+    private struct CurrentPlaybackSnapshot {
+        var episode: Episode
+        var podcast: Podcast?
+        var position: TimeInterval
+        var duration: TimeInterval
     }
 
     let state = PlaybackState()
@@ -79,6 +92,9 @@ class PlaybackService {
     private var nowPlayingArtworkTask: Task<Void, Never>?
     /// Dedupes lock-screen artwork fetches across frequent `updateNowPlayingInfo` calls (seeks, time observer).
     private var lastNowPlayingArtworkKey: String?
+    /// Last position that was checkpointed from the 1-second time observer. This is intentionally lighter
+    /// than the 10-second full progress save, so force-quit/interruption paths do not lose the resume point.
+    private var lastPositionCheckpoint: TimeInterval = 0
     private var endPlaybackObserver: NSObjectProtocol?
     private var audioInterruptionObserver: NSObjectProtocol?
     private var timeControlStatusObservation: NSKeyValueObservation?
@@ -88,6 +104,7 @@ class PlaybackService {
     init() {
         state.playbackRate = Self.preferredPlaybackRateFromDefaults()
         observeAudioSessionInterruptions()
+        configureRemoteCommands()
     }
 
     deinit {
@@ -121,11 +138,15 @@ class PlaybackService {
 
         nowPlayingArtworkTask?.cancel()
         lastNowPlayingArtworkKey = nil
+        let resolvedStartTime = max(0, startAt ?? merged.playbackPosition)
+        merged.playbackPosition = resolvedStartTime
+        lastPositionCheckpoint = resolvedStartTime
+
         state.currentEpisode = merged
         state.currentPodcast = podcast
         applyPreferredVideoMode(for: merged)
         state.isPlaying = true
-        state.currentTime = startAt ?? merged.playbackPosition
+        state.currentTime = resolvedStartTime
         state.duration = merged.duration
         state.isBuffering = true
 
@@ -162,7 +183,7 @@ class PlaybackService {
         if player?.currentItem == nil {
             let episode = state.currentEpisode!
             let podcast = state.currentPodcast
-            let startAt = state.currentTime
+            let startAt = state.currentTime > 0 ? state.currentTime : episode.playbackPosition
             Task(priority: .userInitiated) { await play(episode: episode, podcast: podcast, startAt: startAt) }
             return
         }
@@ -186,8 +207,10 @@ class PlaybackService {
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         if let player {
             player.seek(to: cmTime) { [weak self] _ in
-                self?.state.currentTime = time
-                self?.updateNowPlayingInfo()
+                guard let self else { return }
+                self.state.currentTime = time
+                self.updateNowPlayingInfo()
+                self.persistPlaybackProgressSoon()
             }
         } else {
             state.currentTime = time
@@ -198,13 +221,15 @@ class PlaybackService {
         }
     }
 
-    func skipForward(seconds: TimeInterval = 30) {
-        let newTime = min(state.currentTime + seconds, state.duration)
+    func skipForward(seconds: TimeInterval? = nil) {
+        let interval = seconds ?? Self.skipForwardIntervalFromDefaults()
+        let newTime = min(state.currentTime + interval, state.duration)
         seek(to: newTime)
     }
 
-    func skipBackward(seconds: TimeInterval = 15) {
-        let newTime = max(state.currentTime - seconds, 0)
+    func skipBackward(seconds: TimeInterval? = nil) {
+        let interval = seconds ?? Self.skipBackwardIntervalFromDefaults()
+        let newTime = max(state.currentTime - interval, 0)
         seek(to: newTime)
     }
 
@@ -236,6 +261,24 @@ class PlaybackService {
 
     private static func persistPlaybackSpeed(_ rate: Float) {
         UserDefaults.standard.set(Double(rate), forKey: playbackSpeedUserDefaultsKey)
+    }
+
+    private static func skipForwardIntervalFromDefaults() -> TimeInterval {
+        let value = UserDefaults.standard.object(forKey: skipForwardIntervalUserDefaultsKey) as? Int ?? 30
+        return TimeInterval(max(1, value))
+    }
+
+    private static func skipBackwardIntervalFromDefaults() -> TimeInterval {
+        let value = UserDefaults.standard.object(forKey: skipBackwardIntervalUserDefaultsKey) as? Int ?? 15
+        return TimeInterval(max(1, value))
+    }
+
+    private static func autoPlayNextFromDefaults() -> Bool {
+        UserDefaults.standard.object(forKey: autoPlayNextUserDefaultsKey) as? Bool ?? true
+    }
+
+    func refreshRemoteCommandSettings() {
+        configureRemoteCommands()
     }
 
     /// Synchronous audio-session work. MUST run on `audioSessionQueue`, never the main thread:
@@ -287,6 +330,7 @@ class PlaybackService {
         nowPlayingArtworkTask?.cancel()
         nowPlayingArtworkTask = nil
         lastNowPlayingArtworkKey = nil
+        lastPositionCheckpoint = 0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         UserDefaults.standard.removeObject(forKey: Self.lastResumeSessionDefaultsKey)
     }
@@ -296,7 +340,7 @@ class PlaybackService {
     /// Call from the main thread (e.g. `scenePhase` → background) so the snapshot is flushed before suspension.
     func saveResumeSessionNow() {
         assert(Thread.isMainThread)
-        persistResumeSessionArchiveFromCurrentState()
+        persistCurrentPlaybackSnapshotNow()
     }
 
     /// Restores `state` without loading `AVPlayer` so the mini player shows correct artwork, title, and progress; playback starts on play.
@@ -322,9 +366,16 @@ class PlaybackService {
         // Re-check after the suspension: playback may have started while we were decoding.
         guard state.currentEpisode == nil else { return }
 
+        let restoredPosition = Self.restoredResumePosition(
+            mergedEpisode: mergedEpisode,
+            archiveEpisode: archiveEpisode
+        )
+        var restoredEpisode = mergedEpisode
+        restoredEpisode.playbackPosition = restoredPosition
+
         state.currentPodcast = resolvedPodcast
-        state.currentEpisode = mergedEpisode
-        state.currentTime = mergedEpisode.playbackPosition
+        state.currentEpisode = restoredEpisode
+        state.currentTime = restoredPosition
         state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archiveEpisode.duration
         state.isPlaying = false
         state.isBuffering = false
@@ -360,7 +411,12 @@ class PlaybackService {
             }
 
             guard let fresh = fetched.first(where: { $0.id == archive.episode.id }) else { return }
-            let mergedEpisode = EpisodePlaybackStore.merge(fresh)
+            var mergedEpisode = EpisodePlaybackStore.merge(fresh)
+            let restoredPosition = Self.restoredResumePosition(
+                mergedEpisode: mergedEpisode,
+                archiveEpisode: archive.episode
+            )
+            mergedEpisode.playbackPosition = restoredPosition
 
             await MainActor.run {
                 guard self.player?.currentItem == nil,
@@ -372,11 +428,19 @@ class PlaybackService {
 
                 self.state.currentPodcast = resolvedPodcast
                 self.state.currentEpisode = mergedEpisode
-                self.state.currentTime = mergedEpisode.playbackPosition
+                self.state.currentTime = restoredPosition
                 self.state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archive.episode.duration
                 self.applyPreferredVideoMode(for: mergedEpisode)
             }
         }
+    }
+
+    private static func restoredResumePosition(mergedEpisode: Episode, archiveEpisode: Episode) -> TimeInterval {
+        let archived = max(0, archiveEpisode.playbackPosition)
+        let stored = max(0, mergedEpisode.playbackPosition)
+        if archived == 0 { return stored }
+        if stored == 0 { return archived }
+        return max(archived, stored)
     }
 
     private func podcastForResumeArchive(episode: Episode) -> Podcast {
@@ -392,14 +456,70 @@ class PlaybackService {
         return Podcast(title: "", author: "", feedURL: feed)
     }
 
+    private func currentPlaybackSnapshot() -> CurrentPlaybackSnapshot? {
+        guard var episode = state.currentEpisode else {
+            return nil
+        }
+
+        let position = max(0, state.currentTime)
+        let policy = PlaybackProgressPolicy.current
+        let duration = policy.effectiveDuration(feedDuration: episode.duration, observedDuration: state.duration)
+
+        episode.playbackPosition = position
+        if duration > 0, policy.isFinished(playbackPosition: position, duration: duration) {
+            episode.isPlayed = true
+        }
+
+        return CurrentPlaybackSnapshot(
+            episode: episode,
+            podcast: state.currentPodcast,
+            position: position,
+            duration: duration
+        )
+    }
+
     private func persistResumeSessionArchiveFromCurrentState() {
-        guard let episode = state.currentEpisode else {
+        guard let snapshot = currentPlaybackSnapshot() else {
             UserDefaults.standard.removeObject(forKey: Self.lastResumeSessionDefaultsKey)
             return
         }
-        let archive = LastResumeSessionArchive(episode: episode, podcast: podcastForResumeArchive(episode: episode))
+        persistResumeSessionArchive(snapshot: snapshot)
+    }
+
+    private func persistResumeSessionArchive(snapshot: CurrentPlaybackSnapshot) {
+        let archive = LastResumeSessionArchive(
+            episode: snapshot.episode,
+            podcast: snapshot.podcast ?? podcastForResumeArchive(episode: snapshot.episode)
+        )
         guard let data = try? JSONEncoder().encode(archive) else { return }
         UserDefaults.standard.set(data, forKey: Self.lastResumeSessionDefaultsKey)
+    }
+
+    private func persistCurrentPlaybackSnapshotNow() {
+        guard let snapshot = currentPlaybackSnapshot() else {
+            UserDefaults.standard.removeObject(forKey: Self.lastResumeSessionDefaultsKey)
+            return
+        }
+        persistPlaybackProgress(snapshot: snapshot)
+        persistResumeSessionArchive(snapshot: snapshot)
+    }
+
+    private func persistCurrentPositionCheckpointIfNeeded(position: TimeInterval) {
+        guard position > 0,
+              abs(position - lastPositionCheckpoint) >= 5,
+              let snapshot = currentPlaybackSnapshot() else { return }
+
+        lastPositionCheckpoint = position
+        EpisodePlaybackStore.persistPosition(snapshot.position, episodeID: snapshot.episode.id, notify: false)
+        EpisodePlaybackStore.recordLastPlayedEpisode(episodeID: snapshot.episode.id, podcastID: snapshot.episode.podcastID)
+        persistResumeSessionArchive(snapshot: snapshot)
+    }
+
+    private func persistPlaybackProgressSoon() {
+        saveResumeSessionNowIfOnMainActor()
+        Task {
+            await persistPlaybackProgress()
+        }
     }
 
     private func saveResumeSessionNowIfOnMainActor() {
@@ -566,6 +686,7 @@ class PlaybackService {
             let current = max(0, time.seconds)
             if abs(self.state.currentTime - current) >= 0.15 {
                 self.state.currentTime = current
+                self.persistCurrentPositionCheckpointIfNeeded(position: current)
             }
             if let duration = self.player?.currentItem?.duration.seconds, duration.isFinite,
                abs(self.state.duration - duration) >= 0.25 {
@@ -690,6 +811,7 @@ class PlaybackService {
             player?.pause()
             state.isPlaying = false
             updateNowPlayingInfo()
+            persistPlaybackProgressSoon()
         case .ended:
             let optionsRaw = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsRaw)
@@ -725,7 +847,7 @@ class PlaybackService {
     @MainActor
     private func handlePlaybackDidFinish() async {
         await markCurrentEpisodeFinished()
-        guard !state.queue.isEmpty else {
+        guard Self.autoPlayNextFromDefaults(), !state.queue.isEmpty else {
             state.isPlaying = false
             updateNowPlayingInfo()
             return
@@ -755,9 +877,13 @@ class PlaybackService {
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         info[MPMediaItemPropertyTitle] = episode.title
         info[MPMediaItemPropertyArtist] = state.currentPodcast?.title ?? podcastForArtwork(episode: episode)?.title ?? ""
+        info[MPMediaItemPropertyMediaType] = MPMediaType.podcast.rawValue
         info[MPMediaItemPropertyPlaybackDuration] = state.duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = state.currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = state.isPlaying ? state.playbackRate : 0.0
+        info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = state.playbackRate
+        info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
+        info[MPNowPlayingInfoPropertyExternalContentIdentifier] = episode.id
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 
@@ -827,7 +953,14 @@ class PlaybackService {
 
         center.playCommand.removeTarget(nil)
         center.playCommand.addTarget { [weak self] _ in
-            self?.resume()
+            guard let self else { return .commandFailed }
+            if self.state.currentEpisode != nil {
+                self.resume()
+            } else {
+                Task(priority: .userInitiated) {
+                    try? await PodLinkIntentPlayback.resumePlayback()
+                }
+            }
             return .success
         }
 
@@ -844,16 +977,54 @@ class PlaybackService {
         }
 
         center.skipForwardCommand.removeTarget(nil)
-        center.skipForwardCommand.preferredIntervals = [30]
-        center.skipForwardCommand.addTarget { [weak self] _ in
-            self?.skipForward()
+        let skipForwardInterval = Self.skipForwardIntervalFromDefaults()
+        let skipBackwardInterval = Self.skipBackwardIntervalFromDefaults()
+        center.skipForwardCommand.preferredIntervals = [NSNumber(value: skipForwardInterval)]
+        center.skipForwardCommand.addTarget { [weak self] event in
+            guard let self else { return .commandFailed }
+            let seconds = (event as? MPSkipIntervalCommandEvent)?.interval
+            self.skipForward(seconds: seconds)
             return .success
         }
 
         center.skipBackwardCommand.removeTarget(nil)
-        center.skipBackwardCommand.preferredIntervals = [15]
-        center.skipBackwardCommand.addTarget { [weak self] _ in
-            self?.skipBackward()
+        center.skipBackwardCommand.preferredIntervals = [NSNumber(value: skipBackwardInterval)]
+        center.skipBackwardCommand.addTarget { [weak self] event in
+            guard let self else { return .commandFailed }
+            let seconds = (event as? MPSkipIntervalCommandEvent)?.interval
+            self.skipBackward(seconds: seconds)
+            return .success
+        }
+
+        center.nextTrackCommand.removeTarget(nil)
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            Task(priority: .userInitiated) {
+                if !self.state.queue.isEmpty {
+                    await self.playNextInQueue()
+                } else {
+                    try? await PodLinkIntentPlayback.playNextPodcast()
+                }
+            }
+            return .success
+        }
+
+        center.previousTrackCommand.removeTarget(nil)
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            guard self.state.currentEpisode != nil else { return .noActionableNowPlayingItem }
+            self.skipBackward()
+            return .success
+        }
+
+        center.changePlaybackRateCommand.removeTarget(nil)
+        center.changePlaybackRateCommand.supportedPlaybackRates = [
+            0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0
+        ]
+        center.changePlaybackRateCommand.addTarget { [weak self] event in
+            guard let self,
+                  let event = event as? MPChangePlaybackRateCommandEvent else { return .commandFailed }
+            self.setRate(event.playbackRate)
             return .success
         }
 
@@ -878,10 +1049,16 @@ class PlaybackService {
     }
 
     private func persistPlaybackProgress() async {
-        guard var episode = state.currentEpisode else { return }
+        guard let snapshot = currentPlaybackSnapshot() else { return }
+        persistPlaybackProgress(snapshot: snapshot)
+        await MainActor.run { persistResumeSessionArchive(snapshot: snapshot) }
+    }
+
+    private func persistPlaybackProgress(snapshot: CurrentPlaybackSnapshot) {
+        var episode = snapshot.episode
         let policy = PlaybackProgressPolicy.current
-        let dur = policy.effectiveDuration(feedDuration: episode.duration, observedDuration: state.duration)
-        let position = state.currentTime
+        let dur = snapshot.duration
+        let position = snapshot.position
         if dur > 0 {
             EpisodePlaybackStore.recordLastPlayedEpisode(episodeID: episode.id, podcastID: episode.podcastID)
             EpisodePlaybackStore.saveProgress(
@@ -899,12 +1076,12 @@ class PlaybackService {
             EpisodePlaybackStore.persistPosition(position, episodeID: episode.id, notify: true)
             recordListeningHistory(episode: episode, position: position, duration: episode.duration)
         } else {
-            await MainActor.run { persistResumeSessionArchiveFromCurrentState() }
             return
         }
         episode.playbackPosition = position
-        state.currentEpisode = episode
-        await MainActor.run { persistResumeSessionArchiveFromCurrentState() }
+        if state.currentEpisode?.id == episode.id {
+            state.currentEpisode = episode
+        }
     }
 
     private func markCurrentEpisodeFinished() async {

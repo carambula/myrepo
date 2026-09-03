@@ -41,9 +41,9 @@ export const spacing = {
   
   // SVG logo/asset positioning (top of home screen)
   logo: {
-    marginTop: '32px',
+    marginTop: '16px',
     marginBottom: '24px',
-    marginTopMobile: '24px',
+    marginTopMobile: '16px',
     marginBottomMobile: '16px',
   },
 
@@ -58,7 +58,7 @@ export const spacing = {
   titleType: {
     horizontalPadding: '24px',
     markOffsetY: '0',
-    scrollTopPadding: '32px',
+    scrollTopPadding: '16px',
     contentTopSpacing: '24px',
     maxWidth: '220px',
     maxHeight: '38px',

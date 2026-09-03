@@ -64,8 +64,10 @@ public enum MinSpacing {
         public static let horizontalPadding: CGFloat = screenHorizontalPadding
         public static let markOffsetY: CGFloat = 0
         /// Space above the wordmark inside the scroll view (`logo.marginTop`).
-        /// Pair with overlay top chrome, not `safeAreaInset(edge: .top)`, or the mark sits too low.
-        public static let scrollTopPadding: CGFloat = xxl
+        /// `lg` optically centers the 38pt mark in the 56pt overlay button row
+        /// (8pt `TopControls.verticalPadding` + 9pt leftover). Pair with overlay
+        /// chrome, not `safeAreaInset(edge: .top)`, or the mark sits too low.
+        public static let scrollTopPadding: CGFloat = lg
         /// Space between the wordmark and the first content row.
         public static let contentTopSpacing: CGFloat = xl
         public static let maxWidth: CGFloat = 220

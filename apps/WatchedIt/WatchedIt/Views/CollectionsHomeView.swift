@@ -305,6 +305,9 @@ private struct CollectionsHomeContentView: View {
     }
 
     private func handleMainPagePullToRefresh() async {
+        if let context = localDB.modelContext {
+            _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: context, force: true)
+        }
         _ = await localDB.forcePodcastEpisodeIntake(reason: "collections-home-pull-to-refresh")
         rebuildSnapshot()
     }

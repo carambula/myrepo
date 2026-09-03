@@ -567,6 +567,11 @@ struct MovieListView: View {
         movieToSourcesCache = buildMovieSourceCacheSnapshot()
         hasBuiltSourceCache = true
     }
+
+    private func invalidateSourceCache() {
+        hasBuiltSourceCache = false
+        movieToSourcesCache = [:]
+    }
     
     /// Builds a cache snapshot without mutating view state.
     private func buildMovieSourceCacheSnapshot() -> [String: Set<String>] {
@@ -966,15 +971,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             movies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             movies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1148,15 +1153,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             sortedMovies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             sortedMovies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1402,15 +1407,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             filtered = filtered.sorted { m1, m2 in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             filtered = filtered.sorted { m1, m2 in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1755,8 +1760,8 @@ struct MovieListView: View {
 
         if source.type == "podcast" {
             return movies.sorted { lhs, rhs in
-                let leftDate = podcastDateMap[lhs.id] ?? Date.distantPast
-                let rightDate = podcastDateMap[rhs.id] ?? Date.distantPast
+                let leftDate = podcastDateMap[lhs.id] ?? lhs.episodeSortDate
+                let rightDate = podcastDateMap[rhs.id] ?? rhs.episodeSortDate
                 if leftDate != rightDate {
                     return leftDate > rightDate
                 }
@@ -2237,6 +2242,8 @@ struct MovieListView: View {
     }
 
     private func handleMainPagePullToRefresh() async {
+        _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext, force: true)
+        invalidateSourceCache()
         await localDB.forcePodcastEpisodeIntake(reason: "main-page-pull-to-refresh")
     }
 
@@ -4084,6 +4091,7 @@ struct MovieListView: View {
                 // Defer to avoid modifying state during view update
                 Task { @MainActor in
                     await Task.yield()
+                    invalidateSourceCache()
                     // If cache is empty and we just loaded movies, populate cache immediately
                     if cachedFilteredMovies.isEmpty && newCount > 0 {
                         cachedFilteredMovies = localDB.movies
@@ -4213,6 +4221,7 @@ struct MovieListView: View {
                 .onChange(of: localDB.movieStatusVersion) { _, _ in
                     // Avoid expensive full-array equality checks during typing; this scalar
                     // signal tracks status mutations and keeps search responsive.
+                    invalidateSourceCache()
                     filterVersion += 1
                     // Don't reset pagination on status updates - just invalidate cache
                     let hasSearchText = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

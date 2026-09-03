@@ -268,8 +268,8 @@ final class CatalogSnapshotService {
         } else if source.type == "podcast" {
             let dates = latestPodcastDateBySourceIdentifier[source.identifier] ?? [:]
             sectionMovies.sort { lhs, rhs in
-                let leftDate = dates[lhs.id] ?? Date.distantPast
-                let rightDate = dates[rhs.id] ?? Date.distantPast
+                let leftDate = dates[lhs.id] ?? lhs.episodeSortDate
+                let rightDate = dates[rhs.id] ?? rhs.episodeSortDate
                 if leftDate != rightDate { return leftDate > rightDate }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
@@ -293,14 +293,15 @@ final class CatalogSnapshotService {
     ) -> [Movie] {
         let ordered = movies
             .filter { movie in
-                guard latestPodcastDateByMovieIdentifier[movie.id] != nil else { return false }
+                guard let sourceIdentifiers = movieToSourceIdentifiers[movie.id], !sourceIdentifiers.isEmpty else {
+                    return false
+                }
                 guard !preferredSourceIdentifiers.isEmpty else { return true }
-                guard let sourceIdentifiers = movieToSourceIdentifiers[movie.id] else { return false }
                 return !preferredSourceIdentifiers.intersection(sourceIdentifiers).isEmpty
             }
             .sorted { lhs, rhs in
-                let leftDate = latestPodcastDateByMovieIdentifier[lhs.id] ?? Date.distantPast
-                let rightDate = latestPodcastDateByMovieIdentifier[rhs.id] ?? Date.distantPast
+                let leftDate = latestPodcastDateByMovieIdentifier[lhs.id] ?? lhs.episodeSortDate
+                let rightDate = latestPodcastDateByMovieIdentifier[rhs.id] ?? rhs.episodeSortDate
                 if leftDate != rightDate { return leftDate > rightDate }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }

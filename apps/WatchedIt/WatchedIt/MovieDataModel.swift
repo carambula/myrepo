@@ -377,6 +377,13 @@ final class MovieData {
         if podcastEpisode == nil {
             if let podcastContent = sourceContents?.first(where: { $0.source?.type == "podcast" && $0.podcastEpisode != nil }) {
                 podcastEpisode = podcastContent.podcastEpisode
+            } else if let datedContent = sourceContents?.first(where: { $0.source?.type == "podcast" && $0.sourceDate != nil }) {
+                podcastEpisode = PodcastEpisode(
+                    title: datedContent.sourceTitle ?? cleanedTitle,
+                    episodeId: "\(datedContent.source?.identifier ?? "source")|\(id)",
+                    publishDate: datedContent.sourceDate,
+                    description: datedContent.sourceDescription
+                )
             } else if let podcastDataSource = dataSources?.first(where: { $0.dataSource?.type == "podcast" && $0.podcastEpisode != nil }) {
                 podcastEpisode = podcastDataSource.podcastEpisode
             }

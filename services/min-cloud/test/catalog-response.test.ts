@@ -5,6 +5,7 @@ import {
   catalogMovieStats,
   catalogPageMeta,
   formatCatalogRefreshMessage,
+  mapCatalogSourceLink,
   shouldFetchNextCatalogPage,
   shouldSkipIncrementalCatalogSync
 } from "../src/lib/catalog-response.ts";
@@ -113,6 +114,25 @@ describe("catalog response helpers", () => {
         fetched: 400
       }),
       "No new titles. Catalog 1865 titles, revision 184. Incomplete catalog: received 400 of 1865 titles."
+    );
+  });
+
+  it("keeps episode dates on catalog source links so clients can sort additions", () => {
+    assert.deepEqual(
+      mapCatalogSourceLink({
+        source_id: "rewatchables",
+        rank: null,
+        source_title: "Toy Story 5",
+        episode_date: "2026-09-01T00:00:00.000Z",
+        episode: { description: "Bill Simmons" }
+      }),
+      {
+        identifier: "rewatchables",
+        rank: null,
+        sourceTitle: "Toy Story 5",
+        episodeDate: "2026-09-01T00:00:00.000Z",
+        episode: { description: "Bill Simmons" }
+      }
     );
   });
 

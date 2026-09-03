@@ -1,3 +1,11 @@
+export const mapCatalogSourceLink = (link: Record<string, unknown>) => ({
+  identifier: link.source_id ?? link.identifier ?? null,
+  rank: link.rank ?? null,
+  sourceTitle: link.source_title ?? link.sourceTitle ?? null,
+  episodeDate: link.episode_date ?? link.episodeDate ?? null,
+  episode: link.episode ?? null
+});
+
 export const catalogCacheHeaders = (revision: number, total: number) => ({
   "Cache-Control": "no-store, no-cache, must-revalidate",
   Pragma: "no-cache",

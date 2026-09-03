@@ -54,14 +54,14 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: DesignSystem.Icon.add)
                 }
-                .buttonStyle(CircularGlassIconButtonStyle(size: MinSpacing.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
+                .buttonStyle(CircularGlassIconButtonStyle(size: DesignSystem.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
                 .accessibilityLabel("Add timer")
                 .padding(.trailing, DesignSystem.Spacing.lg)
                 .padding(.bottom, DesignSystem.Spacing.lg)
             }
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top) {
-                HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
+                HStack(spacing: DesignSystem.TopControls.horizontalPadding) {
                     Spacer()
                     Button {
                         isAccountPresented = true
@@ -72,8 +72,8 @@ struct ContentView: View {
                     .accessibilityLabel("Account and settings")
                 }
                 .padding(.horizontal, MinSpacing.lg)
-                .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .padding(.bottom, MinSpacing.TopControls.verticalPadding)
+                .padding(.top, DesignSystem.TopControls.verticalPadding)
+                .padding(.bottom, DesignSystem.TopControls.verticalPadding)
             }
             .themeBackground()
         }
@@ -229,8 +229,8 @@ struct SetTimerListView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 titleTypeMark
-                    .padding(.horizontal, MinSpacing.TitleType.horizontalPadding)
-                    .offset(y: MinSpacing.TitleType.markOffsetY)
+                    .padding(.horizontal, DesignSystem.TitleType.horizontalPadding)
+                    .offset(y: DesignSystem.TitleType.markOffsetY)
 
                 if timers.isEmpty {
                     emptyState
@@ -260,11 +260,11 @@ struct SetTimerListView: View {
                         }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                    .padding(.top, MinSpacing.TitleType.contentTopSpacing)
-                    .padding(.bottom, MinSpacing.bottomSafeArea)
+                    .padding(.top, DesignSystem.TitleType.contentTopSpacing)
+                    .padding(.bottom, DesignSystem.Spacing.bottomSafeArea)
                 }
             }
-            .padding(.top, MinSpacing.TitleType.scrollTopPadding)
+            .padding(.top, DesignSystem.TitleType.scrollTopPadding)
         }
         .scrollClipDisabled()
         .coordinateSpace(name: "setTimerListScroll")
@@ -278,8 +278,8 @@ struct SetTimerListView: View {
             .scaledToFit()
             .foregroundStyle(DesignSystem.Colors.accent)
             .frame(
-                maxWidth: MinSpacing.TitleType.maxWidth,
-                maxHeight: MinSpacing.TitleType.maxHeight,
+                maxWidth: DesignSystem.TitleType.maxWidth,
+                maxHeight: DesignSystem.TitleType.maxHeight,
                 alignment: .leading
             )
             .compositingGroup()
@@ -294,11 +294,11 @@ struct SetTimerListView: View {
                 let scrollY = proxy.frame(in: .named("setTimerListScroll")).minY
                 let initial = titleTypeInitialY ?? scrollY
                 let drift = initial - scrollY
-                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1)
+                let progress = min(max(drift / DesignSystem.TitleType.blurDistance, 0), 1)
                 return content
                     .offset(y: drift)
-                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
+                    .blur(radius: progress * DesignSystem.TitleType.maxBlurRadius)
+                    .opacity(1.0 - progress * DesignSystem.TitleType.maxOpacityReduction)
             }
             .zIndex(-1)
             .allowsHitTesting(false)

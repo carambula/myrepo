@@ -11,6 +11,25 @@ struct DesignSystem {
         static let xl: CGFloat = MinSpacing.xl
         static let xxl: CGFloat = MinSpacing.xxl
         static let screenHorizontalPadding: CGFloat = MinSpacing.screenHorizontalPadding
+        static let bottomSafeArea: CGFloat = 34
+    }
+
+    enum TopControls {
+        static let buttonSize: CGFloat = Controls.iconButtonSize
+        static let horizontalPadding: CGFloat = Spacing.sm
+        static let verticalPadding: CGFloat = Spacing.sm
+    }
+
+    enum TitleType {
+        static let horizontalPadding: CGFloat = Spacing.screenHorizontalPadding
+        static let markOffsetY: CGFloat = 0
+        static let scrollTopPadding: CGFloat = Spacing.xxl
+        static let contentTopSpacing: CGFloat = Spacing.xl
+        static let maxWidth: CGFloat = 220
+        static let maxHeight: CGFloat = 38
+        static let blurDistance: CGFloat = 80
+        static let maxBlurRadius: CGFloat = 12
+        static let maxOpacityReduction: CGFloat = 0.5
     }
 
     enum Typography {
@@ -89,7 +108,7 @@ extension View {
 }
 
 struct CircularGlassIconButtonStyle: ButtonStyle {
-    var size: CGFloat = MinSpacing.TopControls.buttonSize
+    var size: CGFloat = DesignSystem.TopControls.buttonSize
     var foregroundColor: Color = DesignSystem.Colors.textPrimary
 
     func makeBody(configuration: Configuration) -> some View {

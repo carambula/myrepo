@@ -63,6 +63,8 @@ curl -s -H "Authorization: Bearer $MIN_AGENT_TOKEN" -H "Content-Type: applicatio
 
 Open `http://127.0.0.1:4732` for the console. Bind `--host 0.0.0.0` only if another machine on your network needs it.
 
+A VM agent should call the public Min Cloud URL instead: `https://min-cloud-production.up.railway.app/tools` and `/invoke` (same Bearer token). See `services/min-cloud/README.md`.
+
 Read-only connection:
 
 ```bash

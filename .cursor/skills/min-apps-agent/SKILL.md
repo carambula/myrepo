@@ -1,19 +1,15 @@
 ---
 name: min-apps-agent
-description: Call min apps (mov/pod/vid/cyc/spin/fit) through the local agent HTTP API. Use when listing or changing watched movies, podcasts, videos, races, bikes, or timers.
+description: Call min apps (mov/pod) through the public Min Cloud agent HTTP API. Use when listing or changing watched movies or followed podcasts from a VM or remote agent.
 ---
 
 # Min apps agent HTTP
 
-The MCP server is wrapped as JSON over HTTP. Same `minagt_…` bearer token as MCP.
+Base URL (reachable from a VM):
 
-Base URL (loopback): `http://127.0.0.1:4732`
+`https://min-cloud-production.up.railway.app`
 
-Start it:
-
-```bash
-MIN_AGENT_TOKEN=minagt_… node packages/agent-kit/src/cli.js serve --port 4732
-```
+Same hashed `minagt_…` bearer token as the local MCP kit.
 
 ## List tools
 
@@ -21,8 +17,6 @@ MIN_AGENT_TOKEN=minagt_… node packages/agent-kit/src/cli.js serve --port 4732
 GET /tools
 Authorization: Bearer <token>
 ```
-
-Response: `{ "ok": true, "tools": [{ "name", "description", "kind", "app", "inputSchema" }], "names": ["…"] }`
 
 ## Invoke a tool
 
@@ -34,10 +28,16 @@ Content-Type: application/json
 { "name": "list_movies", "arguments": { "query": "Heat" } }
 ```
 
-`tool` is an alias for `name`. `args` / `input` are aliases for `arguments`.
+`tool` aliases `name`. `args` / `input` alias `arguments`. Writes return `undoId`.
 
-Writes return `undoId`. Reverse with `{ "name": "undo", "arguments": { "undoId": "…" } }` or omit `undoId` to undo the latest write.
+Mint a token (once) as the signed-in user:
 
-## Health
+```
+POST /v1/agent/connections
+Authorization: Bearer <min-cloud session>
+{ "name": "VM agent" }
+```
 
-`GET /health` — no auth. `{ "ok": true, "service": "min-apps-agent" }`
+Or as admin: `POST /v1/admin/agent/connections` with `x-admin-token` and `{ "email": "you@…" }`.
+
+Local loopback (`http://127.0.0.1:4732`) still works if you run `packages/agent-kit` `serve` on the same machine.

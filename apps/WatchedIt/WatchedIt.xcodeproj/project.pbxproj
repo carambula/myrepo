@@ -335,7 +335,6 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
-			enableOutgoingNetworkAccess = 1;
 			inputPaths = (
 				"$(SRCROOT)/WatchedIt/bootstrap_data.json",
 				"$(SRCROOT)/enrich_bootstrap_data.swift",

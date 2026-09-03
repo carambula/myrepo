@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { newestEpisodesSince, parseRssDate, parseRssFeed } from "../src/lib/rss.ts";
+import { newestEpisodesSince, notifyWorthyEpisodes, parseRssDate, parseRssFeed } from "../src/lib/rss.ts";
 
 const sampleFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
@@ -42,6 +42,12 @@ describe("parseRssFeed", () => {
     const fresh = newestEpisodesSince(parsed.episodes, "2025-01-01T00:00:00.000Z");
     assert.equal(fresh.length, 1);
     assert.equal(fresh[0].title, "Fargo With Bill Simmons");
+  });
+
+  it("does not notify on first ingest", () => {
+    const parsed = parseRssFeed(sampleFeed);
+    assert.equal(notifyWorthyEpisodes(parsed.episodes, null).length, 0);
+    assert.equal(notifyWorthyEpisodes(parsed.episodes, "2025-01-01T00:00:00.000Z").length, 1);
   });
 
   it("parses RSS dates", () => {

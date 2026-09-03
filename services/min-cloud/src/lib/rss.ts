@@ -145,3 +145,11 @@ export const newestEpisodesSince = (episodes: ParsedEpisode[], sinceIso: string 
     return Date.parse(episode.publishDate) > since;
   });
 };
+
+/** First ingest baselines the catalog. Only later publishes become notify-worthy. */
+export const notifyWorthyEpisodes = (episodes: ParsedEpisode[], previousLatestIso: string | null) => {
+  if (!previousLatestIso) {
+    return [];
+  }
+  return newestEpisodesSince(episodes, previousLatestIso);
+};

@@ -147,21 +147,22 @@ extension Podcast {
         }
         invalidateFollowedCache()
         NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
-        if MinCloudSettings.isSignedIn {
-            let items = podcasts.map { podcast -> [String: Any] in
-                var item: [String: Any] = [
-                    "podcastId": podcast.id,
-                    "feedUrl": podcast.feedURL.absoluteString,
-                    "title": podcast.title,
-                    "isFollowed": true,
-                    "notificationsEnabled": podcast.notificationsEnabled
-                ]
-                if let artwork = podcast.displayArtworkURL?.absoluteString {
-                    item["artworkUrl"] = artwork
+        Task {
+            await MinCloudClient.shared.syncFollowedWatches(podcasts)
+            if MinCloudSettings.isSignedIn {
+                let items = podcasts.map { podcast -> [String: Any] in
+                    var item: [String: Any] = [
+                        "podcastId": podcast.id,
+                        "feedUrl": podcast.feedURL.absoluteString,
+                        "title": podcast.title,
+                        "isFollowed": true,
+                        "notificationsEnabled": podcast.notificationsEnabled
+                    ]
+                    if let artwork = podcast.displayArtworkURL?.absoluteString {
+                        item["artworkUrl"] = artwork
+                    }
+                    return item
                 }
-                return item
-            }
-            Task {
                 try? await MinCloudClient.shared.pushLibrary(items: items)
             }
         }

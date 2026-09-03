@@ -37,7 +37,7 @@ struct MinCloudAccountView: View {
             } header: {
                 Text("Min Cloud")
             } footer: {
-                Text("Server-side feed refresh and notifications. Local RSS stays as a backup when the service is unreachable.")
+                Text("Followed shows are watched for new episodes even without an account. Sign in to sync lists across devices and keep an inbox on the server.")
             }
             .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 

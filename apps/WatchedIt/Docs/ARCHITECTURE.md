@@ -35,7 +35,7 @@ The app bundles a pre-populated SwiftData store for instant startup.
 - Resource: `bootstrap_database.store`
 - Bootstrap import JSON is build-time only.
 - Both iOS and tvOS targets include the bundled store in app resources.
-- When Min Cloud is reachable, `MinCloudCatalogSync` applies server catalog + streaming updates on top of the local store. The bundled store remains the offline backup.
+- When Min Cloud is reachable, `MinCloudCatalogSync` applies server catalog, streaming, and physical media availability on top of the local store. The bundled store remains the offline backup.
 
 ## Min Cloud
 Optional Railway-hosted service (`services/min-cloud`) for accounts, social, notifications, admin catalog edits, and scheduled TMDB/RSS jobs. iCloud remains an optional backup for user status when the user does not want a web account.

@@ -228,6 +228,8 @@ struct ContentView: View {
             }
 
             let followed = Podcast.loadFollowedPodcasts()
+            await MinCloudClient.shared.syncFollowedWatches(followed)
+            await EpisodeNotificationService.shared.presentCloudInbox()
             let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
                 for podcast in followed {
                     group.addTask {

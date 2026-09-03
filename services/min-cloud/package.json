@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
+    "import-bootstrap": "node scripts/import-bootstrap.mjs",
     "test": "tsx --test test/*.test.ts",
     "lint": "tsc -p tsconfig.json --noEmit"
   },

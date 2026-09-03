@@ -11,7 +11,7 @@ iCloud stays available as an optional backup. People who do not want a web accou
 | Goal | How |
 | --- | --- |
 | Faster, more reliable updates | Incremental catalog APIs (`/v1/mov/catalog`, `/v1/pod/catalog`) plus scheduled jobs |
-| Notifications | Device registration, preference sync, server-side new-episode queue |
+| Notifications | Anonymous device watch, preference sync, server-side new-episode inbox. Local alerts work without an account. |
 | Server-side fetching | TMDB watch-provider refresh and RSS ingest; clients fall back locally |
 | Cloud admin | `/admin` — edit movies/podcasts and run jobs without shipping a binary |
 | User web + social | `/` — accounts, browse, follow, activity |
@@ -46,6 +46,7 @@ Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refres
 6. Seed or import the catalog:
    - `npm run seed` for the sample set
    - `POST /v1/admin/mov/import` with WatchedIt `bootstrap_data.json`
+   - or `ADMIN_TOKEN=... node scripts/import-bootstrap.mjs`
    - Admin “Add podcast” / iTunes enrich for PodLink defaults
 7. Optional Railway cron hitting `POST /internal/jobs/all` with `x-cron-secret`.
 
@@ -68,12 +69,22 @@ Both apps read `mincloud.baseURL` from `UserDefaults` / Info settings, defaultin
 mincloud.baseURL = http://localhost:4000
 ```
 
+## Podcast updates (pod min)
+
+`pod.feeds.refresh` runs every 30 minutes against every show in `pod_podcasts`. That set starts as the curated catalog and grows when someone follows a feed:
+
+- **No account:** the app still uses `GET /v1/pod/feeds?url=` (no login). Following a show also `POST /v1/pod/watch` with a local `deviceId`, which upserts the feed into the shared refresh set. Curated catalog refresh happens either way.
+- **Signed in:** followed shows are also written to `user_library_pod`, so the same refresh job can enqueue per-user inbox items.
+- **New episode notifications:** yes. Priority / per-show flags enqueue into `notification_queue` for accounts and anonymous devices. The app also fires local notifications when a fresh fetch sees a newer episode than the last baseline. First ingest does not notify. APNs push is not wired yet; the inbox API and local alerts are the delivery surfaces.
+
 ## API surface
 
 - `POST /v1/auth/register` `POST /v1/auth/login`
 - `GET /v1/me` library, devices, notifications
-- `GET /v1/mov/catalog?updatedSince=`
+- `GET /v1/mov/catalog?updatedSince=` (includes `physicalMedia` when known)
+- `POST /v1/admin/mov/physical-media` with WatchedIt `physical_media.json`
 - `GET /v1/pod/catalog` `GET /v1/pod/feeds?url=`
+- `POST /v1/devices/register` `POST /v1/pod/watch` `GET /v1/devices/:deviceId/inbox` — no account required
 - `GET /v1/social/feed` `POST /v1/social/follow`
 - `GET /v1/admin/health` `POST /v1/admin/jobs/:name`
 

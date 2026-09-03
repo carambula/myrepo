@@ -35,6 +35,26 @@ struct MinCloudFeedResponse: Decodable {
     let episodes: [MinCloudFeedEpisode]
 }
 
+struct MinCloudInboxItem: Decodable {
+    let id: String
+    let title: String
+    let body: String
+    let payload: Payload?
+
+    struct Payload: Decodable {
+        let podcastId: String?
+        let episodeTitle: String?
+        let publishDate: String?
+    }
+
+    var guid: String? {
+        if let podcastId = payload?.podcastId, let episodeTitle = payload?.episodeTitle {
+            return "\(podcastId):\(episodeTitle)"
+        }
+        return nil
+    }
+}
+
 enum MinCloudError: Error {
     case invalidURL
     case httpFailure(Int)
@@ -131,6 +151,67 @@ actor MinCloudClient {
             authorized: true,
             body: ["items": items]
         )
+    }
+
+    func registerDevice() async {
+        _ = try? await request(
+            path: "/v1/devices/register",
+            method: "POST",
+            authorized: MinCloudSettings.isSignedIn,
+            body: [
+                "deviceId": MinCloudSettings.deviceId,
+                "app": "podlink",
+                "platform": "ios",
+                "timezone": TimeZone.current.identifier
+            ]
+        )
+    }
+
+    func syncFollowedWatches(_ podcasts: [Podcast]) async {
+        await registerDevice()
+        let preferences = PodLinkNotificationPreferences.load()
+        let items: [[String: Any]] = podcasts.map { podcast in
+            let notify = podcast.notificationsEnabled
+                || (preferences.priorityPodcastsEnabled && preferences.priorityPodcastIDs.contains(podcast.id))
+            var item: [String: Any] = [
+                "podcastId": podcast.id,
+                "feedUrl": podcast.feedURL.absoluteString,
+                "title": podcast.title,
+                "notificationsEnabled": notify
+            ]
+            if let artwork = podcast.displayArtworkURL?.absoluteString {
+                item["artworkUrl"] = artwork
+            }
+            if let itunesID = podcast.itunesID {
+                item["itunesId"] = itunesID
+            }
+            return item
+        }
+        _ = try? await request(
+            path: "/v1/pod/watch",
+            method: "POST",
+            authorized: false,
+            body: [
+                "deviceId": MinCloudSettings.deviceId,
+                "replace": true,
+                "items": items
+            ]
+        )
+    }
+
+    func fetchDeviceInbox() async throws -> [MinCloudInboxItem] {
+        let data = try await request(
+            path: "/v1/devices/\(MinCloudSettings.deviceId)/inbox",
+            method: "GET",
+            authorized: false,
+            query: [URLQueryItem(name: "app", value: "podlink")]
+        )
+        let decoded = try JSONDecoder().decode(InboxResponse.self, from: data)
+        return decoded.inbox
+    }
+
+    private struct InboxResponse: Decodable {
+        let inbox: [MinCloudInboxItem]
     }
 
     private func postSession(path: String, body: [String: Any]) async throws -> MinCloudSessionResponse {

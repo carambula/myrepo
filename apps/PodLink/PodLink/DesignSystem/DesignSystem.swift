@@ -248,7 +248,7 @@ struct DesignSystem {
 
     struct Controls {
         static let controlHeight: CGFloat = 48
-        static let iconButtonSize: CGFloat = 48
+        static let iconButtonSize: CGFloat = 56
     }
 
     // MARK: - Corner Radius (values from MinAppKit)

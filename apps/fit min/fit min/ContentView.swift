@@ -60,7 +60,7 @@ struct ContentView: View {
                 .padding(.bottom, DesignSystem.Spacing.lg)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top) {
+            .overlay(alignment: .top) {
                 HStack(spacing: DesignSystem.TopControls.horizontalPadding) {
                     Spacer()
                     Button {
@@ -73,7 +73,6 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, MinSpacing.lg)
                 .padding(.top, DesignSystem.TopControls.verticalPadding)
-                .padding(.bottom, DesignSystem.TopControls.verticalPadding)
             }
             .themeBackground()
         }

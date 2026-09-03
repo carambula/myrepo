@@ -150,7 +150,7 @@ private struct CollectionsHomeContentView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top) {
+            .overlay(alignment: .top) {
                 HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
                     Spacer()
                     if pendingPodcastEpisodeCount > 0 {
@@ -160,10 +160,8 @@ private struct CollectionsHomeContentView: View {
                 }
                 .padding(.horizontal, MinSpacing.lg)
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .padding(.bottom, MinSpacing.TopControls.verticalPadding)
                 .contentShape(Rectangle())
                 .allowsHitTesting(true)
-                .zIndex(100)
             }
             .safeAreaInset(edge: .bottom) {
                 dynamicBottomToolbar

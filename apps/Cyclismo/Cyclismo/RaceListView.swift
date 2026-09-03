@@ -240,17 +240,15 @@ struct RaceListView: View {
                 bottomToolbar
             }
         }
-        .safeAreaInset(edge: .top) {
+        .overlay(alignment: .top) {
             HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
                 Spacer()
                 accountToolbarButton
             }
             .padding(.horizontal, MinSpacing.lg)
             .padding(.top, MinSpacing.TopControls.verticalPadding)
-            .padding(.bottom, MinSpacing.TopControls.verticalPadding)
             .contentShape(Rectangle())
             .allowsHitTesting(true)
-            .zIndex(100)
         }
         #if os(iOS)
         .toolbar(isBottomSearchVisible ? .hidden : .visible, for: .bottomBar)

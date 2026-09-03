@@ -95,11 +95,10 @@ struct RootContentView: View {
             }
             .themeBackground(using: themeManager.currentTheme)
             .navigationBarHidden(true)
-            .safeAreaInset(edge: .top) {
+            .overlay(alignment: .top) {
                 topControls
                     .padding(.horizontal, MinSpacing.lg)
                     .padding(.top, MinSpacing.TopControls.verticalPadding)
-                    .padding(.bottom, MinSpacing.TopControls.verticalPadding)
             }
             .sheet(item: $rootSheet) { sheet in
                 switch sheet {

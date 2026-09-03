@@ -22,16 +22,6 @@ struct Episode: Identifiable, Codable, Hashable {
     var isDownloaded: Bool = false
     var downloadedFileURL: URL?
     var mediaLinks: [MediaLink] = []
-    /// True after the user plays an episode they already finished. Not persisted in episode JSON.
-    var hasRelistened: Bool = false
-
-    enum CodingKeys: String, CodingKey {
-        case id, podcastID, title, description, publishDate, duration
-        case audioURL, videoURL, artworkURL, episodeNumber, seasonNumber
-        case transcript, transcriptURL, chapters
-        case playbackPosition, isPlayed, isBookmarked, isDownloaded
-        case downloadedFileURL, mediaLinks
-    }
 
     var hasVideo: Bool { videoURL != nil }
 
@@ -101,8 +91,7 @@ struct Episode: Identifiable, Codable, Hashable {
         isBookmarked: Bool = false,
         isDownloaded: Bool = false,
         downloadedFileURL: URL? = nil,
-        mediaLinks: [MediaLink] = [],
-        hasRelistened: Bool = false
+        mediaLinks: [MediaLink] = []
     ) {
         self.id = id
         self.podcastID = podcastID
@@ -124,7 +113,6 @@ struct Episode: Identifiable, Codable, Hashable {
         self.isDownloaded = isDownloaded
         self.downloadedFileURL = downloadedFileURL
         self.mediaLinks = mediaLinks
-        self.hasRelistened = hasRelistened
     }
 }
 

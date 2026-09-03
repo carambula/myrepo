@@ -139,14 +139,6 @@ class PlaybackService {
         nowPlayingArtworkTask?.cancel()
         lastNowPlayingArtworkKey = nil
         let resolvedStartTime = max(0, startAt ?? merged.playbackPosition)
-        if merged.isEffectivelyFinished,
-           !PlaybackProgressPolicy.current.isFinished(
-            playbackPosition: resolvedStartTime,
-            duration: merged.duration
-           ) {
-            EpisodePlaybackStore.persistRelistened(true, episodeID: merged.id, notify: false)
-            merged.hasRelistened = true
-        }
         merged.playbackPosition = resolvedStartTime
         lastPositionCheckpoint = resolvedStartTime
 

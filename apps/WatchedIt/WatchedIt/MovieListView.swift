@@ -11,11 +11,52 @@ import MinAppKit
 
 enum WatchFilter: String, CaseIterable {
     case all = "All"
-    case completed = "Completed"
-    case incomplete = "Incomplete"
     case rewatched = "Rewatched"
-    case listened = "Listened"
+    case notRewatched = "Not rewatched"
     case saved = "Saved"
+    case notSaved = "Not saved"
+    case listened = "Listened"
+    case notListened = "Not listened"
+    case completed = "Complete"
+    case notComplete = "Not complete"
+    case incomplete = "Incomplete"
+
+    var systemImage: String {
+        switch self {
+        case .all: return DesignSystem.Icon.status
+        case .rewatched, .notRewatched: return DesignSystem.Icon.rewatch
+        case .saved: return DesignSystem.Icon.bookmarkFill
+        case .notSaved: return DesignSystem.Icon.bookmark
+        case .listened, .notListened: return DesignSystem.Icon.listen
+        case .completed: return DesignSystem.Icon.checkmarkCircle
+        case .notComplete, .incomplete: return DesignSystem.Icon.checkmark
+        }
+    }
+
+    func matches(_ movie: Movie) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .rewatched:
+            return movie.isRewatched
+        case .notRewatched:
+            return !movie.isRewatched
+        case .saved:
+            return movie.isSaved
+        case .notSaved:
+            return !movie.isSaved
+        case .listened:
+            return movie.isListened
+        case .notListened:
+            return !movie.isListened
+        case .completed:
+            return movie.isRewatched && movie.isListened
+        case .notComplete:
+            return !(movie.isRewatched && movie.isListened)
+        case .incomplete:
+            return movie.isRewatched != movie.isListened
+        }
+    }
 }
 
 enum SearchBarAppearance: String, CaseIterable {
@@ -888,19 +929,8 @@ struct MovieListView: View {
         }
         
         // Apply watch filter
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            movies = movies.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            movies = movies.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            movies = movies.filter { $0.isRewatched }
-        case .listened:
-            movies = movies.filter { $0.isListened }
-        case .saved:
-            movies = movies.filter { $0.isSaved }
+        if watchFilter != .all {
+            movies = movies.filter { watchFilter.matches($0) }
         }
         
         // Apply genre filter
@@ -1064,19 +1094,8 @@ struct MovieListView: View {
         }
         
         // Apply watch filter
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            filteredMovies = filteredMovies.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filteredMovies = filteredMovies.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filteredMovies = filteredMovies.filter { $0.isRewatched }
-        case .listened:
-            filteredMovies = filteredMovies.filter { $0.isListened }
-        case .saved:
-            filteredMovies = filteredMovies.filter { $0.isSaved }
+        if watchFilter != .all {
+            filteredMovies = filteredMovies.filter { watchFilter.matches($0) }
         }
         
         // Apply genre filter
@@ -1338,19 +1357,8 @@ struct MovieListView: View {
             }
         }
 
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            filtered = filtered.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filtered = filtered.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filtered = filtered.filter { $0.isRewatched }
-        case .listened:
-            filtered = filtered.filter { $0.isListened }
-        case .saved:
-            filtered = filtered.filter { $0.isSaved }
+        if watchFilter != .all {
+            filtered = filtered.filter { watchFilter.matches($0) }
         }
 
         if let selectedGenre = selectedGenre {

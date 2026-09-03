@@ -15,6 +15,7 @@ struct MovieSearchFilters: Equatable {
     var selectedReleaseYear: Int? = nil
     var selectedListIdentifier: String? = nil
     var selectedStreamingService: String? = nil
+    var theatricalFilter: TheatricalFilter? = nil
     var sortOption: SortOption = .episodeDateDesc
     var preferredStreamingServices: [String] = []
 }
@@ -43,6 +44,10 @@ enum MovieSearchEngine {
 
             if let media = movie.physicalMedia {
                 fields.append(contentsOf: media.searchTokens)
+            }
+
+            if let run = movie.theatricalRun {
+                fields.append(contentsOf: run.searchTokens)
             }
 
             index[movie.id] = fields.joined(separator: " ").lowercased()
@@ -126,6 +131,10 @@ enum MovieSearchEngine {
             filtered = filtered.filter { movie in
                 sourceCache[movie.id]?.contains(selectedListIdentifier) == true
             }
+        }
+
+        if let theatricalFilter = filters.theatricalFilter {
+            filtered = filtered.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
         }
 
         if let selectedStreamingService = filters.selectedStreamingService {

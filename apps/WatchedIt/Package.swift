@@ -40,7 +40,8 @@ let package = Package(
                 "TitleCleaner.swift",
                 "OscarAwards.swift",
                 "PhysicalMedia.swift",
-                "PhysicalPurchase.swift"
+                "PhysicalPurchase.swift",
+                "TheatricalRun.swift"
             ],
             resources: [
                 .process("physical_media.json")

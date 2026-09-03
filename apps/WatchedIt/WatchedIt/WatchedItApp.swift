@@ -147,6 +147,9 @@ struct WatchedItApp: App {
             if let context = localDB.modelContext {
                 _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: context)
             }
+            await TheatricalAvailabilitySync.shared.refresh(
+                catalogTmdbIds: localDB.movies.compactMap(\.tmdbId)
+            )
             if MinCloudSettings.isSignedIn {
                 await MinCloudLibrarySync.shared.syncOnSignIn()
             } else {

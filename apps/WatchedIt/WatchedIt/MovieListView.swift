@@ -303,6 +303,7 @@ struct MovieListView: View {
     @State private var selectedMPAARating: String? = nil // Filter by MPAA rating
     @State private var selectedList: DataSource? = nil // Filter by list (unified - can be external source or local list)
     @State private var selectedStreamingService: String? = nil
+    @State private var theatricalFilter: TheatricalFilter? = nil
     @State private var sortOption: SortOption = .episodeDateDesc
     @State private var showAccountSheet = false
     @State private var showSearch = false
@@ -500,6 +501,7 @@ struct MovieListView: View {
             || selectedMPAARating != nil
             || selectedList != nil
             || selectedStreamingService != nil
+            || theatricalFilter != nil
     }
     
     private var shouldShowInspirationSections: Bool {
@@ -688,6 +690,10 @@ struct MovieListView: View {
             return true
         }
 
+        if let run = movie.theatricalRun, run.matchesSearchQuery(searchText) {
+            return true
+        }
+
         // Oscar awards search
         if let awards = movie.oscarAwards {
             // Search for "oscar", "academy award", "win", "nomination"
@@ -835,6 +841,7 @@ struct MovieListView: View {
         hasher.combine(selectedMPAARating ?? "")
         hasher.combine(selectedList?.identifier ?? "")
         hasher.combine(selectedStreamingService ?? "")
+        hasher.combine(theatricalFilter?.rawValue ?? "")
         hasher.combine(sortOption.rawValue)
         hasher.combine(filterVersion)
         hasher.combine(localDB.movieStatusVersion)
@@ -946,6 +953,10 @@ struct MovieListView: View {
             }
         }
 
+        if let theatricalFilter {
+            movies = movies.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
+        }
+
         // Apply inspiration selection (overrides sort option)
         if selectedInspiration != nil {
             return applyInspirationFilter(to: movies)
@@ -1042,6 +1053,7 @@ struct MovieListView: View {
         selectedRating: String?,
         selectedList: DataSource?,
         selectedStreaming: String?,
+        theatricalFilter: TheatricalFilter?,
         sortOption: SortOption,
         selectedInspiration: InspirationSection?,
         preferredServices: [String],
@@ -1117,6 +1129,10 @@ struct MovieListView: View {
                     }
                 }
             }
+        }
+
+        if let theatricalFilter {
+            filteredMovies = filteredMovies.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
         }
         
         // Apply inspiration selection (needs main actor for applyInspirationFilter)
@@ -1228,6 +1244,10 @@ struct MovieListView: View {
                 fields.append(contentsOf: media.searchTokens)
             }
 
+            if let run = movie.theatricalRun {
+                fields.append(contentsOf: run.searchTokens)
+            }
+
             if let discussion = movie.rewatchablesDiscussion {
                 fields.append(contentsOf: [
                     discussion.apexMountain,
@@ -1292,6 +1312,7 @@ struct MovieListView: View {
         selectedMPAARating: String?,
         selectedListIdentifier: String?,
         selectedStreamingService: String?,
+        theatricalFilter: TheatricalFilter?,
         sortOption: SortOption,
         preferredStreamingServices: [String],
         sourceCache: [String: Set<String>],
@@ -1388,6 +1409,10 @@ struct MovieListView: View {
             }
         }
 
+        if let theatricalFilter {
+            filtered = filtered.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
+        }
+
         switch sortOption {
         case .title:
             filtered = filtered.sorted { $0.title < $1.title }
@@ -1440,6 +1465,7 @@ struct MovieListView: View {
            selectedMPAARating == nil,
            selectedList == nil,
            selectedStreamingService == nil,
+           theatricalFilter == nil,
            selectedInspiration == nil,
            sortOption == .episodeDateDesc {
             searchRecomputeTask?.cancel()
@@ -1497,6 +1523,7 @@ struct MovieListView: View {
                     selectedMPAARating: selectedMPAARating,
                     selectedListIdentifier: selectedList?.identifier,
                     selectedStreamingService: selectedStreamingService,
+                    theatricalFilter: theatricalFilter,
                     sortOption: sortOption,
                     selectedInspiration: selectedInspiration,
                     activePersonSearchQuery: activePersonSearchQuery,
@@ -1551,6 +1578,7 @@ struct MovieListView: View {
                         selectedMPAARating: snapshot.selectedMPAARating,
                         selectedListIdentifier: snapshot.selectedListIdentifier,
                         selectedStreamingService: snapshot.selectedStreamingService,
+                        theatricalFilter: snapshot.theatricalFilter,
                         sortOption: snapshot.sortOption,
                         preferredStreamingServices: snapshot.preferredStreamingServices,
                         sourceCache: snapshot.sourceCache,
@@ -2308,6 +2336,12 @@ struct MovieListView: View {
         if let selectedStreamingService {
             chips.append(FilterChip(label: selectedStreamingService) {
                 self.selectedStreamingService = nil
+            })
+        }
+
+        if let theatricalFilter {
+            chips.append(FilterChip(label: theatricalFilter.rawValue) {
+                self.theatricalFilter = nil
             })
         }
 
@@ -3313,6 +3347,55 @@ struct MovieListView: View {
         }
     }
 
+    @ViewBuilder
+    private var theatricalMenuContent: some View {
+        Button {
+            applyTheatricalFilterFromToolbar(nil)
+        } label: {
+            if theatricalFilter == nil {
+                Label("All Movies", systemImage: "checkmark")
+            } else {
+                Text("All Movies")
+            }
+        }
+        ForEach(TheatricalFilter.allCases, id: \.self) { filter in
+            Button {
+                applyTheatricalFilterFromToolbar(filter)
+            } label: {
+                if theatricalFilter == filter {
+                    Label(filter.rawValue, systemImage: "checkmark")
+                } else {
+                    Text(filter.rawValue)
+                }
+            }
+        }
+    }
+
+    private func applyTheatricalFilterFromToolbar(_ filter: TheatricalFilter?) {
+        if collectionsOnlyMode {
+            var filters = MovieSearchFilters()
+            filters.theatricalFilter = filter
+            presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
+            return
+        }
+        theatricalFilter = filter
+    }
+
+    private func startTheatricalSearchFromDetails(_ filter: TheatricalFilter) {
+        pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        filters.theatricalFilter = filter
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: nil,
+            initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
     private func applyStreamingServiceFilterFromToolbar(_ service: String?) {
         if collectionsOnlyMode {
             var filters = MovieSearchFilters()
@@ -3665,6 +3748,12 @@ struct MovieListView: View {
                     Label("Streaming", systemImage: "play.square.stack.fill")
                 }
             }
+
+            Menu {
+                theatricalMenuContent
+            } label: {
+                Label("Theaters", systemImage: DesignSystem.Icon.ticket)
+            }
             
             Menu {
                 genreMenuContent
@@ -3967,7 +4056,8 @@ struct MovieListView: View {
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
                         onRatingTapped: startRatingSearchFromDetails,
-                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
+                        onTheatricalTapped: startTheatricalSearchFromDetails
                     )
                     .onAppear {
                         logMovieDetailPresented(movie.id)
@@ -4048,6 +4138,11 @@ struct MovieListView: View {
                 filterVersion += 1
                 displayedMovieCount = 50 // Reset to first page
                 scheduleFilterRecompute(source: "selectedStreamingService")
+            }
+            .onChange(of: theatricalFilter) { _, _ in
+                filterVersion += 1
+                displayedMovieCount = 50
+                scheduleFilterRecompute(source: "theatricalFilter")
             }
             .onChange(of: selectedInspiration) { _, _ in
                 filterVersion += 1

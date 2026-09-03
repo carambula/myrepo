@@ -270,4 +270,28 @@ struct WatchedItTests {
         #expect(retailers == [.arrow, .amazon, .ebay, .criterion])
     }
 
+    @Test func theatricalFilterAndTicketLinks() {
+        let run = TheatricalRun(tmdbId: 550, isInTheaters: true, hasIMAX: true, title: "Fight Club")
+        #expect(run.matches(.inTheaters))
+        #expect(run.matches(.imax))
+        #expect(TheatricalTicketLinkBuilder.hasOptions(for: run))
+        let groups = TheatricalTicketLinkBuilder.groups(for: run, title: "Fight Club", year: 1999)
+        #expect(groups.map(\.headline) == ["Tickets", "IMAX"])
+        #expect(groups[0].offers.contains(where: { $0.title == "Fandango" }))
+        #expect(groups[1].offers.contains(where: { $0.url.absoluteString.contains("IMAX") }))
+
+        var filters = MovieSearchFilters()
+        filters.theatricalFilter = .imax
+        let movie = Movie(title: "Fight Club", year: 1999, tmdbId: 550, theatricalRun: run)
+        let filtered = MovieSearchEngine.filterMovies(
+            movies: [movie, Movie(title: "Heat", year: 1995)],
+            query: "",
+            filters: filters,
+            movieSearchIndex: [:],
+            sourceCache: [:],
+            restrictedMovieIDs: nil
+        )
+        #expect(filtered.map(\.title) == ["Fight Club"])
+    }
+
 }

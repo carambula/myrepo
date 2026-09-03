@@ -51,9 +51,18 @@ Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refres
 
 In-process jobs also run when `ENABLE_JOBS=true` (default): podcast feeds every 30 minutes, streaming every 6 hours.
 
+## Live deployment
+
+- Project: [min-cloud](https://railway.com/project/eb333f4f-f09f-4ed8-9cfc-eaf4a66f09cf)
+- API / user site: https://min-cloud-production.up.railway.app
+- Admin: https://min-cloud-production.up.railway.app/admin
+- Health: https://min-cloud-production.up.railway.app/health
+
+Copy `ADMIN_TOKEN` from the Railway service variables to sign into admin. Do not commit it.
+
 ## Client configuration
 
-Both apps read `mincloud.baseURL` from `UserDefaults` / Info settings, defaulting to `PUBLIC_URL` or `https://min-cloud.up.railway.app`. Override on device for local testing:
+Both apps read `mincloud.baseURL` from `UserDefaults` / Info settings, defaulting to `https://min-cloud-production.up.railway.app`. Override on device for local testing:
 
 ```
 mincloud.baseURL = http://localhost:4000

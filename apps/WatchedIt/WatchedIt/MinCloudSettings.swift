@@ -9,7 +9,7 @@ public enum MinCloudSettings {
     static let lastCatalogRevisionKey = "mincloud.mov.revision"
 
     public static var defaultBaseURL: URL {
-        URL(string: "https://min-cloud.up.railway.app")!
+        URL(string: "https://min-cloud-production.up.railway.app")!
     }
 
     static var baseURL: URL {

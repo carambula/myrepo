@@ -8,7 +8,7 @@ enum MinCloudSettings {
     static let iCloudBackupEnabledKey = "mincloud.icloudBackupEnabled"
 
     static var defaultBaseURL: URL {
-        URL(string: "https://min-cloud.up.railway.app")!
+        URL(string: "https://min-cloud-production.up.railway.app")!
     }
 
     static var baseURL: URL {

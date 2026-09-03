@@ -3,28 +3,33 @@ import { loadNowPlaying, resetNowPlayingCacheForTests, seedNowPlayingCache } fro
 import {
   isFreshTheaterStaySnapshot,
   mergeTheaterStayRefresh,
+  normalizeTicketLinks,
   theaterStayStats,
   toPublicMovies,
   type TheaterStay,
   type TheaterStaySnapshot,
-  type TheaterStayStats
+  type TheaterStayStats,
+  type TicketLinks
 } from "./theater-stays-logic.js";
 
 export {
+  hasTicketLinks,
   isFreshTheaterStaySnapshot,
   mergeTheaterStayRefresh,
   normalizeTheaterStayUpdate,
+  normalizeTicketLinks,
   theaterStayStats,
   toPublicMovies
 } from "./theater-stays-logic.js";
-export type { TheaterStay, TheaterStaySnapshot, TheaterStayStats } from "./theater-stays-logic.js";
+export type { TheaterStay, TheaterStaySnapshot, TheaterStayStats, TicketLinks } from "./theater-stays-logic.js";
 
 const mapStayRow = (row: Record<string, unknown>): TheaterStay => ({
   tmdbId: Number(row.tmdb_id),
   title: String(row.title || ""),
   hasIMAX: Boolean(row.has_imax),
   inCatalog: Boolean(row.in_catalog),
-  manualOverride: Boolean(row.manual_override)
+  manualOverride: Boolean(row.manual_override),
+  ticketLinks: normalizeTicketLinks(row.ticket_links)
 });
 
 const isoDate = (value: unknown) => {
@@ -38,7 +43,7 @@ const isoDate = (value: unknown) => {
 export const listTheaterStays = async (region: string): Promise<TheaterStay[]> => {
   const result = await query(
     `
-    SELECT tmdb_id, title, has_imax, in_catalog, manual_override
+    SELECT tmdb_id, title, has_imax, in_catalog, manual_override, ticket_links
     FROM mov_theater_stays
     WHERE region = $1
     ORDER BY title ASC, tmdb_id ASC
@@ -67,7 +72,7 @@ export const loadTheaterStaySnapshot = async (region: string): Promise<TheaterSt
 export const findTheaterStay = async (region: string, tmdbId: number): Promise<TheaterStay | null> => {
   const result = await query(
     `
-    SELECT tmdb_id, title, has_imax, in_catalog, manual_override
+    SELECT tmdb_id, title, has_imax, in_catalog, manual_override, ticket_links
     FROM mov_theater_stays
     WHERE region = $1 AND tmdb_id = $2
     `,
@@ -88,10 +93,19 @@ export const saveTheaterStaySnapshot = async (
       await client.query(
         `
         INSERT INTO mov_theater_stays (
-          tmdb_id, region, title, has_imax, in_catalog, manual_override, refreshed_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          tmdb_id, region, title, has_imax, in_catalog, manual_override, ticket_links, refreshed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
         `,
-        [stay.tmdbId, region, stay.title, stay.hasIMAX, stay.inCatalog, stay.manualOverride, refreshedAt]
+        [
+          stay.tmdbId,
+          region,
+          stay.title,
+          stay.hasIMAX,
+          stay.inCatalog,
+          stay.manualOverride,
+          JSON.stringify(normalizeTicketLinks(stay.ticketLinks)),
+          refreshedAt
+        ]
       );
     }
     await client.query(
@@ -130,7 +144,14 @@ export const clearInferredTheaterStays = async (region: string) => {
 
 export const upsertManualTheaterStay = async (
   region: string,
-  update: { tmdbId: number; title: string; hasIMAX: boolean; remove: boolean; inCatalog?: boolean }
+  update: {
+    tmdbId: number;
+    title: string;
+    hasIMAX: boolean;
+    remove: boolean;
+    inCatalog?: boolean;
+    ticketLinks?: TicketLinks;
+  }
 ) => {
   if (update.remove) {
     await query(`DELETE FROM mov_theater_stays WHERE tmdb_id = $1 AND region = $2`, [update.tmdbId, region]);
@@ -138,16 +159,24 @@ export const upsertManualTheaterStay = async (
     await query(
       `
       INSERT INTO mov_theater_stays (
-        tmdb_id, region, title, has_imax, in_catalog, manual_override, refreshed_at
-      ) VALUES ($1, $2, $3, $4, $5, true, NOW())
+        tmdb_id, region, title, has_imax, in_catalog, manual_override, ticket_links, refreshed_at
+      ) VALUES ($1, $2, $3, $4, $5, true, $6::jsonb, NOW())
       ON CONFLICT (tmdb_id, region) DO UPDATE SET
         title = COALESCE(NULLIF(EXCLUDED.title, ''), mov_theater_stays.title),
         has_imax = EXCLUDED.has_imax,
         in_catalog = EXCLUDED.in_catalog,
         manual_override = true,
+        ticket_links = COALESCE($6::jsonb, mov_theater_stays.ticket_links),
         refreshed_at = NOW()
       `,
-      [update.tmdbId, region, update.title, update.hasIMAX, update.inCatalog ?? true]
+      [
+        update.tmdbId,
+        region,
+        update.title,
+        update.hasIMAX,
+        update.inCatalog ?? true,
+        update.ticketLinks == null ? null : JSON.stringify(normalizeTicketLinks(update.ticketLinks))
+      ]
     );
   }
   const stored = await loadTheaterStaySnapshot(region);
@@ -157,6 +186,38 @@ export const upsertManualTheaterStay = async (
     seedNowPlayingCache(region, toPublicMovies(await listTheaterStays(region)));
   }
   return findTheaterStay(region, update.tmdbId);
+};
+
+export const upsertTheaterTicketLinks = async (
+  region: string,
+  input: { tmdbId: number; title?: string; ticketLinks: TicketLinks; inCatalog?: boolean }
+) => {
+  const links = normalizeTicketLinks(input.ticketLinks);
+  await query(
+    `
+    INSERT INTO mov_theater_stays (
+      tmdb_id, region, title, has_imax, in_catalog, manual_override, ticket_links, refreshed_at
+    ) VALUES ($1, $2, $3, false, $4, false, $5::jsonb, NOW())
+    ON CONFLICT (tmdb_id, region) DO UPDATE SET
+      title = COALESCE(NULLIF(EXCLUDED.title, ''), mov_theater_stays.title),
+      ticket_links = EXCLUDED.ticket_links,
+      refreshed_at = NOW()
+    `,
+    [
+      input.tmdbId,
+      region,
+      input.title?.trim() || "",
+      input.inCatalog ?? false,
+      JSON.stringify(links)
+    ]
+  );
+  const stored = await loadTheaterStaySnapshot(region);
+  if (stored) {
+    seedNowPlayingCache(region, toPublicMovies(stored.stays), Date.parse(stored.refreshedAt));
+  } else {
+    seedNowPlayingCache(region, toPublicMovies(await listTheaterStays(region)));
+  }
+  return findTheaterStay(region, input.tmdbId);
 };
 
 export const loadTheaterStayStats = async (region: string): Promise<TheaterStayStats & { stays: TheaterStay[] }> => {

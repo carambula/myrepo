@@ -2,9 +2,16 @@ import Foundation
 
 struct MinCloudNowPlayingResponse: Decodable {
     struct Movie: Decodable {
+        struct TicketLinks: Decodable {
+            let amc: String?
+            let fandango: String?
+            let atom: String?
+        }
+
         let tmdbId: Int
         let title: String?
         let hasIMAX: Bool?
+        let ticketLinks: TicketLinks?
     }
 
     let region: String?

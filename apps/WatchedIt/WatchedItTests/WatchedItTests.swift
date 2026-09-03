@@ -318,6 +318,20 @@ struct WatchedItTests {
         #expect(groups[0].offers.contains(where: { $0.title == "Fandango" }))
         #expect(groups[1].offers.contains(where: { $0.url.absoluteString.contains("IMAX") }))
 
+        let resolved = TheatricalRun(
+            tmdbId: 550,
+            isInTheaters: true,
+            hasIMAX: false,
+            title: "The End of Oak Street",
+            ticketLinks: TheatricalTicketLinks(
+                amc: "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes"
+            )
+        )
+        let amc = TheatricalTicketLinkBuilder.groups(for: resolved, title: "The End of Oak Street", year: 2026)
+            .flatMap(\.offers)
+            .first { $0.title == "AMC" }
+        #expect(amc?.url.absoluteString == "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes")
+
         var filters = MovieSearchFilters()
         filters.theatricalFilter = .imax
         let movie = Movie(title: "Fight Club", year: 1999, tmdbId: 550, theatricalRun: run)

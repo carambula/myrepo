@@ -3854,6 +3854,15 @@ button.danger:hover {
   max-width: 800px;
 }
 
+.theater-stays-modal {
+  max-width: 1100px;
+}
+
+.theater-stays-modal input[data-ticket-site] {
+  width: 100%;
+  min-width: 140px;
+}
+
 .oscar-stats {
   margin-bottom: var(--space-md);
 }

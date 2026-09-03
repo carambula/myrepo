@@ -2272,14 +2272,14 @@
     </div>
 
     <div id="theaterStaysModal" class="modal hidden">
-      <div class="modal-content oscar-modal">
+      <div class="modal-content oscar-modal theater-stays-modal">
         <div class="modal-header">
           <div class="pane-title">Theater Stays</div>
           <button id="theaterStaysCloseBtn">Close</button>
         </div>
         <div class="modal-body">
           <div id="theaterStaysStats" class="health-metrics oscar-stats"></div>
-          <p class="design-lead">TMDB now-playing titles and IMAX release notes for the configured region. Catalog matches drive In Theaters / IMAX chips. Manual pins survive refresh and clear.</p>
+          <p class="design-lead">TMDB now-playing titles and IMAX notes for the region. Paste AMC, Fandango, and Atom movie showtimes URLs for the current slate. Refresh keeps those links for titles that stay in theaters.</p>
           <div class="oscar-actions">
             <button id="theaterStaysRefreshStatsBtn">Refresh Stats</button>
             <button id="theaterStaysRefreshBtn" class="primary">Refresh from TMDB</button>
@@ -2291,9 +2291,11 @@
               <tr>
                 <th>Title</th>
                 <th>TMDB</th>
-                <th>Catalog</th>
                 <th>IMAX</th>
-                <th>Source</th>
+                <th>AMC</th>
+                <th>Fandango</th>
+                <th>Atom</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="theaterStaysBody"></tbody>

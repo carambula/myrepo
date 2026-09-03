@@ -1,9 +1,16 @@
 import { fetchJson } from "./http.js";
 
+export type TicketLinks = {
+  amc?: string;
+  fandango?: string;
+  atom?: string;
+};
+
 export type NowPlayingMovie = {
   tmdbId: number;
   title: string;
   hasIMAX: boolean;
+  ticketLinks?: TicketLinks;
 };
 
 type TmdbNowPlaying = {

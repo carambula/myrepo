@@ -223,12 +223,14 @@ export const upsertAdminMovie = async (
           return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
         })(),
         JSON.stringify(
-          payload.podcastEpisodeDescription || payload.sourceTitle || payload.sourceUrl
+          payload.podcastEpisodeDescription || payload.sourceTitle || payload.sourceUrl || payload.filmUrl
             ? {
                 title: payload.sourceTitle ?? null,
                 description: payload.podcastEpisodeDescription ?? null,
                 publishDate: payload.episodeDate ?? null,
-                episodeId: payload.sourceUrl ?? null
+                episodeId: payload.sourceUrl ?? null,
+                filmUrl: payload.filmUrl ?? null,
+                director: payload.director ?? null
               }
             : null
         )

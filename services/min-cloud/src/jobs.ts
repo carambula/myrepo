@@ -14,6 +14,7 @@ import { fetchStreamingServices } from "./lib/tmdb.js";
 import { bumpWatchedIt } from "./lib/admin-catalog.js";
 import { resolveNowPlaying } from "./lib/theater-stays.js";
 import { ingestPodcastEpisode } from "./lib/podcast-ingest.js";
+import { rematchClosetPicks } from "./lib/closet-picks-rematch.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
 
@@ -542,6 +543,20 @@ export const enrichDefaultPodcasts = async () => {
   });
 };
 
+export const rematchClosetPicksCatalog = async () => {
+  return recordJob("mov.closet.rematch", async () => {
+    const result = await rematchClosetPicks({ fetchFilmPages: true });
+    return {
+      scanned: result.scanned,
+      matched: result.matched,
+      corrected: result.corrected,
+      unchanged: result.unchanged,
+      added: result.added,
+      missing: result.missing
+    };
+  });
+};
+
 export const runNamedJob = async (name: string) => {
   switch (name) {
     case "mov.streaming.refresh":
@@ -556,6 +571,8 @@ export const runNamedJob = async (name: string) => {
       return dispatchNotifications();
     case "pod.itunes.enrich":
       return enrichDefaultPodcasts();
+    case "mov.closet.rematch":
+      return rematchClosetPicksCatalog();
     case "all":
       return {
         streaming: await refreshStreamingCatalog(),

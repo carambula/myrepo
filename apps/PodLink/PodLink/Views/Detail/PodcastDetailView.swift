@@ -29,6 +29,7 @@ struct PodcastDetailView: View {
 
     @State private var searchText = ""
     @State private var isSearchActive = false
+    @State private var statusFilter: EpisodeStatusFilter = .all
     @FocusState private var isSearchFieldFocused: Bool
     private let searchControlHeight: CGFloat = 56
     
@@ -282,10 +283,11 @@ struct PodcastDetailView: View {
 
     private var filteredEpisodes: [Episode] {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return episodes }
-        return episodes.filter {
-            $0.title.localizedCaseInsensitiveContains(q)
-                || $0.description.localizedCaseInsensitiveContains(q)
+        return episodes.filter { episode in
+            guard statusFilter.matches(episode) else { return false }
+            if q.isEmpty { return true }
+            return episode.title.localizedCaseInsensitiveContains(q)
+                || episode.description.localizedCaseInsensitiveContains(q)
         }
     }
 
@@ -342,6 +344,8 @@ struct PodcastDetailView: View {
 
     private var episodeSearchBar: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
+            EpisodeStatusFilterButton(statusFilter: $statusFilter, size: searchControlHeight)
+
             HStack(spacing: DesignSystem.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
@@ -375,6 +379,7 @@ struct PodcastDetailView: View {
             Button {
                 withAnimation(DesignSystem.Animation.standard) {
                     searchText = ""
+                    statusFilter = .all
                     isSearchActive = false
                     isSearchFieldFocused = false
                 }

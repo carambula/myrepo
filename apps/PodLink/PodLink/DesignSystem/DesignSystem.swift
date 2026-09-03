@@ -287,6 +287,8 @@ struct DesignSystem {
         static let add = "plus"
         static let edit = "pencil"
         static let delete = "trash"
+        static let filter = "line.3.horizontal.decrease"
+        static let status = "checkmark"
     }
 }
 

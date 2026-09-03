@@ -89,19 +89,8 @@ enum MovieSearchEngine {
             }
         }
 
-        switch filters.watchFilter {
-        case .all:
-            break
-        case .completed:
-            filtered = filtered.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filtered = filtered.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filtered = filtered.filter { $0.isRewatched }
-        case .listened:
-            filtered = filtered.filter { $0.isListened }
-        case .saved:
-            filtered = filtered.filter { $0.isSaved }
+        if filters.watchFilter != .all {
+            filtered = filtered.filter { filters.watchFilter.matches($0) }
         }
 
         if let selectedGenre = filters.selectedGenre {

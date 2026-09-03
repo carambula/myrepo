@@ -270,4 +270,55 @@ struct WatchedItTests {
         #expect(retailers == [.arrow, .amazon, .ebay, .criterion])
     }
 
+    @Test func watchFilterMatchesEachStatusPair() {
+        let rewatched = movie(isRewatched: true)
+        let notRewatched = movie(isRewatched: false)
+        let saved = movie(isSaved: true)
+        let notSaved = movie(isSaved: false)
+        let listened = movie(isListened: true)
+        let notListened = movie(isListened: false)
+        let complete = movie(isRewatched: true, isListened: true)
+        let incompleteXOR = movie(isRewatched: true, isListened: false)
+        let untouched = movie()
+
+        #expect(WatchFilter.rewatched.matches(rewatched))
+        #expect(!WatchFilter.rewatched.matches(notRewatched))
+        #expect(WatchFilter.notRewatched.matches(notRewatched))
+        #expect(!WatchFilter.notRewatched.matches(rewatched))
+
+        #expect(WatchFilter.saved.matches(saved))
+        #expect(!WatchFilter.saved.matches(notSaved))
+        #expect(WatchFilter.notSaved.matches(notSaved))
+        #expect(!WatchFilter.notSaved.matches(saved))
+
+        #expect(WatchFilter.listened.matches(listened))
+        #expect(!WatchFilter.listened.matches(notListened))
+        #expect(WatchFilter.notListened.matches(notListened))
+        #expect(!WatchFilter.notListened.matches(listened))
+
+        #expect(WatchFilter.completed.matches(complete))
+        #expect(!WatchFilter.completed.matches(incompleteXOR))
+        #expect(WatchFilter.notComplete.matches(incompleteXOR))
+        #expect(WatchFilter.notComplete.matches(untouched))
+        #expect(!WatchFilter.notComplete.matches(complete))
+
+        #expect(WatchFilter.incomplete.matches(incompleteXOR))
+        #expect(!WatchFilter.incomplete.matches(complete))
+        #expect(!WatchFilter.incomplete.matches(untouched))
+        #expect(WatchFilter.all.matches(untouched))
+    }
+
+    private func movie(
+        isRewatched: Bool = false,
+        isListened: Bool = false,
+        isSaved: Bool = false
+    ) -> Movie {
+        Movie(
+            title: "Test",
+            isRewatched: isRewatched,
+            isListened: isListened,
+            isSaved: isSaved
+        )
+    }
+
 }

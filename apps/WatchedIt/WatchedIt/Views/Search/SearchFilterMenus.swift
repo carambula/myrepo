@@ -40,6 +40,11 @@ struct SearchFilterMenus: View {
 
     var body: some View {
         Menu {
+            Menu {
+                statusMenuContent
+            } label: {
+                Label("Status", systemImage: DesignSystem.Icon.status)
+            }
             if allowsListFilter {
                 Menu {
                     listMenuContent
@@ -98,6 +103,21 @@ struct SearchFilterMenus: View {
 
     private var toolbarSecondaryAccentColor: Color {
         DesignSystem.Color.secondaryAccent ?? DesignSystem.Color.accent
+    }
+
+    @ViewBuilder
+    private var statusMenuContent: some View {
+        ForEach(WatchFilter.allCases, id: \.self) { filter in
+            Button {
+                updateFilters { $0.watchFilter = filter }
+            } label: {
+                if filters.watchFilter == filter {
+                    Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
+                } else {
+                    Text(filter.rawValue)
+                }
+            }
+        }
     }
 
     @ViewBuilder

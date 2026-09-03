@@ -58,5 +58,14 @@ struct SpinMinShortcuts: AppShortcutsProvider {
             shortTitle: "Tire Pressure",
             systemImageName: "gauge.with.dots.needle.bottom.50percent"
         )
+        AppShortcut(
+            intent: ListSpinMinRidesIntent(),
+            phrases: [
+                "What rides have I logged in \(.applicationName)",
+                "List rides in \(.applicationName)"
+            ],
+            shortTitle: "Recent rides",
+            systemImageName: "bicycle"
+        )
     }
 }

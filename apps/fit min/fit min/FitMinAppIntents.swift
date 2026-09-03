@@ -101,6 +101,53 @@ struct StartFitMinTimerIntent: AppIntent {
     }
 }
 
+struct ListFitMinTimersIntent: AppIntent {
+    static var title: LocalizedStringResource = "List Fit Min Timers"
+    static var description = IntentDescription("Lists saved interval timers.")
+    static var openAppWhenRun = false
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let names = FitMinTimerIndexStore.load().map(\.title)
+        if names.isEmpty {
+            return .result(dialog: IntentDialog("No saved timers yet."))
+        }
+        return .result(dialog: IntentDialog(stringLiteral: names.joined(separator: "\n")))
+    }
+}
+
+struct CreateFitMinTimerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Create Fit Min Timer"
+    static var description = IntentDescription("Creates an interval timer. Reversible for 7 days from Account, Agents.")
+    static var openAppWhenRun = false
+
+    @Parameter(title: "Title")
+    var title: String
+
+    @Parameter(title: "Work seconds")
+    var workSeconds: Int?
+
+    @Parameter(title: "Rest seconds")
+    var restSeconds: Int?
+
+    @Parameter(title: "Reps")
+    var reps: Int?
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let container = try FitMinIntentModelContainer.make()
+        let context = ModelContext(container)
+        let timer = try await MainActor.run {
+            try TimerAgentService.shared.create(
+                context: context,
+                title: title,
+                reps: reps,
+                workSeconds: workSeconds,
+                restSeconds: restSeconds
+            )
+        }
+        return .result(dialog: IntentDialog("Created \(timer.displayTitle)."))
+    }
+}
+
 struct FitMinShortcuts: AppShortcutsProvider {
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
@@ -113,6 +160,15 @@ struct FitMinShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Start Timer",
             systemImageName: "timer"
+        )
+        AppShortcut(
+            intent: CreateFitMinTimerIntent(),
+            phrases: [
+                "Create a timer in \(.applicationName)",
+                "Make a timer in \(.applicationName)"
+            ],
+            shortTitle: "Create timer",
+            systemImageName: "plus.circle"
         )
     }
 }

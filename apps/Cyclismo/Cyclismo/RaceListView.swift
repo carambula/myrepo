@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 enum SearchBarAppearance: String, CaseIterable {
@@ -2127,6 +2128,11 @@ private struct AccountSheetView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                }
+                .designSystemGroupedListRow()
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .cyc, exporter: CyclingAgentService.shared)
                 }
                 .designSystemGroupedListRow()
 

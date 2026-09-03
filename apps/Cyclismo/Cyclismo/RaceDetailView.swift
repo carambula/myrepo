@@ -768,9 +768,6 @@ struct RaceDetailView: View {
         animateButtonPress("saved")
         triggerMediumHaptic()
         persistStatus(localIsSaved, key: Self.savedKey)
-        Task {
-            await SavedRaceNotificationManager.shared.refreshSavedRaceNotifications(requestAuthorization: localIsSaved)
-        }
     }
 
     private func toggleListenedStatus() {
@@ -807,35 +804,14 @@ struct RaceDetailView: View {
     }
 
     private func loadUserState() {
-        let saved = loadSet(key: Self.savedKey)
-        let listened = loadSet(key: Self.listenedKey)
-        let watched = loadSet(key: Self.watchedKey)
-        localIsSaved = saved.contains(race.raceId)
-        localIsListened = listened.contains(race.raceId)
-        localIsWatched = watched.contains(race.raceId)
+        let status = RaceStatusStore.status(for: race.raceId)
+        localIsSaved = status.isSaved
+        localIsListened = status.isListened
+        localIsWatched = status.isWatched
     }
 
     private func persistStatus(_ isOn: Bool, key: String) {
-        var set = loadSet(key: key)
-        if isOn {
-            set.insert(race.raceId)
-        } else {
-            set.remove(race.raceId)
-        }
-        store(set, key: key)
-    }
-
-    private func loadSet(key: String) -> Set<String> {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
-        let decoded = (try? JSONDecoder().decode([String].self, from: data)) ?? []
-        return Set(decoded)
-    }
-
-    private func store(_ set: Set<String>, key: String) {
-        let list = Array(set).sorted()
-        guard let data = try? JSONEncoder().encode(list) else { return }
-        UserDefaults.standard.set(data, forKey: key)
-        ICloudSyncManager.shared.syncRaceStatusForRaceId(race.raceId)
+        RaceStatusStore.set(isOn, raceId: race.raceId, key: key)
     }
 
     private func uniqueLinks(_ links: [ActionLink]) -> [ActionLink] {

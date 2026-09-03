@@ -1,0 +1,28 @@
+{
+  "name": "@min-apps/agent-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared agent protocol, auth, undo journal, and MCP/HTTP gateway for all min apps",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "min-agent": "src/cli.js"
+  },
+  "scripts": {
+    "build": "node --check src/index.js",
+    "test": "node --test test/agent-kit.test.js",
+    "mcp": "node src/cli.js mcp",
+    "serve": "node src/cli.js serve",
+    "lint": "node --check src/index.js && node --check src/cli.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./protocol": "./src/protocol.js"
+  },
+  "keywords": [
+    "mcp",
+    "agent",
+    "min-apps"
+  ],
+  "license": "MIT"
+}

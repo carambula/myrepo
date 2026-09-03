@@ -26,6 +26,7 @@ export type AdminMovie = {
   oscarAwards: unknown;
   physicalMedia: unknown;
   podcastEpisodeDescription: string | null;
+  sourceUrl?: string | null;
 };
 
 export type AdminSource = {
@@ -222,8 +223,13 @@ export const upsertAdminMovie = async (
           return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
         })(),
         JSON.stringify(
-          payload.podcastEpisodeDescription
-            ? { description: payload.podcastEpisodeDescription }
+          payload.podcastEpisodeDescription || payload.sourceTitle || payload.sourceUrl
+            ? {
+                title: payload.sourceTitle ?? null,
+                description: payload.podcastEpisodeDescription ?? null,
+                publishDate: payload.episodeDate ?? null,
+                episodeId: payload.sourceUrl ?? null
+              }
             : null
         )
       ]

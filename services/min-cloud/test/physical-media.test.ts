@@ -68,9 +68,16 @@ describe("physical media", () => {
     assert.equal(index.get("550")?.has4K, true);
     assert.equal(index.get("238")?.hasCriterion, true);
 
-    seedCriterionFromSources([{ sourceIdentifier: "criterion", tmdbId: 13 }], index);
+    seedCriterionFromSources(
+      [
+        { sourceIdentifier: "criterion", tmdbId: 13 },
+        { sourceIdentifier: "criterion-closet-picks", tmdbId: 78 }
+      ],
+      index
+    );
     seedCurated4K(index);
     assert.equal(index.get("13")?.hasCriterion, true);
+    assert.equal(index.get("78")?.hasCriterion, true);
     assert.equal(index.get("155")?.has4K, true);
 
     const filtered = filterIndexToCatalog(index, [{ tmdbId: 550 }, { tmdbId: 13 }]);

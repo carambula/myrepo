@@ -2,6 +2,16 @@ import { Router, type Request } from "express";
 import { query } from "../db.js";
 import { config } from "../config.js";
 import { fetchText } from "../lib/http.js";
+import {
+  closetPicksWaybackUrl,
+  collapseClosetPicks,
+  htmlLooksLikeClosetPicks,
+  isClosetPicksIndexUrl,
+  isClosetPicksUrl,
+  parseClosetPicksEpisode,
+  parseClosetPicksIndex,
+  toClosetPicksCatalogItem
+} from "../lib/closet-picks-scrape.js";
 import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
 import { scrapeListItems } from "../lib/list-scrape.js";
@@ -226,6 +236,18 @@ const applyTmdbDetails = (movie: AdminMovie, details: Record<string, unknown>) =
 const LIST_FETCH_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+};
+
+const fetchClosetPicksHtml = async (url: string) => {
+  try {
+    const html = await fetchText(url, LIST_FETCH_HEADERS);
+    if (htmlLooksLikeClosetPicks(html)) {
+      return html;
+    }
+  } catch {
+    // fall through to Wayback
+  }
+  return fetchText(closetPicksWaybackUrl(url), LIST_FETCH_HEADERS);
 };
 
 const previewIdentifiers = (body: { identifiers?: unknown; sourceIdentifiers?: unknown }) => {
@@ -898,6 +920,41 @@ router.post("/ingest/preview", async (req, res) => {
       .map((episode) => podcastPreviewItem(episode, identifier, existing))
       .filter((item) => item.title && !shouldSkipPodcastNoise(identifier, item.sourceTitle, item.title));
     res.json({ items, summary: { count: items.length } });
+    return;
+  }
+  if (isClosetPicksUrl(url)) {
+    const html = await fetchClosetPicksHtml(url);
+    const previewLimit = Math.min(Number(req.body?.episodeLimit) || 12, 40);
+    const episodes = isClosetPicksIndexUrl(url) ? parseClosetPicksIndex(html) : [];
+    const visits = [];
+    if (episodes.length) {
+      for (const episode of episodes.slice(0, previewLimit)) {
+        try {
+          const episodeHtml = await fetchClosetPicksHtml(episode.episodeUrl);
+          visits.push({ episode, films: parseClosetPicksEpisode(episodeHtml) });
+        } catch {
+          // skip unreachable episode pages
+        }
+      }
+    } else {
+      visits.push({
+        episode: {
+          guestName: "",
+          episodeTitle: "",
+          episodeUrl: url,
+          date: null
+        },
+        films: parseClosetPicksEpisode(html)
+      });
+    }
+    const items = collapseClosetPicks(visits).map((film) => ({
+      ...toClosetPicksCatalogItem(film, identifier || "criterion-closet-picks"),
+      isRankedList: true
+    }));
+    res.json({
+      items,
+      summary: { count: items.length, episodes: episodes.length, fetchedEpisodes: visits.length }
+    });
     return;
   }
   const html = await fetchText(url, LIST_FETCH_HEADERS);

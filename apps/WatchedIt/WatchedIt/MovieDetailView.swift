@@ -500,6 +500,31 @@ struct MovieDetailView: View {
         #endif
     }
 
+    private func sourceLinkDestinationURL(
+        identifier: String,
+        sourceUrl: String?,
+        episode: PodcastEpisode?,
+        sourceName: String
+    ) -> URL? {
+        if identifier == "criterion-closet-picks" {
+            if let sourceUrl, let url = URL(string: sourceUrl), url.scheme?.hasPrefix("http") == true {
+                return url
+            }
+            if let episodeId = episode?.episodeId, let url = URL(string: episodeId), url.scheme?.hasPrefix("http") == true {
+                return url
+            }
+            return URL(string: "https://www.criterion.com/closet-picks")
+        }
+        return episode.flatMap { episode in
+            preferredPodcastLink(
+                podcastName: sourceName,
+                dataSourceIdentifier: identifier,
+                episode: episode,
+                movieTitle: displayMovie.title
+            )
+        }
+    }
+
     private func preferredPodcastLink(
         podcastName: String,
         dataSourceIdentifier: String?,
@@ -1291,14 +1316,12 @@ struct MovieDetailView: View {
                                     SourceContentCardView(
                                         sourceContent: sourceContent,
                                         podcastFeedURLString: podcastFeedURLs[sourceContent.sourceIdentifier.lowercased()],
-                                        podcastDestinationURL: sourceContent.podcastEpisode.flatMap { episode in
-                                            preferredPodcastLink(
-                                                podcastName: sourceContent.sourceName,
-                                                dataSourceIdentifier: sourceContent.sourceIdentifier,
-                                                episode: episode,
-                                                movieTitle: displayMovie.title
-                                            )
-                                        }
+                                        podcastDestinationURL: sourceLinkDestinationURL(
+                                            identifier: sourceContent.sourceIdentifier,
+                                            sourceUrl: sourceContent.sourceUrl,
+                                            episode: sourceContent.podcastEpisode,
+                                            sourceName: sourceContent.sourceName
+                                        )
                                     )
                                 }
                             } else {
@@ -1317,14 +1340,12 @@ struct MovieDetailView: View {
                                         legacySource: legacySource,
                                         movieTitle: displayMovie.title,
                                         podcastFeedURLString: podcastFeedURLs[legacySource.sourceIdentifier.lowercased()],
-                                        podcastDestinationURL: legacySource.podcastEpisode.flatMap { episode in
-                                            preferredPodcastLink(
-                                                podcastName: legacySource.sourceName,
-                                                dataSourceIdentifier: legacySource.sourceIdentifier,
-                                                episode: episode,
-                                                movieTitle: displayMovie.title
-                                            )
-                                        }
+                                        podcastDestinationURL: sourceLinkDestinationURL(
+                                            identifier: legacySource.sourceIdentifier,
+                                            sourceUrl: legacySource.sourceUrl,
+                                            episode: legacySource.podcastEpisode,
+                                            sourceName: legacySource.sourceName
+                                        )
                                     )
                                 }
                             }
@@ -1837,7 +1858,7 @@ struct SourceContentCardView: View {
     
     var body: some View {
         Group {
-            if sourceContent.podcastEpisode != nil, let podcastDestinationURL {
+            if let podcastDestinationURL {
                 Link(destination: podcastDestinationURL) {
                     content
                 }
@@ -1850,7 +1871,7 @@ struct SourceContentCardView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            HStack(alignment: sourceContent.sourceType.lowercased() == "podcast" ? .top : .center, spacing: DesignSystem.Spacing.md) {
+            HStack(alignment: sourceContent.podcastEpisode != nil || sourceContent.sourceTitle != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if sourceContent.sourceType.lowercased() == "podcast" {
                     podcastArtworkView
                 } else {
@@ -1872,7 +1893,6 @@ struct SourceContentCardView: View {
                     }
 
                     if let episode = sourceContent.podcastEpisode {
-
                         Text(episode.title)
                             .captionMedium()
                             .fontWeight(.medium)
@@ -1885,19 +1905,22 @@ struct SourceContentCardView: View {
                                 .captionMedium()
                                 .foregroundColor(DesignSystem.Color.textSecondary)
                         }
-
+                    } else if let sourceTitle = sourceContent.sourceTitle, !sourceTitle.isEmpty {
+                        Text(sourceTitle)
+                            .captionMedium()
+                            .fontWeight(.medium)
+                            .foregroundColor(DesignSystem.Color.textSecondary)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
-            
-            // Podcast-only details
-            if let episode = sourceContent.podcastEpisode {
-                if let description = episode.description, !description.isEmpty {
-                    Text(description)
-                        .captionMedium()
-                        .foregroundColor(DesignSystem.Color.textSecondary)
-                        .lineLimit(4)
-                }
+
+            if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
+                Text(description)
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
             }
         }
     }

@@ -59,6 +59,7 @@ func generateBootstrapJSON() {
         "IMDb List 1": ("imdb-list-1", "IMDb List 1", "url", "https://www.imdb.com/list/ls042702401/", true),
         "IMDb List 2": ("imdb-list-2", "IMDb List 2", "url", "https://www.imdb.com/list/ls058479560/", true),
         "Criterion Collection": ("criterion", "Criterion Collection", "url", "https://en.wikipedia.org/wiki/Criterion_Closet#Criterion_Collection_40", true),
+        "Criterion Closet Picks": ("criterion-closet-picks", "Criterion Closet Picks", "url", "https://www.criterion.com/closet-picks", true),
     ]
     
     // Parse movies

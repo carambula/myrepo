@@ -264,7 +264,7 @@ function seedCurated4K(byTmdbId) {
 
 function seedCriterionFromSources(movies, byTmdbId) {
   for (const movie of movies || []) {
-    if (movie.sourceIdentifier !== "criterion" || !movie.tmdbId) continue;
+    if ((movie.sourceIdentifier !== "criterion" && movie.sourceIdentifier !== "criterion-closet-picks") || !movie.tmdbId) continue;
     const existing = byTmdbId.get(String(movie.tmdbId)) || emptyMedia();
     existing.hasCriterion = true;
     const hasCriterionEdition = (existing.editions || []).some((edition) => edition.label === "criterion");

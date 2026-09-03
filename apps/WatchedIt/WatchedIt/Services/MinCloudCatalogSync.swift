@@ -247,6 +247,9 @@ final class MinCloudCatalogSync {
                 if let rank = link.rank {
                     existing.rank = rank
                 }
+                if existing.sourceUrl == nil || existing.sourceUrl?.isEmpty == true {
+                    existing.sourceUrl = Self.sourceUrl(from: link)
+                }
                 continue
             }
             let content = SourceContent(
@@ -256,12 +259,21 @@ final class MinCloudCatalogSync {
                 sourceDescription: link.episode?.description,
                 sourceDate: episodeDate,
                 rank: link.rank,
-                podcastEpisode: episode
+                podcastEpisode: episode,
+                sourceUrl: Self.sourceUrl(from: link)
             )
             modelContext.insert(content)
             contentKeys.insert(key)
             contentByKey[key] = content
         }
+    }
+
+    private static func sourceUrl(from link: MinCloudMovieCatalog.Movie.SourceLink) -> String? {
+        if let episodeId = link.episode?.episodeId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           episodeId.hasPrefix("http") {
+            return episodeId
+        }
+        return nil
     }
 
     private static func podcastEpisode(

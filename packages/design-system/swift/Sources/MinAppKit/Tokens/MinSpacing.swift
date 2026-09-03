@@ -44,4 +44,32 @@ public enum MinSpacing {
     /// Grid gutter spacing: 16pt
     /// Used for 2-column grid layouts (PodLink & YourTube pattern)
     public static let gridGutter: CGFloat = lg
+
+    /// Extra scroll clearance above the home indicator. Safe-area insets still apply.
+    public static let bottomSafeArea: CGFloat = 34
+
+    /// Circular account / search / add buttons in the top safe-area inset.
+    public enum TopControls {
+        /// Icon button hit target (matches pod / fit `Controls.iconButtonSize`).
+        public static let buttonSize: CGFloat = 48
+        /// Gap between top-bar icon buttons.
+        public static let horizontalPadding: CGFloat = sm
+        /// Padding above and below the top control row inside `safeAreaInset`.
+        public static let verticalPadding: CGFloat = sm
+    }
+
+    /// Scroll-pinned brand wordmark on each min-app home screen.
+    public enum TitleType {
+        public static let horizontalPadding: CGFloat = screenHorizontalPadding
+        public static let markOffsetY: CGFloat = 0
+        /// Space above the wordmark inside the scroll view.
+        public static let scrollTopPadding: CGFloat = xxl
+        /// Space between the wordmark and the first content row.
+        public static let contentTopSpacing: CGFloat = xl
+        public static let maxWidth: CGFloat = 220
+        public static let maxHeight: CGFloat = 38
+        public static let blurDistance: CGFloat = 80
+        public static let maxBlurRadius: CGFloat = 12
+        public static let maxOpacityReduction: CGFloat = 0.5
+    }
 }

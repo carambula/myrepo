@@ -46,6 +46,26 @@ export const spacing = {
     marginTopMobile: '24px',
     marginBottomMobile: '16px',
   },
+
+  // Top safe-area account / search / add buttons (MinSpacing.TopControls)
+  topControls: {
+    buttonSize: '48px',
+    horizontalPadding: '8px',
+    verticalPadding: '8px',
+  },
+
+  // Scroll-pinned title-type wordmark (MinSpacing.TitleType)
+  titleType: {
+    horizontalPadding: '24px',
+    markOffsetY: '0',
+    scrollTopPadding: '32px',
+    contentTopSpacing: '24px',
+    maxWidth: '220px',
+    maxHeight: '38px',
+    blurDistance: '80px',
+    maxBlurRadius: '12px',
+    maxOpacityReduction: 0.5,
+  },
   
   // Button spacing
   button: {

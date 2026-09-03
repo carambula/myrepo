@@ -1,163 +1,168 @@
 /**
  * OnboardingFlow Component
- * Container for multi-step onboarding experience
+ * Main onboarding flow container with step navigation
  */
 
-import { spacing, typography, borders, transitions } from '../tokens/index.js';
+import { useState } from 'react';
 
 export function OnboardingFlow({
-  currentStep = 1,
-  totalSteps,
-  onNext,
-  onPrevious,
-  onSkip,
+  steps = [],
+  appId,
   onComplete,
-  showSkip = true,
-  showPrevious = true,
-  nextButtonText = 'Next',
-  previousButtonText = 'Previous',
-  skipButtonText = 'Skip',
-  completeButtonText = 'Get Started',
-  children,
-  className = '',
-  ...props
+  onSkip,
+  showSkip = true
 }) {
-  const containerStyles = `
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background-color: var(--color-background-primary);
-    position: relative;
-  `;
-  
-  const contentStyles = `
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: ${spacing[6]} ${spacing[4]};
-    
-    @media (max-width: 767px) {
-      padding: ${spacing[4]} ${spacing[3]};
-    }
-  `;
-  
-  const navigationStyles = `
-    display: flex;
-    gap: ${spacing[4]};
-    padding: ${spacing[6]};
-    border-top: 1px solid var(--color-border-primary);
-    background-color: var(--color-background-secondary);
-    
-    @media (max-width: 767px) {
-      padding: ${spacing[4]};
-      flex-direction: column-reverse;
-    }
-  `;
-  
-  const buttonGroupStyles = `
-    flex: 1;
-    display: flex;
-    gap: ${spacing[3]};
-    
-    @media (max-width: 767px) {
-      flex-direction: column;
-    }
-  `;
-  
-  const buttonStyles = (variant = 'secondary') => `
-    flex: 1;
-    padding: ${spacing.button.paddingY} ${spacing.button.paddingX};
-    font-family: ${typography.fonts.primary};
-    font-size: ${typography.styles.button.fontSize};
-    font-weight: ${typography.styles.button.fontWeight};
-    border: none;
-    border-radius: ${borders.radii.md};
-    cursor: pointer;
-    transition: ${transitions.all};
-    background-color: var(--color-${variant}-main);
-    color: var(--color-${variant}-contrast);
-    
-    &:hover {
-      background-color: var(--color-${variant}-dark);
-      transform: translateY(-1px);
-    }
-    
-    &:active {
-      transform: translateY(0);
-    }
-    
-    @media (max-width: 767px) {
-      width: 100%;
-    }
-  `;
-  
-  const skipButtonStyles = `
-    padding: ${spacing.button.paddingY} ${spacing.button.paddingX};
-    font-family: ${typography.fonts.primary};
-    font-size: ${typography.styles.button.fontSize};
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: ${transitions.all};
-    
-    &:hover {
-      color: var(--color-text-primary);
-    }
-  `;
-  
-  const isLastStep = currentStep === totalSteps;
-  
-  return {
-    element: 'div',
-    className: `min-onboarding-flow ${className}`.trim(),
-    style: containerStyles,
-    children: [
-      {
-        element: 'div',
-        className: 'min-onboarding-flow__content',
-        style: contentStyles,
-        children,
-      },
-      {
-        element: 'nav',
-        className: 'min-onboarding-flow__navigation',
-        style: navigationStyles,
-        children: [
-          {
-            element: 'div',
-            style: buttonGroupStyles,
-            children: [
-              showPrevious && currentStep > 1 && {
-                element: 'button',
-                onClick: onPrevious,
-                style: buttonStyles('secondary'),
-                className: 'min-onboarding-flow__previous',
-                children: previousButtonText,
-              },
-              {
-                element: 'button',
-                onClick: isLastStep ? onComplete : onNext,
-                style: buttonStyles('primary'),
-                className: 'min-onboarding-flow__next',
-                children: isLastStep ? completeButtonText : nextButtonText,
-              },
-            ].filter(Boolean),
-          },
-          showSkip && !isLastStep && {
-            element: 'button',
-            onClick: onSkip,
-            style: skipButtonStyles,
-            className: 'min-onboarding-flow__skip',
-            children: skipButtonText,
-          },
-        ].filter(Boolean),
-      },
-    ],
-    ...props,
-  };
-}
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [stepData, setStepData] = useState({});
 
-export default OnboardingFlow;
+  const currentStep = steps[currentStepIndex];
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === steps.length - 1;
+
+  const handleNext = (data = {}) => {
+    setStepData({ ...stepData, ...data });
+
+    if (isLastStep) {
+      if (onComplete) {
+        onComplete({ ...stepData, ...data });
+      }
+    } else {
+      setCurrentStepIndex(currentStepIndex + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (!isFirstStep) {
+      setCurrentStepIndex(currentStepIndex - 1);
+    }
+  };
+
+  const handleSkip = () => {
+    if (onSkip) {
+      onSkip(stepData);
+    } else if (onComplete) {
+      onComplete({ ...stepData, skipped: true });
+    }
+  };
+
+  if (!currentStep) {
+    return null;
+  }
+
+  const StepComponent = currentStep.component;
+
+  return (
+    <div className="onboarding-flow">
+      <div className="onboarding-flow__container">
+        <div className="onboarding-flow__progress">
+          <div className="onboarding-flow__progress-bar">
+            <div
+              className="onboarding-flow__progress-fill"
+              style={{
+                width: `${((currentStepIndex + 1) / steps.length) * 100}%`
+              }}
+            />
+          </div>
+          <div className="onboarding-flow__step-counter">
+            Step {currentStepIndex + 1} of {steps.length}
+          </div>
+        </div>
+
+        <div className="onboarding-flow__content">
+          <StepComponent
+            appId={appId}
+            data={stepData}
+            onNext={handleNext}
+            onBack={handleBack}
+            isFirstStep={isFirstStep}
+            isLastStep={isLastStep}
+          />
+        </div>
+
+        {showSkip && !isLastStep && (
+          <button
+            className="onboarding-flow__skip"
+            onClick={handleSkip}
+            type="button"
+          >
+            Skip onboarding
+          </button>
+        )}
+      </div>
+
+      <style>{`
+        .onboarding-flow {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--color-background);
+          padding: 24px 16px;
+        }
+
+        .onboarding-flow__container {
+          width: 100%;
+          max-width: 600px;
+        }
+
+        .onboarding-flow__progress {
+          margin-bottom: 32px;
+        }
+
+        .onboarding-flow__progress-bar {
+          height: 4px;
+          background: var(--color-border);
+          border-radius: 2px;
+          overflow: hidden;
+          margin-bottom: 12px;
+        }
+
+        .onboarding-flow__progress-fill {
+          height: 100%;
+          background: var(--color-primary);
+          transition: width 0.3s ease;
+        }
+
+        .onboarding-flow__step-counter {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          text-align: center;
+        }
+
+        .onboarding-flow__content {
+          background: var(--color-surface);
+          border-radius: 16px;
+          padding: 32px;
+          box-shadow: var(--shadow-md);
+        }
+
+        .onboarding-flow__skip {
+          display: block;
+          margin: 24px auto 0;
+          padding: 12px 24px;
+          background: transparent;
+          border: none;
+          color: var(--color-text-secondary);
+          font-size: 14px;
+          cursor: pointer;
+          text-decoration: underline;
+          transition: color 0.2s ease;
+        }
+
+        .onboarding-flow__skip:hover {
+          color: var(--color-text-primary);
+        }
+
+        @media (max-width: 768px) {
+          .onboarding-flow {
+            padding: 16px;
+          }
+
+          .onboarding-flow__content {
+            padding: 24px 16px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

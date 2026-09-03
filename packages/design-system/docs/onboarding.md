@@ -1,712 +1,500 @@
-# Onboarding System Documentation
+# Onboarding System
+
+The min apps design system includes a complete onboarding flow system that allows each app to guide new users through initial setup, including notification preferences configuration.
 
 ## Overview
 
-The min apps design system includes a comprehensive onboarding system that provides a consistent, beautiful first-run experience across all four apps (WatchedIt, Podlink, Yourtube, Cyclismo Guide). The onboarding flows are designed to:
+The onboarding system provides:
 
-- Introduce users to app features in a clear, engaging way
-- Request necessary permissions (notifications, etc.)
-- Allow theme customization
-- Set up initial preferences
-- Maintain design consistency across all apps
+- **Reusable Components**: Pre-built onboarding flow and step components
+- **Notification Integration**: Built-in notification preferences step
+- **State Management**: Automatic tracking of onboarding completion
+- **App-Specific Flows**: Customizable steps for each min app
+- **Responsive Design**: Mobile-optimized onboarding experience
 
-## Table of Contents
+## Quick Start
 
-1. [Architecture](#architecture)
-2. [Components](#components)
-3. [App-Specific Configurations](#app-specific-configurations)
-4. [Implementation Guide](#implementation-guide)
-5. [Customization](#customization)
-6. [Best Practices](#best-practices)
+### Basic Implementation
 
-## Architecture
+```javascript
+import { 
+  OnboardingFlow, 
+  getDefaultOnboardingSteps,
+  useOnboardingState 
+} from '@min-apps/design-system/onboarding';
+import { APP_IDS } from '@min-apps/design-system/notifications';
 
-The onboarding system consists of:
+function App() {
+  const { showOnboarding, markAsCompleted } = useOnboardingState(APP_IDS.CYCLISMO);
+  const steps = getDefaultOnboardingSteps(APP_IDS.CYCLISMO);
 
-1. **Core Components** - Reusable UI components for building onboarding flows
-2. **Flow Manager** - Handles navigation and state management
-3. **Configuration Files** - App-specific onboarding steps and content
-4. **Persistence Layer** - Tracks onboarding progress and completion
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow
+        steps={steps}
+        appId={APP_IDS.CYCLISMO}
+        onComplete={markAsCompleted}
+      />
+    );
+  }
 
-```
-src/
-├── components/
-│   ├── OnboardingFlow.js          # Container with navigation
-│   ├── OnboardingStep.js          # Individual step wrapper
-│   ├── FeatureHighlight.js        # Feature showcase component
-│   ├── PermissionRequest.js       # Permission request UI
-│   └── OnboardingContainer.js     # Complete integration
-├── onboarding/
-│   ├── onboardingManager.js       # State management
-│   ├── watcheditOnboarding.js     # WatchedIt config
-│   ├── podlinkOnboarding.js       # Podlink config
-│   ├── yourtubeOnboarding.js      # Yourtube config
-│   └── cyclismoOnboarding.js      # Cyclismo config
+  return <YourApp />;
+}
 ```
 
 ## Components
 
 ### OnboardingFlow
 
-The main container component that manages navigation through onboarding steps.
+Main container component that manages the onboarding flow with step navigation and progress tracking.
+
+#### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `steps` | `Array<Step>` | `[]` | Array of step configurations |
+| `appId` | `string` | required | App identifier (from APP_IDS) |
+| `onComplete` | `function` | - | Called when onboarding completes |
+| `onSkip` | `function` | - | Called when user skips onboarding |
+| `showSkip` | `boolean` | `true` | Whether to show skip button |
+
+#### Step Object
 
 ```javascript
-import { OnboardingFlow } from '@min-apps/design-system';
-
-<OnboardingFlow
-  currentStep={1}
-  totalSteps={5}
-  onNext={() => setStep(step + 1)}
-  onPrevious={() => setStep(step - 1)}
-  onSkip={handleSkip}
-  onComplete={handleComplete}
-  showSkip={true}
-  showPrevious={true}
-  nextButtonText="Next"
-  previousButtonText="Previous"
-  skipButtonText="Skip"
-  completeButtonText="Get Started"
->
-  {/* Step content goes here */}
-</OnboardingFlow>
+{
+  id: 'welcome',           // Unique step identifier
+  component: WelcomeStep   // React component to render
+}
 ```
-
-**Props:**
-- `currentStep` (number) - Current step number (1-indexed)
-- `totalSteps` (number) - Total number of steps
-- `onNext` (function) - Called when user clicks next
-- `onPrevious` (function) - Called when user clicks previous
-- `onSkip` (function) - Called when user skips onboarding
-- `onComplete` (function) - Called when user completes onboarding
-- `showSkip` (boolean) - Show skip button
-- `showPrevious` (boolean) - Show previous button
-- `nextButtonText` (string) - Text for next button
-- `previousButtonText` (string) - Text for previous button
-- `skipButtonText` (string) - Text for skip button
-- `completeButtonText` (string) - Text for complete button
 
 ### OnboardingStep
 
-Individual step component with icon, title, description, and content.
+Generic step component with title, description, and navigation buttons.
+
+#### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `title` | `string` | required | Step title |
+| `description` | `string` | - | Step description |
+| `icon` | `string` | - | Emoji or icon to display |
+| `children` | `node` | - | Step content |
+| `onNext` | `function` | - | Called when next is clicked |
+| `onBack` | `function` | - | Called when back is clicked |
+| `isFirstStep` | `boolean` | - | Whether this is the first step |
+| `isLastStep` | `boolean` | - | Whether this is the last step |
+| `nextLabel` | `string` | `'Continue'` | Text for next button |
+| `backLabel` | `string` | `'Back'` | Text for back button |
+| `showNext` | `boolean` | `true` | Whether to show next button |
+| `showBack` | `boolean` | `true` | Whether to show back button |
+
+#### Example
 
 ```javascript
-import { OnboardingStep } from '@min-apps/design-system';
-
-<OnboardingStep
-  icon="/assets/welcome-icon.svg"
-  iconAlt="Welcome"
-  title="Welcome to Our App"
-  description="Let's get you started with a quick tour."
-  stepNumber={1}
-  totalSteps={5}
->
-  {/* Additional content */}
-</OnboardingStep>
+function CustomStep({ onNext, onBack, isFirstStep, isLastStep }) {
+  return (
+    <OnboardingStep
+      title="Welcome!"
+      description="Let's get started"
+      icon="👋"
+      onNext={onNext}
+      onBack={onBack}
+      isFirstStep={isFirstStep}
+      isLastStep={isLastStep}
+    >
+      <p>Your custom content here</p>
+    </OnboardingStep>
+  );
+}
 ```
 
-**Props:**
-- `icon` (string) - Icon image URL
-- `iconAlt` (string) - Alt text for icon
-- `title` (string) - Step title
-- `description` (string) - Step description
-- `stepNumber` (number) - Current step number
-- `totalSteps` (number) - Total steps (for progress dots)
-- `children` (node) - Additional content
+### OnboardingNotificationStep
 
-### FeatureHighlight
+Pre-configured step for setting up notification preferences during onboarding.
 
-Displays a feature with icon, title, and description.
+#### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `appId` | `string` | required | App identifier |
+| `title` | `string` | auto-generated | Custom title (optional) |
+| `description` | `string` | auto-generated | Custom description (optional) |
+| `onNext` | `function` | - | Called when next is clicked |
+| `onBack` | `function` | - | Called when back is clicked |
+| `isFirstStep` | `boolean` | - | Whether this is the first step |
+| `isLastStep` | `boolean` | - | Whether this is the last step |
+| `onManagePriorityPodcasts` | `function` | - | Podlink: manage priority podcasts |
+| `onManagePriorityChannels` | `function` | - | Yourtube: manage priority channels |
+
+This component automatically renders the appropriate notification settings based on the `appId`.
+
+## Default Onboarding Flows
+
+Each app has a default 3-step onboarding flow:
+
+### Cyclismo Guide
+
+1. **Welcome** - Introduction to Cyclismo Guide
+2. **Features** - Race schedules, stream notifications, and replays
+3. **Notifications** - Configure race alerts and stream reminders
+
+### podlink
+
+1. **Welcome** - Introduction to podlink
+2. **Features** - Queue summaries and priority podcasts
+3. **Notifications** - Configure queue notifications and priority alerts
+
+### WatchedIt
+
+1. **Welcome** - Introduction to WatchedIt
+2. **Features** - Episode tracking and notifications
+3. **Notifications** - Configure new episode notifications
+
+### yourtube
+
+1. **Welcome** - Introduction to yourtube
+2. **Features** - Queue management and priority channels
+3. **Notifications** - Configure queue notifications and priority alerts
+
+## Custom Onboarding Flows
+
+You can create custom onboarding flows by defining your own steps:
 
 ```javascript
-import { FeatureHighlight } from '@min-apps/design-system';
+import { OnboardingFlow, OnboardingStep } from '@min-apps/design-system/onboarding';
 
-<FeatureHighlight
-  icon="/assets/feature-icon.svg"
-  title="Smart Queue"
-  description="Automatically organize your content in a smart queue."
-/>
-```
+function MyWelcomeStep({ onNext, onBack, isFirstStep, isLastStep }) {
+  return (
+    <OnboardingStep
+      title="Custom Welcome"
+      description="Your custom onboarding experience"
+      icon="🎉"
+      onNext={onNext}
+      onBack={onBack}
+      isFirstStep={isFirstStep}
+      isLastStep={isLastStep}
+    >
+      <div>Your custom content</div>
+    </OnboardingStep>
+  );
+}
 
-**Props:**
-- `icon` (string) - Feature icon URL
-- `iconAlt` (string) - Alt text for icon
-- `title` (string) - Feature title
-- `description` (string) - Feature description
-
-### PermissionRequest
-
-UI for requesting user permissions with benefits list.
-
-```javascript
-import { PermissionRequest } from '@min-apps/design-system';
-
-<PermissionRequest
-  icon="/assets/notification-icon.svg"
-  title="Enable Notifications"
-  description="Get notified about important updates."
-  benefits={[
-    'Never miss new content',
-    'Daily summaries',
-    'Customizable timing',
-  ]}
-  permissionType="notifications"
-  onGrant={handleGrantPermission}
-  onDeny={handleDenyPermission}
-  grantButtonText="Allow"
-  denyButtonText="Not Now"
-/>
-```
-
-**Props:**
-- `icon` (string) - Permission icon URL
-- `title` (string) - Permission request title
-- `description` (string) - Permission description
-- `benefits` (array) - Array of benefit strings
-- `permissionType` (string) - Type of permission ('notifications', etc.)
-- `onGrant` (function) - Called when user grants permission
-- `onDeny` (function) - Called when user denies permission
-- `grantButtonText` (string) - Text for grant button
-- `denyButtonText` (string) - Text for deny button
-
-### OnboardingContainer
-
-High-level component that integrates everything. This is the recommended way to implement onboarding.
-
-```javascript
-import { OnboardingContainer } from '@min-apps/design-system';
-import { cyclismoOnboardingConfig } from '@min-apps/design-system/onboarding';
-
-<OnboardingContainer
-  config={cyclismoOnboardingConfig}
-  onComplete={(settings) => {
-    console.log('Onboarding completed with settings:', settings);
-    navigateToApp();
-  }}
-  onSkip={() => {
-    console.log('Onboarding skipped');
-    navigateToApp();
-  }}
-  onRequestNotifications={async () => {
-    const permission = await Notification.requestPermission();
-    console.log('Permission:', permission);
-  }}
-  onSelectTheme={(theme) => {
-    console.log('Theme selected:', theme);
-  }}
-/>
-```
-
-**Props:**
-- `config` (object) - App-specific onboarding configuration
-- `onComplete` (function) - Called when onboarding is completed
-- `onSkip` (function) - Called when user skips onboarding
-- `onRequestNotifications` (function) - Called when requesting notification permission
-- `onSelectTheme` (function) - Called when user selects a theme
-
-## App-Specific Configurations
-
-Each app has a detailed configuration file that defines its onboarding flow.
-
-### WatchedIt Configuration
-
-```javascript
-import { watcheditOnboardingConfig } from '@min-apps/design-system/onboarding';
-
-// Configuration includes:
-// - Welcome step
-// - Feature highlights (Track, Discover, Watchlist, Podcasts)
-// - Notification permission request
-// - Theme selection
-// - Ready step
-```
-
-**Steps:**
-1. Welcome to WatchedIt
-2. Discover Features (4 key features)
-3. Notification Permission
-4. Theme Selection
-5. You're All Set!
-
-### Podlink Configuration
-
-```javascript
-import { podlinkOnboardingConfig } from '@min-apps/design-system/onboarding';
-
-// Configuration includes:
-// - Welcome step
-// - Feature highlights (Queue, Priority, Apple Intelligence, Minimal)
-// - Notification permission request
-// - Priority podcast setup
-// - Theme selection
-// - Ready step
-```
-
-**Steps:**
-1. Welcome to Podlink
-2. Powerful Yet Simple (4 key features)
-3. Never Miss an Episode (Notifications)
-4. Set Priority Podcasts
-5. Theme Selection
-6. Ready to Listen!
-
-### Yourtube Configuration
-
-```javascript
-import { yourtubeOnboardingConfig } from '@min-apps/design-system/onboarding';
-
-// Configuration includes:
-// - Welcome step
-// - Feature highlights (Queue, Priority, Apple Intelligence, Focus)
-// - Notification permission request
-// - Priority channel setup
-// - Theme selection
-// - Ready step
-```
-
-**Steps:**
-1. Welcome to Yourtube
-2. Watch Intentionally (4 key features)
-3. Stay in the Loop (Notifications)
-4. Choose Priority Channels
-5. Theme Selection
-6. You're Ready!
-
-### Cyclismo Configuration
-
-```javascript
-import { cyclismoOnboardingConfig } from '@min-apps/design-system/onboarding';
-
-// Configuration includes:
-// - Welcome step
-// - Feature highlights (Schedule, Alerts, Recaps, Save)
-// - Notification permission request
-// - Notification customization
-// - Theme selection
-// - Ready step
-```
-
-**Steps:**
-1. Welcome to Cyclismo
-2. Follow Every Race (4 key features)
-3. Race Day Notifications
-4. Customize Notifications
-5. Theme Selection
-6. Ready to Race!
-
-## Implementation Guide
-
-### Basic Implementation
-
-1. **Install the design system:**
-
-```bash
-npm install @min-apps/design-system
-```
-
-2. **Import the onboarding container and config:**
-
-```javascript
-import React from 'react';
-import {
-  OnboardingContainer,
-  cyclismoOnboardingConfig,
-  OnboardingManager,
-} from '@min-apps/design-system';
+const customSteps = [
+  { id: 'welcome', component: MyWelcomeStep },
+  { id: 'notifications', component: OnboardingNotificationStep }
+];
 
 function App() {
-  const [showOnboarding, setShowOnboarding] = React.useState(
-    OnboardingManager.shouldShowOnboarding('cyclismo')
+  return (
+    <OnboardingFlow
+      steps={customSteps}
+      appId={APP_IDS.CYCLISMO}
+      onComplete={(data) => console.log('Completed!', data)}
+    />
   );
+}
+```
+
+## State Management
+
+### useOnboardingState Hook
+
+Manage onboarding state and completion status.
+
+#### Returns
+
+```javascript
+{
+  completed: boolean,        // Whether onboarding is completed
+  showOnboarding: boolean,   // Whether to show onboarding UI
+  markAsCompleted: function, // Mark onboarding as complete
+  restart: function          // Restart onboarding
+}
+```
+
+#### Example
+
+```javascript
+import { useOnboardingState } from '@min-apps/design-system/onboarding';
+import { APP_IDS } from '@min-apps/design-system/notifications';
+
+function App() {
+  const { showOnboarding, markAsCompleted, restart } = useOnboardingState(APP_IDS.CYCLISMO);
+
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={markAsCompleted} />;
+  }
+
+  return (
+    <div>
+      <YourApp />
+      <button onClick={restart}>Restart Onboarding</button>
+    </div>
+  );
+}
+```
+
+### Utility Functions
+
+#### isOnboardingCompleted
+
+```javascript
+import { isOnboardingCompleted } from '@min-apps/design-system/onboarding';
+
+const completed = isOnboardingCompleted(APP_IDS.CYCLISMO);
+```
+
+#### setOnboardingCompleted
+
+```javascript
+import { setOnboardingCompleted } from '@min-apps/design-system/onboarding';
+
+setOnboardingCompleted(APP_IDS.CYCLISMO, true);
+```
+
+#### resetOnboarding
+
+```javascript
+import { resetOnboarding } from '@min-apps/design-system/onboarding';
+
+resetOnboarding(APP_IDS.CYCLISMO);
+```
+
+## Integration with Notifications
+
+The onboarding system integrates seamlessly with the notification preferences system. The `OnboardingNotificationStep` component:
+
+1. Automatically loads current notification preferences
+2. Renders app-specific notification settings
+3. Validates user input
+4. Saves preferences to localStorage
+5. Passes preferences data to the `onComplete` callback
+
+### Example with Notification Data
+
+```javascript
+function App() {
+  const { showOnboarding, markAsCompleted } = useOnboardingState(APP_IDS.CYCLISMO);
+
+  const handleComplete = (data) => {
+    console.log('Notification preferences:', data.notificationPreferences);
+    markAsCompleted();
+  };
 
   if (showOnboarding) {
     return (
-      <OnboardingContainer
-        config={cyclismoOnboardingConfig}
-        onComplete={(settings) => {
-          // Apply default settings
-          applySettings(settings);
-          setShowOnboarding(false);
-        }}
-        onSkip={() => {
-          setShowOnboarding(false);
-        }}
-        onRequestNotifications={async () => {
-          const permission = await Notification.requestPermission();
-          return permission === 'granted';
-        }}
+      <OnboardingFlow
+        appId={APP_IDS.CYCLISMO}
+        onComplete={handleComplete}
       />
     );
   }
 
-  return <MainApp />;
+  return <YourApp />;
 }
 ```
 
-### Advanced Implementation
+## Styling
 
-For more control, you can build custom onboarding flows using individual components:
-
-```javascript
-import React from 'react';
-import {
-  OnboardingFlow,
-  OnboardingStep,
-  FeatureHighlight,
-  PermissionRequest,
-} from '@min-apps/design-system';
-
-function CustomOnboarding() {
-  const [step, setStep] = React.useState(1);
-
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <OnboardingStep
-            icon="/assets/welcome.svg"
-            title="Welcome"
-            description="Let's get started"
-            stepNumber={step}
-            totalSteps={3}
-          />
-        );
-      
-      case 2:
-        return (
-          <OnboardingStep
-            title="Key Features"
-            description="What you can do"
-            stepNumber={step}
-            totalSteps={3}
-          >
-            <FeatureHighlight
-              icon="/assets/feature1.svg"
-              title="Feature One"
-              description="Description here"
-            />
-          </OnboardingStep>
-        );
-      
-      case 3:
-        return (
-          <PermissionRequest
-            title="Enable Notifications"
-            description="Stay updated"
-            benefits={['Benefit 1', 'Benefit 2']}
-            onGrant={handleGrant}
-            onDeny={handleDeny}
-          />
-        );
-    }
-  };
-
-  return (
-    <OnboardingFlow
-      currentStep={step}
-      totalSteps={3}
-      onNext={() => setStep(step + 1)}
-      onPrevious={() => setStep(step - 1)}
-      onComplete={handleComplete}
-    >
-      {renderStep()}
-    </OnboardingFlow>
-  );
-}
-```
-
-## OnboardingManager API
-
-The `OnboardingManager` utility helps track onboarding state:
-
-### Methods
-
-```javascript
-import { OnboardingManager } from '@min-apps/design-system';
-
-// Check if onboarding is completed
-const isCompleted = OnboardingManager.hasCompletedOnboarding('cyclismo');
-
-// Mark onboarding as completed
-OnboardingManager.markOnboardingComplete('cyclismo');
-
-// Reset onboarding (for testing or re-onboarding)
-OnboardingManager.resetOnboarding('cyclismo');
-
-// Save current step
-OnboardingManager.saveCurrentStep('cyclismo', 3);
-
-// Get current step
-const currentStep = OnboardingManager.getCurrentStep('cyclismo');
-
-// Get completion date
-const completedAt = OnboardingManager.getCompletionDate('cyclismo');
-
-// Check if onboarding should be shown
-const shouldShow = OnboardingManager.shouldShowOnboarding('cyclismo');
-
-// Skip onboarding
-OnboardingManager.skipOnboarding('cyclismo');
-
-// Get all completed onboardings
-const completed = OnboardingManager.getAllCompletedOnboardings();
-```
-
-## Customization
-
-### Custom Step Types
-
-You can extend the onboarding configuration with custom step types:
-
-```javascript
-const customConfig = {
-  appId: 'myapp',
-  appName: 'My App',
-  steps: [
-    {
-      id: 'welcome',
-      type: 'custom-welcome',
-      title: 'Welcome',
-      customData: {
-        // Your custom data
-      },
-    },
-  ],
-};
-```
-
-### Styling
-
-All onboarding components use design tokens and CSS variables:
+All onboarding components use CSS custom properties for theming:
 
 ```css
-/* Override onboarding styles */
-.min-onboarding-flow {
-  /* Custom styles */
-}
-
-.min-onboarding-step__icon-container {
-  /* Custom icon container */
-  background: linear-gradient(135deg, var(--color-primary-main), var(--color-accent-main));
+:root {
+  --color-primary: #007AFF;
+  --color-primary-dark: #0051D5;
+  --color-background: #F2F2F7;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F9F9F9;
+  --color-border: #E5E5EA;
+  --color-text-primary: #000000;
+  --color-text-secondary: #6C6C70;
+  --color-text-on-primary: #FFFFFF;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
 }
 ```
 
-### Custom Icons
-
-Replace default icons with your own:
-
-```javascript
-const config = {
-  ...cyclismoOnboardingConfig,
-  steps: cyclismoOnboardingConfig.steps.map(step => ({
-    ...step,
-    icon: `/my-custom-icons/${step.id}.svg`,
-  })),
-};
-```
+You can customize the appearance by overriding these variables in your app.
 
 ## Best Practices
 
-### 1. Keep It Short
+1. **Keep It Short**: Limit onboarding to 3-5 essential steps
+2. **Allow Skip**: Let users skip onboarding and explore on their own
+3. **Save Progress**: The system automatically saves completion status
+4. **Mobile-First**: All components are responsive by default
+5. **Clear CTAs**: Use descriptive button labels ("Get Started" vs "Continue")
+6. **Visual Feedback**: Progress bar shows users where they are
+7. **Enable Restart**: Provide a way for users to restart onboarding from settings
 
-Limit onboarding to 5-6 steps maximum. Users want to start using the app quickly.
+## Platform-Specific Considerations
 
-✅ **Good:**
-- Welcome
-- Key features (3-4 highlights)
-- Permissions
-- Theme
-- Ready
+### iOS
 
-❌ **Avoid:**
-- Too many individual feature screens
-- Lengthy explanations
-- Unnecessary customization steps
+Request notification permissions before showing the notification settings step:
 
-### 2. Request Permissions Contextually
-
-Explain why you need permissions before requesting them.
-
-✅ **Good:**
 ```javascript
-{
-  title: 'Stay Updated',
-  description: 'Get notified about new episodes from podcasts you follow.',
-  benefits: [
-    'Never miss new content',
-    'Daily queue summaries',
-    'Customizable timing',
-  ],
+import { requestNotificationPermission } from './notifications';
+
+function CustomNotificationStep(props) {
+  const handleNext = async () => {
+    await requestNotificationPermission();
+    props.onNext();
+  };
+
+  return <OnboardingNotificationStep {...props} onNext={handleNext} />;
 }
 ```
 
-❌ **Avoid:**
-- Requesting permissions without context
-- Generic "Enable notifications" without benefits
+### Android
 
-### 3. Show, Don't Just Tell
+Notification permissions are requested at runtime on Android 13+. Consider adding an explanation step before the notification settings.
 
-Use visual elements to demonstrate features:
+### Web
 
-```javascript
-<FeatureHighlight
-  icon="/icon.svg"
-  title="Smart Queue"
-  description="See how content automatically organizes based on your preferences."
-/>
-```
-
-### 4. Allow Skipping
-
-Always provide a skip option. Some users prefer to explore on their own:
-
-```javascript
-<OnboardingFlow
-  showSkip={true}
-  skipButtonText="Skip for now"
-  onSkip={handleSkip}
-/>
-```
-
-### 5. Persist Progress
-
-Save the current step so users can resume if they exit:
-
-```javascript
-const currentStep = OnboardingManager.getCurrentStep('cyclismo');
-OnboardingManager.saveCurrentStep('cyclismo', newStep);
-```
-
-### 6. Theme Integration
-
-Ensure onboarding uses the app's theme colors:
-
-```javascript
-// Apply app theme before showing onboarding
-import { applyTheme } from '@min-apps/design-system';
-applyTheme('cyclismo');
-```
-
-### 7. Mobile Optimization
-
-All onboarding components are responsive, but test on mobile:
-
-```javascript
-// Components automatically adjust spacing and font sizes
-// Test on various screen sizes to ensure readability
-```
-
-### 8. Accessibility
-
-Ensure all interactive elements are keyboard accessible:
-
-```javascript
-// All buttons have proper focus states
-// Icons have alt text
-// Colors meet contrast requirements
-```
-
-## Testing
-
-### Test Onboarding Flow
-
-```javascript
-import { OnboardingManager } from '@min-apps/design-system';
-
-// Reset onboarding for testing
-OnboardingManager.resetOnboarding('cyclismo');
-
-// Verify flow
-const shouldShow = OnboardingManager.shouldShowOnboarding('cyclismo');
-console.log('Should show onboarding:', shouldShow); // true
-
-// Complete onboarding
-OnboardingManager.markOnboardingComplete('cyclismo');
-
-// Verify completion
-const isComplete = OnboardingManager.hasCompletedOnboarding('cyclismo');
-console.log('Is completed:', isComplete); // true
-```
-
-### Test Individual Components
-
-```javascript
-import { render, screen, fireEvent } from '@testing-library/react';
-import { OnboardingStep } from '@min-apps/design-system';
-
-test('renders onboarding step', () => {
-  render(
-    <OnboardingStep
-      title="Welcome"
-      description="Get started"
-      stepNumber={1}
-      totalSteps={3}
-    />
-  );
-  
-  expect(screen.getByText('Welcome')).toBeInTheDocument();
-  expect(screen.getByText('Get started')).toBeInTheDocument();
-});
-```
+Web notifications require explicit user permission. Add context explaining why notifications are useful before requesting permission.
 
 ## Examples
 
-See `/examples/onboarding-example.html` for a complete working example.
+See `/examples/onboarding-example.html` for a complete interactive demo.
+
+## API Reference
+
+### OnboardingFlow
+
+```typescript
+interface OnboardingFlowProps {
+  steps: Step[];
+  appId: string;
+  onComplete?: (data: object) => void;
+  onSkip?: (data: object) => void;
+  showSkip?: boolean;
+}
+
+interface Step {
+  id: string;
+  component: React.ComponentType<StepProps>;
+}
+
+interface StepProps {
+  appId: string;
+  data: object;
+  onNext: (data?: object) => void;
+  onBack: () => void;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+}
+```
+
+### OnboardingStep
+
+```typescript
+interface OnboardingStepProps {
+  title: string;
+  description?: string;
+  icon?: string;
+  children?: React.ReactNode;
+  onNext?: () => void;
+  onBack?: () => void;
+  isFirstStep?: boolean;
+  isLastStep?: boolean;
+  nextLabel?: string;
+  backLabel?: string;
+  showNext?: boolean;
+  showBack?: boolean;
+}
+```
+
+### OnboardingNotificationStep
+
+```typescript
+interface OnboardingNotificationStepProps {
+  appId: string;
+  title?: string;
+  description?: string;
+  onNext?: (data: object) => void;
+  onBack?: () => void;
+  isFirstStep?: boolean;
+  isLastStep?: boolean;
+  onManagePriorityPodcasts?: () => void;
+  onManagePriorityChannels?: () => void;
+}
+```
+
+### useOnboardingState
+
+```typescript
+interface OnboardingState {
+  completed: boolean;
+  showOnboarding: boolean;
+  markAsCompleted: () => void;
+  restart: () => void;
+}
+
+function useOnboardingState(appId: string): OnboardingState;
+```
+
+## Troubleshooting
+
+### Onboarding Not Showing
+
+1. Check that `showOnboarding` is `true`
+2. Verify localStorage is available
+3. Check for console errors
+4. Ensure steps array is not empty
+
+### Preferences Not Saving
+
+1. Verify localStorage is enabled
+2. Check for validation errors
+3. Ensure appId is correct
+4. Review browser console for errors
+
+### Styling Issues
+
+1. Verify CSS custom properties are defined
+2. Check for conflicting styles
+3. Ensure components are wrapped in proper containers
+4. Test on different screen sizes
+
+## Migration Guide
+
+If you have an existing onboarding flow, here's how to migrate:
+
+### Before
+
+```javascript
+function MyOnboarding() {
+  return (
+    <div>
+      <h1>Welcome</h1>
+      <button>Next</button>
+    </div>
+  );
+}
+```
+
+### After
+
+```javascript
+import { OnboardingFlow, getDefaultOnboardingSteps } from '@min-apps/design-system/onboarding';
+
+function MyOnboarding() {
+  const steps = getDefaultOnboardingSteps(APP_IDS.CYCLISMO);
+  
+  return (
+    <OnboardingFlow
+      steps={steps}
+      appId={APP_IDS.CYCLISMO}
+      onComplete={() => console.log('Done!')}
+    />
+  );
+}
+```
 
 ## Support
 
-For issues or questions:
-1. Check this documentation
-2. Review app-specific configurations
-3. See component API documentation
-4. Check example implementations
+For issues or questions, refer to:
 
-## Migration from Custom Onboarding
-
-If you have existing onboarding, here's how to migrate:
-
-1. **Map existing steps to configuration:**
-
-```javascript
-// Old custom onboarding
-const oldSteps = [
-  { title: 'Welcome', content: '...' },
-  { title: 'Features', content: '...' },
-];
-
-// New configuration
-const newConfig = {
-  steps: [
-    { id: 'welcome', title: 'Welcome', description: '...' },
-    { id: 'features', title: 'Features', features: [...] },
-  ],
-};
-```
-
-2. **Replace components:**
-
-```javascript
-// Old
-<CustomOnboardingStep>...</CustomOnboardingStep>
-
-// New
-<OnboardingStep>...</OnboardingStep>
-```
-
-3. **Update state management:**
-
-```javascript
-// Old
-localStorage.setItem('onboarding-complete', 'true');
-
-// New
-OnboardingManager.markOnboardingComplete('cyclismo');
-```
-
-## Changelog
-
-### Version 1.0.0
-- Initial release
-- Complete onboarding system for all 4 apps
-- OnboardingManager for state persistence
-- Full design token integration
-- Mobile-responsive components
+- [Notification System Documentation](./notifications.md)
+- [Component API Documentation](./components.md)
+- [Examples](/examples/onboarding-example.html)

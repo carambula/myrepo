@@ -49,6 +49,7 @@ import {
   listAudit,
   listSnapshots,
   recordAudit,
+  restorePhysicalMediaFromSnapshot,
   restoreSnapshot,
   revertAudit,
   snapshotIfNeeded,
@@ -931,6 +932,16 @@ router.post("/history/snapshots/:id/restore", async (req, res) => {
     res.json({ success: true, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Restore failed.";
+    res.status(message.includes("not found") ? 404 : 400).json({ error: message });
+  }
+});
+
+router.post("/history/snapshots/:id/restore-physical", async (req, res) => {
+  try {
+    const result = await restorePhysicalMediaFromSnapshot(req, String(req.params.id));
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Physical restore failed.";
     res.status(message.includes("not found") ? 404 : 400).json({ error: message });
   }
 });

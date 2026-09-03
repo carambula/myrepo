@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   SNAPSHOT_KEEP,
   isCatalogPayload,
+  physicalMediaFromSnapshotMovies,
   pruneUnlabeledSnapshotIds,
   revertKind,
   rowTargetFromAction,
@@ -24,6 +25,19 @@ describe("catalog history helpers", () => {
     assert.equal(rowTargetFromAction("catalog.ingest"), null);
     assert.equal(rowTargetFromAction("catalog.restore"), null);
     assert.equal(rowTargetFromAction("mov.import"), null);
+  });
+
+  it("extracts physical media rows from a snapshot movie list", () => {
+    const rows = physicalMediaFromSnapshotMovies([
+      { id: "tmdb-550", tmdb_id: 550, physical_media: { hasCriterion: true, editions: [] } },
+      { id: "tmdb-13", tmdbId: 13, physicalMedia: { has4K: true, editions: [] } },
+      { id: "tmdb-1", tmdb_id: 1, physical_media: null },
+      { title: "no id", physical_media: { hasBluRay: true } }
+    ]);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].id, "tmdb-550");
+    assert.equal(rows[0].tmdbId, 550);
+    assert.equal(rows[1].tmdbId, 13);
   });
 
   it("requires sources, movies, streaming, and links in a snapshot payload", () => {

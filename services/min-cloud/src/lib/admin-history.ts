@@ -322,6 +322,63 @@ export const restoreSnapshot = async (req: Request, snapshotId: string) => {
   return { restored: found.rows[0], safetySnapshotId: safety.id };
 };
 
+export const physicalMediaFromSnapshotMovies = (movies: unknown[]) => {
+  const rows: Array<{ id: string; tmdbId: number | null; physicalMedia: unknown }> = [];
+  for (const movie of movies) {
+    if (!movie || typeof movie !== "object") {
+      continue;
+    }
+    const row = movie as Record<string, unknown>;
+    const physicalMedia = row.physical_media ?? row.physicalMedia;
+    const id = row.id != null ? String(row.id) : "";
+    if (!id || physicalMedia == null) {
+      continue;
+    }
+    rows.push({
+      id,
+      tmdbId: row.tmdb_id != null ? Number(row.tmdb_id) : row.tmdbId != null ? Number(row.tmdbId) : null,
+      physicalMedia
+    });
+  }
+  return rows;
+};
+
+export const restorePhysicalMediaFromSnapshot = async (req: Request, snapshotId: string) => {
+  const found = await query(
+    `SELECT id, label, trigger, payload, movie_count FROM catalog_snapshots WHERE id = $1`,
+    [snapshotId]
+  );
+  if (!found.rowCount) {
+    throw new Error("Snapshot not found.");
+  }
+  const payload = found.rows[0].payload;
+  if (!isCatalogPayload(payload)) {
+    throw new Error("Snapshot payload is missing sources, movies, streaming, or links.");
+  }
+  const rows = physicalMediaFromSnapshotMovies(payload.movies);
+  const safety = await takeSnapshot(req, {
+    trigger: "before-physical-restore",
+    label: `Before physical restore of ${String(found.rows[0].id).slice(0, 8)}`
+  });
+  let restoredCount = 0;
+  for (const row of rows) {
+    const result = await query(
+      `UPDATE mov_movies SET physical_media = $2::jsonb, last_updated = NOW() WHERE id = $1`,
+      [row.id, JSON.stringify(row.physicalMedia)]
+    );
+    restoredCount += result.rowCount ?? 0;
+  }
+  if (restoredCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.physical-restore", {
+    snapshotId,
+    safetySnapshotId: safety.id,
+    restoredCount
+  });
+  return { snapshotId, safetySnapshotId: safety.id, restoredCount };
+};
+
 export type RevertHandlers = Record<
   RowTarget,
   {

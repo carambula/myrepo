@@ -144,6 +144,41 @@ struct WatchedItTests {
         #expect(haystack.contains("4k"))
     }
 
+    @Test func latestPodcastCarouselKeepsOneNewestPerSource() {
+        let older = Date(timeIntervalSince1970: 1_700_000_000)
+        let mid = Date(timeIntervalSince1970: 1_750_000_000)
+        let newest = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(movieId: "old-rewatchable", date: older, sourceIdentifier: "rewatchables"),
+            .init(movieId: "new-rewatchable", date: newest, sourceIdentifier: "rewatchables"),
+            .init(movieId: "mid-rewatchable", date: mid, sourceIdentifier: "rewatchables"),
+            .init(movieId: "blank-check-old", date: older, sourceIdentifier: "blank-check"),
+            .init(movieId: "blank-check-latest", date: mid, sourceIdentifier: "blank-check"),
+            .init(movieId: "big-picture", date: newest, sourceIdentifier: "big-picture")
+        ])
+        #expect(ids == ["new-rewatchable", "big-picture", "blank-check-latest"])
+    }
+
+    @Test func latestPodcastCarouselDedupesSharedMovieAcrossSources() {
+        let earlier = Date(timeIntervalSince1970: 1_700_000_000)
+        let later = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(movieId: "shared", date: earlier, sourceIdentifier: "rewatchables"),
+            .init(movieId: "shared", date: later, sourceIdentifier: "blank-check"),
+            .init(movieId: "other", date: earlier, sourceIdentifier: "big-picture")
+        ])
+        #expect(ids == ["shared", "other"])
+    }
+
+    @Test func minCloudSourceLinkDecodesEpisodeDate() throws {
+        let json = Data(#"""
+        {"identifier":"rewatchables","sourceTitle":"Heat","episodeDate":"2026-01-15T12:00:00.000Z"}
+        """#.utf8)
+        let link = try JSONDecoder().decode(MinCloudMovieCatalog.Movie.SourceLink.self, from: json)
+        #expect(link.identifier == "rewatchables")
+        #expect(link.episodeDate == "2026-01-15T12:00:00.000Z")
+    }
+
     @Test func movieRoundTripKeepsPhysicalMedia() throws {
         let movie = Movie(
             title: "The Night of the Hunter",

@@ -3,8 +3,8 @@
 Local web UI for editing `WatchedIt/bootstrap_data.json`, refreshing podcast
 episodes, and regenerating `bootstrap_database.store`.
 
-For the shared cloud admin and live streaming/feed jobs, use `services/min-cloud`
-(Railway). This local console stays as an offline backup for catalog work.
+The same UI now runs on Min Cloud at `/admin` (Railway), talking to Postgres
+instead of `bootstrap_data.json`. This local console stays as an offline backup.
 
 ## Run
 

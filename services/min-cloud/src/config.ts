@@ -15,6 +15,7 @@ export const config = {
     .filter(Boolean),
   tmdbApiKey: process.env.TMDB_API_KEY || "",
   tmdbRegion: process.env.TMDB_REGION || "US",
+  omdbApiKey: process.env.OMDB_API_KEY || "",
   enableJobs: (process.env.ENABLE_JOBS || "true") === "true",
   cronSecret: process.env.CRON_SECRET || "",
   nodeEnv: process.env.NODE_ENV || "development"

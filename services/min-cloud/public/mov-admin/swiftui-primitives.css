@@ -1,0 +1,332 @@
+/*
+ * SwiftUI Primitives — CSS mapping layer for rendering SwiftUI interfaces on the web.
+ *
+ * This file is app-agnostic. It encodes:
+ *   1. iOS device/system constants (safe areas, nav bar, tab bar, etc.)
+ *   2. SwiftUI layout primitives (VStack, HStack, Spacer, ScrollView, etc.)
+ *   3. Spacing, typography, and corner radius utility classes driven by --ds-* CSS vars
+ *   4. iOS-standard glass material effects
+ *
+ * NAMING CONVENTION (--ds-{category}-{tokenName}):
+ *   --ds-space-{xs|sm|md|lg|xl|xxl|xxxl}     Spacing scale
+ *   --ds-radius-{xs|sm|md|lg|xl|round}        Corner radius scale
+ *   --ds-type-{tokenName}-size                 Font size (px)
+ *   --ds-type-{tokenName}-weight               Font weight (100–900)
+ *   --ds-shadow-{sm|md|lg|xl}                  Box shadow shorthand
+ *   --ds-icon-{xs|sm|md|lg|xl|xxl}            Icon frame size
+ *   --ds-opacity-{disabled|pressed|hover|...}  Opacity values
+ *   --ds-anim-{quick|standard|slow|spring*}    Animation duration
+ *   --ds-glass-{standard-height|compact-height|border-width}  Glass control constants
+ *
+ * To adapt for a different SwiftUI app:
+ *   1. Point the server parser at your app's DesignSystem.swift
+ *   2. CSS vars are auto-generated — this file consumes them
+ *   3. Override --ios-* constants if targeting a different device
+ */
+
+/* ======================================================================
+   1. iOS DEVICE & SYSTEM CONSTANTS
+   ====================================================================== */
+
+:root {
+  /* iPhone 15/16 Pro (393×852 logical points) */
+  --ios-screen-width: 393px;
+  --ios-screen-height: 852px;
+
+  /* Safe areas (Dynamic Island models) */
+  --ios-status-bar-height: 54px;
+  --ios-safe-top: 59px;
+  --ios-safe-bottom: 34px;
+  --ios-home-indicator: 34px;
+
+  /* System chrome */
+  --ios-nav-bar-height: 44px;
+  --ios-large-title-height: 96px;
+  --ios-tab-bar-height: 49px;
+  --ios-search-bar-height: 36px;
+  --ios-touch-target: 44px;
+
+  /* Grouped list (UIKit/SwiftUI standard insets) */
+  --ios-grouped-inset: 16px;
+  --ios-grouped-row-height: 44px;
+  --ios-grouped-row-padding-v: 11px;
+  --ios-grouped-row-padding-h: 16px;
+  --ios-grouped-card-radius: 10px;
+
+  /* Standard iOS text sizes (for reference / fallback) */
+  --ios-nav-title-size: 17px;
+  --ios-body-size: 17px;
+  --ios-callout-size: 16px;
+  --ios-subhead-size: 15px;
+  --ios-footnote-size: 13px;
+  --ios-caption1-size: 12px;
+  --ios-caption2-size: 11px;
+}
+
+
+/* ======================================================================
+   2. SWIFTUI LAYOUT PRIMITIVES
+   ====================================================================== */
+
+/* VStack */
+.swiftui-vstack {
+  display: flex;
+  flex-direction: column;
+}
+.swiftui-vstack.align-leading { align-items: flex-start; }
+.swiftui-vstack.align-trailing { align-items: flex-end; }
+.swiftui-vstack.align-center { align-items: center; }
+
+/* HStack */
+.swiftui-hstack {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.swiftui-hstack.align-top { align-items: flex-start; }
+.swiftui-hstack.align-bottom { align-items: flex-end; }
+
+/* ZStack */
+.swiftui-zstack {
+  position: relative;
+}
+.swiftui-zstack > * {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Spacer */
+.swiftui-spacer { flex: 1; min-width: 0; min-height: 0; }
+
+/* ScrollView */
+.swiftui-scroll-v {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
+.swiftui-scroll-h {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Divider */
+.swiftui-divider {
+  height: 0.33px;
+  background: currentColor;
+  opacity: 0.2;
+  flex-shrink: 0;
+}
+.swiftui-divider-h {
+  width: 0.33px;
+  align-self: stretch;
+  background: currentColor;
+  opacity: 0.2;
+  flex-shrink: 0;
+}
+
+/* NavigationStack chrome */
+.ios-nav-bar {
+  height: var(--ios-nav-bar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--ds-space-lg, 16px);
+  font-size: var(--ios-nav-title-size);
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+}
+.ios-nav-bar-leading {
+  position: absolute;
+  left: var(--ds-space-lg, 16px);
+  display: flex;
+  align-items: center;
+}
+.ios-nav-bar-trailing {
+  position: absolute;
+  right: var(--ds-space-lg, 16px);
+  display: flex;
+  align-items: center;
+}
+
+/* TabView chrome */
+.ios-tab-bar {
+  height: var(--ios-tab-bar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-shrink: 0;
+  padding-bottom: 0;
+}
+
+
+/* ======================================================================
+   3. SPACING UTILITIES (driven by --ds-space-*)
+   ====================================================================== */
+
+.pad-xs   { padding: var(--ds-space-xs, 4px); }
+.pad-sm   { padding: var(--ds-space-sm, 8px); }
+.pad-md   { padding: var(--ds-space-md, 12px); }
+.pad-lg   { padding: var(--ds-space-lg, 16px); }
+.pad-xl   { padding: var(--ds-space-xl, 24px); }
+.pad-xxl  { padding: var(--ds-space-xxl, 32px); }
+.pad-xxxl { padding: var(--ds-space-xxxl, 40px); }
+
+.pad-h-xs   { padding-left: var(--ds-space-xs, 4px); padding-right: var(--ds-space-xs, 4px); }
+.pad-h-sm   { padding-left: var(--ds-space-sm, 8px); padding-right: var(--ds-space-sm, 8px); }
+.pad-h-md   { padding-left: var(--ds-space-md, 12px); padding-right: var(--ds-space-md, 12px); }
+.pad-h-lg   { padding-left: var(--ds-space-lg, 16px); padding-right: var(--ds-space-lg, 16px); }
+.pad-h-xl   { padding-left: var(--ds-space-xl, 24px); padding-right: var(--ds-space-xl, 24px); }
+
+.pad-v-xs   { padding-top: var(--ds-space-xs, 4px); padding-bottom: var(--ds-space-xs, 4px); }
+.pad-v-sm   { padding-top: var(--ds-space-sm, 8px); padding-bottom: var(--ds-space-sm, 8px); }
+.pad-v-md   { padding-top: var(--ds-space-md, 12px); padding-bottom: var(--ds-space-md, 12px); }
+.pad-v-lg   { padding-top: var(--ds-space-lg, 16px); padding-bottom: var(--ds-space-lg, 16px); }
+.pad-v-xl   { padding-top: var(--ds-space-xl, 24px); padding-bottom: var(--ds-space-xl, 24px); }
+
+.gap-xs   { gap: var(--ds-space-xs, 4px); }
+.gap-sm   { gap: var(--ds-space-sm, 8px); }
+.gap-md   { gap: var(--ds-space-md, 12px); }
+.gap-lg   { gap: var(--ds-space-lg, 16px); }
+.gap-xl   { gap: var(--ds-space-xl, 24px); }
+.gap-xxl  { gap: var(--ds-space-xxl, 32px); }
+
+
+/* ======================================================================
+   4. TYPOGRAPHY UTILITIES (driven by --ds-type-*)
+   ====================================================================== */
+
+.type-displayLarge   { font-size: var(--ds-type-displayLarge-size, 34px);  font-weight: var(--ds-type-displayLarge-weight, 700); }
+.type-displayMedium  { font-size: var(--ds-type-displayMedium-size, 28px); font-weight: var(--ds-type-displayMedium-weight, 700); }
+.type-displaySmall   { font-size: var(--ds-type-displaySmall-size, 24px);  font-weight: var(--ds-type-displaySmall-weight, 700); }
+.type-headlineLarge  { font-size: var(--ds-type-headlineLarge-size, 20px); font-weight: var(--ds-type-headlineLarge-weight, 600); }
+.type-headlineMedium { font-size: var(--ds-type-headlineMedium-size, 20px); font-weight: var(--ds-type-headlineMedium-weight, 600); }
+.type-headlineSmall  { font-size: var(--ds-type-headlineSmall-size, 18px); font-weight: var(--ds-type-headlineSmall-weight, 600); }
+.type-titleLarge     { font-size: var(--ds-type-titleLarge-size, 20px);    font-weight: var(--ds-type-titleLarge-weight, 600); }
+.type-titleMedium    { font-size: var(--ds-type-titleMedium-size, 18px);   font-weight: var(--ds-type-titleMedium-weight, 500); }
+.type-titleSmall     { font-size: var(--ds-type-titleSmall-size, 16px);    font-weight: var(--ds-type-titleSmall-weight, 500); }
+.type-bodyLarge      { font-size: var(--ds-type-bodyLarge-size, 16px);     font-weight: var(--ds-type-bodyLarge-weight, 400); }
+.type-bodyMedium     { font-size: var(--ds-type-bodyMedium-size, 16px);    font-weight: var(--ds-type-bodyMedium-weight, 400); }
+.type-bodySmall      { font-size: var(--ds-type-bodySmall-size, 15px);     font-weight: var(--ds-type-bodySmall-weight, 400); }
+.type-labelLarge     { font-size: var(--ds-type-labelLarge-size, 15px);    font-weight: var(--ds-type-labelLarge-weight, 500); }
+.type-labelMedium    { font-size: var(--ds-type-labelMedium-size, 14px);   font-weight: var(--ds-type-labelMedium-weight, 500); }
+.type-labelSmall     { font-size: var(--ds-type-labelSmall-size, 13px);    font-weight: var(--ds-type-labelSmall-weight, 500); }
+.type-captionLarge   { font-size: var(--ds-type-captionLarge-size, 13px);  font-weight: var(--ds-type-captionLarge-weight, 400); }
+.type-captionMedium  { font-size: var(--ds-type-captionMedium-size, 12px); font-weight: var(--ds-type-captionMedium-weight, 400); }
+.type-captionSmall   { font-size: var(--ds-type-captionSmall-size, 11px);  font-weight: var(--ds-type-captionSmall-weight, 400); }
+.type-overline       { font-size: var(--ds-type-overline-size, 10px);      font-weight: var(--ds-type-overline-weight, 500); text-transform: uppercase; letter-spacing: 0.06em; }
+
+
+/* ======================================================================
+   5. CORNER RADIUS UTILITIES
+   ====================================================================== */
+
+.radius-xs    { border-radius: var(--ds-radius-xs, 4px); }
+.radius-sm    { border-radius: var(--ds-radius-sm, 6px); }
+.radius-md    { border-radius: var(--ds-radius-md, 8px); }
+.radius-lg    { border-radius: var(--ds-radius-lg, 12px); }
+.radius-xl    { border-radius: var(--ds-radius-xl, 16px); }
+.radius-round { border-radius: var(--ds-radius-round, 9999px); }
+
+
+/* ======================================================================
+   6. SHADOW UTILITIES
+   ====================================================================== */
+
+.shadow-sm { box-shadow: var(--ds-shadow-sm, 0 1px 2px rgba(0,0,0,0.1)); }
+.shadow-md { box-shadow: var(--ds-shadow-md, 0 2px 4px rgba(0,0,0,0.15)); }
+.shadow-lg { box-shadow: var(--ds-shadow-lg, 0 4px 8px rgba(0,0,0,0.2)); }
+.shadow-xl { box-shadow: var(--ds-shadow-xl, 0 6px 12px rgba(0,0,0,0.25)); }
+
+
+/* ======================================================================
+   7. ICON SIZE UTILITIES
+   ====================================================================== */
+
+.icon-xs  { width: var(--ds-icon-xs, 12px);  height: var(--ds-icon-xs, 12px); }
+.icon-sm  { width: var(--ds-icon-sm, 16px);  height: var(--ds-icon-sm, 16px); }
+.icon-md  { width: var(--ds-icon-md, 20px);  height: var(--ds-icon-md, 20px); }
+.icon-lg  { width: var(--ds-icon-lg, 24px);  height: var(--ds-icon-lg, 24px); }
+.icon-xl  { width: var(--ds-icon-xl, 32px);  height: var(--ds-icon-xl, 32px); }
+.icon-xxl { width: var(--ds-icon-xxl, 48px); height: var(--ds-icon-xxl, 48px); }
+
+
+/* ======================================================================
+   8. GLASS MATERIAL (iOS frosted glass effect)
+   ====================================================================== */
+
+.glass-material {
+  background: rgba(15, 20, 35, 0.80);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: var(--ds-glass-border-width, 0.8px) solid rgba(255, 255, 255, 0.28);
+}
+
+.glass-toolbar {
+  height: var(--ds-glass-standard-height, 56px);
+  border-radius: var(--ds-radius-round, 9999px);
+}
+
+.glass-toolbar-compact {
+  height: var(--ds-glass-compact-height, 48px);
+  border-radius: var(--ds-radius-round, 9999px);
+}
+
+.glass-circle-btn {
+  width: var(--ds-glass-standard-height, 56px);
+  height: var(--ds-glass-standard-height, 56px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* ======================================================================
+   9. OPACITY UTILITIES
+   ====================================================================== */
+
+.opacity-disabled    { opacity: var(--ds-opacity-disabled, 0.4); }
+.opacity-pressed     { opacity: var(--ds-opacity-pressed, 0.8); }
+.opacity-hover       { opacity: var(--ds-opacity-hover, 0.9); }
+.opacity-overlay     { opacity: var(--ds-opacity-overlay, 0.3); }
+.opacity-overlayLight { opacity: var(--ds-opacity-overlayLight, 0.1); }
+
+
+/* ======================================================================
+   10. iOS STANDARD PATTERNS
+   ====================================================================== */
+
+/* Grouped list card (matches UIKit insetGrouped style) */
+.ios-grouped-card {
+  margin: 0 var(--ios-grouped-inset);
+  border-radius: var(--ios-grouped-card-radius);
+  overflow: hidden;
+}
+
+/* Grouped list row */
+.ios-grouped-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-md, 12px);
+  padding: var(--ios-grouped-row-padding-v) var(--ios-grouped-row-padding-h);
+  font-size: var(--ds-type-bodyMedium-size, 16px);
+}
+
+/* Movie row (50×74 thumbnail + text) — common iOS list pattern */
+.ios-movie-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-md, 12px);
+  padding: var(--ds-space-sm, 8px) var(--ds-space-lg, 16px);
+}
+.ios-movie-row-thumb {
+  width: 50px;
+  height: 74px;
+  border-radius: var(--ds-radius-md, 8px);
+  object-fit: cover;
+  flex-shrink: 0;
+}

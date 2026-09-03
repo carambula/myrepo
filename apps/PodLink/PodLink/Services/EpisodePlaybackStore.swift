@@ -173,11 +173,4 @@ enum EpisodePlaybackStore {
             NotificationCenter.default.post(name: .episodePlaybackStateDidChange, object: episodeID)
         }
     }
-
-    /// Marks a finished episode as relistened the next time playback starts.
-    static func markRelistenedIfPreviouslyFinished(_ episode: Episode) {
-        let merged = merge(episode)
-        guard merged.isEffectivelyFinished else { return }
-        persistRelistened(true, episodeID: episode.id)
-    }
 }

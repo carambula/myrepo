@@ -5,9 +5,9 @@ import { fetchText } from "../lib/http.js";
 import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
 import { scrapeListItems } from "../lib/list-scrape.js";
+import { ingestPodcastEpisode, resolveTmdbMatch } from "../lib/podcast-ingest.js";
 import {
   determineItemStatus,
-  pickBestTmdbMatch,
   prepareMovieQuery,
   shouldSkipPodcastNoise
 } from "../lib/title-match.js";
@@ -242,17 +242,6 @@ const podcastPreviewItem = (
     podcastEpisodeDescription: episode.description,
     isDuplicate: existing.has(episode.title)
   };
-};
-
-const searchBestMovie = async (query: string, year: number | null) => {
-  if (!query || !config.tmdbApiKey) {
-    return null;
-  }
-  let results = await searchTmdbMovies(query, year ?? undefined, config.tmdbApiKey);
-  if (!results.length && year) {
-    results = await searchTmdbMovies(query, undefined, config.tmdbApiKey);
-  }
-  return pickBestTmdbMatch(query, results, year);
 };
 
 router.get("/bootstrap", async (_req, res) => {
@@ -826,7 +815,7 @@ router.post("/ingest/enrich", async (req, res) => {
   for (const item of items.slice(0, 40)) {
     try {
       const prepared = prepareMovieQuery(String(item.title || ""), item.podcastEpisodeDescription);
-      const match = await searchBestMovie(prepared.query, prepared.year);
+      const match = await resolveTmdbMatch(prepared);
       if (!match) {
         enriched.push({ ...item, title: prepared.title || item.title, sourceTitle: item.sourceTitle || item.title, status: "missing" });
         continue;
@@ -970,28 +959,30 @@ const refreshPodcastSource = async (sourceIdentifier: string) => {
   const parsed = parseRssFeed(xml);
   let addedCount = 0;
   let skippedCount = 0;
+  let enrichedCount = 0;
   for (const episode of parsed.episodes.slice(0, 40)) {
-    if (existing.has(episode.title)) {
-      skippedCount += 1;
-      continue;
-    }
-    const prepared = prepareMovieQuery(episode.title, episode.description);
-    if (!prepared.title || shouldSkipPodcastNoise(sourceIdentifier, episode.title, prepared.title)) {
-      skippedCount += 1;
-      continue;
-    }
-    await upsertAdminMovie({
-      title: prepared.title,
-      sourceIdentifier,
+    const result = await ingestPodcastEpisode({
+      title: episode.title,
       sourceTitle: episode.title,
+      sourceIdentifier,
       episodeDate: episode.publishDate,
-      overview: episode.description,
-      podcastEpisodeDescription: episode.description
+      description: episode.description,
+      existingTitles: existing,
+      bump: false
     });
-    existing.add(episode.title);
+    if (result.skipped) {
+      skippedCount += 1;
+      continue;
+    }
     addedCount += 1;
+    if (result.reason === "enriched" || result.reason === "light") {
+      enrichedCount += 1;
+    }
   }
-  return { addedCount, skippedCount, addedMovies: [] };
+  if (addedCount > 0) {
+    await bumpWatchedIt();
+  }
+  return { addedCount, skippedCount, enrichedCount, addedMovies: [] };
 };
 
 export default router;

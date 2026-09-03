@@ -11,6 +11,8 @@ import { lookupItunesPodcast } from "./lib/itunes.js";
 import { fetchText } from "./lib/http.js";
 import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
+import { bumpWatchedIt } from "./lib/admin-catalog.js";
+import { ingestPodcastEpisode } from "./lib/podcast-ingest.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
 
@@ -203,6 +205,8 @@ export const refreshMoviePodcastSources = async () => {
     );
     let refreshed = 0;
     let failed = 0;
+    let addedMovies = 0;
+    let skippedMovies = 0;
     for (const source of sources.rows) {
       try {
         const xml = await fetchText(String(source.url));
@@ -230,12 +234,36 @@ export const refreshMoviePodcastSources = async () => {
         for (const episode of parsed.episodes.slice(0, 40)) {
           await upsertEpisode(podcastId, episode);
         }
+        const existing = await query(
+          `SELECT source_title FROM mov_movie_sources WHERE source_id = $1 AND source_title IS NOT NULL`,
+          [source.identifier]
+        );
+        const existingTitles = new Set(existing.rows.map((row) => String(row.source_title)));
+        for (const episode of parsed.episodes.slice(0, 12)) {
+          const result = await ingestPodcastEpisode({
+            title: episode.title,
+            sourceTitle: episode.title,
+            sourceIdentifier: String(source.identifier),
+            episodeDate: episode.publishDate,
+            description: episode.description,
+            existingTitles,
+            bump: false
+          });
+          if (result.added) {
+            addedMovies += 1;
+          } else {
+            skippedMovies += 1;
+          }
+        }
         refreshed += 1;
       } catch {
         failed += 1;
       }
     }
-    return { scanned: sources.rowCount ?? 0, refreshed, failed };
+    if (addedMovies > 0) {
+      await bumpWatchedIt();
+    }
+    return { scanned: sources.rowCount ?? 0, refreshed, failed, addedMovies, skippedMovies };
   });
 };
 

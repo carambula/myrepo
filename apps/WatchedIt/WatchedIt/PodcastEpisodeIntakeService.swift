@@ -123,22 +123,61 @@ public final class PodcastEpisodeIntakeService {
     }
 
     public func cleanPodcastTitle(_ title: String) -> String {
-        var cleaned = title
-        cleaned = cleaned.replacingOccurrences(of: #"^["'“”‘’]+|["'“”‘’]+$"#, with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if let withRange = cleaned.range(of: " with ", options: .caseInsensitive), withRange.lowerBound > cleaned.startIndex {
-            cleaned = String(cleaned[..<withRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        var cleaned = title.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefixes = [
+            #"^the rewatchables\s*[:\-–—]\s*"#,
+            #"^the big picture\s*[:\-–—]\s*"#,
+            #"^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*"#
+        ]
+        for prefix in prefixes {
+            cleaned = cleaned.replacingOccurrences(of: prefix, with: "", options: [.regularExpression, .caseInsensitive])
         }
-        if let dashRange = cleaned.range(of: " - "), dashRange.lowerBound > cleaned.startIndex {
-            cleaned = String(cleaned[..<dashRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let quoted = extractQuotedMovieTitle(cleaned) {
+            cleaned = quoted
+        } else if let withRange = cleaned.range(of: #"\s+(?:with|feat\.?|featuring)\s+"#, options: [.regularExpression, .caseInsensitive]) {
+            let after = String(cleaned[withRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if looksLikeGuestList(after) {
+                cleaned = String(cleaned[..<withRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
         }
 
-        cleaned = cleaned.replacingOccurrences(of: #"^episode\s+\d+:\s*"#, with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: #"\s*[—–-]\s*$"#, with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: #"^episode\s+\d+\s*[:\-–—]\s*"#, with: "", options: [.regularExpression, .caseInsensitive])
         cleaned = cleaned.replacingOccurrences(of: #"^\d+[\.\):\-]\s+"#, with: "", options: .regularExpression)
         cleaned = cleaned.replacingOccurrences(of: #"[\(\[]\s*(?:19|20)\d{2}\s*[\)\]]\s*$"#, with: "", options: .regularExpression)
         cleaned = cleaned.replacingOccurrences(of: #"^["'“”‘’]+|["'“”‘’]+$"#, with: "", options: .regularExpression)
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func extractQuotedMovieTitle(_ title: String) -> String? {
+        let pattern = #"^[“\"‘'](.+)[”\"’'](?:\s+(?:with|feat\.?|featuring|—|-)\b|$)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = regex.firstMatch(in: title, range: NSRange(title.startIndex..<title.endIndex, in: title)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: title) else {
+            return nil
+        }
+        let quoted = String(title[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return quoted.count >= 2 ? quoted : nil
+    }
+
+    private func looksLikeGuestList(_ after: String) -> Bool {
+        let hosts = ["bill simmons", "chris ryan", "van lathan", "sean fennessey", "amanda dobbins", "griffin newman", "david sims"]
+        let lower = after.lowercased()
+        if hosts.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        let parts = after
+            .replacingOccurrences(of: " and ", with: ",", options: .caseInsensitive)
+            .components(separatedBy: CharacterSet(charactersIn: ",/&"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.count >= 1 && parts.allSatisfy { part in
+            let words = part.split(whereSeparator: \.isWhitespace)
+            return words.count >= 2 && words.count <= 4 && part.first?.isUppercase == true
+        }
     }
 
     public func buildTMDBSearchInput(rawTitle: String, description: String? = nil) -> PodcastTMDBSearchInput {
@@ -174,11 +213,12 @@ public final class PodcastEpisodeIntakeService {
         // - "2011's Crazy Stupid Love"
         // - "(2011)"
         let yearPatterns = [
-            #"(?:the\s+)?((?:19|20)\d{2})\s+film"#,           // "the 2011 film" or "2011 film"
-            #"(?:from|in)\s+((?:19|20)\d{2})"#,               // "from 2011" or "in 2011"
-            #"released\s+in\s+((?:19|20)\d{2})"#,             // "released in 2011"
-            #"((?:19|20)\d{2})(?:'s|\s+release)"#,            // "2011's" or "2011 release"
-            #"[\(\[]\s*((?:19|20)\d{2})\s*[\)\]]"#            // "(2011)" or "[2011]"
+            #"[\(\[]\s*((?:19|20)\d{2})\s*[\)\]]"#,
+            #"(?:the\s+)?((?:19|20)\d{2})\s+(?:south\s+)?(?:korean|japanese|chinese|hong\s+kong)\s+(?:film|movie|original|remake)"#,
+            #"(?:the\s+)?((?:19|20)\d{2})\s+(?:film|movie|original|remake)"#,
+            #"released\s+in\s+((?:19|20)\d{2})"#,
+            #"((?:19|20)\d{2})(?:'s|\s+release)"#,
+            #"(?:from|in)\s+((?:19|20)\d{2})(?=\s+(?:film|movie|starring|directed|with))"#
         ]
         
         for pattern in yearPatterns {
@@ -206,10 +246,8 @@ public final class PodcastEpisodeIntakeService {
         // - "directed by Glenn Ficarra"
         // - "stars Julianne Moore"
         let namePatterns = [
-            #"(?:starring|stars?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"#,
-            #"(?:with|featuring)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"#,
-            #"directed\s+by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"#,
-            #"\band\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b"#
+            #"(?:starring|stars?|featuring)\s+([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){1,3})"#,
+            #"directed\s+by\s+([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){1,3})"#
         ]
         
         for pattern in namePatterns {

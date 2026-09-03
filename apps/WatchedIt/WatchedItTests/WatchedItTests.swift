@@ -68,6 +68,9 @@ struct WatchedItTests {
         let service = PodcastEpisodeIntakeService.shared
         #expect(service.cleanPodcastTitle("Heat (1995)") == "Heat")
         #expect(service.cleanPodcastTitle("Heat [1995]") == "Heat")
+        #expect(service.cleanPodcastTitle("Gone with the Wind With Bill Simmons and Chris Ryan") == "Gone with the Wind")
+        #expect(service.cleanPodcastTitle("The Man with the Golden Gun") == "The Man with the Golden Gun")
+        #expect(service.cleanPodcastTitle("'Taxi Driver' With Bill Simmons and Chris Ryan") == "Taxi Driver")
     }
 
     @Test func tmdbSearchInputExtractsYearFromTrailingSuffix() async throws {

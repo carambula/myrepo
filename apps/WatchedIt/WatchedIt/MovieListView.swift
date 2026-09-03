@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import MinAppKit
 
 enum WatchFilter: String, CaseIterable {
     case all = "All"
@@ -4764,6 +4765,11 @@ struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
                 #endif
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .mov, exporter: MovieAgentService.shared)
+                }
+                .designSystemGroupedListRow()
 
                 Section("About") {
                     HStack {

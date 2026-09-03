@@ -5,6 +5,7 @@
 //  Created by Cloud Agent on 8/10/26.
 //
 
+import MinAppKit
 import SwiftUI
 import SwiftData
 
@@ -105,10 +106,22 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    NavigationLink {
+                        AgentSettingsView(app: .spin, exporter: SpinAgentExportAdapter(context: modelContext))
+                    } label: {
+                        HStack {
+                            Image(systemName: "cpu")
+                                .foregroundAccent()
+                            Text("Agents")
+                            Spacer()
+                            Text("Read and write")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } header: {
                     Text("Connections")
                 } footer: {
-                    Text("Import rides automatically to keep bike and component mileage up to date")
+                    Text("Import rides from Strava or connect an agent with read or write access. Agent writes stay undoable for 7 days.")
                 }
                 
                 Section {

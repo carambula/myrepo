@@ -304,19 +304,12 @@ struct FollowPodcastFromSearchIntent: AppIntent {
         guard !trimmed.isEmpty else {
             throw PodLinkIntentError.searchFoundNoPodcasts
         }
-        let results = try await PodcastSearchService.shared.search(query: trimmed, limit: 5)
-        guard let first = results.first else {
+        do {
+            let added = try await PodcastAgentService.shared.follow(query: trimmed)
+            return .result(dialog: IntentDialog("Added “\(added.title)” to your library."))
+        } catch {
             throw PodLinkIntentError.searchFoundNoPodcasts
         }
-        var library = await MainActor.run { Podcast.loadFollowedPodcasts() }
-        if library.contains(where: { $0.id == first.id }) {
-            throw PodLinkIntentError.podcastAlreadyInLibrary
-        }
-        var toAdd = first
-        toAdd.isFollowed = true
-        library.append(toAdd)
-        await MainActor.run { Podcast.saveFollowedPodcasts(library) }
-        return .result(dialog: IntentDialog("Added “\(first.title)” to your library."))
     }
 }
 
@@ -401,6 +394,15 @@ struct PodLinkShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Up Next",
             systemImageName: "text.line.first.and.arrowtriangle.forward"
+        )
+        AppShortcut(
+            intent: ListPodLinkListeningHistoryIntent(),
+            phrases: [
+                "What have I listened to in \(.applicationName)",
+                "Show listening history in \(.applicationName)"
+            ],
+            shortTitle: "Listening history",
+            systemImageName: "clock.arrow.circlepath"
         )
         AppShortcut(
             intent: SetPodLinkPlaybackSpeedIntent(),

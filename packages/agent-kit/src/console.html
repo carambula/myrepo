@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Min Apps Agent</title>
+  <style>
+    :root {
+      --bg: #111114;
+      --card: #1c1c22;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --accent: #7dd3fc;
+      --danger: #fda4af;
+      --ok: #86efac;
+      --page: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px var(--page) 48px;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    p { color: var(--muted); }
+    section {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, textarea, select, button {
+      font: inherit;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #3f3f46;
+      background: #09090b;
+      color: var(--text);
+      padding: 10px 12px;
+    }
+    textarea { min-height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    pre {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      margin: 0;
+    }
+    .row { display: grid; gap: 12px; }
+    @media (min-width: 768px) {
+      .row.two { grid-template-columns: 1fr 1fr; }
+    }
+    button {
+      cursor: pointer;
+      background: #27272a;
+      width: auto;
+    }
+    button.primary { background: #0c4a6e; border-color: #0369a1; }
+    button.danger { background: #4c0519; border-color: #9f1239; color: var(--danger); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .ok { color: var(--ok); }
+    .err { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Min Apps Agent</h1>
+    <p>Connect with a scoped token. Read tools inspect your library. Writes stay undoable for 7 days.</p>
+
+    <section>
+      <label for="token">Agent token</label>
+      <input id="token" type="password" autocomplete="off" placeholder="minagt_…" />
+      <div class="actions">
+        <button class="primary" id="whoami">Connect</button>
+        <button id="tools">List tools</button>
+      </div>
+      <p class="meta" id="identity">Not connected</p>
+    </section>
+
+    <section>
+      <div class="row two">
+        <div>
+          <label for="tool">Tool</label>
+          <select id="tool"></select>
+        </div>
+        <div>
+          <label for="args">Arguments (JSON)</label>
+          <textarea id="args">{ }</textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="call">Call tool</button>
+        <button id="undo">Undo last write</button>
+        <button class="danger" id="history">Undo history</button>
+      </div>
+    </section>
+
+    <section>
+      <label>Result</label>
+      <pre id="out">Connect with a token from <code>min-agent init</code> or an app’s Agents settings.</pre>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const token = () => $("token").value.trim();
+    const headers = () => ({
+      Authorization: `Bearer ${token()}`,
+      "Content-Type": "application/json",
+    });
+
+    function show(value, ok = true) {
+      $("out").textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      $("out").className = ok ? "ok" : "err";
+    }
+
+    async function api(path, body) {
+      const response = await fetch(path, {
+        method: body === undefined ? "GET" : "POST",
+        headers: headers(),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok) throw data;
+      return data;
+    }
+
+    $("whoami").onclick = async () => {
+      try {
+        const data = await api("/v1/whoami");
+        const scopes = (data.scopes || []).join("   ");
+        $("identity").textContent = `${data.connection?.name || "Agent"}   ${scopes}`;
+        show(data);
+      } catch (error) {
+        $("identity").textContent = "Not connected";
+        show(error, false);
+      }
+    };
+
+    $("tools").onclick = async () => {
+      try {
+        const data = await api("/v1/tools");
+        $("tool").innerHTML = (data.tools || []).map((name) => `<option value="${name}">${name}</option>`).join("");
+        show(data);
+      } catch (error) {
+        show(error, false);
+      }
+    };
+
+    $("call").onclick = async () => {
+      try {
+        const args = JSON.parse($("args").value || "{}");
+        const data = await api("/v1/tools/call", { name: $("tool").value, arguments: args });
+        show(data);
+      } catch (error) {
+        show(error, false);
+      }
+    };
+
+    $("undo").onclick = async () => {
+      try {
+        show(await api("/v1/tools/undo", {}));
+      } catch (error) {
+        show(error, false);
+      }
+    };
+
+    $("history").onclick = async () => {
+      try {
+        show(await api("/v1/tools/list_undo_history", { limit: 10 }));
+      } catch (error) {
+        show(error, false);
+      }
+    };
+
+    $("token").value = sessionStorage.getItem("minAgentToken") || "";
+    $("token").addEventListener("change", () => {
+      sessionStorage.setItem("minAgentToken", $("token").value.trim());
+    });
+  </script>
+</body>
+</html>

@@ -1,3 +1,5 @@
+import MinAppKit
+import SwiftData
 import SwiftUI
 
 struct AccountSheetView: View {
@@ -18,6 +20,7 @@ struct AccountSheetView: View {
     @AppStorage("fitMin.readySetGoEnabled") private var readySetGoEnabled = false
     @State private var showsThemes = false
     @State private var showsFonts = false
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
@@ -142,6 +145,11 @@ struct AccountSheetView: View {
                 Section("iCloud") {
                     Label("Timers sync with iCloud when available.", systemImage: "icloud")
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+                .designSystemGroupedListRow()
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .fit, exporter: TimerAgentExportAdapter(context: modelContext))
                 }
                 .designSystemGroupedListRow()
 

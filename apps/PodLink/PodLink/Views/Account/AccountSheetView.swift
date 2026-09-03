@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct AccountSheetView: View {
@@ -105,6 +106,11 @@ struct AccountSheetView: View {
                     } label: {
                         Label("Notification Preferences", systemImage: "bell")
                     }
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .pod, exporter: PodcastAgentService.shared)
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 

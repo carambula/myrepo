@@ -27,14 +27,17 @@ assert.strictEqual(isEmptyMedia(union), false);
 
 const movies = [
   { title: "Seven Samurai", tmdbId: 346, sourceIdentifier: "criterion" },
+  { title: "8½", tmdbId: 78, sourceIdentifier: "criterion-closet-picks" },
   { title: "Heat", tmdbId: 949, sourceIdentifier: "rewatchables" },
 ];
 const index = new Map([["949", inferred]]);
 seedCriterionFromSources(movies, index);
 assert.strictEqual(index.get("346").hasCriterion, true);
+assert.strictEqual(index.get("78").hasCriterion, true);
 const updated = applyIndexToMovies(movies, index);
 assert.ok(updated >= 2);
 assert.strictEqual(movies[0].physicalMedia.hasCriterion, true);
-assert.strictEqual(movies[1].physicalMedia.has4K, true);
+assert.strictEqual(movies[1].physicalMedia.hasCriterion, true);
+assert.strictEqual(movies[2].physicalMedia.has4K, true);
 
 console.log("physicalMedia tests passed");

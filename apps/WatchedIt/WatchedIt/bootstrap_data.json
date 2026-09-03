@@ -41,6 +41,14 @@
       "url": "https://en.wikipedia.org/wiki/Criterion_Closet#Criterion_Collection_40"
     },
     {
+      "identifier": "criterion-closet-picks",
+      "isRankedList": true,
+      "movieCount": 0,
+      "name": "Criterion Closet Picks",
+      "type": "url",
+      "url": "https://www.criterion.com/closet-picks"
+    },
+    {
       "identifier": "rt-kids",
       "name": "Essential Kids Movies",
       "type": "url",

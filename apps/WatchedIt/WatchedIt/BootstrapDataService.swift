@@ -32,6 +32,7 @@ extension BootstrapDataService {
         var credits: BootstrapCredits?
         var trailer: BootstrapTrailer?
         var podcastEpisodeDescription: String?
+        var sourceUrl: String?
         var physicalMedia: PhysicalMedia?
     }
     
@@ -88,6 +89,7 @@ class BootstrapDataService {
         "imdb-list-1",
         "imdb-list-2",
         "criterion",
+        "criterion-closet-picks",
         "afi-100-1998"
     ]
     
@@ -462,11 +464,13 @@ class BootstrapDataService {
             if existingLink == nil {
                 let episodeTitle = bootstrapMovie.sourceTitle ?? cleanedTitle
                 
-                // Create podcast episode if this is a podcast source
+                // Create episode metadata for podcasts and Closet Picks guest descriptions
                 var podcastEpisode: PodcastEpisode? = nil
                 let episodeDate = parseEpisodeDate(bootstrapMovie.episodeDate)
-                if source.type == "podcast" {
-                    let episodeId = "bootstrap-\(movie.id)-\(episodeTitle.prefix(50))".replacingOccurrences(of: " ", with: "-").lowercased()
+                let hasEpisodeCopy = bootstrapMovie.podcastEpisodeDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                if source.type == "podcast" || hasEpisodeCopy {
+                    let episodeId = bootstrapMovie.sourceUrl
+                        ?? "bootstrap-\(movie.id)-\(episodeTitle.prefix(50))".replacingOccurrences(of: " ", with: "-").lowercased()
                     
                     // Get podcast URLs based on source identifier
                     let (appleUrl, spotifyUrl) = getKnownPodcastUrls(
@@ -494,12 +498,12 @@ class BootstrapDataService {
                     movie: movie,
                     source: source,
                     sourceTitle: episodeTitle,
-                    sourceDescription: nil,
+                    sourceDescription: bootstrapMovie.podcastEpisodeDescription,
                     sourceDate: episodeDate,
                     rank: rank,
                     podcastEpisode: podcastEpisode,
                     rewatchablesDiscussion: nil,
-                    sourceUrl: source.url,
+                    sourceUrl: bootstrapMovie.sourceUrl ?? source.url,
                     applePodcastsUrl: podcastEpisode?.applePodcastsUrl,
                     spotifyUrl: podcastEpisode?.spotifyUrl,
                     lastUpdated: Date(),
@@ -627,9 +631,9 @@ class BootstrapDataService {
             BootstrapDataSource(
                 identifier: identifier,
                 name: identifier.replacingOccurrences(of: "-", with: " ").capitalized,
-                type: identifier.contains("rt-") || identifier.contains("imdb-") || identifier == "criterion" ? "url" : "podcast",
+                type: identifier.contains("rt-") || identifier.contains("imdb-") || identifier.hasPrefix("criterion") ? "url" : "podcast",
                 url: nil,
-                isRankedList: identifier.contains("rt-") || identifier.contains("imdb-"),
+                isRankedList: identifier.contains("rt-") || identifier.contains("imdb-") || identifier == "criterion-closet-picks",
                 movieCount: 0
             )
         }

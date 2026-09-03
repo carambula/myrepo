@@ -132,6 +132,15 @@ class GapFillingScraper {
             minCount: nil
         ),
         SourceConfig(
+            identifier: "criterion-closet-picks",
+            name: "Criterion Closet Picks",
+            url: "https://www.criterion.com/closet-picks",
+            type: "url",
+            isRanked: true,
+            expectedCount: 200,
+            minCount: 40
+        ),
+        SourceConfig(
             identifier: "imdb-list-1",
             name: "IMDB Auteurs",
             url: "https://www.imdb.com/list/ls042702401/",

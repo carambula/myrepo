@@ -234,7 +234,7 @@ export const seedCriterionFromSources = (
   byTmdbId: Map<string, PhysicalMedia>
 ) => {
   for (const movie of movies) {
-    if (movie.sourceIdentifier !== "criterion" || !movie.tmdbId) {
+    if ((movie.sourceIdentifier !== "criterion" && movie.sourceIdentifier !== "criterion-closet-picks") || !movie.tmdbId) {
       continue;
     }
     const existing = byTmdbId.get(String(movie.tmdbId)) || emptyPhysicalMedia();

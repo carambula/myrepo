@@ -36,7 +36,24 @@ export type ImportMovie = {
   sourceTitle?: string | null;
   episodeDate?: string | null;
   podcastEpisode?: unknown;
+  podcastEpisodeDescription?: string | null;
+  sourceUrl?: string | null;
   physicalMedia?: unknown;
+};
+
+export const episodeFromImportMovie = (movie: ImportMovie) => {
+  if (movie.podcastEpisode) {
+    return movie.podcastEpisode;
+  }
+  if (!movie.podcastEpisodeDescription) {
+    return null;
+  }
+  return {
+    title: movie.sourceTitle ?? movie.title ?? null,
+    description: movie.podcastEpisodeDescription,
+    publishDate: movie.episodeDate ?? null,
+    episodeId: movie.sourceUrl ?? null
+  };
 };
 
 const toTimestamp = (value: string | null | undefined) => {
@@ -210,7 +227,7 @@ export const importMovieCatalog = async (payload: {
           rank: movie.rank ?? null,
           sourceTitle: movie.sourceTitle ?? null,
           episodeDate: toTimestamp(movie.episodeDate),
-          episode: movie.podcastEpisode ?? null
+          episode: episodeFromImportMovie(movie)
         });
       }
     }

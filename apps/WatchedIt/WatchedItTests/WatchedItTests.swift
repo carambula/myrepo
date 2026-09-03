@@ -387,6 +387,40 @@ struct WatchedItTests {
         #expect(labels.contains("Not complete"))
     }
 
+    @Test func closetPicksKeepsListenedAffordanceWithoutPodcastEpisode() {
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: true, isOnClosetPicks: false))
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: false, isOnClosetPicks: true))
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: true, isOnClosetPicks: true))
+        #expect(!ClosetPicksSource.showsListenedAction(hasPodcastEpisode: false, isOnClosetPicks: false))
+    }
+
+    @Test func closetPicksDestinationPrefersEpisodePageThenIndex() {
+        let episodeURL = "https://www.criterion.com/current/closet-picks-matthew-mcconaughey"
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: episodeURL, episodeId: nil).absoluteString == episodeURL)
+        #expect(
+            ClosetPicksSource.destinationURL(
+                sourceUrl: nil,
+                episodeId: "https://www.criterion.com/current/posts/123"
+            ).absoluteString == "https://www.criterion.com/current/posts/123"
+        )
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: "not-a-url", episodeId: nil) == ClosetPicksSource.indexURL)
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: nil, episodeId: nil) == ClosetPicksSource.indexURL)
+    }
+
+    @Test func closetPicksMenuTitleUsesEpisodeName() {
+        #expect(
+            ClosetPicksSource.menuTitle(
+                sourceTitle: "Matthew McConaughey's Closet Picks",
+                sourceName: "Criterion Closet Picks"
+            ) == "Matthew McConaughey's Closet Picks"
+        )
+        #expect(
+            ClosetPicksSource.menuTitle(sourceTitle: "  ", sourceName: "Criterion Closet Picks")
+                == "Criterion Closet Picks"
+        )
+        #expect(ClosetPicksSource.menuTitle(sourceTitle: nil, sourceName: nil) == "Criterion Closet Picks")
+    }
+
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,

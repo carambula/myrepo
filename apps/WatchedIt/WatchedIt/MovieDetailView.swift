@@ -493,6 +493,76 @@ struct MovieDetailView: View {
 
     private func openPodcastMenuItem(_ item: PodcastMenuItem) {
         guard let url = preferredPodcastLink(for: item) else { return }
+        openExternalURL(url)
+    }
+
+    private struct ClosetPicksMenuItem: Identifiable {
+        let id: String
+        let title: String
+        let url: URL
+    }
+
+    private var closetPicksSourceContents: [SourceContentSnapshot] {
+        uniqueMovieSourceContentSnapshots.filter { $0.sourceIdentifier == ClosetPicksSource.identifier }
+    }
+
+    private var closetPicksLegacySources: [LegacySourceSnapshot] {
+        legacySources.filter { $0.sourceIdentifier == ClosetPicksSource.identifier }
+    }
+
+    private var isOnClosetPicks: Bool {
+        !closetPicksSourceContents.isEmpty || !closetPicksLegacySources.isEmpty
+    }
+
+    private var showsListenedAction: Bool {
+        ClosetPicksSource.showsListenedAction(
+            hasPodcastEpisode: displayMovie.podcastEpisode != nil,
+            isOnClosetPicks: isOnClosetPicks
+        )
+    }
+
+    private var closetPicksMenuItems: [ClosetPicksMenuItem] {
+        var items: [ClosetPicksMenuItem] = []
+
+        for content in closetPicksSourceContents {
+            guard let url = sourceLinkDestinationURL(
+                identifier: content.sourceIdentifier,
+                sourceUrl: content.sourceUrl,
+                episode: content.podcastEpisode,
+                sourceName: content.sourceName
+            ) else { continue }
+            items.append(ClosetPicksMenuItem(
+                id: "closet-\(content.id)",
+                title: ClosetPicksSource.menuTitle(sourceTitle: content.sourceTitle, sourceName: content.sourceName),
+                url: url
+            ))
+        }
+
+        if items.isEmpty {
+            for legacy in closetPicksLegacySources {
+                guard let url = sourceLinkDestinationURL(
+                    identifier: legacy.sourceIdentifier,
+                    sourceUrl: legacy.sourceUrl,
+                    episode: legacy.podcastEpisode,
+                    sourceName: legacy.sourceName
+                ) else { continue }
+                items.append(ClosetPicksMenuItem(
+                    id: "closet-legacy-\(legacy.sourceIdentifier)-\(url.absoluteString)",
+                    title: ClosetPicksSource.menuTitle(sourceTitle: legacy.sourceTitle, sourceName: legacy.sourceName),
+                    url: url
+                ))
+            }
+        }
+
+        var seenURLs = Set<String>()
+        return items.filter { seenURLs.insert($0.url.absoluteString).inserted }
+    }
+
+    private func openClosetPicksMenuItem(_ item: ClosetPicksMenuItem) {
+        openExternalURL(item.url)
+    }
+
+    private func openExternalURL(_ url: URL) {
         #if os(tvOS)
         openURL(url)
         #else
@@ -506,14 +576,8 @@ struct MovieDetailView: View {
         episode: PodcastEpisode?,
         sourceName: String
     ) -> URL? {
-        if identifier == "criterion-closet-picks" {
-            if let sourceUrl, let url = URL(string: sourceUrl), url.scheme?.hasPrefix("http") == true {
-                return url
-            }
-            if let episodeId = episode?.episodeId, let url = URL(string: episodeId), url.scheme?.hasPrefix("http") == true {
-                return url
-            }
-            return URL(string: "https://www.criterion.com/closet-picks")
+        if identifier == ClosetPicksSource.identifier {
+            return ClosetPicksSource.destinationURL(sourceUrl: sourceUrl, episodeId: episode?.episodeId)
         }
         return episode.flatMap { episode in
             preferredPodcastLink(
@@ -934,7 +998,6 @@ struct MovieDetailView: View {
                     
                     // Top button row: play, rewatched, listened, save, menu
                     HStack(spacing: DesignSystem.Spacing.lg) {
-                        let hasPodcastEpisode = displayMovie.podcastEpisode != nil
                         let activeActionColor = DesignSystem.Color.secondaryAccent ?? DesignSystem.Color.accent
                         // Play button
                         if showsPlayMenu {
@@ -1021,15 +1084,23 @@ struct MovieDetailView: View {
                         let listenedIcon = DesignSystemIcon(
                             localIsListened ? DesignSystem.Icon.listenFill : DesignSystem.Icon.listen,
                             size: DesignSystem.IconSize.lg,
-                            color: hasPodcastEpisode
+                            color: showsListenedAction
                                 ? (localIsListened ? activeActionColor : DesignSystem.Color.textPrimary)
                                 : DesignSystem.Color.textSecondary
                         )
-                        if hasPodcastEpisode {
+                        if showsListenedAction {
                             Menu {
                                 Button(action: toggleListenedStatus) {
                                     Label(localIsListened ? "Mark unlistened" : "Mark listened",
                                           systemImage: localIsListened ? DesignSystem.Icon.listenFill : DesignSystem.Icon.listen)
+                                }
+                                if !closetPicksMenuItems.isEmpty {
+                                    Divider()
+                                    ForEach(closetPicksMenuItems) { item in
+                                        Button(action: { openClosetPicksMenuItem(item) }) {
+                                            Label(item.title, systemImage: DesignSystem.Icon.link)
+                                        }
+                                    }
                                 }
                                 if !podcastMenuItems.isEmpty {
                                     Divider()
@@ -1045,6 +1116,7 @@ struct MovieDetailView: View {
                                     .scaleEffect(buttonScale["listened"] ?? 1.0)
                             }
                             .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel(localIsListened ? "Listened" : "Listen")
                         }
                         
                         // Save button

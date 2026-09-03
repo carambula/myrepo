@@ -2898,7 +2898,7 @@ struct MovieListView: View {
     @ViewBuilder
     private func swipeActions(for movie: Movie) -> some View {
         let currentMovie = localDB.movies.first { $0.id == movie.id } ?? movie
-        let hasPodcastEpisode = (currentMovie.podcastEpisode ?? movie.podcastEpisode) != nil
+        let showsListenedAction = showsListenedAction(for: movie, currentMovie: currentMovie)
         // Full swipe toggles saved
         Button(action: {
             localDB.queueSavedStatusUpdate(currentMovie, isSaved: !currentMovie.isSaved)
@@ -2924,8 +2924,18 @@ struct MovieListView: View {
         }) {
             DesignSystemIcon(DesignSystem.Icon.listenCircleFill, size: DesignSystem.IconSize.md)
         }
-        .tint(hasPodcastEpisode ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
-        .disabled(!hasPodcastEpisode)
+        .tint(showsListenedAction ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
+        .disabled(!showsListenedAction)
+    }
+
+    private func showsListenedAction(for movie: Movie, currentMovie: Movie) -> Bool {
+        let hasPodcastEpisode = (currentMovie.podcastEpisode ?? movie.podcastEpisode) != nil
+        let sourceCache = hasBuiltSourceCache ? movieToSourcesCache : buildMovieSourceCacheSnapshot()
+        let isOnClosetPicks = sourceCache[movie.id]?.contains(ClosetPicksSource.identifier) == true
+        return ClosetPicksSource.showsListenedAction(
+            hasPodcastEpisode: hasPodcastEpisode,
+            isOnClosetPicks: isOnClosetPicks
+        )
     }
     
     // MARK: - Toolbar Components

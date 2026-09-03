@@ -3727,28 +3727,62 @@ function renderTheaterStayStats(stats) {
     <div>In catalog ${stats.inCatalog || 0}</div>
     <div>IMAX ${stats.withIMAX || 0}</div>
     <div>Manual ${stats.manualOverrides || 0}</div>
+    <div>Ticket links ${stats.withTicketLinks || 0}</div>
     <div>${stats.region || "US"}   ${refreshed}</div>
   `;
   if (!elements.theaterStaysBody) return;
   const stays = stats.stays || [];
   if (!stays.length) {
-    elements.theaterStaysBody.innerHTML = `<tr><td colspan="5">No theater stays stored.</td></tr>`;
+    elements.theaterStaysBody.innerHTML = `<tr><td colspan="7">No theater stays stored.</td></tr>`;
     return;
   }
   elements.theaterStaysBody.innerHTML = stays
     .map((stay) => {
-      const source = stay.manualOverride ? "Manual" : "TMDB";
+      const links = stay.ticketLinks || {};
       return `
-        <tr>
+        <tr data-tmdb="${stay.tmdbId || ""}">
           <td>${escapeHistory(stay.title || "")}</td>
           <td>${stay.tmdbId || ""}</td>
-          <td>${stay.inCatalog ? "Yes" : ""}</td>
           <td>${stay.hasIMAX ? "IMAX" : ""}</td>
-          <td>${source}</td>
+          <td><input type="url" data-ticket-site="amc" value="${escapeHistory(links.amc || "")}" placeholder="AMC showtimes URL" /></td>
+          <td><input type="url" data-ticket-site="fandango" value="${escapeHistory(links.fandango || "")}" placeholder="Fandango movie URL" /></td>
+          <td><input type="url" data-ticket-site="atom" value="${escapeHistory(links.atom || "")}" placeholder="Atom movie URL" /></td>
+          <td><button type="button" data-save-ticket-links="1">Save</button></td>
         </tr>
       `;
     })
     .join("");
+  elements.theaterStaysBody.querySelectorAll("[data-save-ticket-links]").forEach((button) => {
+    button.addEventListener("click", () => saveTheaterStayTicketLinks(button.closest("tr")));
+  });
+}
+
+async function saveTheaterStayTicketLinks(row) {
+  if (!row) return;
+  const tmdbId = Number(row.dataset.tmdb);
+  if (!tmdbId) return;
+  const title = row.querySelector("td")?.textContent || "";
+  const ticketLinks = {};
+  row.querySelectorAll("[data-ticket-site]").forEach((input) => {
+    ticketLinks[input.dataset.ticketSite] = input.value.trim();
+  });
+  const saveBtn = row.querySelector("[data-save-ticket-links]");
+  if (saveBtn) saveBtn.disabled = true;
+  try {
+    const response = await fetch("/api/theater-stays/ticket-links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tmdbId, title, ticketLinks }),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error || "Save failed");
+    showToast("Saved ticket links");
+    await loadTheaterStaysStats();
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
 }
 
 async function loadTheaterStaysStats() {
@@ -3811,6 +3845,9 @@ function renderDetailTheaterStays(movie) {
     </div>
     <label><input type="checkbox" data-flag="inTheaters" /> In theaters</label>
     <label><input type="checkbox" data-flag="hasIMAX" /> IMAX</label>
+    <label>AMC <input type="url" data-ticket-site="amc" placeholder="https://www.amctheatres.com/movies/…/showtimes" /></label>
+    <label>Fandango <input type="url" data-ticket-site="fandango" placeholder="https://www.fandango.com/…/movie-overview" /></label>
+    <label>Atom <input type="url" data-ticket-site="atom" placeholder="https://www.atomtickets.com/movies/…" /></label>
   `;
   const inTheatersInput = elements.detailTheaterStays.querySelector("[data-flag='inTheaters']");
   const imaxInput = elements.detailTheaterStays.querySelector("[data-flag='hasIMAX']");
@@ -3821,6 +3858,10 @@ function renderDetailTheaterStays(movie) {
       if (stay) {
         inTheatersInput.checked = true;
         imaxInput.checked = Boolean(stay.hasIMAX);
+        const links = stay.ticketLinks || {};
+        elements.detailTheaterStays.querySelectorAll("[data-ticket-site]").forEach((input) => {
+          input.value = links[input.dataset.ticketSite] || "";
+        });
       }
     })
     .catch(() => {});
@@ -3828,6 +3869,10 @@ function renderDetailTheaterStays(movie) {
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     try {
+      const ticketLinks = {};
+      elements.detailTheaterStays.querySelectorAll("[data-ticket-site]").forEach((input) => {
+        ticketLinks[input.dataset.ticketSite] = input.value.trim();
+      });
       const response = await fetch("/api/theater-stays/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3836,6 +3881,7 @@ function renderDetailTheaterStays(movie) {
           title: movie.title,
           inTheaters: inTheatersInput.checked,
           hasIMAX: imaxInput.checked,
+          ticketLinks,
         }),
       });
       const data = await response.json();

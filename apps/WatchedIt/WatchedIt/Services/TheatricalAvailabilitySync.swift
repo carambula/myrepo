@@ -15,7 +15,10 @@ final class TheatricalAvailabilitySync {
                     tmdbId: movie.tmdbId,
                     isInTheaters: true,
                     hasIMAX: movie.hasIMAX ?? false,
-                    title: movie.title
+                    title: movie.title,
+                    ticketLinks: movie.ticketLinks.map {
+                        TheatricalTicketLinks(amc: $0.amc, fandango: $0.fandango, atom: $0.atom)
+                    }
                 )
             }
         } else {

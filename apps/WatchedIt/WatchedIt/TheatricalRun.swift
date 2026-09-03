@@ -12,22 +12,37 @@ public enum TheatricalFilter: String, CaseIterable, Sendable {
     case imax = "IMAX"
 }
 
+public struct TheatricalTicketLinks: Codable, Hashable, Sendable {
+    public var amc: String?
+    public var fandango: String?
+    public var atom: String?
+
+    public init(amc: String? = nil, fandango: String? = nil, atom: String? = nil) {
+        self.amc = amc
+        self.fandango = fandango
+        self.atom = atom
+    }
+}
+
 public struct TheatricalRun: Codable, Hashable, Sendable {
     public var tmdbId: Int?
     public var isInTheaters: Bool
     public var hasIMAX: Bool
     public var title: String?
+    public var ticketLinks: TheatricalTicketLinks?
 
     public init(
         tmdbId: Int? = nil,
         isInTheaters: Bool = false,
         hasIMAX: Bool = false,
-        title: String? = nil
+        title: String? = nil,
+        ticketLinks: TheatricalTicketLinks? = nil
     ) {
         self.tmdbId = tmdbId
         self.isInTheaters = isInTheaters
         self.hasIMAX = hasIMAX
         self.title = title
+        self.ticketLinks = ticketLinks
     }
 
     public var hasDisplayableAvailability: Bool {
@@ -108,14 +123,14 @@ public enum TheatricalTicketLinkBuilder {
             groups.append(TheatricalTicketGroup(
                 id: "tickets",
                 headline: "Tickets",
-                offers: ticketOffers(title: trimmedTitle, year: year, extras: [])
+                offers: ticketOffers(for: run, title: trimmedTitle, year: year, extras: [])
             ))
         }
         if run.hasIMAX {
             groups.append(TheatricalTicketGroup(
                 id: "imax",
                 headline: "IMAX",
-                offers: ticketOffers(title: trimmedTitle, year: year, extras: ["IMAX"])
+                offers: ticketOffers(for: run, title: trimmedTitle, year: year, extras: ["IMAX"])
             ))
         }
         return groups.filter { !$0.offers.isEmpty }
@@ -132,15 +147,51 @@ public enum TheatricalTicketLinkBuilder {
         return offers
     }
 
-    private static func ticketOffers(title: String, year: Int?, extras: [String]) -> [TheatricalTicketOffer] {
+    private static func ticketOffers(
+        for run: TheatricalRun,
+        title: String,
+        year: Int?,
+        extras: [String]
+    ) -> [TheatricalTicketOffer] {
         let query = PhysicalPurchaseLinkBuilder.searchTerms(title: title, year: year, extras: extras)
         let suffix = extras.joined()
         return [
-            offer(id: "fandango-\(suffix)", title: "Fandango", prefix: "https://www.fandango.com/search?q=", query: query),
-            offer(id: "atom-\(suffix)", title: "Atom Tickets", prefix: "https://www.atomtickets.com/search?query=", query: query),
-            offer(id: "amc-\(suffix)", title: "AMC", prefix: "https://www.amctheatres.com/search?q=", query: query),
+            storedOrSearch(
+                id: "fandango-\(suffix)",
+                title: "Fandango",
+                stored: run.ticketLinks?.fandango,
+                prefix: "https://www.fandango.com/search?q=",
+                query: query
+            ),
+            storedOrSearch(
+                id: "atom-\(suffix)",
+                title: "Atom Tickets",
+                stored: run.ticketLinks?.atom,
+                prefix: "https://www.atomtickets.com/search?query=",
+                query: query
+            ),
+            storedOrSearch(
+                id: "amc-\(suffix)",
+                title: "AMC",
+                stored: run.ticketLinks?.amc,
+                prefix: "https://www.amctheatres.com/search?q=",
+                query: query
+            ),
             offer(id: "google-\(suffix)", title: "Google", prefix: "https://www.google.com/search?q=", query: query + " movie tickets")
         ].compactMap { $0 }
+    }
+
+    private static func storedOrSearch(
+        id: String,
+        title: String,
+        stored: String?,
+        prefix: String,
+        query: String
+    ) -> TheatricalTicketOffer? {
+        if let stored, let url = URL(string: stored) {
+            return TheatricalTicketOffer(id: id, title: title, url: url)
+        }
+        return offer(id: id, title: title, prefix: prefix, query: query)
     }
 
     private static func offer(id: String, title: String, prefix: String, query: String) -> TheatricalTicketOffer? {

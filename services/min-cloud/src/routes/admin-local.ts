@@ -50,8 +50,10 @@ import {
   findTheaterStay,
   loadTheaterStayStats,
   normalizeTheaterStayUpdate,
+  normalizeTicketLinks,
   resolveNowPlaying,
-  upsertManualTheaterStay
+  upsertManualTheaterStay,
+  upsertTheaterTicketLinks
 } from "../lib/theater-stays.js";
 import {
   listAudit,
@@ -581,6 +583,24 @@ router.post("/theater-stays/update", async (req, res) => {
     inCatalog: catalogIds.has(update.tmdbId)
   });
   await recordAudit(req, "catalog.theater-stay", { tmdbId: update.tmdbId }, before, after);
+  res.json({ success: true, theaterStay: after });
+});
+
+router.post("/theater-stays/ticket-links", async (req, res) => {
+  const tmdbId = Number(req.body?.tmdbId);
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+    res.status(400).json({ error: "tmdbId required." });
+    return;
+  }
+  const before = await findTheaterStay(config.tmdbRegion, tmdbId);
+  const catalogIds = await catalogTmdbIds();
+  const after = await upsertTheaterTicketLinks(config.tmdbRegion, {
+    tmdbId,
+    title: typeof req.body?.title === "string" ? req.body.title : before?.title,
+    ticketLinks: normalizeTicketLinks(req.body?.ticketLinks),
+    inCatalog: catalogIds.has(tmdbId)
+  });
+  await recordAudit(req, "catalog.theater-ticket-links", { tmdbId }, before, after);
   res.json({ success: true, theaterStay: after });
 });
 

@@ -4,6 +4,8 @@ import {
   isFreshTheaterStaySnapshot,
   mergeTheaterStayRefresh,
   normalizeTheaterStayUpdate,
+  normalizeTicketLinks,
+  normalizeTicketUrl,
   theaterStayStats,
   toPublicMovies
 } from "../src/lib/theater-stays-logic.ts";
@@ -48,10 +50,46 @@ describe("theater stay merge and stats", () => {
     assert.equal(stats.inCatalog, 1);
     assert.equal(stats.withIMAX, 1);
     assert.equal(stats.manualOverrides, 1);
+    assert.equal(stats.withTicketLinks, 0);
     assert.equal(stats.region, "US");
     assert.deepEqual(toPublicMovies([{ tmdbId: 1, title: "A", hasIMAX: true, inCatalog: true, manualOverride: false }]), [
       { tmdbId: 1, title: "A", hasIMAX: true }
     ]);
+  });
+
+  it("keeps ticket links when a title stays in theaters", () => {
+    const existing = [
+      {
+        tmdbId: 1,
+        title: "Oak Street",
+        hasIMAX: false,
+        inCatalog: true,
+        manualOverride: false,
+        ticketLinks: { amc: "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes" }
+      }
+    ];
+    const merged = mergeTheaterStayRefresh(existing, [{ tmdbId: 1, title: "The End of Oak Street", hasIMAX: true }], new Set([1]));
+    assert.equal(
+      merged[0]?.ticketLinks?.amc,
+      "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes"
+    );
+    assert.equal(merged[0]?.hasIMAX, true);
+  });
+
+  it("accepts https showtimes URLs for the known ticket hosts", () => {
+    assert.equal(
+      normalizeTicketUrl("amc", "https://www.amctheatres.com/movies/the-end-of-oak-street-71226"),
+      "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes"
+    );
+    assert.equal(normalizeTicketUrl("amc", "http://www.amctheatres.com/movies/oak"), undefined);
+    assert.equal(normalizeTicketUrl("fandango", "https://example.com/movie"), undefined);
+    assert.deepEqual(
+      normalizeTicketLinks({
+        amc: "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes",
+        atom: "not-a-url"
+      }),
+      { amc: "https://www.amctheatres.com/movies/the-end-of-oak-street-71226/showtimes" }
+    );
   });
 
   it("treats IMAX as in theaters and can remove a stay", () => {

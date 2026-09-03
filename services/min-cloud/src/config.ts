@@ -33,7 +33,9 @@ export const config = {
       ? process.env.APNS_BUNDLE_ID
       : "Carambula-Projects.PodLink"),
   apnsProduction: (process.env.APNS_PRODUCTION ?? "true") !== "false",
-  nodeEnv: process.env.NODE_ENV || "development"
+  nodeEnv: process.env.NODE_ENV || "development",
+  agentToken: process.env.MIN_CLOUD_AGENT_TOKEN || "",
+  agentUserEmail: process.env.AGENT_USER_EMAIL || ""
 };
 
 export const isProduction = config.nodeEnv === "production";

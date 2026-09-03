@@ -60,6 +60,7 @@ In-process jobs also run when `ENABLE_JOBS=true` (default): podcast feeds every 
 - API / user site: https://min-cloud-production.up.railway.app
 - Admin: https://min-cloud-production.up.railway.app/admin
 - Health: https://min-cloud-production.up.railway.app/health
+- Agent HTTP (VM-reachable): `GET /tools` and `POST /invoke` at the same origin, Bearer `minagt_…`
 
 Copy `ADMIN_TOKEN` from the Railway service variables to sign into admin. Do not commit it.
 
@@ -93,6 +94,7 @@ mincloud.baseURL = http://localhost:4000
 - `GET /v1/admin/health` `POST /v1/admin/jobs/:name`
 - Ingest enrich uses the same podcast title cleaning and TMDB best-match rules as the local WatchedIt editor (`‘Toy Story 5’ With Bill Simmons…` → Toy Story 5)
 - `GET /api/history` `POST /api/history/snapshots` `POST /api/history/snapshots/:id/restore` `POST /api/history/audit/:id/revert`
+- `GET /tools` `POST /invoke` — agent JSON API. `Authorization: Bearer minagt_…`. Create a token with `POST /v1/agent/connections` (signed-in user) or `POST /v1/admin/agent/connections` `{ "email": "you@…" }` (admin). Or set Railway `MIN_CLOUD_AGENT_TOKEN` + `AGENT_USER_EMAIL` so a VM can call the live URL immediately.
 
 ## Catalog version control
 

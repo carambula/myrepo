@@ -12,6 +12,8 @@ import movRouter from "./routes/mov.js";
 import podRouter from "./routes/pod.js";
 import adminRouter from "./routes/admin.js";
 import adminLocalRouter from "./routes/admin-local.js";
+import agentRouter from "./routes/agent.js";
+import { ensureBootstrapAgent } from "./lib/agent.js";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +36,7 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+app.use(agentRouter);
 app.use("/v1", platformRouter);
 app.use("/v1/mov", movRouter);
 app.use("/v1/pod", podRouter);
@@ -90,6 +93,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 const start = async () => {
   await runMigrations(defaultMigrationsDir());
+  await ensureBootstrapAgent();
   app.listen(config.port, () => {
     console.log(`Min Cloud listening on ${config.port}`);
     startJobScheduler();

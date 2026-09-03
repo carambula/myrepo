@@ -37,6 +37,7 @@ struct EpisodeStatusFilterButton: View {
                 }
         }
         .buttonStyle(.plain)
+        .menuIndicator(.hidden)
         .accessibilityLabel(isActive ? "Status filter, \(statusFilter.rawValue)" : "Status filter")
     }
 

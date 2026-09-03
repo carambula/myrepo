@@ -63,6 +63,7 @@ struct FilterBarView: View {
             )
         }
         .buttonStyle(.plain)
+        .menuIndicator(.hidden)
         .accessibilityLabel(statusFilter == .all ? "Status filter" : "Status filter, \(statusFilter.rawValue)")
     }
 

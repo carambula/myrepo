@@ -107,6 +107,10 @@ final class TVMovieDetailViewController: UIViewController {
             contentStack.addArrangedSubview(creditsSection)
         }
 
+        if let physicalMediaSection = makePhysicalMediaSection() {
+            contentStack.addArrangedSubview(physicalMediaSection)
+        }
+
         if let streamingSection = makeStreamingSection() {
             contentStack.addArrangedSubview(streamingSection)
         }
@@ -406,6 +410,12 @@ final class TVMovieDetailViewController: UIViewController {
             items.append(tmdbLabel)
         }
 
+        if let media = movie.physicalMedia, media.hasDisplayableAvailability {
+            for badge in media.badgeLabels {
+                items.append(makeTagLabel(badge))
+            }
+        }
+
         guard !items.isEmpty else { return nil }
 
         let stack = UIStackView(arrangedSubviews: items)
@@ -441,6 +451,19 @@ final class TVMovieDetailViewController: UIViewController {
 
         guard !rows.isEmpty else { return nil }
         return makeSection(title: "Credits", rows: rows)
+    }
+
+    private func makePhysicalMediaSection() -> UIStackView? {
+        guard let media = movie.physicalMedia, media.hasDisplayableAvailability else { return nil }
+        var rows: [UIView] = []
+        if media.editions.isEmpty {
+            rows.append(makeFocusableBodyLabel(media.badgeLabels.joined(separator: "   ")))
+        } else {
+            for edition in media.editions {
+                rows.append(makeFocusableBodyLabel(edition.displayLine))
+            }
+        }
+        return makeSection(title: "Physical Media", rows: rows)
     }
 
     private func makeStreamingSection() -> UIStackView? {

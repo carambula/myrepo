@@ -1,0 +1,26 @@
+{
+  "categories": [
+    {
+      "name": "TV & Film",
+      "podcasts": [
+        { "itunesID": "1240767259", "name": "The Rewatchables" },
+        { "itunesID": "1378907446", "name": "Blank Check" },
+        { "itunesID": "1504180074", "name": "The Big Picture" }
+      ]
+    },
+    {
+      "name": "Comedy",
+      "podcasts": [
+        { "itunesID": "1535809341", "name": "SmartLess" },
+        { "itunesID": "1289381517", "name": "Conan O'Brien Needs a Friend" }
+      ]
+    },
+    {
+      "name": "News & Culture",
+      "podcasts": [
+        { "itunesID": "1200361736", "name": "The Daily" },
+        { "itunesID": "1542866958", "name": "The Ezra Klein Show" }
+      ]
+    }
+  ]
+}

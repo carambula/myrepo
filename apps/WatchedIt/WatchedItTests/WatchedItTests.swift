@@ -77,4 +77,84 @@ struct WatchedItTests {
         #expect(input.year == 1982)
     }
 
+    @Test func physicalMediaEncodesAndDecodes() throws {
+        let media = PhysicalMedia(
+            editions: [
+                PhysicalEdition(id: "c-4k", label: .criterion, format: .uhd4k, spineNumber: "42")
+            ],
+            hasCriterion: true,
+            has4K: true,
+            hasBluRay: true
+        )
+        let data = try JSONEncoder().encode(media)
+        let decoded = try JSONDecoder().decode(PhysicalMedia.self, from: data)
+        #expect(decoded.hasCriterion)
+        #expect(decoded.has4K)
+        #expect(decoded.editions.first?.spineNumber == "42")
+        #expect(decoded.editions.first?.displayLine == "Criterion   4K UHD   Spine 42")
+    }
+
+    @Test func physicalMediaMergeKeepsManualOverride() {
+        let stored = PhysicalMedia(hasCriterion: true, has4K: false, manualOverride: true)
+        let inferred = PhysicalMedia(
+            editions: [PhysicalEdition(label: .arrow, format: .uhd4k)],
+            has4K: true
+        )
+        let merged = stored.merging(inferred: inferred)
+        #expect(merged.manualOverride)
+        #expect(merged.hasCriterion)
+        #expect(!merged.has4K)
+        #expect(merged.editions.isEmpty)
+    }
+
+    @Test func physicalMediaMergeUnionsInferredData() {
+        let stored = PhysicalMedia(hasCriterion: true)
+        let inferred = PhysicalMedia(
+            editions: [PhysicalEdition(id: "arrow", label: .arrow, format: .uhd4k)],
+            has4K: true
+        )
+        let merged = stored.merging(inferred: inferred)
+        #expect(merged.hasCriterion)
+        #expect(merged.has4K)
+        #expect(merged.editions.contains(where: { $0.label == .arrow }))
+    }
+
+    @Test func physicalMediaSearchTokensMatchQueries() {
+        let media = PhysicalMedia(
+            editions: [PhysicalEdition(label: .criterion, format: .uhd4k, spineNumber: "1")],
+            hasCriterion: true,
+            has4K: true
+        )
+        #expect(media.matchesSearchQuery("criterion"))
+        #expect(media.matchesSearchQuery("4k"))
+        #expect(media.matchesSearchQuery("uhd"))
+        #expect(!media.matchesSearchQuery("shout"))
+    }
+
+    @Test func physicalMediaSearchIndexIncludesTokens() {
+        let movie = Movie(
+            title: "Seven Samurai",
+            year: 1954,
+            tmdbId: 346,
+            physicalMedia: PhysicalMedia(hasCriterion: true, has4K: true)
+        )
+        let index = MovieSearchEngine.buildIndex(from: [movie])
+        let haystack = index[movie.id] ?? ""
+        #expect(haystack.contains("criterion"))
+        #expect(haystack.contains("4k"))
+    }
+
+    @Test func movieRoundTripKeepsPhysicalMedia() throws {
+        let movie = Movie(
+            title: "The Night of the Hunter",
+            year: 1955,
+            tmdbId: 1152,
+            physicalMedia: PhysicalMedia(hasCriterion: true, has4K: true)
+        )
+        let data = try JSONEncoder().encode(movie)
+        let decoded = try JSONDecoder().decode(Movie.self, from: data)
+        #expect(decoded.physicalMedia?.hasCriterion == true)
+        #expect(decoded.physicalMedia?.has4K == true)
+    }
+
 }

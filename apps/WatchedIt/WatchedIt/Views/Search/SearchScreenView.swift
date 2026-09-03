@@ -41,6 +41,7 @@ struct SearchScreenView: View {
     @State private var pendingReleaseYearFilter: Int? = nil
     @State private var pendingGenreFilter: String? = nil
     @State private var pendingRatingFilter: String? = nil
+    @State private var pendingPhysicalMediaQuery: String? = nil
     @State private var session: MovieSearchSession? = nil
     @State private var isKeyboardVisible = false
     @State private var forceCompactSearchControls = false
@@ -113,7 +114,8 @@ struct SearchScreenView: View {
                         onCreditPersonTapped: startPersonSearchFromDetails,
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails
+                        onRatingTapped: startRatingSearchFromDetails,
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails
                     )
                 }
             ))
@@ -186,6 +188,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaQuery = nil
         pendingPersonFilter = trimmedName
         selectedMovie = nil
     }
@@ -195,6 +198,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = year
         pendingGenreFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaQuery = nil
         selectedMovie = nil
     }
 
@@ -204,6 +208,7 @@ struct SearchScreenView: View {
         pendingPersonFilter = nil
         pendingReleaseYearFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaQuery = nil
         pendingGenreFilter = trimmedGenre
         selectedMovie = nil
     }
@@ -215,6 +220,18 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = trimmedRating
+        pendingPhysicalMediaQuery = nil
+        selectedMovie = nil
+    }
+
+    private func startPhysicalMediaSearchFromDetails(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPersonFilter = nil
+        pendingReleaseYearFilter = nil
+        pendingGenreFilter = nil
+        pendingRatingFilter = nil
+        pendingPhysicalMediaQuery = trimmed
         selectedMovie = nil
     }
 
@@ -256,6 +273,13 @@ struct SearchScreenView: View {
                 $0.selectedMPAARating = pendingRating
                 $0.selectedGenre = nil
             }
+            return
+        }
+
+        if let pendingMedia = pendingPhysicalMediaQuery {
+            pendingPhysicalMediaQuery = nil
+            session?.updateFilters { $0 = MovieSearchFilters() }
+            session?.updateQuery(pendingMedia)
             return
         }
     }

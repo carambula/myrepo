@@ -311,7 +311,7 @@ struct NewUserExperienceView: View {
                     bullet("Press the Mic icon to listen to the related pods or mark as listened")
                     bullet("Hit popcorn to mark as watched")
                     bullet("Mark movies as watched or podded")
-                    bullet("Your activity is backed up to your iCloud, if configured")
+                    bullet("Your activity can sync with Min Cloud, or stay on-device with optional iCloud backup")
                 }
             }
         case .streaming:

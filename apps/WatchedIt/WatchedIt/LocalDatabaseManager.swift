@@ -2165,6 +2165,13 @@ public class LocalDatabaseManager: ObservableObject {
         if target.oscarAwards == nil && source.oscarAwards != nil {
             target.oscarAwards = source.oscarAwards
         }
+        if let sourceMedia = source.physicalMedia {
+            if let existing = target.physicalMedia {
+                target.physicalMedia = existing.merging(inferred: sourceMedia)
+            } else {
+                target.physicalMedia = sourceMedia
+            }
+        }
         
         // Merge user data (new schema) and fallback MovieState
         if let targetUserData = target.userData {
@@ -2623,6 +2630,10 @@ public class LocalDatabaseManager: ObservableObject {
                     credits: bootstrapMovie.credits,
                     trailer: bootstrapMovie.trailer,
                     oscarAwards: bootstrapMovie.oscarAwards,
+                    physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(
+                        stored: bootstrapMovie.physicalMedia,
+                        tmdbId: bootstrapMovie.tmdbId
+                    ),
                     keywords: bootstrapMovie.keywords,
                     lastUpdated: Date(),
                     createdAt: bootstrapMovie.createdAt,
@@ -3036,6 +3047,17 @@ public class LocalDatabaseManager: ObservableObject {
         }
         if let oscarAwards = source.oscarAwards {
             target.oscarAwards = oscarAwards
+        }
+        if let physicalMedia = source.physicalMedia {
+            if let existing = target.physicalMedia, existing.manualOverride {
+                target.physicalMedia = existing
+            } else if let existing = target.physicalMedia {
+                target.physicalMedia = existing.merging(inferred: physicalMedia)
+            } else {
+                target.physicalMedia = physicalMedia
+            }
+        } else if target.physicalMedia == nil {
+            target.physicalMedia = PhysicalMediaCatalog.shared.media(forTmdbId: target.tmdbId)
         }
         if !source.keywords.isEmpty {
             target.keywords = source.keywords

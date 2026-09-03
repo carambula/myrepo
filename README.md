@@ -20,6 +20,7 @@ Monorepo for the min apps suite and their shared design system.
 | `@min-apps/design-system` | `packages/design-system` | Shared tokens, themes, components, layouts, and utilities |
 | `@min-apps/design-studio` | `packages/design-studio` | Web tool for browsing tokens, previewing themes, and managing the design system |
 | `@min-apps/agent-kit` | `packages/agent-kit` | MCP / HTTP agent gateway, scoped tokens, and undo journal |
+| **Min Cloud** | `services/min-cloud` | Railway web service for mov min + pod min (catalog, notifications, accounts, admin) |
 
 ## Getting Started
 
@@ -74,6 +75,8 @@ min-apps/
 │   ├── YourTube/               # vid min — yourtube (Swift)
 │   ├── Cyclismo/               # cyc min — Cyclismo guide (Swift + backend)
 │   └── SpinMin/                # spin min — SpinMin tire pressure calculator (Swift)
+├── services/
+│   └── min-cloud/              # Shared Railway API + web for mov min and pod min
 ├── packages/
 │   ├── design-system/          # @min-apps/design-system
 │   │   ├── src/                # Tokens, components, layouts (JS)
@@ -81,7 +84,8 @@ min-apps/
 │   │   ├── swift/              # MinAppKit Swift package (spacing, corner radius, opacity)
 │   │   ├── scripts/            # build-native-tokens.js
 │   │   └── docs/               # Documentation
-│   └── design-studio/          # @min-apps/design-studio (npm run studio)
+│   ├── design-studio/          # @min-apps/design-studio (npm run studio)
+│   └── agent-kit/              # @min-apps/agent-kit (MCP / HTTP agent gateway)
 ├── package.json                # Root workspace config (npm)
 └── turbo.json                  # Turborepo task pipeline
 ```

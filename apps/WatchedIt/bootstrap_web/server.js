@@ -17,6 +17,18 @@ const TMDB_API_KEY =
   process.env.TMDB_API_KEY || "4f6ab1dde752aedd41093bab21f383c7";
 const OMDB_API_KEY = process.env.OMDB_API_KEY || "c418f9f5";
 
+const {
+  fetchWikidataPhysicalMediaIndex,
+  seedCriterionFromSources,
+  seedCurated4K,
+  filterIndexToCatalog,
+  applyIndexToMovies,
+  overlayFromMovies,
+  overlayFromIndex,
+  physicalMediaStats,
+} = require("./physicalMedia");
+const PHYSICAL_MEDIA_PATH = path.join(PROJECT_ROOT, "WatchedIt", "physical_media.json");
+
 const PORT = process.env.PORT || 4187;
 const PODCAST_LOOKBACK_DAYS = Math.max(
   1,
@@ -2708,6 +2720,79 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         return sendJson(res, 500, { success: false, error: error.message, title: target.title });
       }
+    }
+
+    if (pathname === "/api/physical-media/stats" && req.method === "GET") {
+      const bootstrap = await loadBootstrap();
+      return sendJson(res, 200, physicalMediaStats(bootstrap.movies || []));
+    }
+
+    if (pathname === "/api/physical-media/enrich" && req.method === "POST") {
+      const payload = await readRequestBody(req);
+      const overwriteManual = Boolean(payload?.overwriteManual);
+      const bootstrap = await loadBootstrap();
+      const movies = bootstrap.movies || [];
+      const index = await fetchWikidataPhysicalMediaIndex();
+      seedCriterionFromSources(movies, index);
+      seedCurated4K(index);
+      const catalogIndex = filterIndexToCatalog(index, movies);
+      const updatedCount = applyIndexToMovies(movies, catalogIndex, { overwriteManual });
+      if (updatedCount > 0) {
+        bootstrap.generatedDate = new Date().toISOString();
+        await saveBootstrap(bootstrap);
+      }
+      const overlay = overlayFromIndex(catalogIndex);
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify(overlay, null, 2) + "\n");
+      return sendJson(res, 200, {
+        success: true,
+        updatedCount,
+        overlayCount: Object.keys(overlay.byTmdbId).length,
+        stats: physicalMediaStats(movies),
+      });
+    }
+
+    if (pathname === "/api/physical-media/update" && req.method === "POST") {
+      const payload = await readRequestBody(req);
+      const tmdbId = Number(payload?.tmdbId);
+      if (!tmdbId) return sendJson(res, 400, { error: "tmdbId is required" });
+      const bootstrap = await loadBootstrap();
+      const movies = bootstrap.movies || [];
+      const targets = movies.filter((movie) => movie.tmdbId === tmdbId);
+      if (!targets.length) return sendJson(res, 404, { error: "Movie not found" });
+
+      const next = {
+        editions: Array.isArray(payload?.editions) ? payload.editions : (targets[0].physicalMedia?.editions || []),
+        hasCriterion: Boolean(payload?.hasCriterion),
+        has4K: Boolean(payload?.has4K),
+        hasBluRay: Boolean(payload?.hasBluRay),
+        manualOverride: payload?.manualOverride !== false,
+      };
+      for (const movie of targets) {
+        movie.physicalMedia = next;
+      }
+      bootstrap.generatedDate = new Date().toISOString();
+      await saveBootstrap(bootstrap);
+
+      const overlay = overlayFromMovies(movies);
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify(overlay, null, 2) + "\n");
+      return sendJson(res, 200, { success: true, physicalMedia: next });
+    }
+
+    if (pathname === "/api/physical-media/clear" && req.method === "POST") {
+      const bootstrap = await loadBootstrap();
+      let clearedCount = 0;
+      for (const movie of bootstrap.movies || []) {
+        if (movie.physicalMedia) {
+          delete movie.physicalMedia;
+          clearedCount += 1;
+        }
+      }
+      if (clearedCount > 0) {
+        bootstrap.generatedDate = new Date().toISOString();
+        await saveBootstrap(bootstrap);
+      }
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify({ byTmdbId: {} }, null, 2) + "\n");
+      return sendJson(res, 200, { success: true, clearedCount });
     }
 
     if (pathname === "/api/oscar-awards/clear" && req.method === "POST") {

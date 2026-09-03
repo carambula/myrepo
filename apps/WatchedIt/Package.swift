@@ -30,11 +30,18 @@ let package = Package(
                 "MovieModel.swift",
                 "PodcastEpisodeIntakeService.swift",
                 "PodcastAppPreferences.swift",
+                "MinCloudSettings.swift",
                 "RewatchablesCategories.swift",
+                "Services/MinCloudClient.swift",
+                "Services/MinCloudCatalogSync.swift",
                 "StreamingPreferences.swift",
                 "ThemeManager.swift",
                 "TitleCleaner.swift",
-                "OscarAwards.swift"
+                "OscarAwards.swift",
+                "PhysicalMedia.swift"
+            ],
+            resources: [
+                .process("physical_media.json")
             ]
         )
     ]

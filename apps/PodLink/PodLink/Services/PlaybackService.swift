@@ -116,10 +116,6 @@ class PlaybackService {
     func play(episode: Episode, podcast: Podcast? = nil, startAt: TimeInterval? = nil) async {
         state.playbackRate = Self.preferredPlaybackRateFromDefaults()
         var merged = EpisodePlaybackStore.merge(episode)
-        if merged.isEffectivelyFinished {
-            EpisodePlaybackStore.persistRelistened(true, episodeID: merged.id, notify: false)
-            merged.hasRelistened = true
-        }
         if let localURL = merged.downloadedFileURL,
            !FileManager.default.fileExists(atPath: localURL.path) {
             if let record = DownloadMetadataStore.record(for: merged) {
@@ -143,6 +139,14 @@ class PlaybackService {
         nowPlayingArtworkTask?.cancel()
         lastNowPlayingArtworkKey = nil
         let resolvedStartTime = max(0, startAt ?? merged.playbackPosition)
+        if merged.isEffectivelyFinished,
+           !PlaybackProgressPolicy.current.isFinished(
+            playbackPosition: resolvedStartTime,
+            duration: merged.duration
+           ) {
+            EpisodePlaybackStore.persistRelistened(true, episodeID: merged.id, notify: false)
+            merged.hasRelistened = true
+        }
         merged.playbackPosition = resolvedStartTime
         lastPositionCheckpoint = resolvedStartTime
 

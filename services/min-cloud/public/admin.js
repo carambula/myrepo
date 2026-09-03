@@ -25,7 +25,8 @@ const api = async (path, options = {}) => {
 const renderHealth = (data) => {
   document.getElementById("health").innerHTML = [
     `${data.movies} movies`,
-    `${data.physicalMedia || 0} with physical media`,
+    `${data.physicalMedia || 0} with discs`,
+    `${data.theaterStays || 0} theater stays`,
     `${data.staleStreaming} stale streaming rows`,
     `${data.podcasts} podcasts`,
     `${data.episodes} episodes`,

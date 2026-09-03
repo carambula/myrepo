@@ -187,6 +187,16 @@ const elements = {
   physicalMediaClearBtn: document.getElementById("physicalMediaClearBtn"),
   physicalMediaStatus: document.getElementById("physicalMediaStatus"),
   detailPhysicalMedia: document.getElementById("detailPhysicalMedia"),
+  theaterStaysBtn: document.getElementById("theaterStaysBtn"),
+  theaterStaysModal: document.getElementById("theaterStaysModal"),
+  theaterStaysCloseBtn: document.getElementById("theaterStaysCloseBtn"),
+  theaterStaysStats: document.getElementById("theaterStaysStats"),
+  theaterStaysRefreshStatsBtn: document.getElementById("theaterStaysRefreshStatsBtn"),
+  theaterStaysRefreshBtn: document.getElementById("theaterStaysRefreshBtn"),
+  theaterStaysClearBtn: document.getElementById("theaterStaysClearBtn"),
+  theaterStaysStatus: document.getElementById("theaterStaysStatus"),
+  theaterStaysBody: document.getElementById("theaterStaysBody"),
+  detailTheaterStays: document.getElementById("detailTheaterStays"),
   oscarModal: document.getElementById("oscarModal"),
   oscarCloseBtn: document.getElementById("oscarCloseBtn"),
   oscarStats: document.getElementById("oscarStats"),
@@ -1013,6 +1023,7 @@ function fillForm(movie) {
   elements.detailBackdrop.style.visibility = backdropUrl ? "visible" : "hidden";
   renderDetailOscars(movie);
   renderDetailPhysicalMedia(movie);
+  renderDetailTheaterStays(movie);
   renderDetailMeta(movie);
 
   const cleanedTitle = sanitizeTmdbQuery(movie.title || "");
@@ -1107,6 +1118,7 @@ async function deleteMovie() {
   elements.detailMedia.classList.add("hidden");
   elements.detailOscars.classList.add("hidden");
   if (elements.detailPhysicalMedia) elements.detailPhysicalMedia.classList.add("hidden");
+  if (elements.detailTheaterStays) elements.detailTheaterStays.classList.add("hidden");
   elements.detailMeta.classList.add("hidden");
   elements.detailEmpty.classList.remove("hidden");
   await reloadData();
@@ -1208,6 +1220,9 @@ async function loadDataHealth() {
     ["Missing Credits", data.missingCredits],
     ["Missing Trailer", data.missingTrailer],
     ["Duplicate Sources", data.duplicateSourceTitles],
+    ["Discs", data.withPhysicalMedia],
+    ["Theater Stays", data.theaterStays],
+    ["IMAX Stays", data.theaterStaysIMAX],
   ]
     .map(
       ([label, value]) => `
@@ -2838,6 +2853,14 @@ function bindEvents() {
   bindClick(elements.physicalMediaRefreshStatsBtn, () => loadPhysicalMediaStats());
   bindClick(elements.physicalMediaEnrichBtn, () => runPhysicalMediaEnrichment());
   bindClick(elements.physicalMediaClearBtn, () => clearPhysicalMedia());
+  bindClick(elements.theaterStaysBtn, (event) => {
+    event.preventDefault();
+    openTheaterStaysModal();
+  });
+  bindClick(elements.theaterStaysCloseBtn, () => closeTheaterStaysModal());
+  bindClick(elements.theaterStaysRefreshStatsBtn, () => loadTheaterStaysStats());
+  bindClick(elements.theaterStaysRefreshBtn, () => refreshTheaterStays());
+  bindClick(elements.theaterStaysClearBtn, () => clearTheaterStays());
   bindClick(elements.oscarCloseBtn, () => closeOscarModal());
   bindClick(elements.oscarRefreshStatsBtn, () => loadOscarStats());
   bindClick(elements.oscarEnrichBtn, () => runOscarEnrichment());
@@ -3600,7 +3623,7 @@ async function runPhysicalMediaEnrichment() {
     if (!data.success) throw new Error(data.error || "Enrichment failed");
     elements.physicalMediaStatus.textContent = `Updated ${data.updatedCount} movies (${data.overlayCount} overlay titles).`;
     await loadPhysicalMediaStats();
-    showToast("Physical media overlay updated");
+    showToast("Discs overlay updated");
   } catch (error) {
     elements.physicalMediaStatus.textContent = error.message;
     showToast(error.message, true);
@@ -3610,7 +3633,7 @@ async function runPhysicalMediaEnrichment() {
 }
 
 async function clearPhysicalMedia() {
-  if (!confirm("Clear all physical media tags from the Min Cloud catalog?")) return;
+  if (!confirm("Clear inferred disc tags from the Min Cloud catalog? Manual pins are kept.")) return;
   const response = await fetch("/api/physical-media/clear", { method: "POST" });
   const data = await response.json();
   elements.physicalMediaStatus.textContent = `Cleared ${data.clearedCount || 0} movies.`;
@@ -3629,7 +3652,7 @@ function renderDetailPhysicalMedia(movie) {
   const spine = (media.editions || []).find((edition) => edition.spineNumber)?.spineNumber || "";
   elements.detailPhysicalMedia.innerHTML = `
     <div class="oscar-detail-row">
-      <div class="oscar-detail-header">Physical Media</div>
+      <div class="oscar-detail-header">Discs</div>
       <button class="oscar-fetch-btn" data-save="1">Save</button>
     </div>
     <label><input type="checkbox" data-flag="hasCriterion" ${media.hasCriterion ? "checked" : ""}/> Criterion</label>
@@ -3674,7 +3697,150 @@ function renderDetailPhysicalMedia(movie) {
       const data = await response.json();
       if (!data.success) throw new Error(data.error || "Save failed");
       movie.physicalMedia = data.physicalMedia;
-      showToast("Saved physical media");
+      showToast("Saved discs");
+    } catch (error) {
+      showToast(error.message, true);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+// ---- Theater Stays ----
+
+function openTheaterStaysModal() {
+  if (!elements.theaterStaysModal) return;
+  elements.theaterStaysModal.classList.remove("hidden");
+  if (elements.theaterStaysStatus) elements.theaterStaysStatus.textContent = "";
+  loadTheaterStaysStats();
+}
+
+function closeTheaterStaysModal() {
+  if (elements.theaterStaysModal) elements.theaterStaysModal.classList.add("hidden");
+}
+
+function renderTheaterStayStats(stats) {
+  if (!elements.theaterStaysStats) return;
+  const refreshed = stats.refreshedAt ? new Date(stats.refreshedAt).toLocaleString() : "Never";
+  elements.theaterStaysStats.innerHTML = `
+    <div>In theaters ${stats.inTheaters || 0}</div>
+    <div>In catalog ${stats.inCatalog || 0}</div>
+    <div>IMAX ${stats.withIMAX || 0}</div>
+    <div>Manual ${stats.manualOverrides || 0}</div>
+    <div>${stats.region || "US"}   ${refreshed}</div>
+  `;
+  if (!elements.theaterStaysBody) return;
+  const stays = stats.stays || [];
+  if (!stays.length) {
+    elements.theaterStaysBody.innerHTML = `<tr><td colspan="5">No theater stays stored.</td></tr>`;
+    return;
+  }
+  elements.theaterStaysBody.innerHTML = stays
+    .map((stay) => {
+      const source = stay.manualOverride ? "Manual" : "TMDB";
+      return `
+        <tr>
+          <td>${escapeHistory(stay.title || "")}</td>
+          <td>${stay.tmdbId || ""}</td>
+          <td>${stay.inCatalog ? "Yes" : ""}</td>
+          <td>${stay.hasIMAX ? "IMAX" : ""}</td>
+          <td>${source}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function loadTheaterStaysStats() {
+  if (!elements.theaterStaysStats) return;
+  elements.theaterStaysStats.innerHTML = "<div class='health-metric'>Loading...</div>";
+  try {
+    const response = await fetch("/api/theater-stays/stats");
+    const stats = await response.json();
+    if (!response.ok) throw new Error(stats.error || "Failed to load theater stays");
+    renderTheaterStayStats(stats);
+  } catch (error) {
+    elements.theaterStaysStats.innerHTML = "<div class='health-metric'>Failed to load stats</div>";
+    if (elements.theaterStaysStatus) elements.theaterStaysStatus.textContent = error.message;
+  }
+}
+
+async function refreshTheaterStays() {
+  if (!elements.theaterStaysRefreshBtn) return;
+  elements.theaterStaysStatus.textContent = "Refreshing TMDB now-playing…";
+  elements.theaterStaysRefreshBtn.disabled = true;
+  try {
+    const response = await fetch("/api/theater-stays/refresh", { method: "POST" });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error || "Refresh failed");
+    renderTheaterStayStats(data.stats || {});
+    elements.theaterStaysStatus.textContent = `Stored ${data.stats?.inTheaters || 0} stays (${data.stats?.withIMAX || 0} IMAX).`;
+    showToast("Theater stays refreshed");
+  } catch (error) {
+    elements.theaterStaysStatus.textContent = error.message;
+    showToast(error.message, true);
+  } finally {
+    elements.theaterStaysRefreshBtn.disabled = false;
+  }
+}
+
+async function clearTheaterStays() {
+  if (!confirm("Clear inferred theater stays? Manual pins are kept.")) return;
+  const response = await fetch("/api/theater-stays/clear", { method: "POST" });
+  const data = await response.json();
+  if (!data.success) {
+    showToast(data.error || "Clear failed", true);
+    return;
+  }
+  renderTheaterStayStats(data.stats || {});
+  elements.theaterStaysStatus.textContent = `Cleared ${data.clearedCount || 0} inferred stays.`;
+}
+
+function renderDetailTheaterStays(movie) {
+  if (!elements.detailTheaterStays) return;
+  if (!movie.tmdbId) {
+    elements.detailTheaterStays.classList.add("hidden");
+    elements.detailTheaterStays.innerHTML = "";
+    return;
+  }
+  elements.detailTheaterStays.classList.remove("hidden");
+  elements.detailTheaterStays.innerHTML = `
+    <div class="oscar-detail-row">
+      <div class="oscar-detail-header">Theater Stay</div>
+      <button class="oscar-fetch-btn" data-save="1">Save</button>
+    </div>
+    <label><input type="checkbox" data-flag="inTheaters" /> In theaters</label>
+    <label><input type="checkbox" data-flag="hasIMAX" /> IMAX</label>
+  `;
+  const inTheatersInput = elements.detailTheaterStays.querySelector("[data-flag='inTheaters']");
+  const imaxInput = elements.detailTheaterStays.querySelector("[data-flag='hasIMAX']");
+  fetch(`/api/theater-stays/${movie.tmdbId}`)
+    .then((response) => response.json())
+    .then((data) => {
+      const stay = data.theaterStay;
+      if (stay) {
+        inTheatersInput.checked = true;
+        imaxInput.checked = Boolean(stay.hasIMAX);
+      }
+    })
+    .catch(() => {});
+  const saveBtn = elements.detailTheaterStays.querySelector("[data-save]");
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    try {
+      const response = await fetch("/api/theater-stays/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdbId: movie.tmdbId,
+          title: movie.title,
+          inTheaters: inTheatersInput.checked,
+          hasIMAX: imaxInput.checked,
+        }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || "Save failed");
+      showToast(data.theaterStay ? "Saved theater stay" : "Removed theater stay");
     } catch (error) {
       showToast(error.message, true);
     } finally {

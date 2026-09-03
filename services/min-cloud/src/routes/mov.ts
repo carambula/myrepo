@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { query } from "../db.js";
 import { fetchStreamingServices } from "../lib/tmdb.js";
-import { cachedNowPlaying } from "../lib/now-playing.js";
+import { resolveNowPlaying } from "../lib/theater-stays.js";
 import { config } from "../config.js";
 import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
 
@@ -127,10 +127,6 @@ router.get("/movies/:id", async (req, res) => {
 });
 
 router.get("/now-playing", async (_req, res) => {
-  if (!config.tmdbApiKey) {
-    res.status(503).json({ error: "Now-playing lookup unavailable." });
-    return;
-  }
   try {
     const catalog = await query(`SELECT tmdb_id FROM mov_movies WHERE tmdb_id IS NOT NULL`);
     const catalogIds = new Set(
@@ -138,13 +134,14 @@ router.get("/now-playing", async (_req, res) => {
         .map((row) => Number(row.tmdb_id))
         .filter((id) => Number.isFinite(id))
     );
-    const payload = await cachedNowPlaying(config.tmdbApiKey, config.tmdbRegion, catalogIds);
+    const payload = await resolveNowPlaying(config.tmdbApiKey, config.tmdbRegion, catalogIds);
     res.json({
       region: config.tmdbRegion,
       ...payload
     });
   } catch (error) {
-    res.status(502).json({ error: error instanceof Error ? error.message : "TMDB lookup failed." });
+    const message = error instanceof Error ? error.message : "TMDB lookup failed.";
+    res.status(message.includes("unavailable") ? 503 : 502).json({ error: message });
   }
 });
 

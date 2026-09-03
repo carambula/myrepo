@@ -12,6 +12,7 @@ import { fetchText } from "./lib/http.js";
 import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
 import { bumpWatchedIt } from "./lib/admin-catalog.js";
+import { resolveNowPlaying } from "./lib/theater-stays.js";
 import { ingestPodcastEpisode } from "./lib/podcast-ingest.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
@@ -128,6 +129,29 @@ export const refreshStreamingCatalog = async (limit = 200) => {
       await bumpRevision("watchedit");
     }
     return { scanned: movies.rowCount ?? 0, updated, failed, region: config.tmdbRegion };
+  });
+};
+
+export const refreshTheaterStays = async () => {
+  return recordJob("mov.theaters.refresh", async () => {
+    if (!config.tmdbApiKey) {
+      return { skipped: 1, reason: "missing-tmdb-key" };
+    }
+    const catalog = await query(`SELECT tmdb_id FROM mov_movies WHERE tmdb_id IS NOT NULL`);
+    const catalogIds = new Set(
+      catalog.rows
+        .map((row) => Number(row.tmdb_id))
+        .filter((id) => Number.isFinite(id))
+    );
+    const payload = await resolveNowPlaying(config.tmdbApiKey, config.tmdbRegion, catalogIds, {
+      force: true
+    });
+    return {
+      updated: payload.movies.length,
+      imax: payload.movies.filter((movie) => movie.hasIMAX).length,
+      region: config.tmdbRegion,
+      source: payload.source
+    };
   });
 };
 
@@ -521,6 +545,8 @@ export const runNamedJob = async (name: string) => {
   switch (name) {
     case "mov.streaming.refresh":
       return refreshStreamingCatalog();
+    case "mov.theaters.refresh":
+      return refreshTheaterStays();
     case "pod.feeds.refresh":
       return refreshPodcastFeeds();
     case "mov.feeds.refresh":
@@ -532,6 +558,7 @@ export const runNamedJob = async (name: string) => {
     case "all":
       return {
         streaming: await refreshStreamingCatalog(),
+        theaters: await refreshTheaterStays(),
         podFeeds: await refreshPodcastFeeds(),
         movFeeds: await refreshMoviePodcastSources(),
         notifications: await dispatchNotifications()
@@ -554,6 +581,9 @@ export const startJobScheduler = () => {
   }, 30 * 60 * 1000);
   setInterval(() => {
     void runNamedJob("mov.streaming.refresh");
+  }, 6 * hour);
+  setInterval(() => {
+    void runNamedJob("mov.theaters.refresh");
   }, 6 * hour);
   setInterval(() => {
     void runNamedJob("mov.feeds.refresh");

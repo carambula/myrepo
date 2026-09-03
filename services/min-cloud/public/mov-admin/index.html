@@ -147,6 +147,7 @@
                 </div>
                 <div id="detailOscars" class="detail-oscars hidden"></div>
                 <div id="detailPhysicalMedia" class="detail-oscars hidden"></div>
+                <div id="detailTheaterStays" class="detail-oscars hidden"></div>
                 <div id="detailMeta" class="detail-meta hidden"></div>
                 <form id="movieForm" class="movie-form hidden">
                   <div class="form-grid">
@@ -298,7 +299,8 @@
                 <div class="operations-actions">
                   <button id="refreshStreamingAllBtn">Refresh Streaming (All)</button>
                   <button id="oscarAwardsBtn">Oscar Awards</button>
-                  <button id="physicalMediaBtn">Physical Media</button>
+                  <button id="physicalMediaBtn">Discs</button>
+                  <button id="theaterStaysBtn">Theater Stays</button>
                   <button id="dataHealthBtn">Data Health</button>
                   <button id="dedupeBtn">Deduplicates</button>
                   <button id="themesOpsBtn">Themes</button>
@@ -364,6 +366,7 @@
                 <p class="design-lead" style="margin-top:0;">Scheduled Min Cloud jobs for mov min and pod min. These run on the server so every app client gets the same data.</p>
                 <div class="operations-actions">
                   <button data-cloud-job="mov.streaming.refresh">Refresh Streaming</button>
+                  <button data-cloud-job="mov.theaters.refresh">Refresh Theater Stays</button>
                   <button data-cloud-job="mov.feeds.refresh">Refresh Movie Podcasts</button>
                   <button data-cloud-job="pod.feeds.refresh">Refresh Podcast Feeds</button>
                   <button data-cloud-job="pod.itunes.enrich">Enrich iTunes Metadata</button>
@@ -2252,18 +2255,49 @@
     <div id="physicalMediaModal" class="modal hidden">
       <div class="modal-content oscar-modal">
         <div class="modal-header">
-          <div class="pane-title">Physical Media Enrichment</div>
+          <div class="pane-title">Discs</div>
           <button id="physicalMediaCloseBtn">Close</button>
         </div>
         <div class="modal-body">
           <div id="physicalMediaStats" class="health-metrics oscar-stats"></div>
-          <p class="design-lead">Wikidata Criterion spines (P2755), 4K/Blu-ray formats (P437), and boutique labels, plus movies already on the Criterion list source.</p>
+          <p class="design-lead">Wikidata Criterion spines (P12279), 4K/Blu-ray formats (P437), and boutique labels, plus movies already on the Criterion list source.</p>
           <div class="oscar-actions">
             <button id="physicalMediaRefreshStatsBtn">Refresh Stats</button>
             <button id="physicalMediaEnrichBtn" class="primary">Enrich from Wikidata</button>
             <button id="physicalMediaClearBtn" class="danger">Clear All</button>
           </div>
           <div id="physicalMediaStatus" class="status-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="theaterStaysModal" class="modal hidden">
+      <div class="modal-content oscar-modal">
+        <div class="modal-header">
+          <div class="pane-title">Theater Stays</div>
+          <button id="theaterStaysCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="theaterStaysStats" class="health-metrics oscar-stats"></div>
+          <p class="design-lead">TMDB now-playing titles and IMAX release notes for the configured region. Catalog matches drive In Theaters / IMAX chips. Manual pins survive refresh and clear.</p>
+          <div class="oscar-actions">
+            <button id="theaterStaysRefreshStatsBtn">Refresh Stats</button>
+            <button id="theaterStaysRefreshBtn" class="primary">Refresh from TMDB</button>
+            <button id="theaterStaysClearBtn" class="danger">Clear Inferred</button>
+          </div>
+          <div id="theaterStaysStatus" class="status-text"></div>
+          <table class="movie-table" style="margin-top:var(--space-xl);">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>TMDB</th>
+                <th>Catalog</th>
+                <th>IMAX</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="theaterStaysBody"></tbody>
+          </table>
         </div>
       </div>
     </div>

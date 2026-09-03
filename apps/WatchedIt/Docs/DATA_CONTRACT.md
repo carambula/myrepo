@@ -27,7 +27,7 @@ These rules protect shared state and prevent data forking between iOS and tvOS.
 - New fields must be optional or have defaults.
 - Migration logic is shared and shipped to both targets.
 - Catalog physical media (`PhysicalMedia` / `physicalMediaData`) is optional. Shipping data lives in bundled `physical_media.json` (keyed by TMDB id) and is merged at read time. Bootstrap JSON may also carry `physicalMedia` for admin edits. Manual overrides win over inferred Wikidata/list seeds.
-- Theatrical availability (`TheatricalRun`) is live overlay only — not stored on `MovieData`. Min Cloud `GET /v1/mov/now-playing` (TMDB now-playing + IMAX release notes for catalog titles) or a local TMDB fallback refreshes `TheatricalCatalog` at launch. Buy-disc and ticket destinations are client-built search URLs, not persisted store links.
+- Theatrical availability (`TheatricalRun`) is live overlay only — not stored on `MovieData`. Min Cloud persists a theater-stay snapshot for `GET /v1/mov/now-playing` (TMDB now-playing + IMAX release notes for catalog titles, plus admin pins). A local TMDB fallback refreshes `TheatricalCatalog` at launch if Min Cloud is unreachable. Buy-disc and ticket destinations are client-built search URLs, not persisted store links.
 
 ## 6) Idempotent Writes, Deterministic Conflict Rules
 - Writes must be safe to apply multiple times.

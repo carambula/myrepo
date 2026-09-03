@@ -19,8 +19,12 @@ type TmdbReleaseDates = {
   }>;
 };
 
-const CACHE_MS = 6 * 60 * 60 * 1000;
+export const CACHE_MS = 6 * 60 * 60 * 1000;
 let cache: { at: number; region: string; movies: NowPlayingMovie[] } | null = null;
+
+export const seedNowPlayingCache = (region: string, movies: NowPlayingMovie[], at = Date.now()) => {
+  cache = { at, region, movies };
+};
 
 export const noteLooksLikeIMAX = (note?: string | null) =>
   typeof note === "string" && /\bimax\b/i.test(note);

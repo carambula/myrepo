@@ -51,44 +51,43 @@ public struct AgentSettingsView: View {
 
     public var body: some View {
         List {
+            // Use Section(header:footer:) { } — never Section("Title") { } footer:.
+            // The titled + footer overload is missing on some MinAppKit platforms
+            // (watchOS / older macOS SDKs) and the string is parsed as `content:`.
             Section {
                 Text("Connect Cursor, Claude, or another agent with a scoped token. Write actions stay undoable for 7 days.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            // Always use header:/footer: Text views. Section("Title") is not
-            // available on every MinAppKit platform and fails as content:.
-            Section {
+            Section(
+                header: Text("New connection"),
+                footer: Text(allowWrite
+                     ? "Read and write. Every write creates an undo record."
+                     : "Read only. The agent can look up your library but cannot change it.")
+            ) {
                 TextField("Agent name", text: $issuedName)
                 Toggle("Allow writes", isOn: $allowWrite)
                 Button("Create connection") {
                     createConnection()
                 }
-            } header: {
-                Text("New connection")
-            } footer: {
-                Text(allowWrite
-                     ? "Read and write. Every write creates an undo record."
-                     : "Read only. The agent can look up your library but cannot change it.")
             }
 
             if let issuedToken {
-                Section {
+                Section(
+                    header: Text("Copy this token now"),
+                    footer: Text("The token is stored as a hash and cannot be shown again. Revoke it any time.")
+                ) {
                     Text(issuedToken)
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
                     Button(copied ? "Copied" : "Copy token and MCP config") {
                         copyIssued(issuedToken)
                     }
-                } header: {
-                    Text("Copy this token now")
-                } footer: {
-                    Text("The token is stored as a hash and cannot be shown again. Revoke it any time.")
                 }
             }
 
-            Section {
+            Section(header: Text("Connections")) {
                 if connections.isEmpty {
                     Text("No agents connected yet.")
                         .foregroundStyle(.secondary)
@@ -109,11 +108,9 @@ public struct AgentSettingsView: View {
                         }
                     }
                 }
-            } header: {
-                Text("Connections")
             }
 
-            Section {
+            Section(header: Text("Safety"), footer: Text(safetyFooter)) {
                 Button("Undo last agent write") {
                     undoLast()
                 }
@@ -122,10 +119,6 @@ public struct AgentSettingsView: View {
                         copyLibrary()
                     }
                 }
-            } header: {
-                Text("Safety")
-            } footer: {
-                Text(safetyFooter)
             }
 
             if let errorMessage {

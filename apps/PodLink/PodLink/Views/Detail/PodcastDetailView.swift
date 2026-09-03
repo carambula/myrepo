@@ -301,6 +301,14 @@ struct PodcastDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DesignSystem.Spacing.xxl)
+            } else if filteredEpisodes.isEmpty {
+                Text(statusFilter == .all
+                     ? "No episodes yet."
+                     : "No episodes match this filter.")
+                    .font(DesignSystem.Typography.bodyMedium())
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, DesignSystem.Spacing.lg)
             } else {
                 LazyVStack(spacing: DesignSystem.Spacing.sm) {
                     ForEach(filteredEpisodes) { episode in

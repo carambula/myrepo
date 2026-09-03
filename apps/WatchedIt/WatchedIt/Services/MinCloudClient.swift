@@ -61,9 +61,9 @@ struct MinCloudMovieCatalog: Decodable {
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(String.self, forKey: .id)
-            tmdbId = try container.decodeIfPresent(Int.self, forKey: .tmdbId)
+            tmdbId = Self.decodeFlexibleInt(container, forKey: .tmdbId)
             title = try container.decode(String.self, forKey: .title)
-            year = try container.decodeIfPresent(Int.self, forKey: .year)
+            year = Self.decodeFlexibleInt(container, forKey: .year)
             posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
             backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
             overview = try container.decodeIfPresent(String.self, forKey: .overview)
@@ -72,10 +72,23 @@ struct MinCloudMovieCatalog: Decodable {
             lastUpdated = try container.decodeIfPresent(String.self, forKey: .lastUpdated)
             streamingServices = try container.decodeIfPresent([Provider].self, forKey: .streamingServices)
             sources = try container.decodeIfPresent([SourceLink].self, forKey: .sources)
-            physicalMedia = try container.decodeIfPresent(PhysicalMedia.self, forKey: .physicalMedia)
+            physicalMedia = try? container.decodeIfPresent(PhysicalMedia.self, forKey: .physicalMedia)
             credits = try? container.decode(MovieCredits.self, forKey: .credits)
             trailer = try? container.decode(MovieTrailer.self, forKey: .trailer)
             oscarAwards = try? container.decode(OscarAwards.self, forKey: .oscarAwards)
+        }
+
+        private static func decodeFlexibleInt(_ container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) -> Int? {
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value
+            }
+            if let raw = try? container.decodeIfPresent(String.self, forKey: key), let value = Int(raw) {
+                return value
+            }
+            if let raw = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return Int(raw)
+            }
+            return nil
         }
     }
 
@@ -93,13 +106,15 @@ struct MinCloudMovieCatalog: Decodable {
     let movies: [Movie]
     let sources: [Source]
     let truncated: Bool?
+    let total: Int?
 
-    init(revision: Int, generatedAt: String?, movies: [Movie], sources: [Source], truncated: Bool?) {
+    init(revision: Int, generatedAt: String?, movies: [Movie], sources: [Source], truncated: Bool?, total: Int?) {
         self.revision = revision
         self.generatedAt = generatedAt
         self.movies = movies
         self.sources = sources
         self.truncated = truncated
+        self.total = total
     }
 }
 
@@ -107,6 +122,7 @@ struct MinCloudCatalogMeta: Decodable {
     let revision: Int
     let generatedAt: String?
     let movieCount: Int?
+    let unmatchedCount: Int?
 }
 
 struct MinCloudMovLibraryItem: Decodable {
@@ -141,7 +157,8 @@ actor MinCloudClient {
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForRequest = 60
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
         return URLSession(configuration: config)
     }()
 
@@ -189,6 +206,7 @@ actor MinCloudClient {
         var sources: [MinCloudMovieCatalog.Source] = []
         var revision = 0
         var generatedAt: String?
+        var total: Int?
         var offset = 0
         while true {
             var items: [URLQueryItem] = [
@@ -201,19 +219,34 @@ actor MinCloudClient {
             let page: MinCloudMovieCatalog = try await get(path: "/v1/mov/catalog", query: items)
             revision = page.revision
             generatedAt = page.generatedAt
+            if let pageTotal = page.total {
+                total = pageTotal
+            }
             if sources.isEmpty {
                 sources = page.sources
             }
             movies.append(contentsOf: page.movies)
-            guard page.truncated == true, !page.movies.isEmpty else { break }
+            let hasMore: Bool
+            if page.movies.isEmpty {
+                hasMore = false
+            } else if let total, movies.count >= total {
+                hasMore = false
+            } else if let total {
+                hasMore = movies.count < total
+            } else {
+                hasMore = page.truncated == true
+            }
+            guard hasMore else { break }
             offset += page.movies.count
         }
+        let catalogTotal = total ?? movies.count
         return MinCloudMovieCatalog(
             revision: revision,
             generatedAt: generatedAt,
             movies: movies,
             sources: sources,
-            truncated: false
+            truncated: movies.count < catalogTotal,
+            total: catalogTotal
         )
     }
 
@@ -310,7 +343,9 @@ actor MinCloudClient {
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         if authorized {
             guard let token = MinCloudSettings.token else {
                 throw MinCloudError.notSignedIn

@@ -2,15 +2,16 @@ import { Router } from "express";
 import { query } from "../db.js";
 import { fetchStreamingServices } from "../lib/tmdb.js";
 import { config } from "../config.js";
+import { catalogCacheHeaders, catalogPageMeta } from "../lib/catalog-response.js";
 
 const router = Router();
 
 const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
   id: row.id,
-  tmdbId: row.tmdb_id,
+  tmdbId: row.tmdb_id == null ? null : Number(row.tmdb_id),
   imdbId: row.imdb_id,
   title: row.title,
-  year: row.year,
+  year: row.year == null ? null : Number(row.year),
   posterPath: row.poster_path,
   backdropPath: row.backdrop_path,
   overview: row.overview,
@@ -27,14 +28,19 @@ const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
 router.get("/meta", async (_req, res) => {
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
   const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies`);
+  const unmatched = await query(`SELECT COUNT(*)::int AS count FROM mov_movies WHERE tmdb_id IS NULL`);
   const physicalMedia = await query(
     `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
   );
+  const revisionNumber = Number(revision.rows[0]?.revision ?? 0);
+  const movieCount = Number(movies.rows[0].count ?? 0);
+  res.set(catalogCacheHeaders(revisionNumber, movieCount));
   res.json({
     app: "watchedit",
-    revision: Number(revision.rows[0]?.revision ?? 0),
+    revision: revisionNumber,
     generatedAt: revision.rows[0]?.generated_at ?? null,
-    movieCount: movies.rows[0].count,
+    movieCount,
+    unmatchedCount: Number(unmatched.rows[0].count ?? 0),
     physicalMediaCount: physicalMedia.rows[0].count
   });
 });
@@ -50,6 +56,10 @@ router.get("/catalog", async (req, res) => {
     where = `WHERE m.last_updated > $${params.length}`;
   }
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
+  const totalResult = await query(
+    `SELECT COUNT(*)::int AS count FROM mov_movies m ${since ? "WHERE m.last_updated > $1" : ""}`,
+    since ? [since] : []
+  );
   const movies = await query(
     `
     SELECT m.*, COALESCE(s.providers, '[]'::jsonb) AS providers
@@ -77,18 +87,21 @@ router.get("/catalog", async (req, res) => {
     });
     linksByMovie.set(String(link.movie_id), list);
   }
+  const mapped = movies.rows.map((row) => ({
+    ...mapMovie(row, Array.isArray(row.providers) ? row.providers : []),
+    sources: linksByMovie.get(String(row.id)) ?? []
+  }));
+  const revisionNumber = Number(revision.rows[0]?.revision ?? 0);
+  const total = Number(totalResult.rows[0]?.count ?? 0);
+  const page = catalogPageMeta(total, offset, mapped.length, limit);
+  res.set(catalogCacheHeaders(revisionNumber, total));
   res.json({
     app: "watchedit",
-    revision: Number(revision.rows[0]?.revision ?? 0),
+    revision: revisionNumber,
     generatedAt: revision.rows[0]?.generated_at ?? null,
     sources: sources.rows,
-    movies: movies.rows.map((row) => ({
-      ...mapMovie(row, Array.isArray(row.providers) ? row.providers : []),
-      sources: linksByMovie.get(String(row.id)) ?? []
-    })),
-    truncated: (movies.rowCount ?? 0) === limit,
-    offset,
-    limit
+    movies: mapped,
+    ...page
   });
 });
 

@@ -4857,7 +4857,7 @@ struct AccountSheetView: View {
         guard !isRefreshingCatalog else { return }
         isRefreshingCatalog = true
         Task { @MainActor in
-            refreshAlertMessage = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext)
+            refreshAlertMessage = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext, force: true)
             isRefreshingCatalog = false
         }
     }
@@ -4867,8 +4867,14 @@ struct AccountSheetView: View {
         isRefreshingCatalog = true
         Task { @MainActor in
             do {
+                let before = (try? modelContext.fetchCount(FetchDescriptor<MovieData>())) ?? localDB.movies.count
                 try await localDB.rebaseOnBootstrapDatabase(modelContext: modelContext)
-                refreshAlertMessage = "Catalog refreshed from the bundled database."
+                let after = (try? modelContext.fetchCount(FetchDescriptor<MovieData>())) ?? localDB.movies.count
+                if after > before {
+                    refreshAlertMessage = "Added \(after - before) titles from the bundled database."
+                } else {
+                    refreshAlertMessage = "Bundle already matches the local catalog (\(after) titles). Use Refresh Catalog from Min Cloud for admin additions. The bundle only updates when an Xcode cloud pull succeeds."
+                }
             } catch {
                 refreshAlertMessage = "Catalog refresh failed: \(error.localizedDescription)"
             }

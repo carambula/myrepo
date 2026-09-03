@@ -125,7 +125,7 @@ const upsertStreaming = async (movieId: string, providers: unknown[]) => {
 export const upsertAdminMovie = async (
   payload: Record<string, unknown>,
   previous?: AdminMovie | null,
-  options: { bump?: boolean } = {}
+  options: { bump?: boolean; touch?: boolean } = {}
 ) => {
   const importMovie: ImportMovie = {
     id: previous?.__movieId,
@@ -169,7 +169,7 @@ export const upsertAdminMovie = async (
       trailer = EXCLUDED.trailer,
       oscar_awards = EXCLUDED.oscar_awards,
       physical_media = COALESCE(EXCLUDED.physical_media, mov_movies.physical_media),
-      last_updated = NOW()
+      last_updated = ${options.touch === false ? "mov_movies.last_updated" : "NOW()"}
     `,
     [
       id,

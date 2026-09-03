@@ -583,8 +583,16 @@ struct SearchScreenView: View {
                 let merged = EpisodePlaybackStore.merge(episode)
                 guard !seenEpisodeIDs.contains(merged.id) else { continue }
                 guard filters.matches(episode: merged, podcast: podcast) else { continue }
-                let matchesQuery = lowered.isEmpty
-                    || await episodeMatchesLibraryQuery(merged, podcast: podcast, loweredQuery: lowered)
+                let matchesQuery: Bool
+                if lowered.isEmpty {
+                    matchesQuery = true
+                } else {
+                    matchesQuery = await episodeMatchesLibraryQuery(
+                        merged,
+                        podcast: podcast,
+                        loweredQuery: lowered
+                    )
+                }
                 if matchesQuery {
                     seenEpisodeIDs.insert(merged.id)
                     results.append(LibraryEpisodeSearchResult(episode: merged, podcast: podcast))

@@ -19,6 +19,8 @@ The app target uses bundle ID `Carambula-Projects.PodLink`. Entitlements referen
 
 Create matching identifiers and capabilities in the Apple Developer portal if you use CloudKit or the app group in production.
 
+iCloud is optional. Sign in to Min Cloud (`services/min-cloud`) for server-side feed refresh, notifications, and library sync. Local RSS remains the backup when the service is offline.
+
 ## Migration note
 
 Application code was merged from the earlier `myrepo` PodLink tree. The canonical app in this repo is the Xcode project above; `project.yml` / `Package.swift` are kept for tooling parity with that history.

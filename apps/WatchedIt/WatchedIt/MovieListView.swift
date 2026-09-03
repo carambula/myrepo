@@ -4627,9 +4627,23 @@ struct AccountSheetView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Min Cloud") {
+                    NavigationLink(destination: MinCloudAccountView()) {
+                        Label(MinCloudSettings.isSignedIn ? "Account   @\(MinCloudSettings.handle ?? "signed in")" : "Sign in or create an account", systemImage: "cloud")
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                    }
+                }
+                .designSystemGroupedListRow()
+
                 Section("iCloud") {
-                    Label("iCloud backup is always on", systemImage: "icloud")
-                        .foregroundStyle(DesignSystem.Color.textPrimary)
+                    Label(
+                        MinCloudSettings.iCloudBackupEnabled ? "iCloud backup is on" : "iCloud backup is off",
+                        systemImage: "icloud"
+                    )
+                    .foregroundStyle(DesignSystem.Color.textPrimary)
+                    Text("iCloud is optional. Use Min Cloud for sync across devices, or keep iCloud as a backup if you do not want a web account.")
+                        .captionMedium()
+                        .foregroundColor(DesignSystem.Color.textSecondary)
                 }
                 .designSystemGroupedListRow()
                 
@@ -4654,15 +4668,19 @@ struct AccountSheetView: View {
                 .designSystemGroupedListRow()
                 
                 Section("Catalog") {
-                    Button(action: refreshCatalogFromBundle) {
+                    Button(action: refreshCatalogFromCloud) {
                         HStack(spacing: DesignSystem.Spacing.sm) {
-                            accountActionRowLabel("Refresh Catalog from Bundle", systemImage: DesignSystem.Icon.refresh)
+                            accountActionRowLabel("Refresh Catalog from Min Cloud", systemImage: "cloud")
                             if isRefreshingCatalog {
                                 Spacer()
                                 ProgressView()
                                     .tint(DesignSystem.Color.accent)
                             }
                         }
+                    }
+                    .disabled(isRefreshingCatalog)
+                    Button(action: refreshCatalogFromBundle) {
+                        accountActionRowLabel("Refresh Catalog from Bundle", systemImage: DesignSystem.Icon.refresh)
                     }
                     .disabled(isRefreshingCatalog)
                 }
@@ -4805,6 +4823,15 @@ struct AccountSheetView: View {
         .bottomSheetPullToDismiss()
     }
     
+    private func refreshCatalogFromCloud() {
+        guard !isRefreshingCatalog else { return }
+        isRefreshingCatalog = true
+        Task { @MainActor in
+            refreshAlertMessage = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext)
+            isRefreshingCatalog = false
+        }
+    }
+
     private func refreshCatalogFromBundle() {
         guard !isRefreshingCatalog else { return }
         isRefreshingCatalog = true

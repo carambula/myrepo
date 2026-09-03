@@ -96,11 +96,13 @@ enum CloudKeyValueWriter {
 
     nonisolated static func removeObject(forKey key: String) {
         lock.lock(); mirror.removeValue(forKey: key); lock.unlock()
+        guard MinCloudSettings.iCloudBackupEnabled else { return }
         queue.async { NSUbiquitousKeyValueStore.default.removeObject(forKey: key) }
     }
 
     private nonisolated static func write(_ value: Any, forKey key: String) {
         lock.lock(); mirror[key] = value; lock.unlock()
+        guard MinCloudSettings.iCloudBackupEnabled else { return }
         queue.async { NSUbiquitousKeyValueStore.default.set(value, forKey: key) }
     }
 }

@@ -1,0 +1,67 @@
+{
+  "dataSources": [
+    {
+      "identifier": "rewatchables",
+      "name": "The Rewatchables",
+      "type": "podcast",
+      "url": "https://feeds.megaphone.fm/the-rewatchables",
+      "isRankedList": false,
+      "movieCount": 3
+    },
+    {
+      "identifier": "blank-check",
+      "name": "Blank Check",
+      "type": "podcast",
+      "url": "https://feeds.megaphone.fm/blank-check",
+      "isRankedList": false,
+      "movieCount": 2
+    }
+  ],
+  "movies": [
+    {
+      "id": "tmdb-275",
+      "title": "Fargo",
+      "sourceIdentifier": "rewatchables",
+      "tmdbId": 275,
+      "year": 1996,
+      "posterPath": "/rt7cpEr1uP6RTZykBFhBTcRaKvG.jpg",
+      "overview": "A pregnant police chief investigates a botched kidnapping in small-town Minnesota.",
+      "mpaaRating": "R",
+      "genres": ["Crime", "Drama", "Thriller"],
+      "streamingServices": [
+        {
+          "id": "1899",
+          "name": "HBO Max",
+          "logoPath": "/jbe4gVSfRlbPTdESXhEKpornsfu.jpg",
+          "providerId": 1899,
+          "providerName": "HBO Max",
+          "displayPriority": 11
+        }
+      ]
+    },
+    {
+      "id": "tmdb-680",
+      "title": "Pulp Fiction",
+      "sourceIdentifier": "rewatchables",
+      "tmdbId": 680,
+      "year": 1994,
+      "posterPath": "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg",
+      "overview": "The lives of two mob hitmen, a boxer, and a pair of diner bandits intertwine.",
+      "mpaaRating": "R",
+      "genres": ["Thriller", "Crime"],
+      "streamingServices": []
+    },
+    {
+      "id": "tmdb-278",
+      "title": "The Shawshank Redemption",
+      "sourceIdentifier": "blank-check",
+      "tmdbId": 278,
+      "year": 1994,
+      "posterPath": "/q6y0Go1tsGEsmtFryDOJo3dLsoW.jpg",
+      "overview": "Two imprisoned men bond over years, finding solace and eventual redemption.",
+      "mpaaRating": "R",
+      "genres": ["Drama", "Crime"],
+      "streamingServices": []
+    }
+  ]
+}

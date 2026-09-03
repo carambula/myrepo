@@ -1,0 +1,23 @@
+const required = (name: string, fallback?: string) => {
+  const value = process.env[name] ?? fallback;
+  return value ?? "";
+};
+
+export const config = {
+  port: Number(process.env.PORT || 4000),
+  databaseUrl: required("DATABASE_URL", "postgres://postgres:postgres@localhost:5433/mincloud"),
+  publicUrl: required("PUBLIC_URL", "http://localhost:4000"),
+  sessionSecret: required("SESSION_SECRET", "dev-session-secret"),
+  adminToken: required("ADMIN_TOKEN", ""),
+  adminEmails: (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
+  tmdbApiKey: process.env.TMDB_API_KEY || "",
+  tmdbRegion: process.env.TMDB_REGION || "US",
+  enableJobs: (process.env.ENABLE_JOBS || "true") === "true",
+  cronSecret: process.env.CRON_SECRET || "",
+  nodeEnv: process.env.NODE_ENV || "development"
+};
+
+export const isProduction = config.nodeEnv === "production";

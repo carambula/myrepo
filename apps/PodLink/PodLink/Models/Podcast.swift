@@ -142,9 +142,29 @@ extension Podcast {
     static func saveFollowedPodcasts(_ podcasts: [Podcast]) {
         guard let data = try? JSONEncoder().encode(podcasts) else { return }
         UserDefaults.standard.set(data, forKey: followedPodcastsStorageKey)
-        CloudKeyValueWriter.setData(data, forKey: followedPodcastsStorageKey)
+        if MinCloudSettings.iCloudBackupEnabled {
+            CloudKeyValueWriter.setData(data, forKey: followedPodcastsStorageKey)
+        }
         invalidateFollowedCache()
         NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
+        if MinCloudSettings.isSignedIn {
+            let items = podcasts.map { podcast -> [String: Any] in
+                var item: [String: Any] = [
+                    "podcastId": podcast.id,
+                    "feedUrl": podcast.feedURL.absoluteString,
+                    "title": podcast.title,
+                    "isFollowed": true,
+                    "notificationsEnabled": podcast.notificationsEnabled
+                ]
+                if let artwork = podcast.displayArtworkURL?.absoluteString {
+                    item["artworkUrl"] = artwork
+                }
+                return item
+            }
+            Task {
+                try? await MinCloudClient.shared.pushLibrary(items: items)
+            }
+        }
     }
 
     /// Called when iCloud KVS delivers changes (e.g. another device or after reinstall sync).

@@ -246,6 +246,9 @@ class CloudKitManager: ObservableObject {
     }
     
     func accountStatus(forceRefresh: Bool = false) async -> CKAccountStatus {
+        if !MinCloudSettings.iCloudBackupEnabled {
+            return .noAccount
+        }
         if !forceRefresh, let cachedAccountStatus {
             let age = Date().timeIntervalSince(cachedAccountStatus.timestamp)
             if age < accountStatusCacheTTL {

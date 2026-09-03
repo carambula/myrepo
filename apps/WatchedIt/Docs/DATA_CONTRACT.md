@@ -12,10 +12,11 @@ These rules protect shared state and prevent data forking between iOS and tvOS.
 - No platform-specific record types or parallel schemas.
 - User status payloads must remain identical across platforms.
 
-## 3) Catalog Is Local, User Data Is Synced
-- Catalog data is read from the bundled store only.
-- CloudKit sync applies to **user status and preferences only**.
-- No runtime catalog ingestion or network catalog sync in either app.
+## 3) Catalog Is Local First, Cloud Updates Are Additive
+- Catalog data is read from the bundled store for instant startup.
+- Min Cloud catalog sync may update streaming availability and add titles without wiping user status or local lists.
+- CloudKit sync applies to **user status and preferences only**, and only when iCloud backup is enabled.
+- Local scrape/bundle refresh remains the backup if Min Cloud is unreachable.
 
 ## 4) Deterministic IDs
 - Movie IDs must remain deterministic (`tmdb-`, `imdb-`, or `episode-`).

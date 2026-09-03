@@ -1745,6 +1745,9 @@ struct MovieListView: View {
 
     private func prioritizeSourceMovies(_ movies: [Movie], for source: DataSource, podcastDateMap: [String: Date]) -> [Movie] {
         let baseSorted = defaultSortedMoviesForSourceUnit(movies, source: source, podcastDateMap: podcastDateMap)
+        if source.type == "podcast" {
+            return uniqueMoviesPreservingOrder(baseSorted)
+        }
         let saved = baseSorted.filter { $0.isSaved }
         let needsCompletion = baseSorted.filter { !$0.isSaved && $0.isRewatched != $0.isListened }
         let remaining = baseSorted.filter { !$0.isSaved && $0.isRewatched == $0.isListened }
@@ -1771,14 +1774,17 @@ struct MovieListView: View {
         }
 
         if source.type == "podcast" {
-            return movies.sorted { lhs, rhs in
-                let leftDate = podcastDateMap[lhs.id] ?? lhs.episodeSortDate
-                let rightDate = podcastDateMap[rhs.id] ?? rhs.episodeSortDate
-                if leftDate != rightDate {
-                    return leftDate > rightDate
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: movies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: podcastDateMap[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title
+                    )
                 }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         }
 
         return movies.sorted { lhs, rhs in

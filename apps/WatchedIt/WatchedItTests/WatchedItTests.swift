@@ -170,6 +170,17 @@ struct WatchedItTests {
         #expect(ids == ["shared", "other"])
     }
 
+    @Test func podcastSourceCarouselIsLatestFirstAndIgnoresMissingDates() {
+        let older = Date(timeIntervalSince1970: 1_700_000_000)
+        let newest = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.sourceCarouselMovieIds(from: [
+            .init(movieId: "undated-saved", date: nil, title: "Heat"),
+            .init(movieId: "older-episode", date: older, title: "Fargo"),
+            .init(movieId: "newest-episode", date: newest, title: "Zodiac")
+        ])
+        #expect(ids == ["newest-episode", "older-episode", "undated-saved"])
+    }
+
     @Test func minCloudSourceLinkDecodesEpisodeDate() throws {
         let json = Data(#"""
         {"identifier":"rewatchables","sourceTitle":"Heat","episodeDate":"2026-01-15T12:00:00.000Z"}

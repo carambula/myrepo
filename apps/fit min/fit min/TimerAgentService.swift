@@ -118,6 +118,7 @@ final class TimerAgentService: AgentLibraryExporting {
     }
 }
 
+@MainActor
 final class TimerAgentExportAdapter: AgentLibraryExporting {
     let context: ModelContext?
 

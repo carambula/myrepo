@@ -22,13 +22,45 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Select iPhone simulator
+        id: sim
+        run: |
+          DESTINATION="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"], text=True
+          ))
+          preferred = (
+              "iPhone 17", "iPhone 16", "iPhone 16 Pro", "iPhone 16e",
+              "iPhone 15", "iPhone 15 Pro", "iPhone 14",
+          )
+          names = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  name = device.get("name", "")
+                  if device.get("isAvailable") and name.startswith("iPhone"):
+                      names.append(name)
+          available = list(dict.fromkeys(names))
+          chosen = next((name for name in preferred if name in available), None)
+          if chosen is None and available:
+              chosen = available[-1]
+          if not chosen:
+              raise SystemExit("No available iPhone simulator")
+          print(f"platform=iOS Simulator,name={chosen}")
+          PY
+          )"
+          echo "Using destination: $DESTINATION"
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+
       - name: Build
         run: |
           set -o pipefail
           xcodebuild build \
             -project SpinMin.xcodeproj \
             -scheme SpinMin \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination '${{ steps.sim.outputs.destination }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             | xcbeautify --renderer github-actions || exit 1
@@ -39,7 +71,7 @@ jobs:
           xcodebuild test \
             -project SpinMin.xcodeproj \
             -scheme SpinMin \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination '${{ steps.sim.outputs.destination }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             | xcbeautify --renderer github-actions || exit 1

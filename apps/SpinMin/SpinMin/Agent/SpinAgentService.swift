@@ -76,6 +76,7 @@ final class SpinAgentService {
     }
 }
 
+@MainActor
 final class SpinAgentExportAdapter: AgentLibraryExporting {
     let context: ModelContext
 

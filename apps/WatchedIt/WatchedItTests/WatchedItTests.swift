@@ -147,6 +147,65 @@ struct WatchedItTests {
         #expect(haystack.contains("4k"))
     }
 
+    @Test func latestCarouselDateUsesClosetDiscoveryFallback() {
+        let discovered = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(
+            LatestPodcastPicker.entryDate(
+                sourceIdentifier: ClosetPicksSource.identifier,
+                sourceDate: nil,
+                episodePublishDate: nil,
+                discoveredAt: discovered
+            ) == discovered
+        )
+        #expect(
+            LatestPodcastPicker.entryDate(
+                sourceIdentifier: "rewatchables",
+                sourceDate: nil,
+                episodePublishDate: nil,
+                discoveredAt: discovered
+            ) == nil
+        )
+    }
+
+    @Test func latestCarouselIncludesMultipleClosetPicksFromLatestDrop() {
+        let older = Date(timeIntervalSince1970: 1_700_000_000)
+        let newest = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(movieId: "closet-old-a", date: older, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "old-drop"),
+            .init(movieId: "closet-old-b", date: older, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "old-drop"),
+            .init(movieId: "closet-new-a", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "closet-new-b", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "closet-new-c", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "rewatchable", date: newest, sourceIdentifier: "rewatchables")
+        ], multiEntryLimit: 3)
+        #expect(ids == ["closet-new-a", "closet-new-b", "closet-new-c", "rewatchable"])
+    }
+
+    @Test func latestCarouselCapsClosetPicksAndKeepsOnePodcastPerSource() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        var entries: [LatestPodcastPicker.Entry] = [
+            .init(movieId: "rewatch-old", date: Date(timeIntervalSince1970: 1_700_000_000), sourceIdentifier: "rewatchables"),
+            .init(movieId: "rewatch-new", date: date, sourceIdentifier: "rewatchables"),
+            .init(movieId: "blank-check", date: date, sourceIdentifier: "blank-check")
+        ]
+        for index in 1...10 {
+            entries.append(
+                .init(
+                    movieId: "closet-\(index)",
+                    date: date,
+                    sourceIdentifier: ClosetPicksSource.identifier,
+                    groupKey: "guest-drop"
+                )
+            )
+        }
+        let ids = LatestPodcastPicker.carouselMovieIds(from: entries, limit: 8, multiEntryLimit: 5)
+        #expect(ids.contains("rewatch-new"))
+        #expect(!ids.contains("rewatch-old"))
+        #expect(ids.contains("blank-check"))
+        #expect(ids.filter { $0.hasPrefix("closet-") }.count == 5)
+        #expect(ids.count == 7)
+    }
+
     @Test func latestPodcastCarouselKeepsOneNewestPerSource() {
         let older = Date(timeIntervalSince1970: 1_700_000_000)
         let mid = Date(timeIntervalSince1970: 1_750_000_000)

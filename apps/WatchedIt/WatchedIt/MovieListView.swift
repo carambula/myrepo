@@ -463,7 +463,8 @@ struct MovieListView: View {
     /// Aligns with `SearchResultsContent` / `SearchResultRow`: outer `md + xs` plus row inner horizontal `sm`.
     private let inspirationLeadingPadding: CGFloat = DesignSystem.Spacing.screenHorizontalPadding
     private let inspirationPosterSpacing: CGFloat = DesignSystem.Spacing.md
-    private let latestPodcastLimit = 20
+    private let latestCarouselLimit = LatestPodcastPicker.defaultLimit
+    private let latestCarouselRowCount = 2
     private let podcastBadgeSize: CGFloat = 24
     private let podcastBadgeInset: CGFloat = 4
     private let podcastBadgePeekWidth: CGFloat = 8
@@ -481,6 +482,13 @@ struct MovieListView: View {
         posterSizePreference.dimensions(baseWidth: baseInspirationPosterWidth, baseHeight: baseInspirationPosterHeight).height
     }
 
+    private var latestCarouselGridRows: [GridItem] {
+        Array(
+            repeating: GridItem(.fixed(inspirationPosterHeight), spacing: inspirationPosterSpacing),
+            count: latestCarouselRowCount
+        )
+    }
+
     private struct PodcastFeedArtworkCacheSnapshot: Codable {
         let savedAt: Date
         let urls: [String: String]
@@ -492,7 +500,7 @@ struct MovieListView: View {
 
     private enum InspirationSection: String, CaseIterable {
         case recentlySaved
-        case latestPodcasts
+        case latest
         case toComplete
         case longestSaved
 
@@ -500,8 +508,8 @@ struct MovieListView: View {
             switch self {
             case .recentlySaved:
                 return "Recently saved"
-            case .latestPodcasts:
-                return "Latest podcasts"
+            case .latest:
+                return "Latest"
             case .toComplete:
                 return "To complete"
             case .longestSaved:
@@ -1670,8 +1678,8 @@ struct MovieListView: View {
         return Array(visibleMovies.prefix(inspirationLimit))
     }
 
-    private var latestPodcastMovies: [Movie] {
-        let entries = latestPodcastEntries()
+    private var latestMovies: [Movie] {
+        let entries = latestCarouselEntries()
         var movieById: [String: Movie] = [:]
         for entry in entries {
             movieById[entry.movie.id] = entry.movie
@@ -1681,10 +1689,11 @@ struct MovieListView: View {
                 LatestPodcastPicker.Entry(
                     movieId: $0.movie.id,
                     date: $0.date,
-                    sourceIdentifier: $0.sourceIdentifier
+                    sourceIdentifier: $0.sourceIdentifier,
+                    groupKey: $0.groupKey
                 )
             },
-            limit: latestPodcastLimit
+            limit: latestCarouselLimit
         )
         let picked = movieIds.compactMap { movieById[$0] }
         return inspirationVisibleMovies(from: picked)
@@ -1716,8 +1725,8 @@ struct MovieListView: View {
         switch selectedInspiration {
         case .recentlySaved:
             return recentlySavedMovies
-        case .latestPodcasts:
-            return latestPodcastMovies
+        case .latest:
+            return latestMovies
         case .toComplete:
             return toCompleteMovies
         case .longestSaved:
@@ -1746,7 +1755,7 @@ struct MovieListView: View {
 
         let podcastDateBySource: [String: [String: Date]] = {
             var map: [String: [String: Date]] = [:]
-            for entry in latestPodcastEntries() {
+            for entry in latestCarouselEntries() {
                 let sourceId = entry.sourceIdentifier
                 let movieId = entry.movie.id
                 if let existingDate = map[sourceId]?[movieId] {
@@ -1834,8 +1843,8 @@ struct MovieListView: View {
         switch selectedInspiration {
         case .recentlySaved:
             orderedIds = uniqueIdsPreservingOrder(recentlySavedMovies.map { $0.id })
-        case .latestPodcasts:
-            orderedIds = uniqueIdsPreservingOrder(latestPodcastMovies.map(\.id))
+        case .latest:
+            orderedIds = uniqueIdsPreservingOrder(latestMovies.map(\.id))
         case .toComplete:
             orderedIds = uniqueIdsPreservingOrder(
                 localDB.movies
@@ -1872,10 +1881,19 @@ struct MovieListView: View {
         return Set(enabledPodcasts.map { $0.identifier })
     }
 
-    private func latestPodcastEntries() -> [(movie: Movie, date: Date, sourceIdentifier: String)] {
-        let enabledIds = enabledPodcastSourceIds
+    private var enabledLatestSourceIds: Set<String> {
+        var ids = enabledPodcastSourceIds
+        if preferredListIdentifierSet.contains(ClosetPicksSource.identifier),
+           allDataSources.contains(where: { $0.identifier == ClosetPicksSource.identifier && $0.isEnabled }) {
+            ids.insert(ClosetPicksSource.identifier)
+        }
+        return ids
+    }
+
+    private func latestCarouselEntries() -> [(movie: Movie, date: Date, sourceIdentifier: String, groupKey: String?)] {
+        let enabledIds = enabledLatestSourceIds
         guard !enabledIds.isEmpty else { return [] }
-        var entries: [(movie: Movie, date: Date, sourceIdentifier: String)] = []
+        var entries: [(movie: Movie, date: Date, sourceIdentifier: String, groupKey: String?)] = []
 
         let descriptor = FetchDescriptor<MovieData>()
         let movieDataList = (try? modelContext.fetch(descriptor)) ?? []
@@ -1889,19 +1907,43 @@ struct MovieListView: View {
                       enabledIds.contains(source.identifier) else {
                     continue
                 }
-                let date = [content.podcastEpisode?.publishDate, content.sourceDate].compactMap { $0 }.max()
+                let date = LatestPodcastPicker.entryDate(
+                    sourceIdentifier: source.identifier,
+                    sourceDate: content.sourceDate,
+                    episodePublishDate: content.podcastEpisode?.publishDate,
+                    discoveredAt: content.discoveredAt
+                )
                 if let date {
-                    entries.append((movie: movie, date: date, sourceIdentifier: source.identifier))
+                    entries.append((
+                        movie: movie,
+                        date: date,
+                        sourceIdentifier: source.identifier,
+                        groupKey: content.sourceUrl
+                    ))
                 }
             }
 
             for dataSource in movieData.dataSources ?? [] {
                 guard let source = dataSource.dataSource,
-                      enabledIds.contains(source.identifier),
-                      let date = dataSource.podcastEpisode?.publishDate else {
-                        continue
+                      enabledIds.contains(source.identifier) else {
+                    continue
                 }
-                entries.append((movie: movie, date: date, sourceIdentifier: source.identifier))
+                let date = LatestPodcastPicker.entryDate(
+                    sourceIdentifier: source.identifier,
+                    sourceDate: nil,
+                    episodePublishDate: dataSource.podcastEpisode?.publishDate,
+                    discoveredAt: LatestPodcastPicker.allowsMultipleEntries(sourceIdentifier: source.identifier)
+                        ? dataSource.lastUpdated
+                        : nil
+                )
+                if let date {
+                    entries.append((
+                        movie: movie,
+                        date: date,
+                        sourceIdentifier: source.identifier,
+                        groupKey: dataSource.sourceUrl
+                    ))
+                }
             }
         }
 
@@ -2136,7 +2178,7 @@ struct MovieListView: View {
                             if let selectedInspiration {
                                 inspirationSectionRow(section: selectedInspiration, movies: selectedInspirationMovies, isCollapsed: true)
                             } else {
-                                inspirationSectionRow(section: .latestPodcasts, movies: latestPodcastMovies, isCollapsed: false)
+                                inspirationSectionRow(section: .latest, movies: latestMovies, isCollapsed: false)
                                 inspirationSectionRow(section: .recentlySaved, movies: recentlySavedMovies, isCollapsed: false)
                                 inspirationSectionRow(section: .toComplete, movies: toCompleteMovies, isCollapsed: false)
                                 if savedMovieCount >= 20 {
@@ -2201,7 +2243,7 @@ struct MovieListView: View {
                         if let selectedInspiration {
                             inspirationSectionRow(section: selectedInspiration, movies: selectedInspirationMovies, isCollapsed: true)
                         } else {
-                            inspirationSectionRow(section: .latestPodcasts, movies: latestPodcastMovies, isCollapsed: false)
+                            inspirationSectionRow(section: .latest, movies: latestMovies, isCollapsed: false)
                             inspirationSectionRow(section: .recentlySaved, movies: recentlySavedMovies, isCollapsed: false)
                             inspirationSectionRow(section: .toComplete, movies: toCompleteMovies, isCollapsed: false)
                             if savedMovieCount >= 20 {
@@ -2412,20 +2454,7 @@ struct MovieListView: View {
                 }
                 
                 if !isCollapsed {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: inspirationPosterSpacing) {
-                            ForEach(movies, id: \.id) { movie in
-                                Button {
-                                    selectedMovie = movie
-                                } label: {
-                                    inspirationPoster(for: movie, section: section)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(movie.title)
-                            }
-                        }
-                        .padding(.horizontal, inspirationLeadingPadding)
-                    }
+                    inspirationCarousel(movies: movies, section: section)
                 }
             }
             .padding(.vertical, DesignSystem.Spacing.sm)
@@ -2449,6 +2478,37 @@ struct MovieListView: View {
             }
         }
         .frame(height: 28)
+    }
+
+    private func inspirationCarousel(movies: [Movie], section: InspirationSection) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            Group {
+                if section == .latest {
+                    LazyHGrid(rows: latestCarouselGridRows, spacing: inspirationPosterSpacing) {
+                        ForEach(movies, id: \.id) { movie in
+                            inspirationPosterButton(for: movie, section: section)
+                        }
+                    }
+                } else {
+                    LazyHStack(spacing: inspirationPosterSpacing) {
+                        ForEach(movies, id: \.id) { movie in
+                            inspirationPosterButton(for: movie, section: section)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, inspirationLeadingPadding)
+        }
+    }
+
+    private func inspirationPosterButton(for movie: Movie, section: InspirationSection) -> some View {
+        Button {
+            selectedMovie = movie
+        } label: {
+            inspirationPoster(for: movie, section: section)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(movie.title)
     }
 
     @ViewBuilder
@@ -2484,7 +2544,7 @@ struct MovieListView: View {
                             Button {
                                 selectedMovie = movie
                             } label: {
-                                inspirationPoster(for: movie, section: .latestPodcasts)
+                                inspirationPoster(for: movie, section: .latest)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(movie.title)

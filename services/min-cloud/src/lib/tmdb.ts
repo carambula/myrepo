@@ -67,7 +67,7 @@ export const fetchStreamingServices = async (tmdbId: number, apiKey: string, reg
   return mapStreamingProviders(data, region);
 };
 
-export const searchTmdbMovie = async (title: string, year: number | undefined, apiKey: string) => {
+export const searchTmdbMovies = async (title: string, year: number | undefined, apiKey: string) => {
   const url = new URL("https://api.themoviedb.org/3/search/movie");
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("query", title);
@@ -75,13 +75,25 @@ export const searchTmdbMovie = async (title: string, year: number | undefined, a
     url.searchParams.set("year", String(year));
   }
   const data = await fetchJson<{ results: TmdbMovie[] }>(url.toString());
-  return data.results?.[0] ?? null;
+  return data.results ?? [];
+};
+
+export const searchTmdbMovie = async (title: string, year: number | undefined, apiKey: string) => {
+  const results = await searchTmdbMovies(title, year, apiKey);
+  return results[0] ?? null;
 };
 
 export const fetchTmdbMovie = async (tmdbId: number, apiKey: string) => {
   const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
   url.searchParams.set("api_key", apiKey);
   return fetchJson<TmdbMovie>(url.toString());
+};
+
+export const fetchTmdbMovieDetails = async (tmdbId: number, apiKey: string) => {
+  const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("append_to_response", "credits,videos,release_dates");
+  return fetchJson<Record<string, unknown>>(url.toString());
 };
 
 export const catalogMovieFromTmdb = (movie: TmdbMovie) => {

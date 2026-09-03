@@ -11,6 +11,7 @@ import platformRouter from "./routes/platform.js";
 import movRouter from "./routes/mov.js";
 import podRouter from "./routes/pod.js";
 import adminRouter from "./routes/admin.js";
+import adminLocalRouter from "./routes/admin-local.js";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,29 @@ app.use("/v1/mov", movRouter);
 app.use("/v1/pod", podRouter);
 app.use("/v1/admin", requireAdmin, adminRouter);
 
+const allowedImageHosts = new Set([
+  "image.tmdb.org",
+  "is1-ssl.mzstatic.com",
+  "is2-ssl.mzstatic.com",
+  "is3-ssl.mzstatic.com",
+  "is4-ssl.mzstatic.com",
+  "is5-ssl.mzstatic.com"
+]);
+app.get("/api/image-proxy", (req, res) => {
+  const raw = String(req.query.url || "");
+  try {
+    const url = new URL(raw);
+    if (!allowedImageHosts.has(url.hostname)) {
+      res.status(400).end();
+      return;
+    }
+    res.redirect(url.toString());
+  } catch {
+    res.status(400).end();
+  }
+});
+app.use("/api", requireAdmin, adminLocalRouter);
+
 app.post("/internal/jobs/:name", requireCron, async (req, res) => {
   try {
     const result = await runNamedJob(String(req.params.name));
@@ -48,6 +72,10 @@ app.post("/internal/jobs/:name", requireCron, async (req, res) => {
 });
 
 app.get("/admin", (_req, res) => {
+  res.sendFile(path.join(publicDir, "mov-admin/index.html"));
+});
+
+app.get("/admin/jobs", (_req, res) => {
   res.sendFile(path.join(publicDir, "admin.html"));
 });
 

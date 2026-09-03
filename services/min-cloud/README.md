@@ -31,7 +31,8 @@ npm run dev
 ```
 
 - API and user site: http://localhost:4000
-- Admin: http://localhost:4000/admin
+- Admin: http://localhost:4000/admin — the WatchedIt bootstrap editor, pointed at Postgres
+- Legacy job console: http://localhost:4000/admin/jobs
 - Health: http://localhost:4000/health
 
 Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refresh streaming catalogues.
@@ -46,7 +47,7 @@ Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refres
 6. Seed or import the catalog:
    - `npm run seed` for the sample set
    - `POST /v1/admin/mov/import` with WatchedIt `bootstrap_data.json`
-   - or `ADMIN_TOKEN=... node scripts/import-bootstrap.mjs`
+   - or `ADMIN_TOKEN=... node scripts/import-bootstrap.mjs` (also applies `physical_media.json`)
    - Admin “Add podcast” / iTunes enrich for PodLink defaults
 7. Optional Railway cron hitting `POST /internal/jobs/all` with `x-cron-secret`.
 

@@ -7,6 +7,7 @@ struct ListeningHistoryView: View {
     @State private var entries: [ListeningHistoryEntry] = []
     @State private var searchText = ""
     @State private var isSearchActive = false
+    @State private var statusFilter: EpisodeStatusFilter = .all
     @State private var sort: ListeningHistorySort = .recent
     @State private var playSession: ListeningHistoryPlaySession?
     @State private var podcastOpenedFromPlayer: Podcast?
@@ -17,7 +18,11 @@ struct ListeningHistoryView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             if resolvedItems.isEmpty {
-                emptyState
+                if statusFilter != .all || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    filteredEmptyState
+                } else {
+                    emptyState
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: DesignSystem.Spacing.sm) {
@@ -119,6 +124,7 @@ struct ListeningHistoryView: View {
             guard let base = entry.makeBaseEpisode(),
                   let podcast = entry.preferredPodcastForPlayback() else { return nil }
             let merged = EpisodePlaybackStore.merge(base)
+            guard statusFilter.matches(merged) else { return nil }
             return ResolvedItem(id: merged.id, episode: merged, podcast: podcast)
         }
     }
@@ -138,6 +144,23 @@ struct ListeningHistoryView: View {
     }
 
     // MARK: - Empty State
+
+    private var filteredEmptyState: some View {
+        VStack(spacing: DesignSystem.Spacing.lg) {
+            Image(systemName: statusFilter.systemImage)
+                .font(.system(size: 48))
+                .foregroundStyle(themeManager.currentTheme.accentColor)
+            Text("No episodes match this filter.")
+                .font(DesignSystem.Typography.headlineSmall())
+                .foregroundStyle(DesignSystem.Colors.headlineColor)
+            Text("Try another status or clear search.")
+                .font(DesignSystem.Typography.bodyMedium())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
     private var emptyState: some View {
         VStack(spacing: DesignSystem.Spacing.lg) {
@@ -178,6 +201,8 @@ struct ListeningHistoryView: View {
 
     private var searchBar: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
+            EpisodeStatusFilterButton(statusFilter: $statusFilter, size: searchControlHeight)
+
             HStack(spacing: DesignSystem.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
@@ -211,6 +236,7 @@ struct ListeningHistoryView: View {
             Button {
                 withAnimation(DesignSystem.Animation.standard) {
                     searchText = ""
+                    statusFilter = .all
                     isSearchActive = false
                     isSearchFieldFocused = false
                 }

@@ -24,6 +24,10 @@ struct SearchScreenView: View {
     @State private var privateFeedPrefillURL: String = ""
     @State private var suggestedInterestKeywords: [String] = []
     @State private var suggestionRefreshTask: Task<Void, Never>?
+    @State private var statusFilter: EpisodeStatusFilter = .all
+    @State private var showNewOnly = false
+    @State private var showVideoOnly = false
+    @State private var selectedCategory: PodcastCategory?
     @AppStorage("searchSuggestionRefreshPolicy") private var searchSuggestionRefreshPolicyRaw = SearchSuggestionRefreshPolicy.onOpenAndLibraryChanges.rawValue
     @AppStorage("searchSuggestionLastRefreshAt") private var searchSuggestionLastRefreshAt: Double = 0
     @FocusState private var isSearchFieldFocused: Bool
@@ -102,6 +106,14 @@ struct SearchScreenView: View {
             .padding(.top, DesignSystem.Spacing.md + DesignSystem.Spacing.xs)
             .padding(.bottom, DesignSystem.Spacing.md)
 
+            FilterBarView(
+                statusFilter: $statusFilter,
+                selectedCategory: $selectedCategory,
+                showNewOnly: $showNewOnly,
+                showVideoOnly: $showVideoOnly
+            )
+            .padding(.bottom, DesignSystem.Spacing.sm)
+
             if isDiscoverOffline {
                 Label("Discover search is unavailable offline. Downloaded and library content still works.", systemImage: "wifi.slash")
                     .font(DesignSystem.Typography.bodySmall())
@@ -123,7 +135,7 @@ struct SearchScreenView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
                         .padding(.vertical, DesignSystem.Spacing.xxl)
-                    } else if currentResultsAreEmpty && !searchText.isEmpty {
+                    } else if currentResultsAreEmpty && hasActiveSearch {
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             Text(urlAuthRequiredFor != nil ? "Authentication needed" : "No Results")
                                 .font(DesignSystem.Typography.headlineLarge())
@@ -131,7 +143,10 @@ struct SearchScreenView: View {
                             Text(
                                 urlAuthRequiredFor != nil
                                     ? "This feed requires a token or login. Add it from the private RSS screen."
-                                    : (urlLookupError ?? "Try a different search term.")
+                                    : (urlLookupError
+                        ?? (libraryFilters.isRestrictingLibrary
+                            ? "No episodes match this filter."
+                            : "Try a different search term."))
                             )
                                 .font(DesignSystem.Typography.bodyMedium())
                                 .foregroundColor(DesignSystem.Colors.textSecondary)
@@ -219,8 +234,24 @@ struct SearchScreenView: View {
             }
         }
         .onChange(of: searchScope) { _, _ in
-            searchTask?.cancel()
-            searchTask = Task { await performSearch(query: searchText) }
+            retriggerSearch()
+        }
+        .onChange(of: statusFilter) { _, newValue in
+            if newValue != .all {
+                searchScope = .library
+            }
+            retriggerSearch()
+        }
+        .onChange(of: showNewOnly) { _, _ in
+            if showNewOnly { searchScope = .library }
+            retriggerSearch()
+        }
+        .onChange(of: showVideoOnly) { _, _ in
+            if showVideoOnly { searchScope = .library }
+            retriggerSearch()
+        }
+        .onChange(of: selectedCategory) { _, _ in
+            retriggerSearch()
         }
         .onChange(of: networkStatusService.isOnline) { _, isOnline in
             if !isOnline, searchScope == .discover {
@@ -276,8 +307,29 @@ struct SearchScreenView: View {
         }
     }
 
+    private var libraryFilters: LibrarySearchFilters {
+        LibrarySearchFilters(
+            status: statusFilter,
+            showNewOnly: showNewOnly,
+            showVideoOnly: showVideoOnly,
+            selectedCategory: selectedCategory
+        )
+    }
+
+    private var hasActiveSearch: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || (searchScope == .library && libraryFilters.isRestrictingLibrary)
+    }
+
+    private func retriggerSearch() {
+        searchTask?.cancel()
+        searchTask = Task { await performSearch(query: searchText) }
+    }
+
     private var searchBottomControls: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
+            EpisodeStatusFilterButton(statusFilter: $statusFilter, size: searchControlHeight)
+
             HStack(spacing: DesignSystem.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
@@ -294,12 +346,7 @@ struct SearchScreenView: View {
 
                 if !searchText.isEmpty {
                     Button {
-                        searchTask?.cancel()
                         searchText = ""
-                        discoverResults = []
-                        libraryEpisodeResults = []
-                        urlAuthRequiredFor = nil
-                        urlLookupError = nil
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 16))
@@ -409,7 +456,10 @@ struct SearchScreenView: View {
 
     @MainActor
     private func performSearch(query: String) async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        let filters = libraryFilters
+        let canBrowseLibrary = searchScope == .library && filters.isRestrictingLibrary
+        guard !trimmed.isEmpty || canBrowseLibrary else {
             discoverResults = []
             libraryEpisodeResults = []
             urlAuthRequiredFor = nil
@@ -429,7 +479,7 @@ struct SearchScreenView: View {
         urlLookupError = nil
 
         // RSS URL resolution is for Discover; My Library should always filter saved podcasts.
-        if searchScope == .discover, let feedURL = Self.normalizedFeedURL(from: query) {
+        if searchScope == .discover, !trimmed.isEmpty, let feedURL = Self.normalizedFeedURL(from: query) {
             isSearching = true
             await resolveDirectFeedURL(feedURL)
             isSearching = false
@@ -440,11 +490,18 @@ struct SearchScreenView: View {
         do {
             switch searchScope {
             case .discover:
-                discoverResults = try await PodcastSearchService.shared.search(query: query)
+                let results = trimmed.isEmpty
+                    ? []
+                    : try await PodcastSearchService.shared.search(query: query)
+                discoverResults = results.filter { filters.matchesDiscover($0) }
                 libraryEpisodeResults = []
             case .library:
                 let podcasts = Podcast.loadFollowedPodcasts()
-                libraryEpisodeResults = await searchLibraryEpisodes(query: query, podcasts: podcasts)
+                libraryEpisodeResults = await searchLibraryEpisodes(
+                    query: trimmed,
+                    podcasts: podcasts,
+                    filters: filters
+                )
                 discoverResults = []
             }
         } catch {
@@ -505,7 +562,11 @@ struct SearchScreenView: View {
         isSearchFieldFocused = true
     }
 
-    private func searchLibraryEpisodes(query: String, podcasts: [Podcast]) async -> [LibraryEpisodeSearchResult] {
+    private func searchLibraryEpisodes(
+        query: String,
+        podcasts: [Podcast],
+        filters: LibrarySearchFilters
+    ) async -> [LibraryEpisodeSearchResult] {
         let lowered = query.lowercased()
         var results: [LibraryEpisodeSearchResult] = []
         var seenEpisodeIDs = Set<String>()
@@ -519,10 +580,14 @@ struct SearchScreenView: View {
                 if Task.isCancelled { break }
                 if results.count >= 250 { break }
 
-                guard !seenEpisodeIDs.contains(episode.id) else { continue }
-                if await episodeMatchesLibraryQuery(episode, podcast: podcast, loweredQuery: lowered) {
-                    seenEpisodeIDs.insert(episode.id)
-                    results.append(LibraryEpisodeSearchResult(episode: episode, podcast: podcast))
+                let merged = EpisodePlaybackStore.merge(episode)
+                guard !seenEpisodeIDs.contains(merged.id) else { continue }
+                guard filters.matches(episode: merged, podcast: podcast) else { continue }
+                let matchesQuery = lowered.isEmpty
+                    || await episodeMatchesLibraryQuery(merged, podcast: podcast, loweredQuery: lowered)
+                if matchesQuery {
+                    seenEpisodeIDs.insert(merged.id)
+                    results.append(LibraryEpisodeSearchResult(episode: merged, podcast: podcast))
                 }
             }
         }

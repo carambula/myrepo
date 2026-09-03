@@ -215,6 +215,7 @@ final class VideoAgentService: AgentLibraryExporting {
     }
 }
 
+@MainActor
 final class VideoAgentExportAdapter: AgentLibraryExporting {
     let context: ModelContext
 

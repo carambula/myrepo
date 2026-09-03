@@ -6,6 +6,7 @@ import UIKit
 import AppKit
 #endif
 
+@MainActor
 public protocol AgentLibraryExporting: AnyObject {
     func exportLibraryJSON() throws -> Data
     func undoLastAgentWrite() throws -> String

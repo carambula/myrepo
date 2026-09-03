@@ -1,0 +1,233 @@
+:root {
+  --min-page-margin-left: 24px;
+  --min-page-margin-right: 24px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --font: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bg: #f6f4f0;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b6560;
+  --border: #e4dfd7;
+  --accent: #c45c26;
+  --accent-soft: #f3e2d6;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --min-page-margin-left: 16px;
+    --min-page-margin-right: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141311;
+    --surface: #1e1c19;
+    --text: #f4efe8;
+    --muted: #b3aaa0;
+    --border: #322e29;
+    --accent: #e38a4f;
+    --accent-soft: #3a2618;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  padding-left: var(--min-page-margin-left);
+  padding-right: var(--min-page-margin-right);
+}
+
+a { color: inherit; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-lg) 0;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+nav {
+  display: flex;
+  gap: var(--space-lg);
+  font-size: 14px;
+}
+
+nav a {
+  text-decoration: none;
+  color: var(--muted);
+}
+
+nav a.is-active, nav a:hover { color: var(--text); }
+
+.hero {
+  padding: var(--space-xxl) 0 var(--space-xl);
+}
+
+.hero h1 {
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 0 0 var(--space-md);
+}
+
+.hero p, .lede {
+  color: var(--muted);
+  max-width: 38rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+@media (max-width: 767px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.card, .panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+button, .button, input, textarea, select {
+  font: inherit;
+}
+
+button, .button {
+  border: 0;
+  background: var(--accent);
+  color: white;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+button.secondary, .button.secondary {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+input, textarea, select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+label {
+  display: grid;
+  gap: var(--space-xs);
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: var(--space-md);
+}
+
+.stack { display: grid; gap: var(--space-md); }
+
+.hidden { display: none !important; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 999px;
+}
+
+.art {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+
+.poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin: var(--space-xl) 0;
+}
+
+.tabs button {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.tabs button.is-active {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-xl);
+}
+
+@media (max-width: 767px) {
+  .admin-grid { grid-template-columns: 1fr; }
+}

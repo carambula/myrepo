@@ -2,6 +2,8 @@
 
 Web-based admin tool for managing PodLink's default podcast catalog, categories, media patterns, and theme presets.
 
+For hosted admin, accounts, notifications, and scheduled RSS refresh, use `services/min-cloud` on Railway. This local console stays as an offline backup.
+
 ## Quick Start
 
 ```bash

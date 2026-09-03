@@ -17,6 +17,7 @@ struct AccountSheetView: View {
     @State private var showDownloadSettings = false
     @State private var showPerformancePreferences = false
     @State private var showNotificationPreferences = false
+    @State private var showMinCloud = false
 
     var body: some View {
         NavigationStack {
@@ -77,6 +78,18 @@ struct AccountSheetView: View {
                         showTranscription = true
                     } label: {
                         Label("Cloud transcription (AssemblyAI)", systemImage: "text.badge.plus")
+                    }
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
+                Section("Min Cloud") {
+                    Button {
+                        showMinCloud = true
+                    } label: {
+                        Label(
+                            MinCloudSettings.isSignedIn ? "Account   @\(MinCloudSettings.handle ?? "signed in")" : "Sign in or create an account",
+                            systemImage: "cloud"
+                        )
                     }
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
@@ -268,6 +281,18 @@ struct AccountSheetView: View {
             .sheet(isPresented: $showNotificationPreferences) {
                 NavigationStack {
                     NotificationPreferencesView()
+                        .environment(themeManager)
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .environment(themeManager)
+                .environment(playbackService)
+                .bottomSheetPullToDismiss()
+                .sheetPullToDismissScrollBottomInset(playbackService: playbackService)
+            }
+            .sheet(isPresented: $showMinCloud) {
+                NavigationStack {
+                    MinCloudAccountView()
                         .environment(themeManager)
                 }
                 .presentationDetents([.large])

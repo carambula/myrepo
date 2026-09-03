@@ -3,6 +3,9 @@
 Local web UI for editing `WatchedIt/bootstrap_data.json`, refreshing podcast
 episodes, and regenerating `bootstrap_database.store`.
 
+For the shared cloud admin and live streaming/feed jobs, use `services/min-cloud`
+(Railway). This local console stays as an offline backup for catalog work.
+
 ## Run
 
 ```bash

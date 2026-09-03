@@ -8,6 +8,9 @@
 - `WatchedIt` (iOS)
 - `WatchedItTV` (tvOS)
 
+## Min Cloud
+Optional Railway service in `services/min-cloud`. Point the app at it with `UserDefaults` key `mincloud.baseURL`. Catalog refresh and accounts live there; the bundled store and local scrape stay as backup.
+
 ## CloudKit
 Both targets use the same CloudKit container and zone:
 

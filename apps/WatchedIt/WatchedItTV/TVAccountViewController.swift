@@ -66,7 +66,7 @@ final class TVAccountViewController: UITableViewController {
         switch Section(rawValue: indexPath.section) {
         case .icloud:
             if indexPath.row == 0 {
-                cell.textLabel?.text = "iCloud backup is always on"
+                cell.textLabel?.text = MinCloudSettings.iCloudBackupEnabled ? "iCloud backup is on" : "iCloud backup is off"
                 cell.accessoryType = .none
             } else {
                 cell.textLabel?.text = "Sync from iCloud"

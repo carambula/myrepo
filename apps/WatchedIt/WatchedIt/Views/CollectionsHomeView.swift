@@ -527,7 +527,11 @@ private struct CollectionsHomeContentView: View {
     private var statusMenu: some View {
         Menu {
             ForEach(WatchFilter.allCases, id: \.self) { filter in
-                Button(filter.rawValue) { applyStatusFilterFromToolbar(filter) }
+                Button {
+                    applyStatusFilterFromToolbar(filter)
+                } label: {
+                    Label(filter.rawValue, systemImage: filter.systemImage)
+                }
             }
         } label: {
             DesignSystemIcon(DesignSystem.Icon.status, size: DesignSystem.IconSize.md, color: toolbarSecondaryAccentColor)

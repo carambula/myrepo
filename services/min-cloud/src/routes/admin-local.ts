@@ -4,6 +4,13 @@ import { config } from "../config.js";
 import { fetchJson, fetchText } from "../lib/http.js";
 import { fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
+import { scrapeListItems } from "../lib/list-scrape.js";
+import {
+  determineItemStatus,
+  pickBestTmdbMatch,
+  prepareMovieQuery,
+  shouldSkipPodcastNoise
+} from "../lib/title-match.js";
 import { applyPhysicalMediaOverlay } from "../lib/catalog-import.js";
 import { normalizePhysicalMedia } from "../lib/physical-media.js";
 import {
@@ -184,6 +191,48 @@ const applyTmdbDetails = (movie: AdminMovie, details: Record<string, unknown>) =
   };
 };
 
+const LIST_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+};
+
+const previewIdentifiers = (body: { identifiers?: unknown; sourceIdentifiers?: unknown }) => {
+  if (Array.isArray(body?.sourceIdentifiers)) {
+    return body.sourceIdentifiers.map(String);
+  }
+  if (Array.isArray(body?.identifiers)) {
+    return body.identifiers.map(String);
+  }
+  return [];
+};
+
+const podcastPreviewItem = (
+  episode: { title: string; publishDate: string | null; description: string },
+  sourceIdentifier: string,
+  existing: Set<string>
+) => {
+  const prepared = prepareMovieQuery(episode.title, episode.description);
+  return {
+    title: prepared.title,
+    sourceTitle: episode.title,
+    sourceIdentifier,
+    episodeDate: episode.publishDate,
+    podcastEpisodeDescription: episode.description,
+    isDuplicate: existing.has(episode.title)
+  };
+};
+
+const searchBestMovie = async (query: string, year: number | null) => {
+  if (!query || !config.tmdbApiKey) {
+    return null;
+  }
+  let results = await searchTmdbMovies(query, year ?? undefined, config.tmdbApiKey);
+  if (!results.length && year) {
+    results = await searchTmdbMovies(query, undefined, config.tmdbApiKey);
+  }
+  return pickBestTmdbMatch(query, results, year);
+};
+
 router.get("/bootstrap", async (_req, res) => {
   res.json(await loadAdminBootstrap());
 });
@@ -358,9 +407,10 @@ router.get("/tmdb/search", async (req, res) => {
     res.status(400).json({ error: "Missing query" });
     return;
   }
-  const year = req.query.year ? Number(req.query.year) : undefined;
-  const results = await searchTmdbMovies(term, year, config.tmdbApiKey);
-  res.json({ results });
+  const prepared = prepareMovieQuery(term);
+  const year = req.query.year ? Number(req.query.year) : prepared.year ?? undefined;
+  const results = await searchTmdbMovies(prepared.query || term, year, config.tmdbApiKey);
+  res.json({ results, query: prepared.query, year: year ?? null });
 });
 
 router.post("/tmdb/apply/:index", async (req, res) => {
@@ -567,7 +617,7 @@ router.post("/podcasts/refresh", async (req, res) => {
 });
 
 router.post("/feeds/preview", async (req, res) => {
-  const identifiers: string[] = Array.isArray(req.body?.sourceIdentifiers) ? req.body.sourceIdentifiers : [];
+  const identifiers = previewIdentifiers(req.body || {});
   const sources = await loadAdminSources();
   const movies = await loadAdminMovies();
   const items: unknown[] = [];
@@ -583,13 +633,11 @@ router.post("/feeds/preview", async (req, res) => {
         movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
       );
       for (const episode of parsed.episodes.slice(0, 40)) {
-        items.push({
-          title: episode.title,
-          sourceTitle: episode.title,
-          sourceIdentifier: identifier,
-          episodeDate: episode.publishDate,
-          isDuplicate: existing.has(episode.title)
-        });
+        const prepared = prepareMovieQuery(episode.title, episode.description);
+        if (!prepared.title || shouldSkipPodcastNoise(identifier, episode.title, prepared.title)) {
+          continue;
+        }
+        items.push(podcastPreviewItem(episode, identifier, existing));
       }
     } catch {
       // skip broken feeds
@@ -600,8 +648,9 @@ router.post("/feeds/preview", async (req, res) => {
 
 router.post("/podcasts/latest/preview", async (req, res) => {
   const sources = await loadAdminSources();
-  const identifiers = Array.isArray(req.body?.sourceIdentifiers)
-    ? req.body.sourceIdentifiers
+  const requested = previewIdentifiers(req.body || {});
+  const identifiers = requested.length
+    ? requested
     : sources.filter((source) => source.type === "podcast").map((source) => source.identifier);
   const movies = await loadAdminMovies();
   const items: unknown[] = [];
@@ -617,13 +666,11 @@ router.post("/podcasts/latest/preview", async (req, res) => {
         movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
       );
       for (const episode of parsed.episodes.slice(0, 20)) {
-        items.push({
-          title: episode.title,
-          sourceTitle: episode.title,
-          sourceIdentifier: identifier,
-          episodeDate: episode.publishDate,
-          isDuplicate: existing.has(episode.title)
-        });
+        const prepared = prepareMovieQuery(episode.title, episode.description);
+        if (!prepared.title || shouldSkipPodcastNoise(identifier, episode.title, prepared.title)) {
+          continue;
+        }
+        items.push(podcastPreviewItem(episode, identifier, existing));
       }
     } catch {
       // skip
@@ -634,27 +681,34 @@ router.post("/podcasts/latest/preview", async (req, res) => {
 
 router.post("/ingest/preview", async (req, res) => {
   const url = String(req.body?.url || "");
+  const sourceType = String(req.body?.sourceType || "");
+  const identifier = String(req.body?.identifier || "");
   if (!url) {
     res.status(400).json({ error: "url required" });
     return;
   }
-  const html = await fetchText(url);
-  const titles: Array<{ title: string; rank: number }> = [];
-  const seen = new Set<string>();
-  const matches = html.match(/<a[^>]*>([^<]{2,120})<\/a>/gi) || [];
-  for (const match of matches) {
-    const text = match.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#039;/g, "'").trim();
-    const key = text.toLowerCase();
-    if (!text || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    titles.push({ title: text, rank: titles.length + 1 });
-    if (titles.length >= 80) {
-      break;
-    }
+  if (sourceType === "podcast") {
+    const xml = await fetchText(url);
+    const parsed = parseRssFeed(xml);
+    const movies = await loadAdminMovies();
+    const existing = new Set(
+      movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
+    );
+    const items = parsed.episodes
+      .map((episode) => podcastPreviewItem(episode, identifier, existing))
+      .filter((item) => item.title && !shouldSkipPodcastNoise(identifier, item.sourceTitle, item.title));
+    res.json({ items, summary: { count: items.length } });
+    return;
   }
-  res.json({ items: titles, summary: { count: titles.length } });
+  const html = await fetchText(url, LIST_FETCH_HEADERS);
+  const isRanked = Boolean(req.body?.isRankedList);
+  const items = scrapeListItems(url, html).map((item) => ({
+    title: item.title,
+    sourceTitle: item.title,
+    rank: isRanked ? item.rank : null,
+    sourceIdentifier: identifier || null
+  }));
+  res.json({ items, summary: { count: items.length } });
 });
 
 router.post("/ingest/enrich", async (req, res) => {
@@ -662,39 +716,41 @@ router.post("/ingest/enrich", async (req, res) => {
   const enriched = [];
   for (const item of items.slice(0, 40)) {
     try {
-      const found = item.title && config.tmdbApiKey ? await searchTmdbMovies(String(item.title), undefined, config.tmdbApiKey) : [];
-      const first = found[0];
-      if (!first) {
-        enriched.push({ ...item, status: "missing" });
+      const prepared = prepareMovieQuery(String(item.title || ""), item.podcastEpisodeDescription);
+      const match = await searchBestMovie(prepared.query, prepared.year);
+      if (!match) {
+        enriched.push({ ...item, title: prepared.title || item.title, sourceTitle: item.sourceTitle || item.title, status: "missing" });
         continue;
       }
-      const details = await fetchTmdbMovieDetails(first.id, config.tmdbApiKey);
+      const details = await fetchTmdbMovieDetails(match.id, config.tmdbApiKey);
+      const merged = applyTmdbDetails(
+        {
+          title: prepared.title || String(item.title || ""),
+          year: null,
+          tmdbId: match.id,
+          sourceIdentifier: item.sourceIdentifier ?? null,
+          sourceTitle: item.sourceTitle ?? item.title,
+          rank: item.rank ?? null,
+          mpaaRating: null,
+          episodeDate: item.episodeDate ?? null,
+          overview: null,
+          posterPath: null,
+          backdropPath: null,
+          genres: [],
+          streamingServices: [],
+          credits: null,
+          trailer: null,
+          oscarAwards: null,
+          physicalMedia: null,
+          podcastEpisodeDescription: item.podcastEpisodeDescription ?? null
+        },
+        details
+      );
       enriched.push({
         ...item,
-        ...applyTmdbDetails(
-          {
-            title: item.title,
-            year: null,
-            tmdbId: first.id,
-            sourceIdentifier: item.sourceIdentifier ?? null,
-            sourceTitle: item.sourceTitle ?? item.title,
-            rank: item.rank ?? null,
-            mpaaRating: null,
-            episodeDate: null,
-            overview: null,
-            posterPath: null,
-            backdropPath: null,
-            genres: [],
-            streamingServices: [],
-            credits: null,
-            trailer: null,
-            oscarAwards: null,
-            physicalMedia: null,
-            podcastEpisodeDescription: null
-          },
-          details
-        ),
-        status: "enriched"
+        ...merged,
+        sourceTitle: item.sourceTitle ?? item.title,
+        status: determineItemStatus(merged)
       });
     } catch {
       enriched.push({ ...item, status: "missing" });
@@ -800,8 +856,13 @@ const refreshPodcastSource = async (sourceIdentifier: string) => {
       skippedCount += 1;
       continue;
     }
+    const prepared = prepareMovieQuery(episode.title, episode.description);
+    if (!prepared.title || shouldSkipPodcastNoise(sourceIdentifier, episode.title, prepared.title)) {
+      skippedCount += 1;
+      continue;
+    }
     await upsertAdminMovie({
-      title: episode.title,
+      title: prepared.title,
       sourceIdentifier,
       sourceTitle: episode.title,
       episodeDate: episode.publishDate,

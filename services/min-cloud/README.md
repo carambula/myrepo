@@ -89,6 +89,7 @@ mincloud.baseURL = http://localhost:4000
 - `POST /v1/devices/register` `POST /v1/pod/watch` `GET /v1/devices/:deviceId/inbox` — no account required
 - `GET /v1/social/feed` `POST /v1/social/follow`
 - `GET /v1/admin/health` `POST /v1/admin/jobs/:name`
+- Ingest enrich uses the same podcast title cleaning and TMDB best-match rules as the local WatchedIt editor (`‘Toy Story 5’ With Bill Simmons…` → Toy Story 5)
 - `GET /api/history` `POST /api/history/snapshots` `POST /api/history/snapshots/:id/restore` `POST /api/history/audit/:id/revert`
 
 ## Catalog version control

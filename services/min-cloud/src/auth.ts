@@ -125,7 +125,7 @@ export const optionalUser = async (req: Request, _res: Response, next: NextFunct
 };
 
 export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
-  const adminHeader = req.header("x-admin-token") || "";
+  const adminHeader = req.header("x-admin-token") || String(req.query.adminToken || "");
   if (config.adminToken && adminHeader && adminHeader === config.adminToken) {
     (req as Request & { adminActor: string }).adminActor = "admin-token";
     next();

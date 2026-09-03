@@ -7,16 +7,12 @@ import { runNamedJob } from "../jobs.js";
 import { movieIdFromTmdb, podcastIdFromItunes } from "../lib/passwords.js";
 import { applyPhysicalMediaOverlay, importMovieCatalog } from "../lib/catalog-import.js";
 import { normalizePhysicalMedia } from "../lib/physical-media.js";
+import { recordAudit, takeSnapshot } from "../lib/admin-history.js";
 
 const router = Router();
 
 const audit = async (req: Request, action: string, details: unknown) => {
-  const actor = (req as Request & { adminActor?: string }).adminActor || "unknown";
-  await query(`INSERT INTO admin_audit (actor, action, details) VALUES ($1, $2, $3::jsonb)`, [
-    actor,
-    action,
-    JSON.stringify(details ?? {})
-  ]);
+  await recordAudit(req, action, (details as Record<string, unknown>) ?? {});
 };
 
 router.get("/health", async (_req, res) => {
@@ -174,6 +170,7 @@ router.post("/mov/sources", async (req, res) => {
 });
 
 router.post("/mov/import", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-import" });
   const result = await importMovieCatalog({
     dataSources: Array.isArray(req.body?.dataSources) ? req.body.dataSources : [],
     movies: Array.isArray(req.body?.movies) ? req.body.movies : [],
@@ -184,6 +181,7 @@ router.post("/mov/import", async (req, res) => {
 });
 
 router.post("/mov/physical-media", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-physical-overlay" });
   const overlay = req.body?.physicalMediaByTmdbId ?? req.body?.byTmdbId ?? req.body;
   const importedPhysicalMedia = await applyPhysicalMediaOverlay(overlay);
   if (importedPhysicalMedia) {

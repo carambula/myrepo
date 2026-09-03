@@ -1,0 +1,2334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Min Cloud Admin</title>
+    <link rel="stylesheet" href="/mov-admin/swiftui-primitives.css" />
+    <link rel="stylesheet" href="/mov-admin/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">Min Cloud Admin</div>
+      </div>
+      <nav class="top-tabs" role="tablist" aria-label="Main navigation">
+        <button class="top-tab is-active" data-admin-nav="catalog" role="tab">Catalog</button>
+        <button class="top-tab" data-admin-nav="operations" role="tab">Operations</button>
+        <button class="top-tab" data-admin-nav="design" role="tab">Design System</button>
+        <button class="top-tab" data-admin-nav="app" role="tab">App Design</button>
+      </nav>
+      <div class="topbar-actions">
+        <div class="theme-toggle" id="themeSchemeToggle" role="radiogroup" aria-label="Color scheme">
+          <button class="theme-toggle-btn" data-scheme="light" aria-label="Light mode" title="Light">☀</button>
+          <button class="theme-toggle-btn is-active" data-scheme="system" aria-label="System default" title="System">◐</button>
+          <button class="theme-toggle-btn" data-scheme="dark" aria-label="Dark mode" title="Dark">☾</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin-shell">
+
+      <div class="admin-content">
+        <section class="admin-view is-active" data-admin-view="catalog">
+          <div class="view-shell">
+            <aside class="view-rail">
+              <div class="view-rail-title">Catalog</div>
+              <div class="view-rail-group">
+                <label>
+                  Search
+                  <input id="searchInput" type="search" placeholder="Search titles..." />
+                </label>
+              </div>
+              <div class="view-rail-group">
+                <div class="view-rail-title">Filters</div>
+                <label>
+                  Status
+                  <select id="statusFilter">
+                    <option value="all">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="incomplete">Incomplete</option>
+                    <option value="rewatched">Rewatched</option>
+                    <option value="listened">Listened</option>
+                    <option value="saved">Saved</option>
+                  </select>
+                </label>
+                <label>
+                  Genre
+                  <select id="genreFilter"></select>
+                </label>
+                <label>
+                  MPAA
+                  <select id="ratingFilter"></select>
+                </label>
+                <label>
+                  Streaming
+                  <select id="streamingFilter"></select>
+                </label>
+                <label>
+                  List
+                  <select id="listFilter"></select>
+                </label>
+                <label>
+                  Sort
+                  <select id="sortFilter">
+                    <option value="title">Title</option>
+                    <option value="releaseDateAsc">Release Date (Oldest)</option>
+                    <option value="releaseDateDesc">Release Date (Newest)</option>
+                    <option value="episodeDateAsc">Episode Date (Oldest)</option>
+                    <option value="episodeDateDesc">Episode Date (Newest)</option>
+                    <option value="ranking">Ranking</option>
+                  </select>
+                </label>
+              </div>
+              <div class="view-rail-group">
+                <div class="view-rail-title">Actions</div>
+                <div class="rail-actions">
+                  <button id="newMovieBtn">New Movie</button>
+                  <button id="sourcesBtn">Sources</button>
+                  <button id="addFeedTopBtn">Add Feed</button>
+                  <button id="addListTopBtn">Add List</button>
+                  <button id="themesBtn">Themes</button>
+                </div>
+              </div>
+            </aside>
+
+            <main class="view-content catalog-content">
+              <div class="layout">
+                <section class="list-pane">
+                  <div class="pane-header">
+                    <div class="pane-title">Movies</div>
+                    <div class="pane-actions">
+                      <button id="addFeedBtn">Add Feed</button>
+                      <button id="addListBtn">Add List</button>
+                    </div>
+                  </div>
+              <div class="list-container">
+                <table class="movie-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Year</th>
+                      <th>Source</th>
+                      <th>Rank</th>
+                      <th>Rating</th>
+                      <th>Oscars</th>
+                      <th>TMDB</th>
+                    </tr>
+                  </thead>
+                  <tbody id="movieTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="detail-pane">
+              <div class="pane-header">
+                <div class="pane-title">Movie Detail</div>
+                <div class="pane-actions">
+                  <button id="refreshStreamingBtn">Refresh Streaming</button>
+                  <button id="saveMovieBtn" class="primary">Save Changes</button>
+                  <button id="deleteMovieBtn" class="danger">Delete</button>
+                </div>
+              </div>
+              <div class="detail-content">
+                <div id="detailEmpty" class="empty-state">
+                  Select a movie to edit, or create a new entry.
+                </div>
+                <div id="detailMedia" class="detail-media hidden">
+                  <div class="media-backdrop">
+                    <img id="detailBackdrop" alt="Backdrop" />
+                  </div>
+                  <div class="media-poster">
+                    <img id="detailPoster" alt="Poster" />
+                  </div>
+                </div>
+                <div id="detailOscars" class="detail-oscars hidden"></div>
+                <div id="detailPhysicalMedia" class="detail-oscars hidden"></div>
+                <div id="detailMeta" class="detail-meta hidden"></div>
+                <form id="movieForm" class="movie-form hidden">
+                  <div class="form-grid">
+                    <label>
+                      Title
+                      <input id="movieTitle" type="text" />
+                    </label>
+                    <label>
+                      Year
+                      <input id="movieYear" type="number" min="1800" max="2100" />
+                    </label>
+                    <label>
+                      TMDB ID
+                      <input id="movieTmdbId" type="number" />
+                    </label>
+                    <label>
+                      Source Identifier
+                      <select id="movieSourceIdentifier"></select>
+                    </label>
+                    <label>
+                      Source Title
+                      <input id="movieSourceTitle" type="text" />
+                    </label>
+                    <label>
+                      Rank
+                      <input id="movieRank" type="number" />
+                    </label>
+                    <label>
+                      MPAA Rating
+                      <input id="movieMpaa" type="text" />
+                    </label>
+                    <label>
+                      Episode Date
+                      <input id="movieEpisodeDate" type="text" placeholder="RSS pubDate" />
+                    </label>
+                    <label class="full-width">
+                      Overview
+                      <textarea id="movieOverview" rows="4"></textarea>
+                    </label>
+                    <label>
+                      Poster Path
+                      <input id="moviePosterPath" type="text" />
+                    </label>
+                    <label>
+                      Backdrop Path
+                      <input id="movieBackdropPath" type="text" />
+                    </label>
+                    <label class="full-width">
+                      Genres (comma separated)
+                      <input id="movieGenres" type="text" />
+                    </label>
+                    <label class="full-width">
+                      Streaming Services (JSON)
+                      <textarea id="movieStreaming" rows="3"></textarea>
+                    </label>
+                    <label class="full-width">
+                      Credits (JSON)
+                      <textarea id="movieCredits" rows="4"></textarea>
+                    </label>
+                    <label class="full-width">
+                      Trailer (JSON)
+                      <textarea id="movieTrailer" rows="3"></textarea>
+                    </label>
+                    <label class="full-width">
+                      Podcast Episode Description
+                      <textarea id="moviePodcastDescription" rows="3"></textarea>
+                    </label>
+                    <label>
+                      Rewatched
+                      <select id="movieIsRewatched">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                      </select>
+                    </label>
+                    <label>
+                      Listened
+                      <select id="movieIsListened">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                      </select>
+                    </label>
+                    <label>
+                      Saved
+                      <select id="movieIsSaved">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                      </select>
+                    </label>
+                  </div>
+                </form>
+
+                <div class="tmdb-panel">
+                  <div class="pane-subtitle">TMDB Search</div>
+                  <div class="tmdb-controls">
+                    <input id="tmdbQuery" type="text" placeholder="Movie title" />
+                    <input id="tmdbYear" type="number" placeholder="Year" />
+                    <button id="tmdbSearchBtn">Search TMDB</button>
+                  </div>
+                  <div id="tmdbResults" class="tmdb-results"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+          </main>
+          </div>
+        </section>
+
+        <section class="admin-view" data-admin-view="operations">
+          <div class="view-shell">
+            <aside class="view-rail">
+              <div class="view-rail-title">Operations</div>
+              <div class="view-rail-group">
+                <button class="view-rail-btn is-active" data-ops-nav="ingestion">Source Ingestion</button>
+                <button class="view-rail-btn" data-ops-nav="data-ops">Data Operations</button>
+                <button class="view-rail-btn" data-ops-nav="podcasts">Podcast Refresh</button>
+                <button class="view-rail-btn" data-ops-nav="health">Data Health</button>
+                <button class="view-rail-btn" data-ops-nav="cloud">Cloud Jobs</button>
+                <button class="view-rail-btn" data-ops-nav="history">History</button>
+              </div>
+              <div class="view-rail-group">
+                <div class="view-rail-title">Quick Actions</div>
+                <div class="rail-actions">
+                  <button id="refreshDataBtn">Reload Data</button>
+                  <button id="regenerateBtn" class="primary">Publish Catalog</button>
+                </div>
+              </div>
+            </aside>
+
+            <main class="view-content">
+              <div class="view-content-heading">
+                <div class="toolbar-title">Operations Hub</div>
+                <div class="toolbar-subtitle">Data management, ingestion, and maintenance</div>
+              </div>
+
+              <section class="view-content-section" data-ops-section="ingestion">
+                <div class="view-content-section-title">Source Ingestion</div>
+                <p class="design-lead" style="margin-top:0;">Add new sources or pull latest feed items.</p>
+                <div class="operations-actions">
+                  <button id="refreshFeedsBtn">Refresh Feeds</button>
+                  <button id="latestPodcastsBtn">Latest Podcasts</button>
+                  <button id="addFeedOpsBtn">Add Feed</button>
+                  <button id="addListOpsBtn">Add List</button>
+                </div>
+              </section>
+
+              <section class="view-content-section" data-ops-section="data-ops">
+                <div class="view-content-section-title">Data Operations</div>
+                <p class="design-lead" style="margin-top:0;">Run maintenance and content updates.</p>
+                <div class="operations-actions">
+                  <button id="refreshStreamingAllBtn">Refresh Streaming (All)</button>
+                  <button id="oscarAwardsBtn">Oscar Awards</button>
+                  <button id="physicalMediaBtn">Physical Media</button>
+                  <button id="dataHealthBtn">Data Health</button>
+                  <button id="dedupeBtn">Deduplicates</button>
+                  <button id="themesOpsBtn">Themes</button>
+                </div>
+              </section>
+
+              <section class="view-content-section" data-ops-section="podcasts">
+                <div class="view-content-section-title">Podcast Refresh</div>
+                <div class="podcast-controls">
+                  <select id="podcastSourceSelect"></select>
+                  <button id="podcastRunBtn">Fetch New Episodes</button>
+                </div>
+                <div id="podcastStatus" class="status-text"></div>
+              </section>
+
+              <section class="view-content-section" data-ops-section="health">
+                <div class="view-content-section-title">Data Health</div>
+                <div id="healthStatus" class="status-text">No data loaded.</div>
+                <div id="healthMetrics" class="health-metrics"></div>
+              </section>
+
+              <section class="view-content-section" data-ops-section="history">
+                <div class="view-content-section-title">History</div>
+                <p class="design-lead" style="margin-top:0;">Catalog snapshots and reversible editor changes. Restore replaces sources, movies, streaming, and source links. A safety snapshot is saved first.</p>
+                <div class="history-toolbar">
+                  <input id="historySnapshotLabel" type="text" placeholder="Snapshot label (optional)" />
+                  <button id="historySaveSnapshotBtn" class="primary" type="button">Save snapshot</button>
+                  <button id="historyReloadBtn" type="button">Reload</button>
+                </div>
+                <div id="historyStatus" class="status-text">No history loaded.</div>
+                <div class="view-content-section-title" style="margin-top:var(--space-xl);">Snapshots</div>
+                <p class="history-caption">Labeled and manual snapshots are kept. The last 40 unlabeled automatic snapshots stay; older unlabeled ones are pruned.</p>
+                <table class="movie-table">
+                  <thead>
+                    <tr>
+                      <th>When</th>
+                      <th>Label</th>
+                      <th>Trigger</th>
+                      <th>Movies</th>
+                      <th>Sources</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="historySnapshotsBody"></tbody>
+                </table>
+                <div class="view-content-section-title" style="margin-top:var(--space-xl);">Recent edits</div>
+                <p class="history-caption">Single movie and source edits can be reverted. Bulk jobs need a snapshot restore.</p>
+                <table class="movie-table">
+                  <thead>
+                    <tr>
+                      <th>When</th>
+                      <th>Action</th>
+                      <th>Detail</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyAuditBody"></tbody>
+                </table>
+              </section>
+
+              <section class="view-content-section" data-ops-section="cloud">
+                <div class="view-content-section-title">Cloud Jobs</div>
+                <p class="design-lead" style="margin-top:0;">Scheduled Min Cloud jobs for mov min and pod min. These run on the server so every app client gets the same data.</p>
+                <div class="operations-actions">
+                  <button data-cloud-job="mov.streaming.refresh">Refresh Streaming</button>
+                  <button data-cloud-job="mov.feeds.refresh">Refresh Movie Podcasts</button>
+                  <button data-cloud-job="pod.feeds.refresh">Refresh Podcast Feeds</button>
+                  <button data-cloud-job="pod.itunes.enrich">Enrich iTunes Metadata</button>
+                  <button data-cloud-job="notifications.dispatch">Dispatch Notifications</button>
+                </div>
+                <div id="cloudJobStatus" class="status-text"></div>
+                <div id="cloudHealth" class="status-text"></div>
+                <table class="movie-table" style="margin-top:16px;">
+                  <thead><tr><th>Job</th><th>Status</th><th>When</th></tr></thead>
+                  <tbody id="cloudJobsBody"></tbody>
+                </table>
+              </section>
+            </main>
+          </div>
+        </section>
+
+        <section class="admin-view" data-admin-view="design">
+          <div class="view-shell">
+            <aside class="view-rail">
+              <div class="view-rail-title">Design Playbook</div>
+              <button class="view-rail-btn is-active" data-design-nav="get-started">Get Started</button>
+              <button class="view-rail-btn" data-design-nav="foundations">Foundations</button>
+              <button class="view-rail-btn" data-design-nav="design-system">Design System</button>
+              <button class="view-rail-btn" data-design-nav="expressions">Expressions</button>
+              <button class="view-rail-btn" data-design-nav="resources">Resources</button>
+              <button class="view-rail-btn" data-design-nav="articles">Articles</button>
+            </aside>
+
+            <main class="view-content design-content" id="designContent">
+              <section class="design-section" id="design-get-started" data-design-section="get-started">
+                <div class="design-kicker">Get Started</div>
+                <h2>WatchedIt Design Playbook</h2>
+                <p class="design-lead">
+                  This section maps the app design architecture to a playbook-style system so design,
+                  engineering, and content operations share one source of truth.
+                </p>
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>System Purpose</h3>
+                    <p>Build a consistent experience across iOS and tvOS while keeping theme flexibility and accessibility.</p>
+                  </article>
+                  <article class="design-card">
+                    <h3>Platform Scope</h3>
+                    <p>Shared core is in WatchedItCore; app-specific implementation lives in iOS and tvOS target layers.</p>
+                  </article>
+                  <article class="design-card">
+                    <h3>How to Use</h3>
+                    <p>Start with Foundations, implement with Design System tokens, then validate via Expressions and Resources.</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="design-section" id="design-foundations" data-design-section="foundations">
+                <div class="design-kicker">Foundations</div>
+                <h2>Core Principles</h2>
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>Theme-Aware Semantics</h3>
+                    <ul>
+                      <li>Use semantic tokens (never hardcoded colors/fonts).</li>
+                      <li>All foreground/background tokens adapt by theme and light/dark mode.</li>
+                      <li>Headline/body text can diverge per mode for contrast and mood.</li>
+                    </ul>
+                  </article>
+                  <article class="design-card">
+                    <h3>Cross-Target Safety</h3>
+                    <ul>
+                      <li>Shared UI semantics must remain consistent across iOS and tvOS.</li>
+                      <li>Platform conditionals are for UI behavior, not data semantics.</li>
+                      <li>Design contracts rely on the same model/token definitions.</li>
+                    </ul>
+                  </article>
+                  <article class="design-card">
+                    <h3>Accessibility Baseline</h3>
+                    <ul>
+                      <li>Prefer AA/AAA contrast-friendly theme pairings.</li>
+                      <li>Use icon+label clarity for actions and status.</li>
+                      <li>Preserve readable hierarchy with typography tiers.</li>
+                    </ul>
+                  </article>
+                </div>
+              </section>
+
+              <section class="design-section" id="design-design-system" data-design-section="design-system">
+                <div class="design-kicker">Design System</div>
+                <h2>Token Architecture</h2>
+                <p class="design-lead">
+                  Each token family has a specific contract and visual language. The sections below break out
+                  each category with examples and quick visual references.
+                </p>
+
+                <div class="token-stack">
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Color Exhibit</h3>
+                      <p>Dual-mode semantic palette and component contrast samples, inspired by playbook color pairing guidance.</p>
+                    </div>
+                    <div class="token-visual token-color-exhibit">
+                      <div class="color-mode-card color-mode-dark">
+                        <div class="color-mode-title">Dark Mode</div>
+                        <div class="token-color-grid">
+                          <div class="token-swatch-card"><span class="token-swatch token-color-accent"></span><code>accent</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-background"></span><code>background</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-surface"></span><code>surface</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-headline"></span><code>headline</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-text"></span><code>textPrimary</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-border"></span><code>border</code></div>
+                        </div>
+                      </div>
+                      <div class="color-mode-card color-mode-light">
+                        <div class="color-mode-title">Light Mode</div>
+                        <div class="token-color-grid token-color-grid-light">
+                          <div class="token-swatch-card"><span class="token-swatch token-color-accent"></span><code>accent</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-background-light"></span><code>background</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-surface-light"></span><code>surface</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-headline-light"></span><code>headline</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-text-light"></span><code>textPrimary</code></div>
+                          <div class="token-swatch-card"><span class="token-swatch token-color-border-light"></span><code>border</code></div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Typography Exhibit</h3>
+                      <p>Full type ramp specimen showing display, headline, title, body, label, caption, and overline treatments.</p>
+                    </div>
+                    <div class="token-visual token-type-ramp">
+                      <div class="type-ramp-row"><span class="type-ramp-label">Display</span><span class="type-ramp-sample type-display">Things. People. Love.</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Headline</span><span class="type-ramp-sample type-headline">Movie Detail</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Title</span><span class="type-ramp-sample type-title">Latest Podcasts</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Body</span><span class="type-ramp-sample type-body">Track movies, rewatched status, and source metadata.</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Label</span><span class="type-ramp-sample type-label">Save Changes</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Caption</span><span class="type-ramp-sample type-caption">Updated 2m ago</span></div>
+                      <div class="type-ramp-row"><span class="type-ramp-label">Overline</span><span class="type-ramp-sample type-overline">DESIGN SYSTEM</span></div>
+                    </div>
+                  </article>
+
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Spacing Exhibit</h3>
+                      <p>Scale boxes visualize each spacing token dimension so layout rhythm is concrete at a glance.</p>
+                    </div>
+                    <div class="token-visual token-spacing-exhibit">
+                      <div class="spacing-box"><span class="spacing-square spacing-xs"></span><code>xs 4</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-sm"></span><code>sm 8</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-md"></span><code>md 12</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-lg"></span><code>lg 16</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-xl"></span><code>xl 24</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-xxl"></span><code>xxl 32</code></div>
+                      <div class="spacing-box"><span class="spacing-square spacing-xxxl"></span><code>xxxl 40</code></div>
+                    </div>
+                  </article>
+
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Corner Radius Exhibit</h3>
+                      <p>Radius progression demonstrates how corners scale from utility controls to pill surfaces.</p>
+                    </div>
+                    <div class="token-visual token-radius-grid">
+                      <div class="radius-chip radius-xs"><code>xs</code></div>
+                      <div class="radius-chip radius-sm"><code>sm</code></div>
+                      <div class="radius-chip radius-md"><code>md</code></div>
+                      <div class="radius-chip radius-lg"><code>lg</code></div>
+                      <div class="radius-chip radius-xl"><code>xl</code></div>
+                      <div class="radius-chip radius-round"><code>round</code></div>
+                    </div>
+                  </article>
+
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Iconography Exhibit</h3>
+                      <p>Semantic icon naming mapped to common app intents and status indicators.</p>
+                    </div>
+                    <div class="token-visual token-icon-grid">
+                      <div class="icon-chip"><span>FILM</span><code>movie</code></div>
+                      <div class="icon-chip"><span>BOOK</span><code>bookmark</code></div>
+                      <div class="icon-chip"><span>REW</span><code>rewatch</code></div>
+                      <div class="icon-chip"><span>AUD</span><code>listen</code></div>
+                      <div class="icon-chip"><span>OK</span><code>checkmark</code></div>
+                      <div class="icon-chip"><span>USR</span><code>account</code></div>
+                    </div>
+                  </article>
+
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Animation Exhibit</h3>
+                      <p>Motion tracks simulate relative timing and spring behavior for interaction feedback patterns.</p>
+                    </div>
+                    <div class="token-visual token-motion-grid">
+                      <div class="motion-row">
+                        <code>quick</code>
+                        <div class="motion-track"><span class="motion-fill motion-quick"></span></div>
+                        <small>150ms easeInOut</small>
+                      </div>
+                      <div class="motion-row">
+                        <code>standard</code>
+                        <div class="motion-track"><span class="motion-fill motion-standard"></span></div>
+                        <small>250ms easeInOut</small>
+                      </div>
+                      <div class="motion-row">
+                        <code>springQuick</code>
+                        <div class="motion-track"><span class="motion-fill motion-spring-quick"></span></div>
+                        <small>spring response 0.2</small>
+                      </div>
+                      <div class="motion-row">
+                        <code>springStandard</code>
+                        <div class="motion-track"><span class="motion-fill motion-spring-standard"></span></div>
+                        <small>spring response 0.3</small>
+                      </div>
+                    </div>
+                  </article>
+                  <article class="token-subsection">
+                    <div class="token-header">
+                      <h3>Components Exhibit</h3>
+                      <p>Canonical UI controls used throughout the app. All interactive surfaces must use these components — never raw text buttons.</p>
+                    </div>
+                    <div class="token-visual">
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">GlassCircleButton</h4>
+                        <p class="component-group-desc">Frosted-glass circular icon button — the primary button control across every screen. Used for search, close, filter, account, and all icon-action surfaces.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-glass-row">
+                            <div class="glass-demo-item">
+                              <div class="glass-circle-btn glass-circle-standard"><i data-lucide="search"></i></div>
+                              <code>standard 56pt</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="glass-circle-btn glass-circle-standard"><i data-lucide="x"></i></div>
+                              <code>close</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="glass-circle-btn glass-circle-standard glass-icon-accent"><i data-lucide="sliders-horizontal"></i></div>
+                              <code>accent color</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="glass-circle-btn glass-circle-compact"><i data-lucide="search"></i></div>
+                              <code>compact 48pt</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="glass-circle-btn glass-circle-compact"><i data-lucide="x"></i></div>
+                              <code>compact close</code>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="design-table-wrap">
+                          <table class="design-table">
+                            <thead><tr><th>Property</th><th>Standard</th><th>Compact</th></tr></thead>
+                            <tbody>
+                              <tr><td>Size</td><td>56 &times; 56 pt</td><td>48 &times; 48 pt</td></tr>
+                              <tr><td>Shape</td><td colspan="2"><code>Circle()</code></td></tr>
+                              <tr><td>Background</td><td colspan="2"><code>.thinMaterial</code></td></tr>
+                              <tr><td>Border</td><td colspan="2"><code>.white.opacity(0.28)</code>, 0.8pt</td></tr>
+                              <tr><td>Icon weight</td><td colspan="2"><code>.body.weight(.semibold)</code></td></tr>
+                              <tr><td>Default color</td><td colspan="2"><code>Color.textPrimary</code></td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">GlassCapsuleToolbar</h4>
+                        <p class="component-group-desc">Frosted-glass capsule bar grouping icon menu controls. Used as the floating filter toolbar on the main list screen.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-glass-toolbar-demo">
+                            <div class="glass-capsule-toolbar">
+                              <span class="glass-toolbar-icon"><i data-lucide="list"></i></span>
+                              <span class="glass-toolbar-icon"><i data-lucide="play"></i></span>
+                              <span class="glass-toolbar-icon glass-icon-active"><i data-lucide="drama"></i></span>
+                              <span class="glass-toolbar-icon"><i data-lucide="shield-check"></i></span>
+                            </div>
+                            <div class="glass-circle-btn glass-circle-standard"><i data-lucide="search"></i></div>
+                          </div>
+                        </div>
+                        <div class="design-table-wrap">
+                          <table class="design-table">
+                            <thead><tr><th>Property</th><th>Value</th></tr></thead>
+                            <tbody>
+                              <tr><td>Height</td><td><code>GlassControl.standardHeight</code> (56pt)</td></tr>
+                              <tr><td>Shape</td><td><code>Capsule()</code></td></tr>
+                              <tr><td>Background</td><td><code>.thinMaterial</code></td></tr>
+                              <tr><td>Border</td><td><code>.white.opacity(0.28)</code>, 0.8pt</td></tr>
+                              <tr><td>Horizontal padding</td><td><code>Spacing.md + Spacing.xs</code> (16pt)</td></tr>
+                              <tr><td>Icon spacing</td><td><code>Spacing.xl</code> (24pt) default, configurable 8–36pt</td></tr>
+                              <tr><td>Icon size</td><td><code>IconSize.md</code> (20pt)</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">GlassSearchField</h4>
+                        <p class="component-group-desc">Frosted-glass capsule search input with leading icon. Replaces the toolbar when search is active.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-glass-search-demo">
+                            <div class="glass-search-field">
+                              <span class="glass-search-icon"><i data-lucide="search"></i></span>
+                              <span class="glass-search-placeholder">Search movies</span>
+                            </div>
+                            <div class="glass-circle-btn glass-circle-standard"><i data-lucide="sliders-horizontal"></i></div>
+                            <div class="glass-circle-btn glass-circle-standard"><i data-lucide="x"></i></div>
+                          </div>
+                        </div>
+                        <div class="design-table-wrap">
+                          <table class="design-table">
+                            <thead><tr><th>Property</th><th>Value</th></tr></thead>
+                            <tbody>
+                              <tr><td>Height</td><td><code>GlassControl.standardHeight</code> (56pt) or <code>.compactHeight</code> (48pt)</td></tr>
+                              <tr><td>Shape</td><td><code>Capsule()</code></td></tr>
+                              <tr><td>Background</td><td><code>.thinMaterial</code></td></tr>
+                              <tr><td>Border</td><td><code>.white.opacity(0.28)</code>, 0.8pt</td></tr>
+                              <tr><td>Horizontal padding</td><td><code>Spacing.md + Spacing.xs</code> (16pt)</td></tr>
+                              <tr><td>Search icon</td><td><code>IconSize.sm</code> (16pt), <code>Color.textSecondary</code></td></tr>
+                              <tr><td>Text style</td><td><code>Color.textPrimary</code></td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">LiquidGlassButtonStyle</h4>
+                        <p class="component-group-desc">Detail-screen action buttons. Compact mode renders a circle; standard mode renders a rounded rectangle. Background is offset +6% brightness from the page color.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-glass-row">
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-compact"><i data-lucide="play"></i></div>
+                              <code>compact</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-compact liquid-glass-active"><i data-lucide="popcorn"></i></div>
+                              <code>active</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-compact liquid-glass-active"><i data-lucide="mic"></i></div>
+                              <code>active</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-compact"><i data-lucide="bookmark"></i></div>
+                              <code>inactive</code>
+                            </div>
+                          </div>
+                          <div class="component-glass-row" style="margin-top: 16px;">
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-standard">Open in TMDB</div>
+                              <code>standard</code>
+                            </div>
+                            <div class="glass-demo-item">
+                              <div class="liquid-glass-btn liquid-glass-standard liquid-glass-destructive">Remove</div>
+                              <code>destructive</code>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="design-table-wrap">
+                          <table class="design-table">
+                            <thead><tr><th>Property</th><th>Compact</th><th>Standard</th></tr></thead>
+                            <tbody>
+                              <tr><td>Shape</td><td><code>Circle()</code></td><td><code>RoundedRectangle(CornerRadius.lg)</code></td></tr>
+                              <tr><td>Icon frame</td><td>60 &times; 60 pt</td><td>—</td></tr>
+                              <tr><td>Padding</td><td>—</td><td>V: <code>Spacing.md</code>, H: <code>Spacing.lg</code></td></tr>
+                              <tr><td>Background</td><td colspan="2">Page background + 6% brightness offset</td></tr>
+                              <tr><td>Border</td><td colspan="2"><code>Color.borderLight</code> @ 90%, 0.8pt</td></tr>
+                              <tr><td>Press</td><td colspan="2">scale 0.94, brightness −0.06, springStandard</td></tr>
+                              <tr><td>Destructive</td><td colspan="2">Fill blends 18% <code>Color.error</code>, border <code>Color.error</code> @ 35%</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">DesignSystemIcon</h4>
+                        <p class="component-group-desc">Wrapper for SF Symbols with configurable size and optional color override. Default color: <code>Color.textPrimary</code>.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-icon-sizes">
+                            <div class="ds-icon-demo ds-icon-xs"><i data-lucide="film"></i><code>xs 12</code></div>
+                            <div class="ds-icon-demo ds-icon-sm"><i data-lucide="film"></i><code>sm 16</code></div>
+                            <div class="ds-icon-demo ds-icon-md"><i data-lucide="film"></i><code>md 20</code></div>
+                            <div class="ds-icon-demo ds-icon-lg"><i data-lucide="film"></i><code>lg 24</code></div>
+                            <div class="ds-icon-demo ds-icon-xl"><i data-lucide="film"></i><code>xl 32</code></div>
+                            <div class="ds-icon-demo ds-icon-xxl"><i data-lucide="film"></i><code>xxl 48</code></div>
+                          </div>
+                          <div class="component-icon-colors">
+                            <div class="ds-icon-demo ds-icon-lg ds-icon-color-default"><i data-lucide="bookmark"></i><code>textPrimary</code></div>
+                            <div class="ds-icon-demo ds-icon-lg ds-icon-color-accent"><i data-lucide="popcorn"></i><code>accent</code></div>
+                            <div class="ds-icon-demo ds-icon-lg ds-icon-color-success"><i data-lucide="check-circle-2"></i><code>success</code></div>
+                            <div class="ds-icon-demo ds-icon-lg ds-icon-color-error"><i data-lucide="alert-triangle"></i><code>error</code></div>
+                            <div class="ds-icon-demo ds-icon-lg ds-icon-color-warning"><i data-lucide="alert-circle"></i><code>warning</code></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">DesignSystemCard</h4>
+                        <p class="component-group-desc">Card modifier with 4 elevation levels. Background: <code>Color.surface</code>, corner radius: <code>CornerRadius.md</code> (8pt).</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="component-card-grid">
+                            <div class="ds-card ds-card-none"><div class="ds-card-label">none</div><div class="ds-card-body">No shadow</div></div>
+                            <div class="ds-card ds-card-small"><div class="ds-card-label">small</div><div class="ds-card-body">Shadow.sm</div></div>
+                            <div class="ds-card ds-card-medium"><div class="ds-card-label">medium</div><div class="ds-card-body">Shadow.md</div></div>
+                            <div class="ds-card ds-card-large"><div class="ds-card-label">large</div><div class="ds-card-body">Shadow.lg</div></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="component-group">
+                        <h4 class="component-group-title">Grouped List Style</h4>
+                        <p class="component-group-desc">Applied via <code>.designSystemGroupedListStyle()</code>. Hides scroll background, applies themed tint and separator color.</p>
+                        <div class="component-exhibit-pane component-exhibit-dark">
+                          <div class="ds-grouped-list">
+                            <div class="ds-grouped-list-section">
+                              <div class="ds-grouped-list-header">ACCOUNT</div>
+                              <div class="ds-grouped-list-card">
+                                <div class="ds-grouped-list-row">
+                                  <span class="ds-grouped-list-icon"><i data-lucide="cloud"></i></span>
+                                  <span>iCloud Sync</span>
+                                  <span class="ds-grouped-list-detail">On</span>
+                                </div>
+                                <div class="ds-grouped-list-row">
+                                  <span class="ds-grouped-list-icon"><i data-lucide="palette"></i></span>
+                                  <span>Theme</span>
+                                  <span class="ds-grouped-list-chevron"><i data-lucide="chevron-right"></i></span>
+                                </div>
+                                <div class="ds-grouped-list-row">
+                                  <span class="ds-grouped-list-icon"><i data-lucide="tv"></i></span>
+                                  <span>Streaming Services</span>
+                                  <span class="ds-grouped-list-chevron"><i data-lucide="chevron-right"></i></span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="ds-grouped-list-section">
+                              <div class="ds-grouped-list-header">DISPLAY</div>
+                              <div class="ds-grouped-list-card">
+                                <div class="ds-grouped-list-row">
+                                  <span class="ds-grouped-list-icon"><i data-lucide="grid-2x2"></i></span>
+                                  <span>Poster Size</span>
+                                  <span class="ds-grouped-list-detail">Medium</span>
+                                </div>
+                                <div class="ds-grouped-list-row">
+                                  <span class="ds-grouped-list-icon"><i data-lucide="layout-template"></i></span>
+                                  <span>Detail Layout</span>
+                                  <span class="ds-grouped-list-chevron"><i data-lucide="chevron-right"></i></span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </article>
+
+                </div>
+
+                <div class="pattern-exhibits">
+                  <h3>Pattern Exhibits (Web Simulation)</h3>
+                  <div class="pattern-grid">
+                    <article class="pattern-card">
+                      <div class="pattern-title">Primary Navigation</div>
+                      <div class="pattern-nav-rail">
+                        <button class="pattern-nav-btn active">Catalog</button>
+                        <button class="pattern-nav-btn">Operations</button>
+                        <button class="pattern-nav-btn">Design</button>
+                        <button class="pattern-nav-btn">App</button>
+                      </div>
+                    </article>
+                    <article class="pattern-card">
+                      <div class="pattern-title">Top Action Bar</div>
+                      <div class="pattern-topbar">
+                        <span class="pattern-brand">WatchedIt</span>
+                        <div class="pattern-actions">
+                          <button class="pattern-ghost">Reload</button>
+                          <button class="pattern-primary">Regenerate</button>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="pattern-card">
+                      <div class="pattern-title">Content Card + CTA</div>
+                      <div class="pattern-surface">
+                        <div class="pattern-heading">Movie Detail</div>
+                        <p>Semantic spacing, radius, typography, and action styles working together.</p>
+                        <button class="pattern-primary">Save Changes</button>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>Primitives</h3>
+                    <p>Shared primitives include grouped list styling, button styles, cards, icon view wrappers, and view extensions.</p>
+                  </article>
+                  <article class="design-card">
+                    <h3>Theme Integration</h3>
+                    <p>Tokens resolve through ThemeManager and support dark/light mode variants including background/headline tuning.</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="design-section" id="design-expressions" data-design-section="expressions">
+                <div class="design-kicker">Expressions</div>
+                <h2>Patterns in Product UI</h2>
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>Navigation Surfaces</h3>
+                    <p>List-first browsing, account actions, and persistent controls should read as one coherent pattern family.</p>
+                  </article>
+                  <article class="design-card">
+                    <h3>Content Surfaces</h3>
+                    <p>Movie cards, grouped lists, and detail views use semantic surfaces and border tokens for depth.</p>
+                  </article>
+                  <article class="design-card">
+                    <h3>Status & Actions</h3>
+                    <p>Rewatched, listened, and saved states should use iconography + color semantics from the token system.</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="design-section" id="design-resources" data-design-section="resources">
+                <div class="design-kicker">Resources</div>
+                <h2>Implementation References</h2>
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>Primary Files</h3>
+                    <ul>
+                      <li><code>WatchedIt/DesignSystem.swift</code></li>
+                      <li><code>WatchedIt/ThemeManager.swift</code></li>
+                      <li><code>WatchedIt/ThemeBackgroundModifier.swift</code></li>
+                      <li><code>WatchedIt/ThemesView.swift</code></li>
+                    </ul>
+                  </article>
+                  <article class="design-card">
+                    <h3>Process Notes</h3>
+                    <ul>
+                      <li>Use token APIs in all new SwiftUI work.</li>
+                      <li>Preview both light and dark where supported.</li>
+                      <li>Validate iOS + tvOS when touching shared UI logic.</li>
+                    </ul>
+                  </article>
+                  <article class="design-card">
+                    <h3>Admin Tooling</h3>
+                    <p>Theme Editor in this web admin remains the operational surface for preset authoring and iteration.</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="design-section" id="design-articles" data-design-section="articles">
+                <div class="design-kicker">Articles</div>
+                <h2>Playbook Notes</h2>
+                <div class="design-card-grid">
+                  <article class="design-card">
+                    <h3>Token Adoption Checklist</h3>
+                    <ul>
+                      <li>Replace hardcoded style values with semantic tokens.</li>
+                      <li>Align spacing and radius with design primitives.</li>
+                      <li>Confirm status/action icon semantics across screens.</li>
+                    </ul>
+                  </article>
+                  <article class="design-card">
+                    <h3>Theme QA Checklist</h3>
+                    <ul>
+                      <li>Contrast checks for headline/body text.</li>
+                      <li>Card and grouped-list background readability.</li>
+                      <li>Selection/pressed/disabled interactive states.</li>
+                    </ul>
+                  </article>
+                </div>
+              </section>
+            </main>
+          </div>
+        </section>
+
+        <section class="admin-view" data-admin-view="app">
+          <section class="canvas-shell" id="canvasShell">
+            <div class="canvas-viewport" id="canvasViewport">
+              <div class="canvas-surface" id="canvasSurface">
+                <div class="canvas-artboards" id="appContent">
+              <!-- Overview -->
+              <section class="canvas-artboard" id="app-overview" data-app-section="overview">
+                <div class="artboard-header">
+                  <span class="artboard-title">Overview</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Screen Reference</h3>
+                  <p>Full-fidelity documentation of every major screen in the WatchedIt iOS app.
+                  Each mockup mirrors the real SwiftUI layout, design tokens, and interaction patterns.</p>
+                </div>
+                <div class="artboard-phone-wrap">
+                <div class="app-flow-diagram">
+                  <div class="app-flow-node app-flow-root">
+                    <div class="app-flow-node-title">App Launch</div>
+                    <div class="app-flow-node-desc">WatchedItApp → CollectionsHomeView</div>
+                  </div>
+                  <div class="app-flow-arrow"><i data-lucide="arrow-right"></i></div>
+                  <div class="app-flow-branch">
+                    <div class="app-flow-node">
+                      <div class="app-flow-node-title">Collections Home</div>
+                      <div class="app-flow-node-desc">Horizontal poster rows</div>
+                    </div>
+                    <div class="app-flow-children">
+                      <div class="app-flow-child-arrow"><i data-lucide="arrow-down"></i></div>
+                      <div class="app-flow-node app-flow-leaf"><div class="app-flow-node-title">Search (sheet)</div></div>
+                      <div class="app-flow-child-arrow"><i data-lucide="arrow-down"></i></div>
+                      <div class="app-flow-node app-flow-leaf"><div class="app-flow-node-title">Movie Detail (sheet / full)</div></div>
+                      <div class="app-flow-child-arrow"><i data-lucide="arrow-down"></i></div>
+                      <div class="app-flow-node app-flow-leaf"><div class="app-flow-node-title">Account (sheet)</div></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="app-screen-grid-overview">
+                  <div class="app-thumb" data-app-jump="collections-home">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-bar"></div>
+                        <div class="app-thumb-row"></div>
+                        <div class="app-thumb-row"></div>
+                        <div class="app-thumb-row"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Collections Home</div>
+                  </div>
+                  <div class="app-thumb" data-app-jump="search">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-bar"></div>
+                        <div class="app-thumb-line"></div>
+                        <div class="app-thumb-line"></div>
+                        <div class="app-thumb-line"></div>
+                        <div class="app-thumb-line"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Search</div>
+                  </div>
+                  <div class="app-thumb" data-app-jump="movie-detail">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-backdrop-mini"></div>
+                        <div class="app-thumb-title-block"></div>
+                        <div class="app-thumb-actions-mini"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Movie Detail</div>
+                  </div>
+                  <div class="app-thumb" data-app-jump="account">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-bar"></div>
+                        <div class="app-thumb-list-item"></div>
+                        <div class="app-thumb-list-item"></div>
+                        <div class="app-thumb-list-item"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Account</div>
+                  </div>
+                  <div class="app-thumb" data-app-jump="onboarding">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-onboard-icon"></div>
+                        <div class="app-thumb-line wide"></div>
+                        <div class="app-thumb-line"></div>
+                        <div class="app-thumb-cta"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Onboarding</div>
+                  </div>
+                  <div class="app-thumb" data-app-jump="themes">
+                    <div class="app-thumb-phone">
+                      <div class="app-thumb-notch"></div>
+                      <div class="app-thumb-screen" style="background: var(--tp-bg, #0b1220);">
+                        <div class="app-thumb-bar"></div>
+                        <div class="app-thumb-theme-card"></div>
+                      </div>
+                    </div>
+                    <div class="app-thumb-label">Themes</div>
+                  </div>
+                </div>
+                </div>
+              </section>
+
+              <!-- Collections Home -->
+              <section class="canvas-artboard" id="app-collections-home" data-app-section="collections-home">
+                <div class="artboard-header">
+                  <span class="artboard-title">Collections Home</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Main Screen</h3>
+                  <p>The primary interface. A vertical feed of horizontal poster rows — one per source/list. Features a floating bottom toolbar with filter menus and search, plus a top-right account button.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Title Type Mark</strong>
+                        <p>Decorative "WatchedIt" wordmark, left-aligned, blurs as you scroll down.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>Account Button</strong>
+                        <p>Top-right circle with thin material background. Opens Account sheet.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Section Title</strong>
+                        <p><code>headlineSmall</code> font, <code>textPrimary</code> color. Tapping opens scoped search for that list.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Poster Row</strong>
+                        <p>Horizontal LazyHStack of poster cards. Size adjustable via user preference (base 100×150, scalable).</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">5</span>
+                      <div>
+                        <strong>Podcast Artwork Badges</strong>
+                        <p>For podcast sources: overlapping 24×24 rounded-rect artwork badges at bottom-leading of poster (CornerRadius.xs, HStack spacing -16).</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">6</span>
+                      <div>
+                        <strong>Floating Bottom Toolbar</strong>
+                        <p>Capsule with thin material. Contains filter menus (List, Streaming, Genre, MPAA) and search button. Minimizes on scroll.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-phone-status-bar" data-ds='{"el":"Status Bar","size":"393 × 54 pt","layout":"HStack, space-between","spacing":"padding: 14pt top, 24pt horizontal"}'>
+                          <span class="app-phone-time" data-ds='{"el":"System Time","type":"15pt semibold, SF Pro"}'>9:41</span>
+                          <span class="app-phone-account-btn" title="2. Account Button" data-ds='{"el":"Account Button","size":"56 × 56 pt","radius":"CornerRadius.round","bg":".thinMaterial","border":"0.8pt rgba(255,255,255,0.28)","icon":"IconSize.md (20pt) person.crop.circle","effect":"backdrop-filter: blur(16pt)"}'><i data-lucide="circle-user-round"></i></span>
+                        </div>
+                        <div class="app-home-content" data-ds='{"el":"Collections Content","layout":"ScrollView > LazyVStack","spacing":"bottom inset: 72pt (toolbar clearance)"}'>
+                          <div class="app-home-typemark" title="1. Title Type Mark" data-ds='{"el":"App Typemark","type":"displayMedium (28pt) bold","color":"headline","spacing":"padding-h: 24pt (inspirationLeadingPadding)"}'>WatchedIt</div>
+                          <div class="app-home-section" data-ds='{"el":"Source Section","spacing":"margin-top: Spacing.xl (24pt)"}'>
+                            <div class="app-home-section-title" title="3. Section Title" data-ds='{"el":"Section Title","type":"headlineSmall (18pt) bold","color":"textPrimary"}'>The Rewatchables</div>
+                            <div class="app-home-poster-row" title="4. Poster Row" data-ds='{"el":"Poster Row","layout":"ScrollView(.horizontal) > LazyHStack","spacing":"gap: Spacing.md (12pt), padding-h: 24pt"}'>
+                              <div class="app-poster-card" data-ds='{"el":"Poster Card","size":"160 × 240 pt (+60%)","radius":"CornerRadius.xs (4pt)","style":"PosterSizePreference +60%"}'><img src="https://image.tmdb.org/t/p/w185/kajpShbFhOdpl6yCrLezMrr9tB4.jpg" alt="Die My Love" /><div class="app-podcast-badges" title="5. Podcast Badge"><div class="app-podcast-badge" data-ds='{"el":"Podcast Badge","size":"24 × 24 pt","radius":"CornerRadius.xs (4pt)","bg":"accent α0.8","border":"1pt rgba(255,255,255,0.15)","spacing":"overlap: -16pt"}'><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></div></div></div>
+                              <div class="app-poster-card" data-ds='{"el":"Poster Card","size":"160 × 240 pt (+60%)","radius":"CornerRadius.xs (4pt)"}'><img src="https://image.tmdb.org/t/p/w185/qJ2tW6WMUDux911r6m7haRef0WH.jpg" alt="The Dark Knight" /><div class="app-podcast-badges"><div class="app-podcast-badge"><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></div></div></div>
+                              <div class="app-poster-card" data-ds='{"el":"Poster Card","size":"160 × 240 pt (+60%)","radius":"CornerRadius.xs (4pt)"}'><img src="https://image.tmdb.org/t/p/w185/6d5XOczc226jECq0LIX0siKtgHR.jpg" alt="No Country" /><div class="app-podcast-badges"><div class="app-podcast-badge"><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></div></div></div>
+                              <div class="app-poster-card" data-ds='{"el":"Poster Card","size":"160 × 240 pt (+60%)","radius":"CornerRadius.xs (4pt)"}'><img src="https://image.tmdb.org/t/p/w185/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg" alt="Goodfellas" /><div class="app-podcast-badges"><div class="app-podcast-badge"><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></div></div></div>
+                            </div>
+                          </div>
+                          <div class="app-home-section">
+                            <div class="app-home-section-title">Rotten Tomatoes Best</div>
+                            <div class="app-home-poster-row">
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/pfVua7TzzttOh3RTOuBqT7xN0oY.jpg" alt="Inherent Vice" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/wnE24UPCPQsQnbBOu4zVE2qaDNm.jpg" alt="Boogie Nights" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg" alt="Pulp Fiction" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/fa0RDkAlCec0STeMNAhPaF89q6U.jpg" alt="TWBB" /></div>
+                            </div>
+                          </div>
+                          <div class="app-home-section">
+                            <div class="app-home-section-title">IMDb Top 250</div>
+                            <div class="app-home-poster-row">
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/bCpMIywuNZeWt3i5UMLEIc0VSwM.jpg" alt="Contact" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/umSVjVdbVwtx5ryCA2QXL44Durm.jpg" alt="Heat" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/nRwDPfYUzzzUQarfMxvPlasxzpL.jpg" alt="Happy Gilmore 2" /></div>
+                              <div class="app-poster-card"><img src="https://image.tmdb.org/t/p/w185/gM5ql3BKYmHG3WtZ0buKXN7xY8O.jpg" alt="RoboCop" /></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="app-floating-toolbar" title="6. Floating Bottom Toolbar" data-ds='{"el":"Custom Floating Toolbar","layout":"HStack, safeAreaInset(bottom)","spacing":"bottom: Spacing.sm (8pt), horizontal: Spacing.lg (16pt), gap: Spacing.sm (8pt)"}'>
+                          <div class="app-toolbar-filters" data-ds='{"el":"Filter Capsule","size":"auto × 56 pt","radius":"CornerRadius.round (capsule)","bg":".thinMaterial","border":"0.8pt rgba(255,255,255,0.28)","spacing":"padding-h: 16pt, icon gap: 24pt","effect":"backdrop-filter: blur(16pt)"}'>
+                            <span class="app-toolbar-filter-icon" data-ds='{"el":"Filter Icon","icon":"IconSize.md (20pt) line.3.horizontal.decrease.circle","color":"textPrimary α0.75"}'><i data-lucide="sliders-horizontal"></i></span>
+                            <span class="app-toolbar-filter-icon" data-ds='{"el":"Filter Icon","icon":"IconSize.md (20pt)"}'><i data-lucide="play"></i></span>
+                            <span class="app-toolbar-filter-icon" data-ds='{"el":"Filter Icon","icon":"IconSize.md (20pt)"}'><i data-lucide="drama"></i></span>
+                            <span class="app-toolbar-filter-icon" data-ds='{"el":"Filter Icon","icon":"IconSize.md (20pt)"}'><i data-lucide="shield-check"></i></span>
+                          </div>
+                          <div class="app-toolbar-search-btn" data-ds='{"el":"Search Button","size":"56 × 56 pt","radius":"CornerRadius.round","bg":".thinMaterial","border":"0.8pt rgba(255,255,255,0.28)","icon":"IconSize.md (20pt) magnifyingglass","effect":"backdrop-filter: blur(16pt)"}'><i data-lucide="search"></i></div>
+                        </div>
+                        <div class="app-system-tabbar">
+                          <span class="app-tabbar-item"><i data-lucide="sliders-horizontal"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="play"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="film"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="star"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="search"></i></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="canvas-artboard" id="app-search" data-app-section="search">
+                <div class="artboard-header">
+                  <span class="artboard-title">Search</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Search & Filter</h3>
+                  <p>Presented as a sheet from the home screen. Full-text search over all movies with
+                  inline filter tokens, result rows with poster thumbnails, and floating search/filter controls.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Drag Handle</strong>
+                        <p>Centered capsule (36×5pt) at top. Swipe down to dismiss the search sheet.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>Filter Tokens</strong>
+                        <p>Horizontal scroll of active filter text in <code>headlineSmall</code> with accent color. No pill background — plain text. Tappable to clear.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Search Result Row</strong>
+                        <p>50×74 poster thumbnail, title (headlineSmall), metadata line, optional sources. Rounded rect background.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Status Icons</strong>
+                        <p>Trailing circle-fill icons (listenCircleFill, rewatchCircleFill, bookmarkCircleFill) all in accent color.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">5</span>
+                      <div>
+                        <strong>Floating Search Controls</strong>
+                        <p>Bottom capsule with filter menus, search text field, and close button. Two layout modes: expanded and compact.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-search-handle" title="1. Drag Handle" data-ds='{"el":"Sheet Drag Handle","size":"36 × 5 pt","radius":"CornerRadius.round","bg":"rgba(179,186,199,0.35)"}'></div>
+                        <div class="app-search-tokens" title="2. Filter Tokens" data-ds='{"el":"Filter Tokens Row","layout":"ScrollView(.horizontal)","spacing":"padding: 8pt 16pt 12pt 24pt"}'>
+                          <span class="app-search-token" data-ds='{"el":"Active Filter Token","type":"headlineSmall (18pt) bold","color":"accent α0.9"}'>Drama</span>
+                          <span class="app-search-token" data-ds='{"el":"Active Filter Token","type":"headlineSmall (18pt) bold","color":"accent α0.9"}'>2024</span>
+                        </div>
+                        <div class="app-search-results" data-ds='{"el":"Search Results List","layout":"List","spacing":"padding-h: Spacing.lg (16pt)"}'>
+                          <div class="app-search-row" title="3. Search Result Row" data-ds='{"el":"Search Result Row","layout":"HStack","spacing":"padding: Spacing.sm (8pt), gap: Spacing.md (12pt)","radius":"CornerRadius.md (8pt)"}'>
+                            <img class="app-search-thumb" src="https://image.tmdb.org/t/p/w92/kajpShbFhOdpl6yCrLezMrr9tB4.jpg" alt="" data-ds='{"el":"Result Poster","size":"50 × 74 pt","radius":"CornerRadius.sm (6pt)"}' />
+                            <div class="app-search-row-text">
+                              <div class="app-search-row-title" data-ds='{"el":"Movie Title","type":"headlineSmall (18pt) bold","color":"textPrimary"}'>Die My Love</div>
+                              <div class="app-search-row-meta" data-ds='{"el":"Metadata","type":"bodySmall (15pt)","color":"textSecondary α0.65"}'>R&nbsp;&nbsp;2025</div>
+                              <div class="app-search-row-source" data-ds='{"el":"Source Label","type":"bodySmall (15pt)","color":"textSecondary α0.55"}'>The Rewatchables</div>
+                            </div>
+                            <div class="app-search-row-icons" title="4. Status Icons" data-ds='{"el":"Status Icons Row","layout":"HStack","spacing":"gap: Spacing.sm (8pt)"}'>
+                              <span class="app-status-icon listened" data-ds='{"el":"Status Icon (Listened)","size":"24 × 24 pt","radius":"CornerRadius.round","bg":"accent α0.9","icon":"12pt microphone.circle.fill"}'><i data-lucide="mic"></i></span>
+                              <span class="app-status-icon rewatched" data-ds='{"el":"Status Icon (Rewatched)","size":"24 × 24 pt","radius":"CornerRadius.round","bg":"accent α0.9","icon":"12pt popcorn.circle.fill"}'><i data-lucide="popcorn"></i></span>
+                            </div>
+                          </div>
+                          <div class="app-search-row">
+                            <img class="app-search-thumb" src="https://image.tmdb.org/t/p/w92/qJ2tW6WMUDux911r6m7haRef0WH.jpg" alt="" />
+                            <div class="app-search-row-text">
+                              <div class="app-search-row-title">The Dark Knight</div>
+                              <div class="app-search-row-meta">PG-13&nbsp;&nbsp;2008</div>
+                              <div class="app-search-row-source">The Rewatchables, IMDb</div>
+                            </div>
+                            <div class="app-search-row-icons">
+                              <span class="app-status-icon rewatched"><i data-lucide="popcorn"></i></span>
+                            </div>
+                          </div>
+                          <div class="app-search-row">
+                            <img class="app-search-thumb" src="https://image.tmdb.org/t/p/w92/6d5XOczc226jECq0LIX0siKtgHR.jpg" alt="" />
+                            <div class="app-search-row-text">
+                              <div class="app-search-row-title">No Country for Old Men</div>
+                              <div class="app-search-row-meta">R&nbsp;&nbsp;2007</div>
+                              <div class="app-search-row-source">The Rewatchables</div>
+                            </div>
+                            <div class="app-search-row-icons">
+                              <span class="app-status-icon listened"><i data-lucide="mic"></i></span>
+                            </div>
+                          </div>
+                          <div class="app-search-row">
+                            <img class="app-search-thumb" src="https://image.tmdb.org/t/p/w92/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg" alt="" />
+                            <div class="app-search-row-text">
+                              <div class="app-search-row-title">Goodfellas</div>
+                              <div class="app-search-row-meta">R&nbsp;&nbsp;1990</div>
+                              <div class="app-search-row-source">The Rewatchables, AFI</div>
+                            </div>
+                            <div class="app-search-row-icons">
+                              <span class="app-status-icon saved"><i data-lucide="bookmark"></i></span>
+                            </div>
+                          </div>
+                          <div class="app-search-row">
+                            <img class="app-search-thumb" src="https://image.tmdb.org/t/p/w92/pfVua7TzzttOh3RTOuBqT7xN0oY.jpg" alt="" />
+                            <div class="app-search-row-text">
+                              <div class="app-search-row-title">Inherent Vice</div>
+                              <div class="app-search-row-meta">R&nbsp;&nbsp;2014</div>
+                            </div>
+                            <div class="app-search-row-icons"></div>
+                          </div>
+                        </div>
+                        <div class="app-search-floating-bar" title="5. Floating Search Controls" data-ds='{"el":"Floating Search Controls","layout":"HStack, safeAreaInset(bottom)","spacing":"bottom: 8pt, horizontal: 16pt, gap: 8pt"}'>
+                          <div class="app-search-bar-filters" data-ds='{"el":"Filter Capsule","size":"auto × 56 pt","radius":"CornerRadius.round","bg":".thinMaterial","effect":"backdrop-filter: blur(16pt)"}'>
+                            <span class="app-toolbar-filter-icon"><i data-lucide="sliders-horizontal"></i></span>
+                            <span class="app-toolbar-filter-icon"><i data-lucide="drama"></i></span>
+                          </div>
+                          <div class="app-search-bar-input" data-ds='{"el":"Search Input Capsule","size":"flex × 56 pt","radius":"CornerRadius.round","bg":".thinMaterial","type":"bodyMedium (16pt)","effect":"backdrop-filter: blur(16pt)"}'>Search movies…</div>
+                          <div class="app-search-bar-close" data-ds='{"el":"Close Button","size":"56 × 56 pt","radius":"CornerRadius.round","bg":".thinMaterial α0.6","icon":"xmark.circle.fill"}'><i data-lucide="x"></i></div>
+                        </div>
+                        <div class="app-system-tabbar">
+                          <span class="app-tabbar-item"><i data-lucide="sliders-horizontal"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="play"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="film"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="star"></i></span>
+                          <span class="app-tabbar-item"><i data-lucide="search"></i></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Movie Detail -->
+              <section class="canvas-artboard" id="app-movie-detail" data-app-section="movie-detail">
+                <div class="artboard-header">
+                  <span class="artboard-title">Movie Detail</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Detail View</h3>
+                  <p>Presented as a sheet or full-screen cover. Multiple header layout styles available.
+                  Features liquid-glass action buttons, cast horizontal scroll, and source cards.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Backdrop / Hero Header</strong>
+                        <p>Multiple layout styles: classic, compact, split, poster focus, cinematic. Configurable in settings.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>Title Block</strong>
+                        <p>displayLarge font, headline color. Below: MPAA pill, year, podcast artwork chips.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Action Row</strong>
+                        <p>60×60 circular buttons with LiquidGlassButtonStyle: Play/Trailer, Rewatched, Listened, Saved.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Genre Links</strong>
+                        <p>Horizontal scroll of tappable genre text. Opens scoped search.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">5</span>
+                      <div>
+                        <strong>Overview</strong>
+                        <p>Body text in textSecondary color.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">6</span>
+                      <div>
+                        <strong>Cast Scroll</strong>
+                        <p>Horizontal scroll of CastMemberCard: ~96pt circle headshot, name, character name.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">7</span>
+                      <div>
+                        <strong>Sources & Lists</strong>
+                        <p>Vertical list of SourceContentCardView: source name, episode date, description.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase app-phone-showcase-duo">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen app-detail-screen" style="background: var(--phone-bg);">
+                        <div class="app-detail-backdrop" title="1. Backdrop" data-ds='{"el":"Backdrop Image","size":"393 × 250 pt","style":"classicBackdropHeight (250pt)","effect":"bottom gradient overlay 60%"}'>
+                          <img src="https://image.tmdb.org/t/p/w780/dEkFlZzj2cb5F7SShvqkL54E4lr.jpg" alt="Die My Love backdrop" />
+                        </div>
+                        <div class="app-detail-poster-focus-hero">
+                          <img src="https://image.tmdb.org/t/p/w500/kajpShbFhOdpl6yCrLezMrr9tB4.jpg" alt="Die My Love poster" />
+                          <div class="poster-focus-fade"></div>
+                        </div>
+                        <div class="app-detail-body" data-ds='{"el":"Detail Body","layout":"VStack(spacing: Spacing.xl)","spacing":"padding: 0 16pt 24pt"}'>
+                          <div class="app-detail-title" title="2. Title Block" data-ds='{"el":"Movie Title","type":"displayLarge (34pt) bold","color":"headline"}'>Die My Love</div>
+                          <div class="app-detail-subtitle" data-ds='{"el":"Subtitle Row","layout":"HStack","spacing":"gap: Spacing.md (12pt), margin-top: Spacing.sm (8pt)"}'>
+                            <span class="app-detail-podcast-artwork" data-ds='{"el":"Podcast Artwork","size":"24 × 24 pt","radius":"CornerRadius.xs (4pt)","bg":"surface","border":"0.5pt rgba(255,255,255,0.15)"}'><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></span>
+                            <span class="app-mpaa-pill" data-ds='{"el":"MPAA Rating Pill","type":"labelMedium (14pt) bold","radius":"CornerRadius.sm (6pt)","bg":"accent α0.15","border":"0.5pt accent α0.3","spacing":"padding: 4pt 8pt"}'>R</span>
+                            <span class="app-detail-year" data-ds='{"el":"Release Year","type":"titleMedium (18pt)","color":"textSecondary α0.65"}'>2025</span>
+                          </div>
+                          <div class="app-detail-actions" title="3. Action Row" data-ds='{"el":"Action Buttons Row","layout":"HStack","spacing":"gap: Spacing.lg (16pt), margin-top: Spacing.xl (24pt)"}'>
+                            <div class="app-action-btn" data-ds='{"el":"Play Button","size":"60 × 60 pt","radius":"CornerRadius.round","bg":"rgba(17,23,38,0.95) / thinMaterial","border":"0.8pt textSecondary α0.35","icon":"IconSize.lg (24pt) play.fill","style":"LiquidGlassButtonStyle (compact)"}'><i data-lucide="play"></i></div>
+                            <div class="app-action-btn active" data-ds='{"el":"Rewatched Button (active)","size":"60 × 60 pt","radius":"CornerRadius.round","icon":"IconSize.lg (24pt) popcorn.fill","color":"secondaryAccent / accent","style":"LiquidGlassButtonStyle (compact)"}'><i data-lucide="popcorn"></i></div>
+                            <div class="app-action-btn active" data-ds='{"el":"Listened Button (active)","size":"60 × 60 pt","radius":"CornerRadius.round","icon":"IconSize.lg (24pt) microphone.fill","style":"LiquidGlassButtonStyle (compact)"}'><i data-lucide="mic"></i></div>
+                            <div class="app-action-btn" data-ds='{"el":"Save Button","size":"60 × 60 pt","radius":"CornerRadius.round","icon":"IconSize.lg (24pt) bookmark","style":"LiquidGlassButtonStyle (compact)"}'><i data-lucide="bookmark"></i></div>
+                          </div>
+                          <div class="app-detail-pf-meta" style="display:none;" data-ds='{"el":"Full-Bleed Metadata","layout":"HStack","spacing":"gap: Spacing.md (12pt)"}'>
+                            <span class="app-detail-podcast-artwork"><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="" /></span>
+                            <span class="app-mpaa-pill">R</span>
+                            <span class="app-detail-year">2025</span>
+                          </div>
+                          <div class="app-detail-genres" title="4. Genre Links" data-ds='{"el":"Genre Tags","type":"bodyMedium (16pt) medium","color":"textPrimary α0.7","layout":"ScrollView(.horizontal) > HStack","spacing":"gap: Spacing.md (12pt), margin-top: Spacing.xl (24pt)"}'>
+                            <span>Drama</span>
+                            <span>Thriller</span>
+                          </div>
+                          <div class="app-detail-overview" title="5. Overview" data-ds='{"el":"Overview Text","type":"bodyMedium (16pt)","color":"textSecondary","spacing":"lineSpacing: Spacing.xs (4pt), margin-top: Spacing.xl (24pt)"}'>
+                            After inheriting a remote Montana house, Jackson moves there from New York with his partner Grace, and the couple soon welcome a child. As Jackson becomes increasingly absent and rural isolation sets in, Grace struggles with loneliness.
+                          </div>
+                          <div class="app-detail-credits" data-ds='{"el":"Credits Section","layout":"VStack(spacing: Spacing.lg)","spacing":"margin-top: Spacing.xl (24pt)"}'>
+                            <div class="app-detail-credit-label" data-ds='{"el":"Credit Label","type":"labelMedium (14pt) semibold","color":"textSecondary"}'>Director</div>
+                            <div class="app-detail-credit-value" data-ds='{"el":"Credit Value","type":"bodyMedium (16pt) semibold","color":"textPrimary"}'>Lynne Ramsay</div>
+                          </div>
+                          <div class="app-detail-cast-section" title="6. Cast Scroll" data-ds='{"el":"Cast Section","spacing":"margin-top: Spacing.lg (16pt)"}'>
+                            <div class="app-detail-credit-label">Cast</div>
+                            <div class="app-detail-cast-row" data-ds='{"el":"Cast Scroll Row","layout":"ScrollView(.horizontal) > HStack","spacing":"gap: Spacing.lg (16pt)"}'>
+                              <div class="app-cast-card" data-ds='{"el":"Cast Member Card","size":"100pt wide","layout":"VStack, center","spacing":"spacing: Spacing.sm (8pt)"}'><div class="app-cast-photo" data-ds='{"el":"Cast Photo","size":"96 × 96 pt","radius":"CornerRadius.round (circle)","bg":"surface"}'><img src="https://image.tmdb.org/t/p/w185/mDKMsjOMytyBiy7MHNZTa7gp7wj.jpg" alt="Jennifer Lawrence" /></div><div class="app-cast-name" data-ds='{"el":"Cast Name","type":"captionMedium (12pt) medium","color":"textPrimary"}'>Jennifer Lawrence</div><div class="app-cast-char" data-ds='{"el":"Character","type":"captionSmall (11pt)","color":"textSecondary"}'>Grace</div></div>
+                              <div class="app-cast-card"><div class="app-cast-photo"><img src="https://image.tmdb.org/t/p/w185/6RVxNlNmc0DIfZzaJKCJM43If3M.jpg" alt="Robert Pattinson" /></div><div class="app-cast-name">Robert Pattinson</div><div class="app-cast-char">Jackson</div></div>
+                              <div class="app-cast-card"><div class="app-cast-photo"><img src="https://image.tmdb.org/t/p/w185/x3k0HCpMNqEtVf2VKQrSCol1ia2.jpg" alt="LaKeith Stanfield" /></div><div class="app-cast-name">LaKeith Stanfield</div><div class="app-cast-char">Obie</div></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen app-detail-screen" style="background: var(--phone-bg);">
+                        <div class="app-detail-body app-detail-body-sources" title="7. Sources" data-ds='{"el":"Sources Section","layout":"VStack(spacing: Spacing.xl)","spacing":"padding-top: Spacing.xl (24pt)"}'>
+                          <div class="app-detail-credit-label" style="margin-top: 8px;" data-ds='{"el":"Section Label","type":"labelMedium (14pt) semibold","color":"textSecondary"}'>Sources & Lists</div>
+                          <div class="app-source-card" data-ds='{"el":"Source Entry","layout":"VStack","spacing":"gap: Spacing.md (12pt), margin-top: 12pt"}'>
+                            <div class="app-source-card-header" data-ds='{"el":"Source Header","layout":"HStack(top)","spacing":"gap: Spacing.md (12pt)"}'>
+                              <div class="app-source-card-icon" data-ds='{"el":"Source Artwork","size":"40 × 40 pt","radius":"CornerRadius.xs (4pt)","bg":"surface","border":"0.5pt rgba(255,255,255,0.15)"}'><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d0/b2/86/d0b286b1-c111-4346-18ab-8c1632551a41/mza_18001309740433796361.jpg/100x100bb.jpg" alt="The Rewatchables" /></div>
+                              <div>
+                                <div class="app-source-card-title" data-ds='{"el":"Source Title","type":"headlineSmall (18pt) bold","color":"textPrimary"}'>The Rewatchables</div>
+                                <div class="app-source-card-date" data-ds='{"el":"Episode Date","type":"captionMedium (12pt)","color":"textSecondary α0.5"}'>March 12, 2025</div>
+                              </div>
+                            </div>
+                            <div class="app-source-card-desc" data-ds='{"el":"Episode Description","type":"captionMedium (12pt)","color":"textSecondary α0.5","spacing":"padding-left: 52pt (icon+gap)"}'>Bill Simmons, Chris Ryan, and Sean Fennessey discuss Die My Love and whether it qualifies as a rewatchable.</div>
+                          </div>
+                          <div class="app-source-card">
+                            <div class="app-source-card-header">
+                              <div class="app-source-card-icon"><img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/73/12/f9/7312f903-6bdd-344f-5f5f-ccded1d6a6b9/mza_265011236225794238.jpg/100x100bb.jpg" alt="The Big Picture" /></div>
+                              <div>
+                                <div class="app-source-card-title">The Big Picture</div>
+                                <div class="app-source-card-date">March 14, 2025</div>
+                              </div>
+                            </div>
+                            <div class="app-source-card-desc">Sean Fennessey and Amanda Dobbins review Lynne Ramsay's latest feature.</div>
+                          </div>
+                          <div class="app-detail-credit-label" style="margin-top: 16px;">Academy Awards</div>
+                          <div class="app-awards-card" data-ds='{"el":"Awards Section","spacing":"margin-top: Spacing.xl (24pt)"}'>
+                            <div class="app-award-row" data-ds='{"el":"Award Row","layout":"HStack","spacing":"gap: Spacing.md (12pt), padding: Spacing.md (12pt)","radius":"CornerRadius.md (8pt)","bg":"surface α0.06","border":"0.5pt borderLight"}'><div class="app-award-circle win" data-ds='{"el":"Win Icon Circle","size":"48 × 48 pt","radius":"CornerRadius.round","bg":"accent α0.15"}'><span class="app-award-trophy"><i data-lucide="trophy"></i></span></div><div class="app-award-text" data-ds='{"el":"Award Text","type":"bodySmall (15pt) semibold","color":"textPrimary α0.8"}'>1<small>Oscar Win</small></div></div>
+                            <div class="app-award-row"><div class="app-award-circle nom" data-ds='{"el":"Nomination Icon Circle","size":"48 × 48 pt","radius":"CornerRadius.round","bg":"surface α0.1"}'><span class="app-award-trophy"><i data-lucide="star"></i></span></div><div class="app-award-text">3<small>Oscar Nominations</small></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Account -->
+              <section class="canvas-artboard" id="app-account" data-app-section="account">
+                <div class="artboard-header">
+                  <span class="artboard-title">Account</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Settings Sheet</h3>
+                  <p>Grouped list presented as a sheet from the home screen. Contains iCloud status,
+                  preferences links, catalog management, and appearance customization.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Navigation Bar</strong>
+                        <p>Inline title "Account" with leading xmark dismiss. NavigationView with <code>.insetGrouped</code> list style.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>iCloud Section</strong>
+                        <p>Shows sync status note and last sync time.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Preferences</strong>
+                        <p>NavigationLinks: Streaming Services, Podcast App, Lists. Each opens a sub-settings view.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Appearance</strong>
+                        <p>Theme, poster size, toolbar style, search bar style, detail layout, and more.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-account-navbar" title="1. Navigation Bar" data-ds='{"el":"Sheet Navigation Bar","size":"393 × 44 pt","layout":"HStack, space-between","spacing":"padding-h: Spacing.lg (16pt)","border":"0.5pt bottom, borderLight"}'>
+                          <span class="app-account-close" data-ds='{"el":"Dismiss Button","type":"17pt system","icon":"xmark"}'><i data-lucide="x"></i></span>
+                          <span class="app-account-title" data-ds='{"el":"Nav Title","type":"17pt bold (system inline title)"}'>Account</span>
+                          <span style="width: 16px;"></span>
+                        </div>
+                        <div class="app-account-content" data-ds='{"el":"Account Content","layout":"List(.insetGrouped)","spacing":"padding-h: Spacing.lg (16pt)"}'>
+                          <div class="app-account-section" title="2. iCloud Section" data-ds='{"el":"List Section","spacing":"margin-top: Spacing.xl (24pt)"}'>
+                            <div class="app-account-section-header" data-ds='{"el":"Section Header","type":"captionMedium (12pt) semibold uppercase","color":"textSecondary α0.45","spacing":"padding-left: Spacing.lg (16pt)"}'>iCloud</div>
+                            <div class="app-account-card" data-ds='{"el":"Grouped List Card","radius":"10pt (iOS insetGrouped)","bg":"rgba(255,255,255,0.035)"}'>
+                              <div class="app-account-row" data-ds='{"el":"List Row","layout":"HStack","spacing":"padding: 11pt 16pt, gap: Spacing.md (12pt)","border":"0.5pt bottom, borderLight α0.08"}'>
+                                <span class="app-account-row-icon" data-ds='{"el":"Row Icon","icon":"IconSize.md (20pt)","size":"24pt wide container"}'><i data-lucide="cloud"></i></span>
+                                <span>Sync enabled</span>
+                                <span class="app-account-row-detail" data-ds='{"el":"Detail Label","type":"bodySmall (15pt)","color":"textSecondary α0.45"}'>Last: 2 min ago</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="app-account-section" title="3. Preferences">
+                            <div class="app-account-section-header">Preferences</div>
+                            <div class="app-account-card">
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="tv"></i></span>
+                                <span>Streaming Services</span>
+                                <span class="app-account-row-chevron"><i data-lucide="chevron-right"></i></span>
+                              </div>
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="podcast"></i></span>
+                                <span>Podcast App</span>
+                                <span class="app-account-row-chevron"><i data-lucide="chevron-right"></i></span>
+                              </div>
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="list"></i></span>
+                                <span>Lists</span>
+                                <span class="app-account-row-chevron"><i data-lucide="chevron-right"></i></span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="app-account-section">
+                            <div class="app-account-section-header">Catalog</div>
+                            <div class="app-account-card">
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="refresh-cw"></i></span>
+                                <span>Refresh Catalog</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="app-account-section" title="4. Appearance">
+                            <div class="app-account-section-header">Appearance</div>
+                            <div class="app-account-card">
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="palette"></i></span>
+                                <span>Theme</span>
+                                <span class="app-account-row-chevron"><i data-lucide="chevron-right"></i></span>
+                              </div>
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="grid-2x2"></i></span>
+                                <span>Poster Size</span>
+                                <span class="app-account-row-detail">+60%</span>
+                              </div>
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="panel-bottom"></i></span>
+                                <span>Toolbar Style</span>
+                                <span class="app-account-row-detail">Floating</span>
+                              </div>
+                              <div class="app-account-row">
+                                <span class="app-account-row-icon"><i data-lucide="layout-template"></i></span>
+                                <span>Detail Layout</span>
+                                <span class="app-account-row-chevron"><i data-lucide="chevron-right"></i></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Onboarding -->
+              <section class="canvas-artboard" id="app-onboarding" data-app-section="onboarding">
+                <div class="artboard-header">
+                  <span class="artboard-title">Onboarding</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>New User Experience</h3>
+                  <p>Full-screen pager overlay shown on first launch until all steps are completed.
+                  Guides users through streaming, podcast app, and list configuration.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Feature Icon + Title</strong>
+                        <p>Large accent-colored SF Symbol icon with headline label. Identifies the current step.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>Step Content</strong>
+                        <p>Scrollable copy explaining the feature. Bullets or paragraphs in body font.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Primary CTA</strong>
+                        <p>Full-width accent-colored rounded rect button. On completed steps: circular checkmark.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Page Dots</strong>
+                        <p>Standard page indicator dots below the CTA. Shows progress through steps.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase app-phone-showcase-duo">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-onboard-content" data-ds='{"el":"Onboarding Page","layout":"VStack, full height","spacing":"3-zone: hero 33%, body flex, footer fixed"}'>
+                          <div class="app-onboard-hero" title="1. Feature Icon + Title" data-ds='{"el":"Hero Zone","layout":"VStack, bottom-aligned","size":"33% of screen height","spacing":"padding: 0 16pt 16pt"}'>
+                            <div class="app-onboard-hero-inner" data-ds='{"el":"Icon + Title","layout":"HStack","spacing":"gap: Spacing.sm (8pt)"}'>
+                              <div class="app-onboard-icon" style="color: rgba(70,112,255,0.9);" data-ds='{"el":"Feature Icon","icon":"IconSize.xl (32pt)","color":"accent"}'><i data-lucide="tv"></i></div>
+                              <div class="app-onboard-title" data-ds='{"el":"Feature Title","type":"headlineMedium (20pt) bold","color":"textPrimary"}'>Streaming Services</div>
+                            </div>
+                          </div>
+                          <div class="app-onboard-body" title="2. Step Content" data-ds='{"el":"Body Text","type":"17pt (bodyLarge)","color":"textPrimary","spacing":"padding: 12pt 16pt"}'>
+                            <p>Choose your preferred streaming services to see where movies are available.</p>
+                            <p>Reorder them by priority — your top pick shows first on every movie.</p>
+                          </div>
+                          <div class="app-onboard-footer" data-ds='{"el":"Footer Zone","spacing":"padding: 0 16pt 16pt"}'>
+                            <div class="app-onboard-cta" title="3. Primary CTA" data-ds='{"el":"CTA Button","type":"labelLarge (15pt) semibold","radius":"CornerRadius.md (8pt)","bg":"accent","spacing":"padding-v: Spacing.md (12pt)"}'>Configure Streaming</div>
+                            <div class="app-onboard-dots" title="4. Page Dots" data-ds='{"el":"Page Indicator","layout":"HStack","spacing":"gap: Spacing.sm (8pt)"}'>
+                              <span class="app-dot active" data-ds='{"el":"Page Dot (active)","size":"8 × 8 pt","radius":"CornerRadius.round","bg":"textPrimary"}'></span>
+                              <span class="app-dot" data-ds='{"el":"Page Dot","size":"8 × 8 pt","radius":"CornerRadius.round","bg":"textSecondary α0.3"}'></span>
+                              <span class="app-dot"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-onboard-content">
+                          <div class="app-onboard-hero">
+                            <div class="app-onboard-hero-inner">
+                              <div class="app-onboard-icon" style="color: rgba(70,112,255,0.9);"><i data-lucide="list"></i></div>
+                              <div class="app-onboard-title">Pick Your Lists</div>
+                            </div>
+                          </div>
+                          <div class="app-onboard-body">
+                            <p>Select which curated lists and podcasts appear on your home screen.</p>
+                            <p>You can always change this later in Account settings.</p>
+                          </div>
+                          <div class="app-onboard-footer">
+                            <div class="app-onboard-cta-done" title="3. Done Checkmark" data-ds='{"el":"Done Checkmark","size":"56 × 56 pt","radius":"CornerRadius.round","bg":"white α0.96","icon":"IconSize.lg (24pt) checkmark","color":"accent"}'><i data-lucide="check"></i></div>
+                            <div class="app-onboard-dots">
+                              <span class="app-dot"></span>
+                              <span class="app-dot"></span>
+                              <span class="app-dot active"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Themes -->
+              <section class="canvas-artboard" id="app-themes" data-app-section="themes">
+                <div class="artboard-header">
+                  <span class="artboard-title">Themes</span>
+                  <button class="artboard-info-btn" onclick="toggleArtboardInfo(this)"><i data-lucide="info"></i></button>
+                </div>
+                <div class="artboard-info-panel">
+                  <h3>Theme Selector</h3>
+                  <p>Presented from Account settings. TabView with page style showing large preview cards.
+                  Supports built-in and custom themes. Custom themes can be created and edited.</p>
+                  <div class="artboard-annotations">
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">1</span>
+                      <div>
+                        <strong>Navigation Bar</strong>
+                        <p>Title "Themes", trailing + button to create custom, checkmark done button.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">2</span>
+                      <div>
+                        <strong>Theme Preview Card</strong>
+                        <p>Large rounded card (~440pt height) showing gradient, shadow, and sample text. Paged via TabView.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">3</span>
+                      <div>
+                        <strong>Page Dots</strong>
+                        <p>Standard page control dots below the card carousel.</p>
+                      </div>
+                    </div>
+                    <div class="app-annotation-item">
+                      <span class="app-annotation-num">4</span>
+                      <div>
+                        <strong>Edit / Delete</strong>
+                        <p>For custom themes: Edit and Delete buttons appear below the card.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="artboard-phone-wrap">
+                  <div class="app-phone-showcase">
+                    <div class="app-phone">
+                      <div class="app-phone-notch"></div>
+                      <div class="app-phone-screen" style="background: var(--phone-bg);">
+                        <div class="app-themes-navbar" title="1. Navigation Bar" data-ds='{"el":"Sheet Navigation Bar","size":"393 × 44 pt","layout":"HStack, space-between","spacing":"padding-h: Spacing.lg (16pt)","border":"0.5pt bottom, borderLight"}'>
+                          <span class="app-themes-plus" data-ds='{"el":"Add Theme Button","type":"17pt system","icon":"plus","color":"accent"}'><i data-lucide="plus"></i></span>
+                          <span class="app-themes-title" data-ds='{"el":"Nav Title","type":"17pt bold (system inline title)"}'>Themes</span>
+                          <span class="app-themes-done" data-ds='{"el":"Done Button","icon":"checkmark","color":"accent"}'><i data-lucide="check"></i></span>
+                        </div>
+                        <div class="app-themes-carousel" title="2. Theme Preview Card" data-ds='{"el":"Theme Carousel","layout":"TabView(.page)","spacing":"padding: 16pt 24pt 0"}'>
+                          <div class="app-theme-card" style="background: linear-gradient(145deg, #1a1040 0%, #0a0818 50%, #180828 100%);" data-ds='{"el":"Theme Preview Card","radius":"CornerRadius.xl (16pt)","spacing":"padding: Spacing.lg (16pt)","border":"3pt accent α0.6","effect":"shadow: 0 6pt 16pt accent α0.15"}'>
+                            <div class="app-theme-card-selected-badge" data-ds='{"el":"Selected Badge","type":"labelSmall (13pt) bold","radius":"CornerRadius.round","bg":"accent","spacing":"padding: 4pt 8pt"}'><i data-lucide="check"></i></div>
+                            <div class="app-theme-card-name" style="color: #e8d4ff;" data-ds='{"el":"Theme Name","type":"labelLarge (15pt) bold","color":"headline"}'>Midnight</div>
+                            <div class="app-theme-card-skeleton">
+                              <div class="app-theme-card-skeleton-line" style="width: 75%; background: rgba(232,212,255,0.2);"></div>
+                              <div class="app-theme-card-skeleton-line" style="width: 55%; background: rgba(232,212,255,0.14);"></div>
+                              <div class="app-theme-card-skeleton-line" style="width: 85%; background: rgba(232,212,255,0.1);"></div>
+                            </div>
+                            <div class="app-theme-card-tiles" data-ds='{"el":"Poster Tile Placeholders","layout":"HStack","spacing":"gap: Spacing.sm (8pt)"}'>
+                              <div class="app-theme-card-tile" style="background: rgba(144,96,224,0.35);" data-ds='{"el":"Poster Tile","size":"flex × 74 pt","radius":"CornerRadius.md (8pt)"}'></div>
+                              <div class="app-theme-card-tile" style="background: rgba(144,96,224,0.22);"></div>
+                              <div class="app-theme-card-tile" style="background: rgba(144,96,224,0.12);"></div>
+                            </div>
+                            <div class="app-theme-card-swatches" data-ds='{"el":"Color Swatches Row","layout":"HStack","spacing":"gap: Spacing.sm (8pt)"}'>
+                              <div class="app-theme-card-swatch" style="background: #9060e0;" data-ds='{"el":"Color Swatch","size":"30 × 30 pt","radius":"CornerRadius.round","border":"1pt rgba(255,255,255,0.12)"}'></div>
+                              <div class="app-theme-card-swatch" style="background: rgba(255,255,255,0.12);"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="app-themes-dots" title="3. Page Dots">
+                          <span class="app-dot"></span>
+                          <span class="app-dot active"></span>
+                          <span class="app-dot"></span>
+                          <span class="app-dot"></span>
+                          <span class="app-dot"></span>
+                        </div>
+                        <div class="app-themes-edit-row" title="4. Edit / Delete" data-ds='{"el":"Action Buttons Row","layout":"HStack","spacing":"gap: Spacing.md (12pt), padding-h: Spacing.xl (24pt)"}'>
+                          <span class="app-themes-edit-btn" data-ds='{"el":"Edit Button","type":"bodySmall (15pt) medium","radius":"CornerRadius.md (8pt)","border":"1pt borderLight α0.2","spacing":"padding: 6pt 16pt","color":"accent"}'>Edit Theme</span>
+                          <span class="app-themes-delete-btn" data-ds='{"el":"Delete Button","type":"bodySmall (15pt) medium","radius":"CornerRadius.md (8pt)","border":"1pt destructive α0.2","color":"error α0.8"}'>Delete</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+                </div>
+              </div>
+
+              <!-- Floating Bottom Toolbar -->
+              <div class="canvas-bottombar" id="canvasBottombar">
+              <div class="cbb-group">
+                <button class="cbb-btn is-active" data-tool="inspect" title="Inspect (V)"><i data-lucide="mouse-pointer-2"></i></button>
+                <button class="cbb-btn" data-tool="pan" title="Hand (H)"><i data-lucide="hand"></i></button>
+              </div>
+              <div class="cbb-divider"></div>
+              <div class="cbb-group">
+                <button class="cbb-btn" id="zoomOutBtn" title="Zoom Out (-)"><i data-lucide="minus"></i></button>
+                <button class="cbb-zoom-display" id="canvasZoomLabel" title="Reset Zoom">100%</button>
+                <button class="cbb-btn" id="zoomInBtn" title="Zoom In (+)"><i data-lucide="plus"></i></button>
+                <button class="cbb-btn" id="zoomFitBtn" title="Zoom to Fit (⇧1)"><i data-lucide="scan"></i></button>
+              </div>
+              <div class="cbb-divider"></div>
+              <div class="cbb-group">
+                <button class="cbb-btn" id="toggleChromeBtn" title="Toggle Chrome (⌘.)"><i data-lucide="smartphone"></i></button>
+              </div>
+              <div class="cbb-spacer"></div>
+              <div class="cbb-group">
+                <div class="live-link-indicator" title="Live link to app code">
+                  <span id="live-link-dot" class="live-link-dot disconnected"></span>
+                  <span id="live-link-label" class="live-link-label">Connecting…</span>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <!-- Right Panel -->
+            <aside class="canvas-right-panel" id="canvasRightPanel">
+              <div class="crp-tabs">
+                <button class="crp-tab is-active" data-panel-tab="inspect">Inspect</button>
+                <button class="crp-tab" data-panel-tab="design">Design</button>
+              </div>
+
+              <div class="crp-body" id="crpBody">
+                <!-- Inspect tab -->
+                <div class="crp-tab-content is-active" data-panel-content="inspect">
+                  <div class="crp-empty" id="inspectorEmpty">
+                    <i data-lucide="mouse-pointer-click"></i>
+                    <p>Click an element on the canvas to inspect its design tokens</p>
+                  </div>
+                  <div id="ds-inspector-inline" class="crp-inspector-content"></div>
+                </div>
+
+                <!-- Design tab -->
+                <div class="crp-tab-content" data-panel-content="design">
+                  <div class="crp-section">
+                    <div class="crp-section-title">Theme</div>
+                    <div class="app-theme-chips crp-theme-chips" id="app-theme-chips"></div>
+                  </div>
+                  <div class="crp-section">
+                    <div class="crp-section-title">Poster Size</div>
+                    <select class="crp-select" id="app-poster-size" onchange="applyPosterSize(this.value)"></select>
+                  </div>
+                  <div class="crp-section">
+                    <div class="crp-section-title">Toolbar Style</div>
+                    <select class="crp-select" id="app-toolbar-style" onchange="applyToolbarStyle(this.value)"></select>
+                  </div>
+                  <div class="crp-section">
+                    <div class="crp-section-title">Detail Layout</div>
+                    <select class="crp-select" id="app-detail-layout" onchange="applyDetailLayout(this.value)"></select>
+                    <div id="app-layout-params" class="app-layout-params"></div>
+                  </div>
+                  <div class="crp-section">
+                    <div class="crp-section-title">Action Bar</div>
+                    <select class="crp-select" id="app-action-bar-layout" onchange="applyActionBarLayout(this.value)">
+                      <option value="leftAligned" selected>Left Aligned</option>
+                      <option value="centered">Centered</option>
+                    </select>
+                  </div>
+                  <div class="crp-section">
+                    <div class="crp-section-title">Search Bar</div>
+                    <select class="crp-select" id="app-search-bar" onchange="applySearchBar(this.value)"></select>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </section>
+        </section>
+      </div>
+    </div>
+
+    <div id="ingestModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div id="ingestTitle" class="pane-title">Add Source</div>
+          <button id="ingestCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="step" id="ingestStepConfig">
+            <div class="pane-subtitle">1. Configure Source</div>
+            <div class="form-grid">
+              <label>
+                Source Identifier
+                <input id="ingestIdentifier" type="text" placeholder="e.g. rewatchables" />
+              </label>
+              <label>
+                Name
+                <input id="ingestName" type="text" placeholder="Source name" />
+              </label>
+              <label class="full-width">
+                URL
+                <input id="ingestUrl" type="text" placeholder="Feed or list URL" />
+              </label>
+              <label>
+                Ranked List
+                <select id="ingestRanked">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </label>
+            </div>
+            <button id="ingestPreviewBtn" class="primary">Preview Items</button>
+          </div>
+
+          <div class="step hidden" id="refreshFeedsStepConfig">
+            <div class="pane-subtitle">1. Choose Feeds</div>
+            <div class="step-actions">
+              <button id="feedsSelectAllBtn">Select All</button>
+              <button id="feedsSelectNoneBtn">Select None</button>
+            </div>
+            <div id="feedsList" class="feeds-list"></div>
+            <div class="step-actions">
+              <button id="feedsPreviewBtn" class="primary">Fetch & Preview</button>
+            </div>
+            <div id="feedsLoader" class="status-text hidden">Fetching feeds...</div>
+          </div>
+
+          <div class="step hidden" id="ingestStepPreview">
+            <div class="pane-subtitle">2. Preview Items</div>
+            <div class="step-actions">
+              <button id="ingestBackBtn">Back</button>
+              <button id="ingestSelectEnrichedBtn">Select Enriched</button>
+              <button id="ingestSelectLightBtn">Select Data-Light</button>
+              <button id="ingestSelectMissingBtn">Select No-Match</button>
+              <button id="ingestDeselectDuplicatesBtn">Deselect Duplicates</button>
+              <button id="ingestEnrichBtn">Enrich Selected</button>
+              <button id="ingestReviewBtn" class="primary">Review & Commit</button>
+            </div>
+            <div class="status-text" id="ingestPreviewSummary"></div>
+            <div class="status-text" id="ingestLatestStats"></div>
+            <div class="preview-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Source</th>
+                    <th>Title</th>
+                    <th>Source Title</th>
+                    <th>Rank</th>
+                    <th>Episode Date</th>
+                    <th>Latest Known</th>
+                    <th>Status</th>
+                    <th>Duplicate</th>
+                    <th>TMDB</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ingestPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="step hidden" id="ingestStepReview">
+            <div class="pane-subtitle">3. Review & Commit</div>
+            <div id="ingestSummary" class="status-text"></div>
+            <div class="step-actions">
+              <button id="ingestReviewBackBtn">Back</button>
+              <button id="ingestCommitBtn" class="primary">Commit to Bootstrap</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-content small">
+        <div class="modal-header">
+          <div class="pane-title">Confirm Action</div>
+          <button id="confirmCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="confirmMessage" class="status-text"></div>
+          <div class="step-actions">
+            <button id="confirmCancelBtn">Cancel</button>
+            <button id="confirmConfirmBtn" class="primary">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="dedupeModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="pane-title">Deduplicate Movies</div>
+          <button id="dedupeCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="dedupeStatus" class="status-text">Loading duplicates...</div>
+          <div id="dedupeGroups" class="dedupe-groups"></div>
+          <div class="step-actions">
+            <button id="dedupeCancelBtn">Cancel</button>
+            <button id="dedupeCommitBtn" class="primary">Commit Dedupe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="reportModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="pane-title">Refresh Feeds Report</div>
+          <button id="reportCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="reportStatus" class="status-text">Preparing report...</div>
+          <div id="reportSummary" class="health-metrics"></div>
+          <div id="reportItems" class="preview-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="streamingModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="pane-title">Refresh Streaming (All)</div>
+          <button id="streamingCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="streamingStatus" class="status-text">Preparing refresh...</div>
+          <div id="streamingSummary" class="health-metrics"></div>
+          <div id="streamingItems" class="preview-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="themesModal" class="modal hidden">
+      <div class="modal-content theme-editor-modal">
+        <div class="modal-header">
+          <div class="pane-title">Theme Editor</div>
+          <button id="themesCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="themes-layout">
+            <div class="themes-list-panel">
+              <div class="step-actions">
+                <button id="themeNewBtn" class="primary">New Theme</button>
+                <button id="themeDeleteBtn" class="danger">Delete</button>
+              </div>
+              <div id="themesList" class="themes-list"></div>
+            </div>
+            <div class="themes-form-panel">
+              <div class="status-text" id="themesStatus">No theme selected.</div>
+              <form id="themeForm" class="movie-form hidden">
+                <div class="form-grid">
+                  <label>
+                    Name
+                    <input id="themeName" type="text" />
+                  </label>
+                  <label>
+                    Built-in Theme Name (optional)
+                    <input id="themeBuiltInName" type="text" placeholder="e.g. Matrix" />
+                  </label>
+                  <label>
+                    Supports Light Mode
+                    <select id="themeSupportsLightMode">
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </label>
+                  <label>
+                    Headline Font
+                    <select id="themeHeadlineFontStyle">
+                      <option value="system-default">System Default (Bold)</option>
+                      <option value="system-rounded">System Rounded (Bold)</option>
+                      <option value="system-monospaced">System Monospaced (Bold)</option>
+                      <option value="new-york">New York</option>
+                      <option value="system-condensed">System Condensed (Bold)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Body Font
+                    <select id="themeBodyFontStyle">
+                      <option value="system-default">System Default</option>
+                      <option value="system-rounded">System Rounded</option>
+                      <option value="system-monospaced">System Monospaced</option>
+                      <option value="new-york">New York</option>
+                    </select>
+                  </label>
+                  <div class="full-width theme-hidden-color-fields">
+                    <input id="themeAccent" class="theme-color-input" type="text" data-color-label="Accent" />
+                    <input id="themeSecondaryAccent" class="theme-color-input" type="text" data-color-label="Secondary Accent" />
+                    <input id="themeDarkModeHeadlineColor" class="theme-color-input" type="text" data-color-label="Dark Mode Headline" />
+                    <input id="themeLightModeHeadlineColor" class="theme-color-input" type="text" data-color-label="Light Mode Headline" />
+                    <input id="themeDarkBackground" class="theme-color-input" type="text" data-color-label="Dark Background" />
+                    <input id="themeLightBackground" class="theme-color-input" type="text" data-color-label="Light Background" />
+                  </div>
+                  <div class="full-width theme-color-cards-grid">
+                    <button type="button" class="theme-color-card" data-target="themeAccent">
+                      <span id="themeAccentSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Accent</span>
+                    </button>
+                    <button type="button" class="theme-color-card" data-target="themeSecondaryAccent">
+                      <span id="themeSecondaryAccentSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Secondary Accent</span>
+                    </button>
+                    <button type="button" class="theme-color-card" data-target="themeDarkModeHeadlineColor">
+                      <span id="themeDarkModeHeadlineColorSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Dark Headline</span>
+                    </button>
+                    <button type="button" class="theme-color-card" data-target="themeLightModeHeadlineColor">
+                      <span id="themeLightModeHeadlineColorSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Light Headline</span>
+                    </button>
+                    <button type="button" class="theme-color-card" data-target="themeDarkBackground">
+                      <span id="themeDarkBackgroundSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Dark Background</span>
+                    </button>
+                    <button type="button" class="theme-color-card" data-target="themeLightBackground">
+                      <span id="themeLightBackgroundSwatch" class="theme-color-swatch theme-color-card-swatch"></span>
+                      <span class="theme-color-card-label">Light Background</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="step-actions" style="padding-top: 12px">
+                  <button id="themeUndoBtn" type="button" disabled>Undo</button>
+                  <button id="themeSaveBtn" class="primary">Save Theme</button>
+                </div>
+              </form>
+              <div id="themeColorPickerPopover" class="theme-color-picker-popover hidden">
+                <div class="theme-color-picker-header">
+                  <div id="themeColorPickerLabel">Color Picker</div>
+                  <button id="themeColorPickerCloseBtn" type="button">Close</button>
+                </div>
+                <div class="theme-color-picker-body">
+                  <div id="themeSvSquare" class="theme-sv-square">
+                    <div id="themeSvCursor" class="theme-sv-cursor"></div>
+                  </div>
+                  <div id="themeHueStrip" class="theme-hue-strip">
+                    <div id="themeHueCursor" class="theme-hue-cursor"></div>
+                  </div>
+                </div>
+                <div class="theme-color-picker-footer">
+                  <input id="themeColorPickerHex" type="text" placeholder="#4670ff" />
+                  <span id="themeColorPickerPreview" class="theme-color-swatch"></span>
+                </div>
+              </div>
+            </div>
+            <div class="themes-preview-panel">
+              <div class="themes-preview-header">
+                <div class="pane-title">Live Preview</div>
+                <label>
+                  Appearance
+                  <select id="themePreviewMode">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                  </select>
+                </label>
+              </div>
+              <div id="themePreviewRoot" class="theme-preview-root theme-preview-mode-dark">
+                <div class="theme-preview-surface theme-preview-phones">
+                  <div class="theme-preview-phone">
+                    <div class="theme-preview-phone-notch"></div>
+                    <div class="theme-preview-home">
+                      <div class="theme-preview-topbar">
+                        <span class="theme-preview-time">5:21</span>
+                        <span class="theme-preview-account-icon">◉</span>
+                      </div>
+                      <div class="theme-preview-home-section">
+                        <div class="theme-preview-section-title">Latest podcasts</div>
+                        <div class="theme-preview-poster-row">
+                          <div class="theme-preview-poster-card"><img alt="Die My Love poster" src="https://image.tmdb.org/t/p/w342/kajpShbFhOdpl6yCrLezMrr9tB4.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="The Dark Knight poster" src="https://image.tmdb.org/t/p/w342/qJ2tW6WMUDux911r6m7haRef0WH.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="No Country for Old Men poster" src="https://image.tmdb.org/t/p/w342/6d5XOczc226jECq0LIX0siKtgHR.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="Goodfellas poster" src="https://image.tmdb.org/t/p/w342/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg" /></div>
+                        </div>
+                      </div>
+                      <div class="theme-preview-home-section">
+                        <div class="theme-preview-section-title">Recently saved</div>
+                        <div class="theme-preview-poster-row">
+                          <div class="theme-preview-poster-card"><img alt="Inherent Vice poster" src="https://image.tmdb.org/t/p/w342/pfVua7TzzttOh3RTOuBqT7xN0oY.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="Boogie Nights poster" src="https://image.tmdb.org/t/p/w342/wnE24UPCPQsQnbBOu4zVE2qaDNm.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="Pulp Fiction poster" src="https://image.tmdb.org/t/p/w342/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="There Will Be Blood poster" src="https://image.tmdb.org/t/p/w342/fa0RDkAlCec0STeMNAhPaF89q6U.jpg" /></div>
+                        </div>
+                      </div>
+                      <div class="theme-preview-home-section">
+                        <div class="theme-preview-section-title">To complete</div>
+                        <div class="theme-preview-poster-row">
+                          <div class="theme-preview-poster-card"><img alt="Contact poster" src="https://image.tmdb.org/t/p/w342/bCpMIywuNZeWt3i5UMLEIc0VSwM.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="Heat poster" src="https://image.tmdb.org/t/p/w342/umSVjVdbVwtx5ryCA2QXL44Durm.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="Happy Gilmore 2 poster" src="https://image.tmdb.org/t/p/w342/nRwDPfYUzzzUQarfMxvPlasxzpL.jpg" /></div>
+                          <div class="theme-preview-poster-card"><img alt="RoboCop poster" src="https://image.tmdb.org/t/p/w342/gM5ql3BKYmHG3WtZ0buKXN7xY8O.jpg" /></div>
+                        </div>
+                      </div>
+                      <div class="theme-preview-tabbar">
+                        <span><i data-lucide="sliders-horizontal"></i></span>
+                        <span><i data-lucide="play"></i></span>
+                        <span><i data-lucide="film"></i></span>
+                        <span><i data-lucide="star"></i></span>
+                        <span><i data-lucide="search"></i></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="theme-preview-phone">
+                    <div class="theme-preview-phone-notch"></div>
+                    <div class="theme-preview-detail">
+                      <div class="theme-preview-topbar">
+                        <span class="theme-preview-time">5:22</span>
+                      </div>
+                      <div class="theme-preview-backdrop">
+                        <img alt="Die My Love backdrop" src="https://image.tmdb.org/t/p/w780/dEkFlZzj2cb5F7SShvqkL54E4lr.jpg" />
+                      </div>
+                      <div class="theme-preview-detail-content">
+                        <div class="theme-preview-movie-title">Die My Love</div>
+                        <div class="theme-preview-movie-subtitle">2025 &nbsp; R</div>
+                        <div class="theme-preview-genre">Drama</div>
+                        <div class="theme-preview-overview">
+                          After inheriting a remote Montana house, Jackson moves there from New York
+                          with his partner Grace, and the couple soon welcome a child. As Jackson
+                          becomes increasingly absent and rural isolation sets in, Grace struggles
+                          with loneliness and unresolved emotional wounds.
+                        </div>
+                        <div class="theme-preview-credit-label">Director</div>
+                        <div class="theme-preview-credit-value">Lynne Ramsay</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sourcesModal" class="modal hidden">
+      <div class="modal-content sources-editor-modal">
+        <div class="modal-header">
+          <div class="pane-title">Sources</div>
+          <button id="sourcesCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="sources-layout">
+            <div class="sources-list-panel">
+              <div class="step-actions">
+                <button id="sourceNewBtn" class="primary">New Source</button>
+              </div>
+              <div id="sourcesList" class="sources-list"></div>
+            </div>
+            <div class="sources-form-panel">
+              <div class="status-text" id="sourcesStatus">No source selected.</div>
+              <form id="sourceForm" class="movie-form hidden">
+                <div class="form-grid">
+                  <label>
+                    Identifier
+                    <input id="sourceIdentifier" type="text" placeholder="e.g. rewatchables" />
+                  </label>
+                  <label>
+                    Name
+                    <input id="sourceName" type="text" placeholder="Display name" />
+                  </label>
+                  <label>
+                    Type
+                    <select id="sourceType">
+                      <option value="podcast">Podcast</option>
+                      <option value="url">List</option>
+                    </select>
+                  </label>
+                  <label>
+                    Ranked List
+                    <select id="sourceRanked">
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </label>
+                  <label class="full-width">
+                    URL
+                    <input id="sourceUrl" type="text" placeholder="Feed or list URL" />
+                  </label>
+                </div>
+                <div class="step-actions" style="padding-top: 12px">
+                  <button id="sourceSaveBtn" class="primary">Save Source</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="physicalMediaModal" class="modal hidden">
+      <div class="modal-content oscar-modal">
+        <div class="modal-header">
+          <div class="pane-title">Physical Media Enrichment</div>
+          <button id="physicalMediaCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="physicalMediaStats" class="health-metrics oscar-stats"></div>
+          <p class="design-lead">Wikidata Criterion spines (P2755), 4K/Blu-ray formats (P437), and boutique labels, plus movies already on the Criterion list source.</p>
+          <div class="oscar-actions">
+            <button id="physicalMediaRefreshStatsBtn">Refresh Stats</button>
+            <button id="physicalMediaEnrichBtn" class="primary">Enrich from Wikidata</button>
+            <button id="physicalMediaClearBtn" class="danger">Clear All</button>
+          </div>
+          <div id="physicalMediaStatus" class="status-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="oscarModal" class="modal hidden">
+      <div class="modal-content oscar-modal">
+        <div class="modal-header">
+          <div class="pane-title">Oscar Awards Enrichment</div>
+          <button id="oscarCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="oscarStats" class="health-metrics oscar-stats"></div>
+          <div class="oscar-controls">
+            <label>
+              OMDB API Key
+              <input id="oscarOmdbKey" type="text" placeholder="Get free key at omdbapi.com/apikey.aspx" />
+            </label>
+            <label>
+              Mode
+              <select id="oscarMode">
+                <option value="missing">Missing only</option>
+                <option value="all">Re-enrich all</option>
+              </select>
+            </label>
+            <label>
+              Delay (ms)
+              <input id="oscarDelay" type="number" value="200" min="0" max="5000" step="50" />
+            </label>
+            <div class="oscar-actions">
+              <button id="oscarRefreshStatsBtn">Refresh Stats</button>
+              <button id="oscarEnrichBtn" class="primary">OMDB Totals</button>
+              <button id="oscarClearBtn" class="danger">Clear All</button>
+            </div>
+          </div>
+          <div class="oscar-section-divider"></div>
+          <div class="oscar-controls">
+            <label>
+              Wikidata Mode
+              <select id="oscarWikidataMode">
+                <option value="missing">Movies with totals but no category detail</option>
+                <option value="all">Re-fetch all movies with Oscar data</option>
+              </select>
+            </label>
+            <label>
+              Delay (ms)
+              <input id="oscarWikidataDelay" type="number" value="350" min="0" max="5000" step="50" />
+            </label>
+            <div class="oscar-actions">
+              <button id="oscarWikidataBtn" class="primary">Wikidata Categories</button>
+            </div>
+          </div>
+          <div id="oscarStatus" class="status-text"></div>
+          <div id="oscarProgress" class="oscar-progress hidden">
+            <div class="oscar-progress-bar"><div id="oscarProgressFill" class="oscar-progress-fill"></div></div>
+            <div id="oscarProgressLabel" class="oscar-progress-label"></div>
+          </div>
+          <div id="oscarReport" class="oscar-report"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="https://unpkg.com/lucide@1.6.0/dist/umd/lucide.js"></script>
+    <script src="/mov-admin/admin-boot.js"></script>
+    <script src="/mov-admin/app.js?v=2026-09-03-cloud-admin"></script>
+  </body>
+</html>
+

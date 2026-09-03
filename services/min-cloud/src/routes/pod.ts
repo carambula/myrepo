@@ -3,6 +3,8 @@ import { query } from "../db.js";
 import { fetchText } from "../lib/http.js";
 import { searchItunesPodcasts } from "../lib/itunes.js";
 import { parseRssFeed } from "../lib/rss.js";
+import { ensurePodcast } from "../lib/podcasts.js";
+import { upsertAnonymousDevice } from "../lib/devices.js";
 
 const router = Router();
 
@@ -125,6 +127,74 @@ router.get("/feeds", async (req, res) => {
   } catch (error) {
     res.status(502).json({ error: error instanceof Error ? error.message : "Feed fetch failed." });
   }
+});
+
+router.post("/watch", async (req, res) => {
+  const deviceKey = String(req.body?.deviceId || "").trim();
+  if (!deviceKey) {
+    res.status(400).json({ error: "deviceId required." });
+    return;
+  }
+  const items = Array.isArray(req.body?.items) ? req.body.items : req.body?.feedUrl ? [req.body] : [];
+  const deviceId = await upsertAnonymousDevice(deviceKey);
+
+  const keptIds: string[] = [];
+  for (const item of items) {
+    const feedUrl = String(item?.feedUrl || "").trim();
+    if (!feedUrl) {
+      continue;
+    }
+    const podcastId = await ensurePodcast({
+      podcastId: item.podcastId,
+      feedUrl,
+      title: item.title,
+      artworkUrl: item.artworkUrl,
+      itunesId: item.itunesId
+    });
+    keptIds.push(podcastId);
+    await query(
+      `
+      INSERT INTO device_subscriptions (device_id, kind, item_id, feed_url, title, notifications_enabled, updated_at)
+      VALUES ($1, 'pod', $2, $3, $4, $5, NOW())
+      ON CONFLICT (device_id, kind, item_id) DO UPDATE SET
+        feed_url = EXCLUDED.feed_url,
+        title = EXCLUDED.title,
+        notifications_enabled = EXCLUDED.notifications_enabled,
+        updated_at = NOW()
+      `,
+        [deviceId, podcastId, feedUrl, item.title ?? null, item.notificationsEnabled === true]
+    );
+  }
+
+  if (req.body?.replace !== false) {
+    if (keptIds.length) {
+      await query(
+        `DELETE FROM device_subscriptions WHERE device_id = $1 AND kind = 'pod' AND NOT (item_id = ANY($2::text[]))`,
+        [deviceId, keptIds]
+      );
+    } else {
+      await query(`DELETE FROM device_subscriptions WHERE device_id = $1 AND kind = 'pod'`, [deviceId]);
+    }
+  }
+
+  res.json({ ok: true, deviceId: deviceKey, watched: keptIds.length });
+});
+
+router.post("/unwatch", async (req, res) => {
+  const deviceKey = String(req.body?.deviceId || "").trim();
+  const feedUrl = String(req.body?.feedUrl || "").trim();
+  if (!deviceKey || !feedUrl) {
+    res.status(400).json({ error: "deviceId and feedUrl required." });
+    return;
+  }
+  const device = await query(`SELECT id FROM devices WHERE device_key = $1`, [deviceKey]);
+  if (device.rowCount) {
+    await query(
+      `DELETE FROM device_subscriptions WHERE device_id = $1 AND kind = 'pod' AND feed_url = $2`,
+      [device.rows[0].id, feedUrl]
+    );
+  }
+  res.json({ ok: true });
 });
 
 router.get("/search", async (req, res) => {

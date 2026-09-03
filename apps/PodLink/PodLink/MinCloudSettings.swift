@@ -6,6 +6,7 @@ enum MinCloudSettings {
     static let handleKey = "mincloud.handle"
     static let emailKey = "mincloud.email"
     static let iCloudBackupEnabledKey = "mincloud.icloudBackupEnabled"
+    static let deviceIdKey = "mincloud.deviceId"
 
     static var defaultBaseURL: URL {
         URL(string: "https://min-cloud-production.up.railway.app")!
@@ -37,6 +38,16 @@ enum MinCloudSettings {
     }
 
     static var isSignedIn: Bool { token?.isEmpty == false }
+
+    /// Stable anonymous device id so followed feeds can be refreshed and notified without an account.
+    static var deviceId: String {
+        if let existing = UserDefaults.standard.string(forKey: deviceIdKey), !existing.isEmpty {
+            return existing
+        }
+        let created = UUID().uuidString
+        UserDefaults.standard.set(created, forKey: deviceIdKey)
+        return created
+    }
 
     static var iCloudBackupEnabled: Bool {
         get {

@@ -106,13 +106,20 @@ struct NotificationPreferencesView: View {
         }
         .onChange(of: preferences.morningQueueEnabled) { _, _ in preferences.save(); syncPreferencesToCloud() }
         .onChange(of: preferences.useAppleIntelligence) { _, _ in preferences.save(); syncPreferencesToCloud() }
-        .onChange(of: preferences.priorityPodcastsEnabled) { _, _ in preferences.save(); syncPreferencesToCloud() }
+        .onChange(of: preferences.priorityPodcastsEnabled) { _, enabled in
+            preferences.save()
+            syncPreferencesToCloud()
+            if enabled {
+                Task { await EpisodeNotificationService.shared.requestAuthorizationIfNeeded() }
+            }
+        }
         .onChange(of: preferences.checkIntervalMinutes) { _, _ in preferences.save(); syncPreferencesToCloud() }
     }
 
     private func syncPreferencesToCloud() {
-        guard MinCloudSettings.isSignedIn else { return }
         Task {
+            await MinCloudClient.shared.syncFollowedWatches(Podcast.loadFollowedPodcasts())
+            guard MinCloudSettings.isSignedIn else { return }
             try? await MinCloudClient.shared.saveNotificationPreferences([
                 "morning_queue": [
                     "enabled": preferences.morningQueueEnabled,

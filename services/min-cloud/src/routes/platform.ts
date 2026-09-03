@@ -10,6 +10,7 @@ import {
   type AuthUser
 } from "../auth.js";
 import { query } from "../db.js";
+import { ensurePodcast } from "../lib/podcasts.js";
 
 const router = Router();
 
@@ -94,6 +95,82 @@ router.patch("/me", requireUser, async (req, res) => {
       isAdmin: result.rows[0].is_admin
     }
   });
+});
+
+const upsertDevice = async (input: {
+  deviceKey: string;
+  app: "watchedit" | "podlink";
+  platform: string;
+  pushToken?: string | null;
+  timezone?: string | null;
+  userId?: string | null;
+}) => {
+  const existing = await query(`SELECT id, user_id FROM devices WHERE device_key = $1`, [input.deviceKey]);
+  if (existing.rowCount) {
+    const result = await query(
+      `
+      UPDATE devices
+      SET app = $2,
+          platform = $3,
+          push_token = COALESCE($4, push_token),
+          timezone = COALESCE($5, timezone),
+          user_id = COALESCE($6, user_id),
+          updated_at = NOW()
+      WHERE device_key = $1
+      RETURNING id, user_id, app, platform, timezone, created_at
+      `,
+      [input.deviceKey, input.app, input.platform, input.pushToken ?? null, input.timezone ?? null, input.userId ?? null]
+    );
+    return result.rows[0];
+  }
+  const result = await query(
+    `
+    INSERT INTO devices (user_id, app, platform, push_token, timezone, device_key)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id, user_id, app, platform, timezone, created_at
+    `,
+    [input.userId ?? null, input.app, input.platform, input.pushToken ?? null, input.timezone ?? null, input.deviceKey]
+  );
+  return result.rows[0];
+};
+
+router.post("/devices/register", optionalUser, async (req, res) => {
+  const deviceKey = String(req.body?.deviceId || req.body?.deviceKey || "").trim();
+  if (!deviceKey) {
+    res.status(400).json({ error: "deviceId required." });
+    return;
+  }
+  const user = (req as Request & { user?: AuthUser }).user;
+  const device = await upsertDevice({
+    deviceKey,
+    app: req.body?.app === "watchedit" ? "watchedit" : "podlink",
+    platform: String(req.body?.platform || "ios"),
+    pushToken: req.body?.pushToken ? String(req.body.pushToken) : null,
+    timezone: req.body?.timezone ? String(req.body.timezone) : null,
+    userId: user?.id ?? null
+  });
+  res.json({ device: { ...device, deviceId: deviceKey } });
+});
+
+router.get("/devices/:deviceId/inbox", async (req, res) => {
+  const deviceKey = String(req.params.deviceId);
+  const app = req.query.app === "watchedit" ? "watchedit" : "podlink";
+  const device = await query(`SELECT id FROM devices WHERE device_key = $1`, [deviceKey]);
+  if (!device.rowCount) {
+    res.json({ inbox: [] });
+    return;
+  }
+  const inbox = await query(
+    `
+    SELECT id, app, type, title, body, payload, scheduled_for, sent_at, created_at
+    FROM notification_queue
+    WHERE device_id = $1 AND app = $2
+    ORDER BY created_at DESC
+    LIMIT 50
+    `,
+    [device.rows[0].id, app]
+  );
+  res.json({ inbox: inbox.rows });
 });
 
 router.put("/me/devices", requireUser, async (req, res) => {
@@ -211,8 +288,17 @@ router.put("/me/library/pod", requireUser, async (req, res) => {
   const user = getUser(req);
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   for (const item of items) {
-    if (!item?.podcastId) {
+    if (!item?.podcastId && !item?.feedUrl) {
       continue;
+    }
+    if (item.feedUrl) {
+      item.podcastId = await ensurePodcast({
+        podcastId: item.podcastId,
+        feedUrl: String(item.feedUrl),
+        title: item.title,
+        artworkUrl: item.artworkUrl,
+        itunesId: item.itunesId
+      });
     }
     await query(
       `

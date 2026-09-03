@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import { query } from "./db.js";
 import { lookupItunesPodcast } from "./lib/itunes.js";
 import { fetchText } from "./lib/http.js";
-import { newestEpisodesSince, parseRssFeed } from "./lib/rss.js";
+import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
@@ -153,7 +153,7 @@ export const refreshPodcastFeeds = async (limit = 80) => {
         for (const episode of parsed.episodes) {
           await upsertEpisode(String(row.id), episode);
         }
-        const fresh = newestEpisodesSince(parsed.episodes, previousLatest);
+        const fresh = notifyWorthyEpisodes(parsed.episodes, previousLatest);
         newEpisodes += fresh.length;
         for (const episode of fresh) {
           discovered.push({
@@ -243,6 +243,14 @@ const enqueueNewEpisodeNotifications = async (
     WHERE is_followed = TRUE
     `
   );
+  const deviceSubs = await query(
+    `
+    SELECT ds.device_id, ds.item_id AS podcast_id, ds.notifications_enabled, d.user_id
+    FROM device_subscriptions ds
+    JOIN devices d ON d.id = ds.device_id
+    WHERE ds.kind = 'pod'
+    `
+  );
   const prefs = await query(
     `SELECT user_id, app, preferences FROM notification_preferences`
   );
@@ -256,10 +264,17 @@ const enqueueNewEpisodeNotifications = async (
     list.push(row);
     byPodcast.set(String(row.podcast_id), list);
   }
+  const devicesByPodcast = new Map<string, typeof deviceSubs.rows>();
+  for (const row of deviceSubs.rows) {
+    const list = devicesByPodcast.get(String(row.podcast_id)) ?? [];
+    list.push(row);
+    devicesByPodcast.set(String(row.podcast_id), list);
+  }
 
   let enqueued = 0;
   for (const episode of episodes) {
     const users = byPodcast.get(episode.podcastId) ?? [];
+    const notifiedUsers = new Set<string>();
     for (const user of users) {
       const podPrefs = prefByUser.get(`${user.user_id}:podlink`) ?? {};
       const movPrefs = prefByUser.get(`${user.user_id}:watchedit`) ?? {};
@@ -283,6 +298,34 @@ const enqueueNewEpisodeNotifications = async (
           user.user_id,
           app,
           isPriority ? "priority_podcasts" : "new_episodes",
+          episode.title,
+          episode.episodeTitle,
+          JSON.stringify(episode)
+        ]
+      );
+      notifiedUsers.add(String(user.user_id));
+      enqueued += 1;
+    }
+
+    const devices = devicesByPodcast.get(episode.podcastId) ?? [];
+    for (const device of devices) {
+      if (device.user_id && notifiedUsers.has(String(device.user_id))) {
+        continue;
+      }
+      if (!device.notifications_enabled) {
+        continue;
+      }
+      const app = episode.podcastId.startsWith("movsrc-") ? "watchedit" : "podlink";
+      await query(
+        `
+        INSERT INTO notification_queue (user_id, device_id, app, type, title, body, payload)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        `,
+        [
+          device.user_id ?? null,
+          device.device_id,
+          app,
+          "priority_podcasts",
           episode.title,
           episode.episodeTitle,
           JSON.stringify(episode)

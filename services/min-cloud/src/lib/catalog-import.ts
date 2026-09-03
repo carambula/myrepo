@@ -158,14 +158,14 @@ export const importMovieCatalog = async (payload: {
   }
 
   const uniqueMovies = new Map<string, ImportMovie>();
-  const links: Array<{
+  const links = new Map<string, {
     movieId: string;
     sourceId: string;
     rank: number | null;
     sourceTitle: string | null;
     episodeDate: string | null;
     episode: unknown;
-  }> = [];
+  }>();
   const streaming: Array<{ movieId: string; providers: unknown[] }> = [];
 
   for (const movie of movies) {
@@ -198,14 +198,17 @@ export const importMovieCatalog = async (payload: {
       }
     }
     if (movie.sourceIdentifier) {
-      links.push({
-        movieId: id,
-        sourceId: movie.sourceIdentifier,
-        rank: movie.rank ?? null,
-        sourceTitle: movie.sourceTitle ?? null,
-        episodeDate: toTimestamp(movie.episodeDate),
-        episode: movie.podcastEpisode ?? null
-      });
+      const key = `${id}|${movie.sourceIdentifier}`;
+      if (!links.has(key)) {
+        links.set(key, {
+          movieId: id,
+          sourceId: movie.sourceIdentifier,
+          rank: movie.rank ?? null,
+          sourceTitle: movie.sourceTitle ?? null,
+          episodeDate: toTimestamp(movie.episodeDate),
+          episode: movie.podcastEpisode ?? null
+        });
+      }
     }
   }
 
@@ -289,7 +292,7 @@ export const importMovieCatalog = async (payload: {
     );
   }
 
-  for (const group of chunk(links, 80)) {
+  for (const group of chunk([...links.values()], 80)) {
     const values: string[] = [];
     const params: unknown[] = [];
     group.forEach((row, index) => {

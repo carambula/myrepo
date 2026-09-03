@@ -109,6 +109,16 @@ export const fetchImdbIdFromTmdb = async (tmdbId: number, apiKey: string) => {
   return data.imdb_id || null;
 };
 
+export const fetchTmdbAlternativeTitles = async (tmdbId: number, apiKey: string) => {
+  if (!apiKey || !tmdbId) {
+    return [];
+  }
+  const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}/alternative_titles`);
+  url.searchParams.set("api_key", apiKey);
+  const data = await fetchJson<{ titles?: Array<{ title?: string | null }> }>(url.toString());
+  return [...new Set((data.titles ?? []).map((row) => String(row.title || "").trim()).filter(Boolean))];
+};
+
 export const catalogMovieFromTmdb = (movie: TmdbMovie) => {
   const year = movie.release_date ? Number(movie.release_date.slice(0, 4)) : null;
   return {

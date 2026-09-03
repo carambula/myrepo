@@ -149,6 +149,7 @@ export const refreshTheaterStays = async () => {
     return {
       updated: payload.movies.length,
       imax: payload.movies.filter((movie) => movie.hasIMAX).length,
+      ticketLinks: payload.movies.filter((movie) => movie.ticketLinks).length,
       region: config.tmdbRegion,
       source: payload.source
     };

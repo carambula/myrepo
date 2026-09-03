@@ -185,14 +185,36 @@ test('HTTP gateway requires a bearer token and executes tools', async () => {
   const denied = await fetch(`http://127.0.0.1:${port}/v1/whoami`);
   assert.equal(denied.status, 401);
 
+  const deniedTools = await fetch(`http://127.0.0.1:${port}/tools`);
+  assert.equal(deniedTools.status, 401);
+
+  const listed = await fetch(`http://127.0.0.1:${port}/tools`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(listed.status, 200);
+  const catalog = await listed.json();
+  assert.equal(catalog.ok, true);
+  assert.ok(catalog.tools.some((tool) => tool.name === 'set_movie_saved' && tool.inputSchema));
+  assert.ok(catalog.names.includes('list_movies'));
+
+  const invoked = await fetch(`http://127.0.0.1:${port}/invoke`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'set_movie_saved', arguments: { title: 'Heat', saved: true } }),
+  });
+  assert.equal(invoked.status, 200);
+  const invokedBody = await invoked.json();
+  assert.equal(invokedBody.movie.isSaved, true);
+  assert.ok(invokedBody.undoId);
+
   const ok = await fetch(`http://127.0.0.1:${port}/v1/tools/set_movie_saved`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: 'Heat', saved: true }),
+    body: JSON.stringify({ title: 'Heat', saved: false }),
   });
   assert.equal(ok.status, 200);
   const body = await ok.json();
-  assert.equal(body.movie.isSaved, true);
+  assert.equal(body.movie.isSaved, false);
   assert.ok(body.undoId);
 });
 

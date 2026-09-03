@@ -35,13 +35,33 @@ Copy the `minagt_…` token (it is shown once) into your MCP config:
 }
 ```
 
-Or run the local HTTP gateway and console (loopback only):
+Or run the HTTP gateway (JSON in, JSON out). Loopback by default:
 
 ```bash
 MIN_AGENT_TOKEN=minagt_… node packages/agent-kit/src/cli.js serve --port 4732
 ```
 
-Open `http://127.0.0.1:4732`, paste the token, and call tools. Undo is one click.
+```http
+GET  /tools
+Authorization: Bearer minagt_…
+
+POST /invoke
+Authorization: Bearer minagt_…
+Content-Type: application/json
+
+{ "name": "list_movies", "arguments": { "query": "Heat" } }
+```
+
+`GET /tools` returns the tools this token may call (`name`, `description`, `kind`, `app`, `inputSchema`).  
+`POST /invoke` takes `{ "name": "<tool>", "arguments": { … } }` (`tool` / `args` / `input` are accepted aliases).
+
+```bash
+curl -s -H "Authorization: Bearer $MIN_AGENT_TOKEN" http://127.0.0.1:4732/tools
+curl -s -H "Authorization: Bearer $MIN_AGENT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"whoami","arguments":{}}' http://127.0.0.1:4732/invoke
+```
+
+Open `http://127.0.0.1:4732` for the console. Bind `--host 0.0.0.0` only if another machine on your network needs it.
 
 Read-only connection:
 

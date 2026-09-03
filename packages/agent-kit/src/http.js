@@ -2,10 +2,16 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AgentError } from './protocol.js';
+import { AgentError, toolsForScopes } from './protocol.js';
 import { parseBearer } from './auth.js';
 
 const consoleHTML = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'console.html'), 'utf8');
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -41,13 +47,41 @@ function send(res, status, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
+    ...CORS,
   });
   res.end(body);
+}
+
+function describeTools(connection) {
+  return toolsForScopes(connection.scopes).map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    kind: tool.kind,
+    app: tool.app,
+    inputSchema: tool.inputSchema,
+  }));
+}
+
+function invokeName(body) {
+  return body.name || body.tool;
+}
+
+function invokeArguments(body) {
+  if (body.arguments && typeof body.arguments === 'object') return body.arguments;
+  if (body.input && typeof body.input === 'object') return body.input;
+  if (body.args && typeof body.args === 'object') return body.args;
+  return {};
 }
 
 export function createAgentHttpServer(gateway, { host = '127.0.0.1', port = 4732 } = {}) {
   const server = createServer(async (req, res) => {
     try {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, { ...CORS, 'Content-Length': 0 });
+        res.end();
+        return;
+      }
+
       const url = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
         res.writeHead(200, {
@@ -63,22 +97,35 @@ export function createAgentHttpServer(gateway, { host = '127.0.0.1', port = 4732
       }
 
       const token = parseBearer(req.headers.authorization) || url.searchParams.get('token');
+
+      if (req.method === 'GET' && (url.pathname === '/tools' || url.pathname === '/v1/tools')) {
+        const connection = gateway.authenticate(token);
+        const tools = describeTools(connection);
+        send(res, 200, {
+          ok: true,
+          tools,
+          names: tools.map((tool) => tool.name),
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && (url.pathname === '/invoke' || url.pathname === '/v1/tools/call')) {
+        const body = await readBody(req);
+        const name = invokeName(body);
+        if (!name) {
+          throw new AgentError('invalid_input', 'Provide name (or tool) and optional arguments.');
+        }
+        const result = await gateway.call(token, name, invokeArguments(body));
+        send(res, 200, result);
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/v1/whoami') {
         const result = await gateway.call(token, 'whoami', {});
         send(res, 200, result);
         return;
       }
-      if (req.method === 'GET' && url.pathname === '/v1/tools') {
-        const result = await gateway.call(token, 'list_capabilities', {});
-        send(res, 200, result);
-        return;
-      }
-      if (req.method === 'POST' && url.pathname === '/v1/tools/call') {
-        const body = await readBody(req);
-        const result = await gateway.call(token, body.name, body.arguments || body.input || {});
-        send(res, 200, result);
-        return;
-      }
+
       if (req.method === 'POST' && url.pathname.startsWith('/v1/tools/')) {
         const name = decodeURIComponent(url.pathname.slice('/v1/tools/'.length));
         const body = await readBody(req);
@@ -86,6 +133,7 @@ export function createAgentHttpServer(gateway, { host = '127.0.0.1', port = 4732
         send(res, 200, result);
         return;
       }
+
       send(res, 404, { error: 'not_found', message: 'Unknown endpoint.' });
     } catch (error) {
       const status = error instanceof AgentError ? error.status : 500;

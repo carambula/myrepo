@@ -70,7 +70,8 @@ struct MinCloudAccountView: View {
         defer { isWorking = false }
         do {
             _ = try await MinCloudClient.shared.login(email: email, password: password)
-            statusMessage = "Signed in. Catalog and library can now sync through Min Cloud."
+            await MinCloudLibrarySync.shared.syncOnSignIn()
+            statusMessage = "Signed in. Catalog and library now sync through Min Cloud."
         } catch {
             statusMessage = error.localizedDescription
         }
@@ -85,6 +86,7 @@ struct MinCloudAccountView: View {
                 password: password,
                 displayName: displayName.isEmpty ? nil : displayName
             )
+            await MinCloudLibrarySync.shared.syncOnSignIn()
             statusMessage = "Account created. This device will prefer Min Cloud and keep local fetch as backup."
         } catch {
             statusMessage = error.localizedDescription

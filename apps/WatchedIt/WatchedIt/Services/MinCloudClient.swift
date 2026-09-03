@@ -48,6 +48,35 @@ struct MinCloudMovieCatalog: Decodable {
         let streamingServices: [Provider]?
         let sources: [SourceLink]?
         let physicalMedia: PhysicalMedia?
+        let credits: MovieCredits?
+        let trailer: MovieTrailer?
+        let oscarAwards: OscarAwards?
+
+        enum CodingKeys: String, CodingKey {
+            case id, tmdbId, title, year, posterPath, backdropPath, overview, mpaaRating
+            case genres, lastUpdated, streamingServices, sources, physicalMedia
+            case credits, trailer, oscarAwards
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            tmdbId = try container.decodeIfPresent(Int.self, forKey: .tmdbId)
+            title = try container.decode(String.self, forKey: .title)
+            year = try container.decodeIfPresent(Int.self, forKey: .year)
+            posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
+            backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
+            overview = try container.decodeIfPresent(String.self, forKey: .overview)
+            mpaaRating = try container.decodeIfPresent(String.self, forKey: .mpaaRating)
+            genres = try container.decodeIfPresent([String].self, forKey: .genres)
+            lastUpdated = try container.decodeIfPresent(String.self, forKey: .lastUpdated)
+            streamingServices = try container.decodeIfPresent([Provider].self, forKey: .streamingServices)
+            sources = try container.decodeIfPresent([SourceLink].self, forKey: .sources)
+            physicalMedia = try container.decodeIfPresent(PhysicalMedia.self, forKey: .physicalMedia)
+            credits = try? container.decode(MovieCredits.self, forKey: .credits)
+            trailer = try? container.decode(MovieTrailer.self, forKey: .trailer)
+            oscarAwards = try? container.decode(OscarAwards.self, forKey: .oscarAwards)
+        }
     }
 
     struct Source: Decodable {
@@ -60,16 +89,44 @@ struct MinCloudMovieCatalog: Decodable {
     }
 
     let revision: Int
+    let generatedAt: String?
     let movies: [Movie]
     let sources: [Source]
     let truncated: Bool?
 
-    init(revision: Int, movies: [Movie], sources: [Source], truncated: Bool?) {
+    init(revision: Int, generatedAt: String?, movies: [Movie], sources: [Source], truncated: Bool?) {
         self.revision = revision
+        self.generatedAt = generatedAt
         self.movies = movies
         self.sources = sources
         self.truncated = truncated
     }
+}
+
+struct MinCloudCatalogMeta: Decodable {
+    let revision: Int
+    let generatedAt: String?
+    let movieCount: Int?
+}
+
+struct MinCloudMovLibraryItem: Decodable {
+    let movieId: String
+    let isWatched: Bool?
+    let isSaved: Bool?
+    let isRewatched: Bool?
+    let isListened: Bool?
+    let rating: Int?
+    let notes: String?
+    let updatedAt: String?
+}
+
+struct MinCloudPodLibraryItem: Decodable {
+    let podcastId: String
+    let feedUrl: String?
+    let title: String?
+    let artworkUrl: String?
+    let isFollowed: Bool?
+    let notificationsEnabled: Bool?
 }
 
 enum MinCloudError: Error {
@@ -123,10 +180,15 @@ actor MinCloudClient {
         MinCloudSettings.clearSession()
     }
 
+    func fetchCatalogMeta() async throws -> MinCloudCatalogMeta {
+        try await get(path: "/v1/mov/meta")
+    }
+
     func fetchMovieCatalog(updatedSince: String? = nil, limit: Int = 400) async throws -> MinCloudMovieCatalog {
         var movies: [MinCloudMovieCatalog.Movie] = []
         var sources: [MinCloudMovieCatalog.Source] = []
         var revision = 0
+        var generatedAt: String?
         var offset = 0
         while true {
             var items: [URLQueryItem] = [
@@ -138,6 +200,7 @@ actor MinCloudClient {
             }
             let page: MinCloudMovieCatalog = try await get(path: "/v1/mov/catalog", query: items)
             revision = page.revision
+            generatedAt = page.generatedAt
             if sources.isEmpty {
                 sources = page.sources
             }
@@ -145,11 +208,26 @@ actor MinCloudClient {
             guard page.truncated == true, !page.movies.isEmpty else { break }
             offset += page.movies.count
         }
-        return MinCloudMovieCatalog(revision: revision, movies: movies, sources: sources, truncated: false)
+        return MinCloudMovieCatalog(
+            revision: revision,
+            generatedAt: generatedAt,
+            movies: movies,
+            sources: sources,
+            truncated: false
+        )
     }
 
-    func registerDevice(pushToken: String?, timezone: String) async throws {
+    func fetchMovieLibrary() async throws -> [MinCloudMovLibraryItem] {
+        let payload: LibraryResponse<MinCloudMovLibraryItem> = try await get(
+            path: "/v1/me/library/mov",
+            authorized: true
+        )
+        return payload.items
+    }
+
+    func registerDevice(pushToken: String? = MinCloudSettings.pushToken, timezone: String = TimeZone.current.identifier) async {
         var body: [String: Any] = [
+            "deviceId": MinCloudSettings.deviceId,
             "app": "watchedit",
             "platform": "ios",
             "timezone": timezone
@@ -157,12 +235,24 @@ actor MinCloudClient {
         if let pushToken {
             body["pushToken"] = pushToken
         }
-        _ = try await request(
-            path: "/v1/me/devices",
-            method: "PUT",
-            authorized: true,
+        _ = try? await request(
+            path: "/v1/devices/register",
+            method: "POST",
+            authorized: MinCloudSettings.isSignedIn,
             body: body
         )
+        if MinCloudSettings.isSignedIn {
+            _ = try? await request(
+                path: "/v1/me/devices",
+                method: "PUT",
+                authorized: true,
+                body: body
+            )
+        }
+    }
+
+    private struct LibraryResponse<Item: Decodable>: Decodable {
+        let items: [Item]
     }
 
     func saveNotificationPreferences(_ preferences: [String: Any]) async throws {
@@ -193,8 +283,8 @@ actor MinCloudClient {
         return decoded
     }
 
-    private func get<T: Decodable>(path: String, query: [URLQueryItem] = []) async throws -> T {
-        let data = try await request(path: path, method: "GET", authorized: false, query: query)
+    private func get<T: Decodable>(path: String, query: [URLQueryItem] = [], authorized: Bool = false) async throws -> T {
+        let data = try await request(path: path, method: "GET", authorized: authorized, query: query)
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {

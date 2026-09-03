@@ -1824,6 +1824,13 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
         }
     }
     
@@ -1870,6 +1877,13 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
         }
     }
     
@@ -1916,6 +1930,56 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
+        }
+    }
+
+    func applyMinCloudLibrary(_ items: [MinCloudMovLibraryItem]) {
+        guard let modelContext else { return }
+        for item in items {
+            let movieId = item.movieId
+            let descriptor = FetchDescriptor<MovieData>(
+                predicate: #Predicate<MovieData> { $0.id == movieId }
+            )
+            guard let movieData = try? modelContext.fetch(descriptor).first else { continue }
+            let userData = getOrCreateUserMovieData(for: movieData, modelContext: modelContext)
+            userData.isSaved = userData.isSaved || (item.isSaved ?? false)
+            userData.isRewatched = userData.isRewatched || (item.isRewatched ?? false)
+            userData.isListened = userData.isListened || (item.isListened ?? false)
+            userData.isWatched = userData.isWatched || (item.isWatched ?? false)
+            if let rating = item.rating { userData.userRating = rating }
+            if let notes = item.notes { userData.userNotes = notes }
+            userData.lastUpdated = Date()
+            updateMovieInCache(movieId)
+        }
+        try? modelContext.save()
+        refreshMovies()
+    }
+
+    func minCloudLibraryPayload() -> [[String: Any]] {
+        guard let modelContext else { return [] }
+        let rows = (try? modelContext.fetch(FetchDescriptor<UserMovieData>())) ?? []
+        return rows.compactMap { userData -> [String: Any]? in
+            guard let movieId = userData.movie?.id else { return nil }
+            guard userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched else {
+                return nil
+            }
+            var item: [String: Any] = [
+                "movieId": movieId,
+                "isSaved": userData.isSaved,
+                "isRewatched": userData.isRewatched,
+                "isListened": userData.isListened,
+                "isWatched": userData.isWatched
+            ]
+            if let rating = userData.userRating { item["rating"] = rating }
+            if let notes = userData.userNotes { item["notes"] = notes }
+            return item
         }
     }
     

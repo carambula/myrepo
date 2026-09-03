@@ -34,6 +34,7 @@ let package = Package(
                 "RewatchablesCategories.swift",
                 "Services/MinCloudClient.swift",
                 "Services/MinCloudCatalogSync.swift",
+                "Services/MinCloudLibrarySync.swift",
                 "StreamingPreferences.swift",
                 "ThemeManager.swift",
                 "TitleCleaner.swift",

@@ -1,4 +1,28 @@
 import SwiftUI
+import UserNotifications
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if os(iOS)
+final class MinCloudAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Task {
+            let granted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+            if granted == true {
+                await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
+            }
+        }
+        return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        MinCloudSettings.pushToken = token
+        Task { await MinCloudClient.shared.registerDevice() }
+    }
+}
+#endif
 
 /// Retains the `NotificationCenter` token for iCloud KVS updates (required for block-based observers).
 private final class UbiquitousKeyValueStoreSyncObserver {
@@ -27,6 +51,9 @@ private final class UbiquitousKeyValueStoreSyncObserver {
 
 @main
 struct PodLinkApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(MinCloudAppDelegate.self) private var appDelegate
+    #endif
     @State private var themeManager = ThemeManager.shared
     @State private var playbackService = PlaybackService.shared
     @State private var downloadManager = DownloadManager.shared

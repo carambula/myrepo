@@ -7,6 +7,7 @@ enum MinCloudSettings {
     static let emailKey = "mincloud.email"
     static let iCloudBackupEnabledKey = "mincloud.icloudBackupEnabled"
     static let deviceIdKey = "mincloud.deviceId"
+    static let pushTokenKey = "mincloud.pushToken"
 
     static var defaultBaseURL: URL {
         URL(string: "https://min-cloud-production.up.railway.app")!
@@ -47,6 +48,11 @@ enum MinCloudSettings {
         let created = UUID().uuidString
         UserDefaults.standard.set(created, forKey: deviceIdKey)
         return created
+    }
+
+    static var pushToken: String? {
+        get { UserDefaults.standard.string(forKey: pushTokenKey) }
+        set { UserDefaults.standard.set(newValue, forKey: pushTokenKey) }
     }
 
     static var iCloudBackupEnabled: Bool {

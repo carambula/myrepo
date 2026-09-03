@@ -77,13 +77,15 @@ mincloud.baseURL = http://localhost:4000
 
 - **No account:** the app still uses `GET /v1/pod/feeds?url=` (no login). Following a show also `POST /v1/pod/watch` with a local `deviceId`, which upserts the feed into the shared refresh set. Curated catalog refresh happens either way.
 - **Signed in:** followed shows are also written to `user_library_pod`, so the same refresh job can enqueue per-user inbox items.
-- **New episode notifications:** yes. Priority / per-show flags enqueue into `notification_queue` for accounts and anonymous devices. The app also fires local notifications when a fresh fetch sees a newer episode than the last baseline. First ingest does not notify. APNs push is not wired yet; the inbox API and local alerts are the delivery surfaces.
+- **New episode notifications:** yes. Priority / per-show flags enqueue into `notification_queue` for accounts and anonymous devices. The app also fires local notifications when a fresh fetch sees a newer episode than the last baseline. First ingest does not notify. When `APNS_KEY_ID`, `APNS_TEAM_ID`, and `APNS_KEY` are set, `notifications.dispatch` sends APNs alerts to stored device tokens (`apns-topic` is `Carambula-Projects.PodLink` or `Carambula-Projects.WatchedIt`). The inbox API remains the fallback.
 
 ## API surface
 
 - `POST /v1/auth/register` `POST /v1/auth/login`
 - `GET /v1/me` library, devices, notifications
-- `GET /v1/mov/catalog?updatedSince=` (includes `physicalMedia` when known)
+- `GET /v1/mov/meta` `GET /v1/mov/catalog?updatedSince=` (credits, trailer, oscars, physical media)
+- `GET /v1/me/library/mov` `GET /v1/me/library/pod` — pull on sign-in
+- `POST /v1/admin/pod/import` with PodLink `DefaultPodcasts.json`
 - `POST /v1/admin/mov/physical-media` with WatchedIt `physical_media.json`
 - `GET /v1/pod/catalog` `GET /v1/pod/feeds?url=`
 - `POST /v1/devices/register` `POST /v1/pod/watch` `GET /v1/devices/:deviceId/inbox` — no account required

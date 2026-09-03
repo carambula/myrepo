@@ -12,10 +12,20 @@ final class MinCloudCatalogSync {
             return "Min Cloud unavailable. Using the local catalog."
         }
         do {
-            let catalog = try await MinCloudClient.shared.fetchMovieCatalog()
+            let lastSyncedAt = MinCloudSettings.lastCatalogSyncedAt
+            if let meta = try? await MinCloudClient.shared.fetchCatalogMeta(),
+               lastSyncedAt != nil,
+               meta.revision == MinCloudSettings.lastCatalogRevision {
+                return "Catalog already current (revision \(meta.revision))."
+            }
+            let catalog = try await MinCloudClient.shared.fetchMovieCatalog(updatedSince: lastSyncedAt)
             let applied = apply(catalog, modelContext: modelContext)
             MinCloudSettings.lastCatalogRevision = catalog.revision
+            MinCloudSettings.lastCatalogSyncedAt = catalog.generatedAt ?? ISO8601DateFormatter().string(from: Date())
             LocalDatabaseManager.shared.refreshMovies()
+            if lastSyncedAt == nil {
+                return "Imported \(applied) titles from Min Cloud (revision \(catalog.revision))."
+            }
             return "Updated \(applied) titles from Min Cloud (revision \(catalog.revision))."
         } catch {
             return "Min Cloud sync failed: \(error.localizedDescription)"
@@ -90,6 +100,15 @@ final class MinCloudCatalogSync {
                     movie.backdropPath = backdrop
                 }
                 applyPhysicalMedia(remote.physicalMedia, to: movie)
+                if let credits = remote.credits {
+                    movie.credits = credits
+                }
+                if let trailer = remote.trailer {
+                    movie.trailer = trailer
+                }
+                if let oscars = remote.oscarAwards {
+                    movie.oscarAwards = oscars
+                }
                 movie.lastUpdated = Date()
                 applied += 1
                 attachSources(remote, movie: movie, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
@@ -107,6 +126,9 @@ final class MinCloudCatalogSync {
                 mpaaRating: remote.mpaaRating,
                 genres: remote.genres ?? [],
                 streamingServices: providers,
+                credits: remote.credits,
+                trailer: remote.trailer,
+                oscarAwards: remote.oscarAwards,
                 physicalMedia: remote.physicalMedia
             )
             modelContext.insert(created)

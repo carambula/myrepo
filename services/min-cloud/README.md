@@ -48,6 +48,7 @@ Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refres
    - `npm run seed` for the sample set
    - `POST /v1/admin/mov/import` with WatchedIt `bootstrap_data.json`
    - or `ADMIN_TOKEN=... node scripts/import-bootstrap.mjs` (also applies `physical_media.json`)
+   - Inverse: `node scripts/export-bootstrap.mjs` writes `apps/WatchedIt/WatchedIt/bootstrap_data.cloud.json` from `/v1/mov/catalog` (Xcode does this on iOS builds)
    - Admin “Add podcast” / iTunes enrich for PodLink defaults
 7. Optional Railway cron hitting `POST /internal/jobs/all` with `x-cron-secret`.
 

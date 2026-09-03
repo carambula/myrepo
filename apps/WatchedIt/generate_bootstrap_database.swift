@@ -1100,8 +1100,10 @@ func getKnownPodcastUrls(for identifier: String, episodeTitle: String?, movieTit
 func generateBootstrapDatabase() async throws {
     print("📦 Generating pre-populated SwiftData database...")
     
-    // Load bootstrap JSON (always use base as the source of truth)
-    let baseURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.json")
+    // Prefer a just-pulled Min Cloud catalog when present.
+    let cloudURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.cloud.json")
+    let committedURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.json")
+    let baseURL = FileManager.default.fileExists(atPath: cloudURL.path) ? cloudURL : committedURL
     let enrichedURL = URL(fileURLWithPath: "bootstrap_data_enriched.json")
     let baseExists = FileManager.default.fileExists(atPath: baseURL.path)
     let enrichedExists = FileManager.default.fileExists(atPath: enrichedURL.path)
@@ -1110,7 +1112,7 @@ func generateBootstrapDatabase() async throws {
         exit(1)
     }
     
-    print("📂 Loading bootstrap JSON from base...")
+    print("📂 Loading bootstrap JSON from \(baseURL.lastPathComponent)...")
     let baseData = try Data(contentsOf: baseURL)
     let baseBootstrapData = try JSONDecoder().decode(BootstrapData.self, from: baseData)
     

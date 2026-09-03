@@ -25,9 +25,11 @@ Ensure entitlements are set:
 Both targets must include:
 - `bootstrap_database.store`
 
-If you update the bootstrap data:
-1. Run `swift generate_bootstrap_database.swift`
-2. Ensure the new `bootstrap_database.store` is bundled
+The iOS Xcode Run Script pulls the live Min Cloud catalog (no admin token) into `bootstrap_data.cloud.json` and regenerates the store before copy-bundle. tvOS uses whatever store the last iOS/cloud build wrote.
+
+Offline: `SKIP_CLOUD_BOOTSTRAP=1` and the committed `bootstrap_data.json`.
+
+Already-running installs: Settings → Refresh Catalog from Min Cloud.
 
 ## Running
 1. Open `WatchedIt.xcodeproj`

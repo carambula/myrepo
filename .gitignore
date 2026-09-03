@@ -40,3 +40,6 @@ Package.resolved
 
 # Misc
 .tmp/
+
+# WatchedIt catalog pulled at Xcode build time
+apps/WatchedIt/WatchedIt/bootstrap_data.cloud.json

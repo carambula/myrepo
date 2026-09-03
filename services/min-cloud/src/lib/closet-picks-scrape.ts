@@ -16,6 +16,9 @@ export type ClosetPicksEpisode = {
 
 export type ClosetPicksFilm = {
   title: string;
+  filmUrl: string | null;
+  director: string | null;
+  year: number | null;
 };
 
 export type CollapsedClosetPick = {
@@ -27,6 +30,9 @@ export type CollapsedClosetPick = {
   description: string;
   episodeDate: string | null;
   episodeUrl: string;
+  filmUrl: string | null;
+  director: string | null;
+  year: number | null;
 };
 
 const decode = (value: string) =>
@@ -99,7 +105,7 @@ export const normalizeClosetPicksTitle = (title: string) =>
     .trim();
 
 const SKIP_FILM_TITLE =
-  /^(watch\s*&\s*shop)$|collector['\u2019]?s\s+set|collectors\s+set|box\s+set|^the complete\s|cinema\s+collection/i;
+  /^(watch\s*&\s*shop)$|collector['\u2019]?s\s+set|collectors\s+set|box\s+set|^the complete\s|cinema\s+collection|^released\s/i;
 
 export const shouldSkipClosetPicksFilmTitle = (title: string) => {
   const cleaned = decode(title);
@@ -174,26 +180,63 @@ export const parseClosetPicksIndex = (html: string): ClosetPicksEpisode[] => {
   return episodes;
 };
 
+export const parseClosetPicksCreditLine = (text: string) => {
+  const cleaned = decode(text);
+  const yearMatch = cleaned.match(/\b((?:19|20)\d{2})\b/);
+  const year = yearMatch ? Number(yearMatch[1]) : null;
+  const director = cleaned
+    .replace(/\b(?:19|20)\d{2}\b/g, "")
+    .replace(/[,–—\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    director: director && !/^\d+$/.test(director) ? director : null,
+    year
+  };
+};
+
+const filmFromCard = ($: cheerio.CheerioAPI, node: Parameters<cheerio.CheerioAPI>[0], href?: string): ClosetPicksFilm | null => {
+  const $node = $(node);
+  const title = decode(
+    $node.find("dt").first().text() || $node.find("img[alt]").attr("alt") || $node.text()
+  );
+  if (shouldSkipClosetPicksFilmTitle(title) || /quick shop/i.test(title)) {
+    return null;
+  }
+  const credit = parseClosetPicksCreditLine($node.find("dd").first().text());
+  const filmUrl = href && /\/films\//i.test(href) ? absoluteCriterionUrl(href) : null;
+  return {
+    title,
+    filmUrl,
+    director: credit.director,
+    year: credit.year
+  };
+};
+
 export const parseClosetPicksEpisode = (html: string): ClosetPicksFilm[] => {
   const $ = cheerio.load(html);
   const films: ClosetPicksFilm[] = [];
   const seen = new Set<string>();
+
+  const addFilm = (film: ClosetPicksFilm | null) => {
+    if (!film) {
+      return;
+    }
+    const key = normalizeClosetPicksTitle(film.title);
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    films.push(film);
+  };
 
   $(".filmWrap").each((_, element) => {
     const $wrap = $(element);
     if ($wrap.find('[data-product-type="boxset"]').length || $wrap.closest("li").find('[data-product-type="boxset"]').length) {
       return;
     }
-    const title = decode($wrap.find("dt").first().text() || $wrap.find("img[alt]").attr("alt") || "");
-    if (shouldSkipClosetPicksFilmTitle(title)) {
-      return;
-    }
-    const key = normalizeClosetPicksTitle(title);
-    if (!key || seen.has(key)) {
-      return;
-    }
-    seen.add(key);
-    films.push({ title });
+    const href = $wrap.find("a[href]").first().attr("href") || "";
+    addFilm(filmFromCard($, element, href));
   });
 
   if (!films.length) {
@@ -202,20 +245,89 @@ export const parseClosetPicksEpisode = (html: string): ClosetPicksFilm[] => {
       if ($link.closest(".filmWrap").find('[data-product-type="boxset"]').length) {
         return;
       }
-      const title = decode($link.find("dt").first().text() || $link.find("img[alt]").attr("alt") || $link.text());
-      if (shouldSkipClosetPicksFilmTitle(title) || /quick shop/i.test(title)) {
-        return;
-      }
-      const key = normalizeClosetPicksTitle(title);
-      if (!key || seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      films.push({ title });
+      addFilm(filmFromCard($, element, String($link.attr("href") || "")));
     });
   }
 
   return films;
+};
+
+export const parseCriterionFilmPage = (html: string) => {
+  const $ = cheerio.load(html);
+  let title = decode(
+    $('meta[property="og:title"]').attr("content") ||
+      $("h1").first().text() ||
+      $("title").first().text()
+  ).replace(/\s*\|\s*the criterion collection.*$/i, "");
+  let year: number | null = null;
+  let director: string | null = null;
+  let originalTitle: string | null = null;
+
+  const titleYear = title.match(/\(\s*((?:19|20)\d{2})\s*\)\s*$/);
+  if (titleYear) {
+    year = Number(titleYear[1]);
+    title = title.replace(/\(\s*(?:19|20)\d{2}\s*\)\s*$/, "").trim();
+  }
+
+  $("script[type='application/ld+json']").each((_, element) => {
+    try {
+      const parsed = JSON.parse($(element).text());
+      const nodes = Array.isArray(parsed) ? parsed : [parsed];
+      for (const node of nodes) {
+        const type = String(node?.["@type"] || "");
+        if (!/movie|videoobject/i.test(type) && !node?.director && !node?.dateCreated) {
+          continue;
+        }
+        if (!title && node.name) {
+          title = decode(String(node.name));
+        }
+        if (!year) {
+          const raw = String(node.dateCreated || node.datePublished || "");
+          const match = raw.match(/\b((?:19|20)\d{2})\b/);
+          if (match) {
+            year = Number(match[1]);
+          }
+        }
+        const nodeDirector = node.director;
+        if (!director && nodeDirector) {
+          const names = Array.isArray(nodeDirector)
+            ? nodeDirector.map((item: { name?: string }) => item?.name).filter(Boolean)
+            : [nodeDirector.name || nodeDirector];
+          director = names.map((name: string) => decode(String(name))).filter(Boolean).join(" and ") || null;
+        }
+        if (!originalTitle && node.alternateName) {
+          originalTitle = decode(String(node.alternateName));
+        }
+      }
+    } catch {
+      // ignore malformed JSON-LD
+    }
+  });
+
+  if (!director) {
+    const labeled =
+      decode($('[itemprop="director"]').first().text()) ||
+      decode($(".director, .film-director, .product-director").first().text()) ||
+      decode($("a[href*='/explore/directors/']").first().text());
+    director = labeled || null;
+  }
+  if (!year) {
+    const labeled =
+      $('[itemprop="dateCreated"], [itemprop="datePublished"]').first().attr("content") ||
+      $('[itemprop="dateCreated"], [itemprop="datePublished"]').first().text() ||
+      $(".year, .release-year, .film-year").first().text();
+    const match = String(labeled || "").match(/\b((?:19|20)\d{2})\b/);
+    if (match) {
+      year = Number(match[1]);
+    }
+  }
+
+  return {
+    title: title || "",
+    year,
+    director,
+    originalTitle
+  };
 };
 
 export const collapseClosetPicks = (
@@ -229,6 +341,9 @@ export const collapseClosetPicks = (
       sourceTitle: string;
       episodeUrl: string;
       episodeDate: string | null;
+      filmUrl: string | null;
+      director: string | null;
+      year: number | null;
       firstIndex: number;
     }
   >();
@@ -248,12 +363,24 @@ export const collapseClosetPicks = (
           sourceTitle: visit.episode.episodeTitle,
           episodeUrl: visit.episode.episodeUrl,
           episodeDate: visit.episode.date,
+          filmUrl: film.filmUrl ?? null,
+          director: film.director ?? null,
+          year: film.year ?? null,
           firstIndex: visitIndex
         });
         continue;
       }
       if (guest && !existing.guests.includes(guest)) {
         existing.guests.push(guest);
+      }
+      if (!existing.filmUrl && film.filmUrl) {
+        existing.filmUrl = film.filmUrl;
+      }
+      if (!existing.director && film.director) {
+        existing.director = film.director;
+      }
+      if (!existing.year && film.year) {
+        existing.year = film.year;
       }
     }
   });
@@ -277,7 +404,10 @@ export const collapseClosetPicks = (
       sourceTitle: row.sourceTitle,
       description: formatClosetPicksDescription(row.guests),
       episodeDate: row.episodeDate,
-      episodeUrl: row.episodeUrl
+      episodeUrl: row.episodeUrl,
+      filmUrl: row.filmUrl,
+      director: row.director,
+      year: row.year
     }));
 };
 
@@ -291,8 +421,17 @@ export const toClosetPicksCatalogItem = (
   sourceTitle: film.sourceTitle,
   episodeDate: film.episodeDate,
   sourceUrl: film.episodeUrl,
+  filmUrl: film.filmUrl,
+  director: film.director,
+  year: film.year,
   podcastEpisodeDescription: film.description
 });
+
+export const CLOSET_PICKS_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml"
+};
 
 export const closetPicksWaybackUrl = (url: string, snapshot = "20250101071625") =>
   `https://web.archive.org/web/${snapshot}id_/${absoluteCriterionUrl(url)}`;
@@ -300,6 +439,40 @@ export const closetPicksWaybackUrl = (url: string, snapshot = "20250101071625") 
 export const htmlLooksLikeClosetPicks = (html: string) =>
   /super-collection-header|filmWrap|header_lvl2|Closet Picks/i.test(html) &&
   !/cf-mitigated|just a moment|security verification/i.test(html);
+
+export const looksLikeClosetPicksChallenge = (html: string) =>
+  /cloudflare|just a moment|security verification|cf-mitigated/i.test(html) &&
+  !htmlLooksLikeClosetPicks(html);
+
+export const fetchClosetPicksPage = async (
+  url: string,
+  options: { preferWayback?: boolean; waybackSnapshot?: string } = {}
+) => {
+  const snapshot = options.waybackSnapshot || "20250101071625";
+  const candidates = options.preferWayback
+    ? [closetPicksWaybackUrl(url, snapshot), closetPicksWaybackUrl(url, "2"), url]
+    : [url, closetPicksWaybackUrl(url, snapshot), closetPicksWaybackUrl(url, "2")];
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        headers: CLOSET_PICKS_FETCH_HEADERS,
+        signal: AbortSignal.timeout(12000)
+      });
+      if (!response.ok) {
+        throw new Error(`GET ${candidate} failed ${response.status}`);
+      }
+      const html = await response.text();
+      if (looksLikeClosetPicksChallenge(html)) {
+        throw new Error("challenge");
+      }
+      return html;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Failed to fetch ${url}`);
+};
 
 export const closetPicksSourceRecord = () => ({
   identifier: CLOSET_PICKS_SOURCE_ID,

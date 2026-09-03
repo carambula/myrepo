@@ -3,15 +3,16 @@ import { query } from "../db.js";
 import { config } from "../config.js";
 import { fetchText } from "../lib/http.js";
 import {
-  closetPicksWaybackUrl,
   collapseClosetPicks,
-  htmlLooksLikeClosetPicks,
+  fetchClosetPicksPage,
   isClosetPicksIndexUrl,
   isClosetPicksUrl,
   parseClosetPicksEpisode,
   parseClosetPicksIndex,
+  parseCriterionFilmPage,
   toClosetPicksCatalogItem
 } from "../lib/closet-picks-scrape.js";
+import { isClosetPicksSource, prepareClosetPicksQuery } from "../lib/closet-picks-match.js";
 import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
 import { scrapeListItems } from "../lib/list-scrape.js";
@@ -238,17 +239,7 @@ const LIST_FETCH_HEADERS = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 };
 
-const fetchClosetPicksHtml = async (url: string) => {
-  try {
-    const html = await fetchText(url, LIST_FETCH_HEADERS);
-    if (htmlLooksLikeClosetPicks(html)) {
-      return html;
-    }
-  } catch {
-    // fall through to Wayback
-  }
-  return fetchText(closetPicksWaybackUrl(url), LIST_FETCH_HEADERS);
-};
+const fetchClosetPicksHtml = async (url: string) => fetchClosetPicksPage(url);
 
 const previewIdentifiers = (body: { identifiers?: unknown; sourceIdentifiers?: unknown }) => {
   if (Array.isArray(body?.sourceIdentifiers)) {
@@ -973,7 +964,29 @@ router.post("/ingest/enrich", async (req, res) => {
   const enriched = [];
   for (const item of items.slice(0, 40)) {
     try {
-      const prepared = prepareMovieQuery(String(item.title || ""), item.podcastEpisodeDescription);
+      let prepared = prepareMovieQuery(String(item.title || ""), item.podcastEpisodeDescription);
+      if (isClosetPicksSource(item.sourceIdentifier)) {
+        let year = item.year != null ? Number(item.year) : null;
+        let director = item.director ? String(item.director) : null;
+        let originalTitle = item.originalTitle ? String(item.originalTitle) : null;
+        if (item.filmUrl && (!year || !director)) {
+          try {
+            const filmHtml = await fetchClosetPicksPage(String(item.filmUrl));
+            const parsed = parseCriterionFilmPage(filmHtml);
+            year = year || parsed.year;
+            director = director || parsed.director;
+            originalTitle = originalTitle || parsed.originalTitle;
+          } catch {
+            // keep card metadata
+          }
+        }
+        prepared = prepareClosetPicksQuery({
+          title: String(item.title || ""),
+          year,
+          director,
+          originalTitle
+        });
+      }
       const match = await resolveTmdbMatch(prepared);
       if (!match) {
         enriched.push({ ...item, title: prepared.title || item.title, sourceTitle: item.sourceTitle || item.title, status: "missing" });

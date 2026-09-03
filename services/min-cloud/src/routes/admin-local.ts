@@ -484,14 +484,17 @@ router.post("/physical-media/clear", async (req, res) => {
 
 router.post("/physical-media/enrich", async (req, res) => {
   const overwriteManual = Boolean(req.body?.overwriteManual);
-  await takeSnapshot(req, { trigger: "before-physical-enrich" });
+  const dryRun = Boolean(req.body?.dryRun);
+  if (!dryRun) {
+    await takeSnapshot(req, { trigger: "before-physical-enrich" });
+  }
   const movies = await loadAdminMovies();
   const index = await fetchWikidataPhysicalMediaIndex();
   seedCriterionFromSources(movies, index);
   seedCurated4K(index);
   const catalogIndex = filterIndexToCatalog(index, movies);
   const overlay = overlayFromIndex(catalogIndex);
-  const updatedCount = await applyPhysicalMediaOverlay(overlay.byTmdbId, { overwriteManual });
+  const updatedCount = dryRun ? 0 : await applyPhysicalMediaOverlay(overlay.byTmdbId, { overwriteManual });
   if (updatedCount > 0) {
     await bumpWatchedIt();
   }
@@ -502,6 +505,7 @@ router.post("/physical-media/enrich", async (req, res) => {
   const nextMovies = await loadAdminMovies();
   res.json({
     success: true,
+    dryRun,
     updatedCount,
     overlayCount: Object.keys(overlay.byTmdbId).length,
     stats: physicalMediaStats(nextMovies)
@@ -551,7 +555,8 @@ router.post("/oscar-awards/enrich", async (req, res) => {
     return;
   }
   const offset = Math.max(Number(req.body?.offset) || 0, 0);
-  if (offset === 0) {
+  const dryRun = Boolean(req.body?.dryRun);
+  if (offset === 0 && !dryRun) {
     await takeSnapshot(req, { trigger: "before-oscar-enrich" });
   }
   const movies = await loadAdminMovies();
@@ -560,7 +565,7 @@ router.post("/oscar-awards/enrich", async (req, res) => {
     {
       mode: String(req.body?.mode || "missing"),
       delayMs: Number(req.body?.delayMs ?? 150),
-      dryRun: Boolean(req.body?.dryRun),
+      dryRun,
       batchSize: Number(req.body?.batchSize) || 100,
       offset
     },

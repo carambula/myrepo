@@ -1636,10 +1636,22 @@ struct MovieListView: View {
 
     private var latestPodcastMovies: [Movie] {
         let entries = latestPodcastEntries()
-            .sorted { $0.date > $1.date }
-            .map { $0.movie }
-        let visibleMovies = inspirationVisibleMovies(from: entries)
-        return Array(visibleMovies.prefix(latestPodcastLimit))
+        var movieById: [String: Movie] = [:]
+        for entry in entries {
+            movieById[entry.movie.id] = entry.movie
+        }
+        let movieIds = LatestPodcastPicker.carouselMovieIds(
+            from: entries.map {
+                LatestPodcastPicker.Entry(
+                    movieId: $0.movie.id,
+                    date: $0.date,
+                    sourceIdentifier: $0.sourceIdentifier
+                )
+            },
+            limit: latestPodcastLimit
+        )
+        let picked = movieIds.compactMap { movieById[$0] }
+        return inspirationVisibleMovies(from: picked)
     }
 
     private var toCompleteMovies: [Movie] {
@@ -1781,11 +1793,7 @@ struct MovieListView: View {
         case .recentlySaved:
             orderedIds = uniqueIdsPreservingOrder(recentlySavedMovies.map { $0.id })
         case .latestPodcasts:
-            orderedIds = uniqueIdsPreservingOrder(
-                latestPodcastEntries()
-                    .sorted { $0.date > $1.date }
-                    .map { $0.movie.id }
-            )
+            orderedIds = uniqueIdsPreservingOrder(latestPodcastMovies.map(\.id))
         case .toComplete:
             orderedIds = uniqueIdsPreservingOrder(
                 localDB.movies
@@ -1839,7 +1847,7 @@ struct MovieListView: View {
                       enabledIds.contains(source.identifier) else {
                     continue
                 }
-                let date = content.podcastEpisode?.publishDate ?? content.sourceDate
+                let date = [content.podcastEpisode?.publishDate, content.sourceDate].compactMap { $0 }.max()
                 if let date {
                     entries.append((movie: movie, date: date, sourceIdentifier: source.identifier))
                 }

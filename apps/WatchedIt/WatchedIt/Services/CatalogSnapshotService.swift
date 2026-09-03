@@ -39,7 +39,6 @@ final class CatalogSnapshotService {
         let movieToSourceIdentifiers: [String: Set<String>]
         let rankBySourceIdentifier: [String: [String: Int]]
         let latestPodcastDateBySourceIdentifier: [String: [String: Date]]
-        let latestPodcastDateByMovieIdentifier: [String: Date]
     }
 
     func buildSnapshot(
@@ -75,7 +74,7 @@ final class CatalogSnapshotService {
 
         let latestPodcastMovies = buildLatestPodcastMovies(
             movies: movies,
-            latestPodcastDateByMovieIdentifier: sourceIndexData.latestPodcastDateByMovieIdentifier,
+            latestPodcastDateBySourceIdentifier: sourceIndexData.latestPodcastDateBySourceIdentifier,
             preferredSourceIdentifiers: preferredSet,
             movieToSourceIdentifiers: sourceIndexData.movieToSourceIdentifiers
         )
@@ -161,15 +160,13 @@ final class CatalogSnapshotService {
             return SourceIndexData(
                 movieToSourceIdentifiers: [:],
                 rankBySourceIdentifier: [:],
-                latestPodcastDateBySourceIdentifier: [:],
-                latestPodcastDateByMovieIdentifier: [:]
+                latestPodcastDateBySourceIdentifier: [:]
             )
         }
 
         var movieToSourceIdentifiers: [String: Set<String>] = [:]
         var rankBySourceIdentifier: [String: [String: Int]] = [:]
         var latestPodcastDateBySourceIdentifier: [String: [String: Date]] = [:]
-        var latestPodcastDateByMovieIdentifier: [String: Date] = [:]
 
         let descriptor = FetchDescriptor<MovieData>()
         let movieDataList = (try? modelContext.fetch(descriptor)) ?? []
@@ -188,14 +185,11 @@ final class CatalogSnapshotService {
                     rankBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = rank
                 }
 
-                if let date = content.podcastEpisode?.publishDate ?? content.sourceDate {
+                if source.type == "podcast",
+                   let date = [content.podcastEpisode?.publishDate, content.sourceDate].compactMap({ $0 }).max() {
                     let currentSourceDate = latestPodcastDateBySourceIdentifier[sourceIdentifier]?[movieIdentifier]
                     if currentSourceDate == nil || currentSourceDate! < date {
                         latestPodcastDateBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = date
-                    }
-                    let currentMovieDate = latestPodcastDateByMovieIdentifier[movieIdentifier]
-                    if currentMovieDate == nil || currentMovieDate! < date {
-                        latestPodcastDateByMovieIdentifier[movieIdentifier] = date
                     }
                 }
             }
@@ -209,14 +203,11 @@ final class CatalogSnapshotService {
                     rankBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = rank
                 }
 
-                if let date = dataSource.podcastEpisode?.publishDate {
+                if source.type == "podcast",
+                   let date = dataSource.podcastEpisode?.publishDate {
                     let currentSourceDate = latestPodcastDateBySourceIdentifier[sourceIdentifier]?[movieIdentifier]
                     if currentSourceDate == nil || currentSourceDate! < date {
                         latestPodcastDateBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = date
-                    }
-                    let currentMovieDate = latestPodcastDateByMovieIdentifier[movieIdentifier]
-                    if currentMovieDate == nil || currentMovieDate! < date {
-                        latestPodcastDateByMovieIdentifier[movieIdentifier] = date
                     }
                 }
             }
@@ -227,8 +218,7 @@ final class CatalogSnapshotService {
         return SourceIndexData(
             movieToSourceIdentifiers: movieToSourceIdentifiers,
             rankBySourceIdentifier: rankBySourceIdentifier,
-            latestPodcastDateBySourceIdentifier: latestPodcastDateBySourceIdentifier,
-            latestPodcastDateByMovieIdentifier: latestPodcastDateByMovieIdentifier
+            latestPodcastDateBySourceIdentifier: latestPodcastDateBySourceIdentifier
         )
     }
 
@@ -287,25 +277,36 @@ final class CatalogSnapshotService {
 
     private func buildLatestPodcastMovies(
         movies: [Movie],
-        latestPodcastDateByMovieIdentifier: [String: Date],
+        latestPodcastDateBySourceIdentifier: [String: [String: Date]],
         preferredSourceIdentifiers: Set<String>,
         movieToSourceIdentifiers: [String: Set<String>]
     ) -> [Movie] {
-        let ordered = movies
-            .filter { movie in
-                guard let sourceIdentifiers = movieToSourceIdentifiers[movie.id], !sourceIdentifiers.isEmpty else {
-                    return false
+        let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+        var entries: [LatestPodcastPicker.Entry] = []
+        for (sourceIdentifier, dateByMovie) in latestPodcastDateBySourceIdentifier {
+            if !preferredSourceIdentifiers.isEmpty,
+               !preferredSourceIdentifiers.contains(sourceIdentifier) {
+                continue
+            }
+            for (movieIdentifier, date) in dateByMovie {
+                guard movieByIdentifier[movieIdentifier] != nil else { continue }
+                if !preferredSourceIdentifiers.isEmpty {
+                    guard let sourceIdentifiers = movieToSourceIdentifiers[movieIdentifier],
+                          sourceIdentifiers.contains(sourceIdentifier) else {
+                        continue
+                    }
                 }
-                guard !preferredSourceIdentifiers.isEmpty else { return true }
-                return !preferredSourceIdentifiers.intersection(sourceIdentifiers).isEmpty
+                entries.append(
+                    LatestPodcastPicker.Entry(
+                        movieId: movieIdentifier,
+                        date: date,
+                        sourceIdentifier: sourceIdentifier
+                    )
+                )
             }
-            .sorted { lhs, rhs in
-                let leftDate = latestPodcastDateByMovieIdentifier[lhs.id] ?? lhs.episodeSortDate
-                let rightDate = latestPodcastDateByMovieIdentifier[rhs.id] ?? rhs.episodeSortDate
-                if leftDate != rightDate { return leftDate > rightDate }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
-        return Array(uniqueMoviesPreservingOrder(ordered).prefix(20))
+        }
+        let movieIds = LatestPodcastPicker.carouselMovieIds(from: entries, limit: 20)
+        return movieIds.compactMap { movieByIdentifier[$0] }
     }
 
     private func isToCompleteMovie(_ movie: Movie) -> Bool {

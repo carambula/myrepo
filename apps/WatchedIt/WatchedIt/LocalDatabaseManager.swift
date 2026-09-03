@@ -626,7 +626,7 @@ public class LocalDatabaseManager: ObservableObject {
                 if !normalized.isEmpty {
                     titleSetBySource[identifier, default: []].insert(normalized)
                 }
-                let date = content.podcastEpisode?.publishDate ?? content.sourceDate
+                let date = [content.podcastEpisode?.publishDate, content.sourceDate].compactMap { $0 }.max()
                 if let date, (latestDateBySource[identifier] == nil || date > latestDateBySource[identifier]!) {
                     latestDateBySource[identifier] = date
                     latestTitleBySource[identifier] = sourceTitle

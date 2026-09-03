@@ -56,12 +56,14 @@ public struct AgentSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("New connection") {
+            Section {
                 TextField("Agent name", text: $issuedName)
                 Toggle("Allow writes", isOn: $allowWrite)
                 Button("Create connection") {
                     createConnection()
                 }
+            } header: {
+                Text("New connection")
             } footer: {
                 Text(allowWrite
                      ? "Read and write. Every write creates an undo record."
@@ -69,19 +71,21 @@ public struct AgentSettingsView: View {
             }
 
             if let issuedToken {
-                Section("Copy this token now") {
+                Section {
                     Text(issuedToken)
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
                     Button(copied ? "Copied" : "Copy token and MCP config") {
                         copyIssued(issuedToken)
                     }
+                } header: {
+                    Text("Copy this token now")
                 } footer: {
                     Text("The token is stored as a hash and cannot be shown again. Revoke it any time.")
                 }
             }
 
-            Section("Connections") {
+            Section {
                 if connections.isEmpty {
                     Text("No agents connected yet.")
                         .foregroundStyle(.secondary)
@@ -102,9 +106,11 @@ public struct AgentSettingsView: View {
                         }
                     }
                 }
+            } header: {
+                Text("Connections")
             }
 
-            Section("Safety") {
+            Section {
                 Button("Undo last agent write") {
                     undoLast()
                 }
@@ -113,6 +119,8 @@ public struct AgentSettingsView: View {
                         copyLibrary()
                     }
                 }
+            } header: {
+                Text("Safety")
             } footer: {
                 Text(safetyFooter)
             }

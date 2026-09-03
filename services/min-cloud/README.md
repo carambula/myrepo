@@ -88,5 +88,15 @@ mincloud.baseURL = http://localhost:4000
 - `POST /v1/devices/register` `POST /v1/pod/watch` `GET /v1/devices/:deviceId/inbox` — no account required
 - `GET /v1/social/feed` `POST /v1/social/follow`
 - `GET /v1/admin/health` `POST /v1/admin/jobs/:name`
+- `GET /api/history` `POST /api/history/snapshots` `POST /api/history/snapshots/:id/restore` `POST /api/history/audit/:id/revert`
 
-Local `bootstrap_web` consoles remain for offline catalog editing. Min Cloud is the source of truth once deployed.
+## Catalog version control
+
+Admin edits are versioned in Postgres:
+
+- Every movie or source change writes `admin_audit` with before/after JSON. History → Revert puts that row back.
+- Bulk or destructive work (ingest, refresh-all, dedupe, Oscar/physical clear, import, publish) takes a full catalog snapshot first.
+- Operations → History can save a labeled snapshot on demand and restore any snapshot. Restore writes a safety snapshot first, so restore is itself reversible.
+- The last 40 unlabeled automatic snapshots are kept. Labeled and manual snapshots stay.
+
+`catalog_revisions` is still the monotonic number clients poll. Snapshots are the restorable copies.

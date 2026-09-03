@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { query } from "../db.js";
 import { config } from "../config.js";
 import { fetchJson, fetchText } from "../lib/http.js";
@@ -17,8 +17,19 @@ import {
   upsertAdminMovie,
   type AdminMovie
 } from "../lib/admin-catalog.js";
+import {
+  listAudit,
+  listSnapshots,
+  recordAudit,
+  restoreSnapshot,
+  revertAudit,
+  snapshotIfNeeded,
+  takeSnapshot
+} from "../lib/admin-history.js";
 
 const router = Router();
+
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const movieAt = async (index: number) => {
   const movies = await loadAdminMovies();
@@ -26,6 +37,112 @@ const movieAt = async (index: number) => {
     return null;
   }
   return movies[index];
+};
+
+const findMovie = async (movieId?: string | null, sourceId?: string | null, tmdbId?: number | null) => {
+  const movies = await loadAdminMovies();
+  return (
+    movies.find((movie) => movieId && movie.__movieId === movieId && (!sourceId || movie.sourceIdentifier === sourceId)) ||
+    movies.find((movie) => movieId && movie.__movieId === movieId) ||
+    movies.find((movie) => tmdbId != null && movie.tmdbId === tmdbId) ||
+    null
+  );
+};
+
+const loadSource = async (identifier: string) => {
+  const result = await query(
+    `
+    SELECT identifier, name, type, url, is_ranked AS "isRankedList", enabled, movie_count AS "movieCount"
+    FROM mov_sources
+    WHERE identifier = $1
+    `,
+    [identifier]
+  );
+  return (result.rows[0] as Record<string, unknown> | undefined) ?? null;
+};
+
+const upsertSourceRow = async (row: Record<string, unknown>, previousIdentifier?: string) => {
+  const identifier = String(row.identifier || "").trim().toLowerCase();
+  const name = String(row.name || "").trim();
+  const from = previousIdentifier || identifier;
+  await query(
+    `
+    INSERT INTO mov_sources (identifier, name, type, url, is_ranked, enabled, updated_at)
+    VALUES ($1,$2,$3,$4,$5,$6,NOW())
+    ON CONFLICT (identifier) DO UPDATE SET
+      name = EXCLUDED.name, type = EXCLUDED.type, url = EXCLUDED.url,
+      is_ranked = EXCLUDED.is_ranked, enabled = EXCLUDED.enabled, updated_at = NOW()
+    `,
+    [
+      from,
+      name,
+      row.type === "podcast" ? "podcast" : String(row.type || "url"),
+      row.url ?? null,
+      Boolean(row.isRankedList ?? row.is_ranked),
+      row.enabled !== false
+    ]
+  );
+  if (identifier && identifier !== from) {
+    await query(
+      `
+      UPDATE mov_sources
+      SET identifier = $2, name = $3, type = $4, url = $5, is_ranked = $6, enabled = $7, updated_at = NOW()
+      WHERE identifier = $1
+      `,
+      [
+        from,
+        identifier,
+        name,
+        row.type === "podcast" ? "podcast" : String(row.type || "url"),
+        row.url ?? null,
+        Boolean(row.isRankedList ?? row.is_ranked),
+        row.enabled !== false
+      ]
+    );
+    await query(`UPDATE mov_movie_sources SET source_id = $2 WHERE source_id = $1`, [from, identifier]);
+  }
+  await bumpWatchedIt();
+};
+
+const deleteSourceRow = async (row: Record<string, unknown>) => {
+  const identifier = String(row.identifier || "");
+  await query(`DELETE FROM mov_movie_sources WHERE source_id = $1`, [identifier]);
+  await query(`DELETE FROM mov_sources WHERE identifier = $1`, [identifier]);
+  await bumpWatchedIt();
+};
+
+const historyHandlers = {
+  movie: {
+    restore: async (before: Record<string, unknown>, after: Record<string, unknown> | null) => {
+      await upsertAdminMovie(before, (after || before) as unknown as AdminMovie);
+    },
+    remove: async (after: Record<string, unknown>) => {
+      await deleteAdminRow(after as unknown as AdminMovie);
+    }
+  },
+  source: {
+    restore: async (before: Record<string, unknown>, after: Record<string, unknown> | null) => {
+      await upsertSourceRow(before, after ? String(after.identifier || before.identifier) : undefined);
+    },
+    remove: async (after: Record<string, unknown>) => {
+      await deleteSourceRow(after);
+    }
+  }
+};
+
+const commitMovieItems = async (req: Request, items: unknown[], action: string) => {
+  await takeSnapshot(req, { trigger: `before-${action}` });
+  let addedCount = 0;
+  for (const item of items) {
+    const row = item as Record<string, unknown>;
+    if (!row?.title || !row?.sourceIdentifier) {
+      continue;
+    }
+    await upsertAdminMovie(row);
+    addedCount += 1;
+  }
+  await recordAudit(req, `catalog.${action}`, { addedCount });
+  return { success: true, addedCount, report: { items: [], addedCount } };
 };
 
 const applyTmdbDetails = (movie: AdminMovie, details: Record<string, unknown>) => {
@@ -77,9 +194,11 @@ router.get("/data/health", async (_req, res) => {
   res.json(adminCatalogHealth(movies, sources));
 });
 
-router.post("/bootstrap/regenerate", async (_req, res) => {
+router.post("/bootstrap/regenerate", async (req, res) => {
+  const snapshot = await takeSnapshot(req, { trigger: "publish" });
   await bumpWatchedIt();
-  res.json({ success: true, published: true });
+  await recordAudit(req, "catalog.publish", { snapshotId: snapshot.id, movieCount: snapshot.movie_count });
+  res.json({ success: true, published: true, snapshotId: snapshot.id });
 });
 
 router.post("/sources", async (req, res) => {
@@ -90,35 +209,40 @@ router.post("/sources", async (req, res) => {
     res.status(400).json({ error: "Invalid source payload" });
     return;
   }
-  await query(
-    `
-    INSERT INTO mov_sources (identifier, name, type, url, is_ranked, enabled, updated_at)
-    VALUES ($1,$2,$3,$4,$5,TRUE,NOW())
-    ON CONFLICT (identifier) DO UPDATE SET
-      name = EXCLUDED.name, type = EXCLUDED.type, url = EXCLUDED.url, is_ranked = EXCLUDED.is_ranked, updated_at = NOW()
-    `,
-    [identifier, name, req.body?.type === "podcast" ? "podcast" : "url", url || null, Boolean(req.body?.isRankedList)]
-  );
-  await bumpWatchedIt();
-  res.json({ success: true, source: { identifier, name, type: req.body?.type === "podcast" ? "podcast" : "url", url, isRankedList: Boolean(req.body?.isRankedList) } });
+  const before = await loadSource(identifier);
+  const source = {
+    identifier,
+    name,
+    type: req.body?.type === "podcast" ? "podcast" : "url",
+    url: url || null,
+    isRankedList: Boolean(req.body?.isRankedList),
+    enabled: true
+  };
+  await snapshotIfNeeded(req, "editor");
+  await upsertSourceRow(source);
+  const after = await loadSource(identifier);
+  await recordAudit(req, before ? "source.update" : "source.create", { identifier }, before, after);
+  res.json({ success: true, source: { identifier, name, type: source.type, url, isRankedList: source.isRankedList } });
 });
 
 router.put("/sources/:identifier", async (req, res) => {
   const existing = String(req.params.identifier);
   const identifier = String(req.body?.identifier || existing).trim().toLowerCase();
   const name = String(req.body?.name || "").trim();
-  await query(
-    `
-    UPDATE mov_sources
-    SET identifier = $2, name = $3, type = $4, url = $5, is_ranked = $6, updated_at = NOW()
-    WHERE identifier = $1
-    `,
-    [existing, identifier, name, req.body?.type === "podcast" ? "podcast" : "url", req.body?.url ?? null, Boolean(req.body?.isRankedList)]
+  const before = await loadSource(existing);
+  await snapshotIfNeeded(req, "editor");
+  await upsertSourceRow(
+    {
+      identifier,
+      name,
+      type: req.body?.type === "podcast" ? "podcast" : "url",
+      url: req.body?.url ?? null,
+      isRankedList: Boolean(req.body?.isRankedList)
+    },
+    existing
   );
-  if (identifier !== existing) {
-    await query(`UPDATE mov_movie_sources SET source_id = $2 WHERE source_id = $1`, [existing, identifier]);
-  }
-  await bumpWatchedIt();
+  const after = await loadSource(identifier);
+  await recordAudit(req, "source.update", { identifier, previousIdentifier: existing }, before, after);
   res.json({ success: true, source: { identifier, name } });
 });
 
@@ -127,7 +251,10 @@ router.post("/movies", async (req, res) => {
     res.status(400).json({ error: "Missing required fields" });
     return;
   }
-  await upsertAdminMovie(req.body);
+  await snapshotIfNeeded(req, "editor");
+  const id = await upsertAdminMovie(req.body);
+  const after = await findMovie(id, String(req.body.sourceIdentifier));
+  await recordAudit(req, "movie.create", { id, title: req.body.title }, null, after);
   res.json({ success: true });
 });
 
@@ -141,7 +268,11 @@ router.put("/movies/:index", async (req, res) => {
     res.status(400).json({ error: "Missing required fields" });
     return;
   }
-  await upsertAdminMovie(req.body, row);
+  const before = clone(row);
+  await snapshotIfNeeded(req, "editor");
+  const id = await upsertAdminMovie(req.body, row);
+  const after = await findMovie(id, String(req.body.sourceIdentifier));
+  await recordAudit(req, "movie.update", { id, title: req.body.title }, before, after);
   res.json({ success: true });
 });
 
@@ -151,7 +282,10 @@ router.delete("/movies/:index", async (req, res) => {
     res.status(400).json({ error: "Invalid index" });
     return;
   }
+  const before = clone(row);
+  await snapshotIfNeeded(req, "editor");
   await deleteAdminRow(row);
+  await recordAudit(req, "movie.delete", { id: row.__movieId, title: row.title }, before, null);
   res.json({ success: true });
 });
 
@@ -161,13 +295,17 @@ router.post("/movies/:index/streaming/refresh", async (req, res) => {
     res.status(400).json({ error: "Movie has no TMDB ID" });
     return;
   }
+  const before = clone(row);
   const providers = await fetchStreamingServices(row.tmdbId, config.tmdbApiKey, String(req.body?.region || config.tmdbRegion));
   await upsertAdminMovie({ ...row, streamingServices: providers }, row);
+  const after = await findMovie(row.__movieId, row.sourceIdentifier);
+  await recordAudit(req, "movie.streaming", { id: row.__movieId, tmdbId: row.tmdbId }, before, after);
   res.json({ success: true, count: providers.length, streamingServices: providers });
 });
 
 router.post("/streaming/refresh-all", async (req, res) => {
   const movies = await loadAdminMovies();
+  await takeSnapshot(req, { trigger: "before-streaming-refresh" });
   const seen = new Set<string>();
   let updatedCount = 0;
   let skippedCount = 0;
@@ -204,6 +342,7 @@ router.post("/streaming/refresh-all", async (req, res) => {
     }
   }
   await bumpWatchedIt();
+  await recordAudit(req, "catalog.streaming-refresh", { updatedCount, skippedCount, failedCount, unchangedCount });
   res.json({
     success: true,
     updatedCount,
@@ -235,9 +374,13 @@ router.post("/tmdb/apply/:index", async (req, res) => {
     res.status(400).json({ error: "Missing tmdbId" });
     return;
   }
+  const before = clone(row);
   const details = await fetchTmdbMovieDetails(tmdbId, config.tmdbApiKey);
   const next = applyTmdbDetails(row, details);
+  await snapshotIfNeeded(req, "editor");
   await upsertAdminMovie(next, row);
+  const after = await findMovie(row.__movieId, row.sourceIdentifier, tmdbId);
+  await recordAudit(req, "movie.tmdb", { id: row.__movieId, tmdbId }, before, after);
   res.json({ success: true, movie: next });
 });
 
@@ -261,13 +404,19 @@ router.post("/physical-media/update", async (req, res) => {
     res.status(400).json({ error: "tmdbId and physical media required." });
     return;
   }
+  const before = await findMovie(null, null, tmdbId);
+  await snapshotIfNeeded(req, "editor");
   await applyPhysicalMediaOverlay({ [String(tmdbId)]: media });
+  const after = await findMovie(before?.__movieId, before?.sourceIdentifier, tmdbId);
+  await recordAudit(req, "movie.physical-media", { tmdbId }, before, after);
   res.json({ success: true, physicalMedia: media });
 });
 
-router.post("/physical-media/clear", async (_req, res) => {
+router.post("/physical-media/clear", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-physical-clear" });
   await query(`UPDATE mov_movies SET physical_media = NULL, last_updated = NOW() WHERE COALESCE((physical_media->>'manualOverride')::boolean, false) = false`);
   await bumpWatchedIt();
+  await recordAudit(req, "catalog.physical-clear", {});
   res.json({ success: true });
 });
 
@@ -308,9 +457,11 @@ router.get("/oscar-awards/stats", async (_req, res) => {
   });
 });
 
-router.post("/oscar-awards/clear", async (_req, res) => {
+router.post("/oscar-awards/clear", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-oscar-clear" });
   await query(`UPDATE mov_movies SET oscar_awards = NULL, last_updated = NOW()`);
   await bumpWatchedIt();
+  await recordAudit(req, "catalog.oscar-clear", {});
   res.json({ success: true });
 });
 
@@ -358,7 +509,10 @@ SELECT ?awardLabel ?type ?recipientLabel WHERE {
   }
   const oscarAwards = { wins, nominations, totalWins: wins.length, totalNominations: nominations.length, rawAwardsText: null };
   if (row) {
+    const before = clone(row);
     await upsertAdminMovie({ ...row, oscarAwards }, row);
+    const after = await findMovie(row.__movieId, row.sourceIdentifier);
+    await recordAudit(req, "movie.oscar", { id: row.__movieId, imdbId }, before, after);
   }
   res.json({ success: true, oscarAwards });
 });
@@ -372,6 +526,7 @@ router.get("/dedupe/preview", async (_req, res) => {
 router.post("/dedupe/commit", async (req, res) => {
   const movies = await loadAdminMovies();
   const remove = new Set<number>(Array.isArray(req.body?.indexes) ? req.body.indexes.map(Number) : []);
+  await takeSnapshot(req, { trigger: "before-dedupe" });
   let removed = 0;
   for (const index of [...remove].sort((a, b) => b - a)) {
     const row = movies[index];
@@ -381,10 +536,12 @@ router.post("/dedupe/commit", async (req, res) => {
     await deleteAdminRow(row);
     removed += 1;
   }
+  await recordAudit(req, "catalog.dedupe", { removedCount: removed });
   res.json({ success: true, removedCount: removed });
 });
 
-router.post("/feeds/refresh-all", async (_req, res) => {
+router.post("/feeds/refresh-all", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-feeds-refresh" });
   const sources = await loadAdminSources();
   let addedCount = 0;
   let skippedCount = 0;
@@ -393,6 +550,7 @@ router.post("/feeds/refresh-all", async (_req, res) => {
     addedCount += result.addedCount;
     skippedCount += result.skippedCount;
   }
+  await recordAudit(req, "catalog.feeds-refresh", { addedCount, skippedCount });
   res.json({ success: true, addedCount, skippedCount });
 });
 
@@ -402,7 +560,10 @@ router.post("/podcasts/refresh", async (req, res) => {
     res.status(400).json({ error: "Missing sourceIdentifier" });
     return;
   }
-  res.json(await refreshPodcastSource(sourceIdentifier));
+  await snapshotIfNeeded(req, "editor");
+  const result = await refreshPodcastSource(sourceIdentifier);
+  await recordAudit(req, "catalog.podcast-refresh", { sourceIdentifier, ...result });
+  res.json(result);
 });
 
 router.post("/feeds/preview", async (req, res) => {
@@ -544,41 +705,17 @@ router.post("/ingest/enrich", async (req, res) => {
 
 router.post("/ingest/commit", async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  let addedCount = 0;
-  for (const item of items) {
-    if (!item?.title || !item?.sourceIdentifier) {
-      continue;
-    }
-    await upsertAdminMovie(item);
-    addedCount += 1;
-  }
-  res.json({ success: true, addedCount, report: { items: [], addedCount } });
+  res.json(await commitMovieItems(req, items, "ingest"));
 });
 
 router.post("/feeds/commit", async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  let addedCount = 0;
-  for (const item of items) {
-    if (!item?.title || !item?.sourceIdentifier) {
-      continue;
-    }
-    await upsertAdminMovie(item);
-    addedCount += 1;
-  }
-  res.json({ success: true, addedCount, report: { items: [], addedCount } });
+  res.json(await commitMovieItems(req, items, "feeds"));
 });
 
 router.post("/podcasts/latest/commit", async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  let addedCount = 0;
-  for (const item of items) {
-    if (!item?.title || !item?.sourceIdentifier) {
-      continue;
-    }
-    await upsertAdminMovie(item);
-    addedCount += 1;
-  }
-  res.json({ success: true, addedCount, report: { items: [], addedCount } });
+  res.json(await commitMovieItems(req, items, "podcasts"));
 });
 
 router.get("/themes", async (_req, res) => {
@@ -608,6 +745,40 @@ router.get("/live/changes", async (req, res) => {
   req.on("close", () => {
     clearInterval(timer);
   });
+});
+
+router.get("/history", async (_req, res) => {
+  res.json({
+    snapshots: await listSnapshots(40),
+    audit: await listAudit(80)
+  });
+});
+
+router.post("/history/snapshots", async (req, res) => {
+  const label = typeof req.body?.label === "string" ? req.body.label : "";
+  const snapshot = await takeSnapshot(req, { trigger: "manual", label: label || null });
+  await recordAudit(req, "catalog.snapshot", { snapshotId: snapshot.id, label: snapshot.label });
+  res.json({ success: true, snapshot });
+});
+
+router.post("/history/snapshots/:id/restore", async (req, res) => {
+  try {
+    const result = await restoreSnapshot(req, String(req.params.id));
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Restore failed.";
+    res.status(message.includes("not found") ? 404 : 400).json({ error: message });
+  }
+});
+
+router.post("/history/audit/:id/revert", async (req, res) => {
+  try {
+    const result = await revertAudit(req, String(req.params.id), historyHandlers);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Revert failed.";
+    res.status(message.includes("not found") ? 404 : 400).json({ error: message });
+  }
 });
 
 const refreshPodcastSource = async (sourceIdentifier: string) => {

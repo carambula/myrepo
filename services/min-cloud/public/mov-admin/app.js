@@ -549,6 +549,9 @@ function setOpsSection(sectionKey) {
   document.querySelectorAll("[data-ops-nav]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.opsNav === sectionKey);
   });
+  if (sectionKey === "history") {
+    loadHistory();
+  }
 }
 
 function bindOpsNavigation() {
@@ -2617,6 +2620,137 @@ async function refreshPodcast() {
   await reloadData();
 }
 
+function escapeHistory(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function historyWhen(value) {
+  return value ? new Date(value).toLocaleString() : "";
+}
+
+function historyDetail(entry) {
+  const details = entry.details || {};
+  const parts = [
+    details.title,
+    details.identifier,
+    details.tmdbId != null ? `TMDB ${details.tmdbId}` : "",
+    details.addedCount != null ? `${details.addedCount} added` : "",
+    details.removedCount != null ? `${details.removedCount} removed` : "",
+    details.updatedCount != null ? `${details.updatedCount} updated` : "",
+    details.movieCount != null ? `${details.movieCount} movies` : "",
+    details.label,
+    details.snapshotId ? String(details.snapshotId).slice(0, 8) : ""
+  ].filter(Boolean);
+  return parts.join("   ");
+}
+
+async function loadHistory() {
+  const status = document.getElementById("historyStatus");
+  const snapshotsBody = document.getElementById("historySnapshotsBody");
+  const auditBody = document.getElementById("historyAuditBody");
+  if (!status || !snapshotsBody || !auditBody) {
+    return;
+  }
+  status.textContent = "Loading history…";
+  try {
+    const response = await fetch("/api/history");
+    if (!response.ok) {
+      throw new Error("Could not load history");
+    }
+    const data = await response.json();
+    const snapshots = data.snapshots || [];
+    const audit = data.audit || [];
+    status.textContent = `${snapshots.length} snapshots   ${audit.length} recent edits`;
+    snapshotsBody.innerHTML = snapshots
+      .map((snapshot) => {
+        const label = snapshot.label || "Unlabeled";
+        return `<tr>
+          <td>${escapeHistory(historyWhen(snapshot.created_at))}</td>
+          <td>${escapeHistory(label)}</td>
+          <td>${escapeHistory(snapshot.trigger)}</td>
+          <td>${escapeHistory(snapshot.movie_count)}</td>
+          <td>${escapeHistory(snapshot.source_count)}</td>
+          <td><button type="button" data-restore-snapshot="${escapeHistory(snapshot.id)}">Restore</button></td>
+        </tr>`;
+      })
+      .join("");
+    auditBody.innerHTML = audit
+      .map((entry) => {
+        const action = entry.reversible
+          ? `<button type="button" data-revert-audit="${escapeHistory(entry.id)}">Revert</button>`
+          : "";
+        return `<tr>
+          <td>${escapeHistory(historyWhen(entry.created_at))}</td>
+          <td>${escapeHistory(entry.action)}</td>
+          <td>${escapeHistory(historyDetail(entry))}</td>
+          <td>${action}</td>
+        </tr>`;
+      })
+      .join("");
+    snapshotsBody.querySelectorAll("[data-restore-snapshot]").forEach((button) => {
+      button.addEventListener("click", () => restoreHistorySnapshot(button.getAttribute("data-restore-snapshot")));
+    });
+    auditBody.querySelectorAll("[data-revert-audit]").forEach((button) => {
+      button.addEventListener("click", () => revertHistoryAudit(button.getAttribute("data-revert-audit")));
+    });
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Could not load history";
+  }
+}
+
+async function saveHistorySnapshot() {
+  const input = document.getElementById("historySnapshotLabel");
+  const label = input ? input.value.trim() : "";
+  const response = await fetch("/api/history/snapshots", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label }),
+  });
+  if (!response.ok) {
+    showToast("Could not save snapshot", true);
+    return;
+  }
+  if (input) {
+    input.value = "";
+  }
+  await loadHistory();
+  showToast(label ? `Saved snapshot ${label}` : "Saved snapshot");
+}
+
+async function restoreHistorySnapshot(id) {
+  if (!id || !confirm("Restore this snapshot? The current catalog is saved first so you can undo.")) {
+    return;
+  }
+  const response = await fetch(`/api/history/snapshots/${id}/restore`, { method: "POST" });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    showToast(data.error || "Restore failed", true);
+    return;
+  }
+  await reloadData();
+  await loadHistory();
+  showToast("Catalog restored");
+}
+
+async function revertHistoryAudit(id) {
+  if (!id || !confirm("Revert this single edit?")) {
+    return;
+  }
+  const response = await fetch(`/api/history/audit/${id}/revert`, { method: "POST" });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    showToast(data.error || "Revert failed", true);
+    return;
+  }
+  await reloadData();
+  await loadHistory();
+  showToast("Edit reverted");
+}
+
 function bindEvents() {
   [
     elements.searchInput,
@@ -2646,6 +2780,8 @@ function bindEvents() {
   });
   bindClick(elements.regenerateBtn, () => regenerateStore());
   bindClick(elements.refreshDataBtn, () => reloadData());
+  bindClick(document.getElementById("historySaveSnapshotBtn"), () => saveHistorySnapshot());
+  bindClick(document.getElementById("historyReloadBtn"), () => loadHistory());
   bindClick(elements.refreshStreamingBtn, (event) => {
     event.preventDefault();
     refreshStreamingForSelected();

@@ -264,6 +264,7 @@
                 <button class="view-rail-btn" data-ops-nav="podcasts">Podcast Refresh</button>
                 <button class="view-rail-btn" data-ops-nav="health">Data Health</button>
                 <button class="view-rail-btn" data-ops-nav="cloud">Cloud Jobs</button>
+                <button class="view-rail-btn" data-ops-nav="history">History</button>
               </div>
               <div class="view-rail-group">
                 <div class="view-rail-title">Quick Actions</div>
@@ -317,6 +318,45 @@
                 <div class="view-content-section-title">Data Health</div>
                 <div id="healthStatus" class="status-text">No data loaded.</div>
                 <div id="healthMetrics" class="health-metrics"></div>
+              </section>
+
+              <section class="view-content-section" data-ops-section="history">
+                <div class="view-content-section-title">History</div>
+                <p class="design-lead" style="margin-top:0;">Catalog snapshots and reversible editor changes. Restore replaces sources, movies, streaming, and source links. A safety snapshot is saved first.</p>
+                <div class="history-toolbar">
+                  <input id="historySnapshotLabel" type="text" placeholder="Snapshot label (optional)" />
+                  <button id="historySaveSnapshotBtn" class="primary" type="button">Save snapshot</button>
+                  <button id="historyReloadBtn" type="button">Reload</button>
+                </div>
+                <div id="historyStatus" class="status-text">No history loaded.</div>
+                <div class="view-content-section-title" style="margin-top:var(--space-xl);">Snapshots</div>
+                <p class="history-caption">Labeled and manual snapshots are kept. The last 40 unlabeled automatic snapshots stay; older unlabeled ones are pruned.</p>
+                <table class="movie-table">
+                  <thead>
+                    <tr>
+                      <th>When</th>
+                      <th>Label</th>
+                      <th>Trigger</th>
+                      <th>Movies</th>
+                      <th>Sources</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="historySnapshotsBody"></tbody>
+                </table>
+                <div class="view-content-section-title" style="margin-top:var(--space-xl);">Recent edits</div>
+                <p class="history-caption">Single movie and source edits can be reverted. Bulk jobs need a snapshot restore.</p>
+                <table class="movie-table">
+                  <thead>
+                    <tr>
+                      <th>When</th>
+                      <th>Action</th>
+                      <th>Detail</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyAuditBody"></tbody>
+                </table>
               </section>
 
               <section class="view-content-section" data-ops-section="cloud">

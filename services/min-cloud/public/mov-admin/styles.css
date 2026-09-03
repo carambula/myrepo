@@ -1033,6 +1033,25 @@ button.danger:hover {
   gap: var(--space-xs);
 }
 
+.history-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.history-toolbar input {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.history-caption {
+  margin: 0 0 var(--space-md);
+  font-size: var(--type-subhead-size);
+  color: var(--color-text-secondary);
+}
+
 .ops-panels {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

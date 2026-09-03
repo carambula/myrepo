@@ -9,6 +9,21 @@ const pool = new Pool({
 
 export const query = (text: string, params?: unknown[]) => pool.query(text, params);
 
+export const withTransaction = async <T,>(runner: (client: pg.PoolClient) => Promise<T>) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await runner(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const closePool = async () => {
   await pool.end();
 };

@@ -49,7 +49,7 @@ export const spacing = {
 
   // Top safe-area account / search / add buttons (MinSpacing.TopControls)
   topControls: {
-    buttonSize: '48px',
+    buttonSize: '56px',
     horizontalPadding: '8px',
     verticalPadding: '8px',
   },

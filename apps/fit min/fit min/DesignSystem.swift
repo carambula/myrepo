@@ -82,7 +82,7 @@ struct DesignSystem {
     }
 
     enum Controls {
-        static let iconButtonSize: CGFloat = 48
+        static let iconButtonSize: CGFloat = 56
         static let prominentButtonSize: CGFloat = 64
     }
 }

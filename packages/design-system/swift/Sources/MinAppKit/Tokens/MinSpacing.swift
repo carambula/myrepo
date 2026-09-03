@@ -48,13 +48,14 @@ public enum MinSpacing {
     /// Extra scroll clearance above the home indicator. Safe-area insets still apply.
     public static let bottomSafeArea: CGFloat = 34
 
-    /// Circular account / search / add buttons in the top safe-area inset.
+    /// Circular account / search / add / layout-toggle buttons.
+    /// These overlay the home surface — do not reserve a top `safeAreaInset` band for them.
     public enum TopControls {
-        /// Icon button hit target (matches pod / fit `Controls.iconButtonSize`).
-        public static let buttonSize: CGFloat = 48
+        /// Floating circular glass button hit target. Matches WatchedIt `GlassControl.standardHeight`.
+        public static let buttonSize: CGFloat = 56
         /// Gap between top-bar icon buttons.
         public static let horizontalPadding: CGFloat = sm
-        /// Padding above and below the top control row inside `safeAreaInset`.
+        /// Padding from the top safe edge to the overlay control row.
         public static let verticalPadding: CGFloat = sm
     }
 
@@ -62,7 +63,8 @@ public enum MinSpacing {
     public enum TitleType {
         public static let horizontalPadding: CGFloat = screenHorizontalPadding
         public static let markOffsetY: CGFloat = 0
-        /// Space above the wordmark inside the scroll view.
+        /// Space above the wordmark inside the scroll view (`logo.marginTop`).
+        /// Pair with overlay top chrome, not `safeAreaInset(edge: .top)`, or the mark sits too low.
         public static let scrollTopPadding: CGFloat = xxl
         /// Space between the wordmark and the first content row.
         public static let contentTopSpacing: CGFloat = xl

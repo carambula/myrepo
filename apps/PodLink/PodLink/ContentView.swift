@@ -143,7 +143,7 @@ struct ContentView: View {
                         }
                     }
                     .toolbar(.hidden, for: .navigationBar)
-                    .safeAreaInset(edge: .top) {
+                    .overlay(alignment: .top) {
                         mainTopControls
                     }
                 }
@@ -291,7 +291,6 @@ struct ContentView: View {
         }
         .padding(.horizontal, MinSpacing.lg)
         .padding(.top, MinSpacing.TopControls.verticalPadding)
-        .padding(.bottom, MinSpacing.TopControls.verticalPadding)
         .contentShape(Rectangle())
         .allowsHitTesting(true)
         .zIndex(100)

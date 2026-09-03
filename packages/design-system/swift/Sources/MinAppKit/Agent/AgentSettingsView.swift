@@ -57,6 +57,8 @@ public struct AgentSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Always use header:/footer: Text views. Section("Title") is not
+            // available on every MinAppKit platform and fails as content:.
             Section {
                 TextField("Agent name", text: $issuedName)
                 Toggle("Allow writes", isOn: $allowWrite)

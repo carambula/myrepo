@@ -145,8 +145,9 @@
 
     $("tools").onclick = async () => {
       try {
-        const data = await api("/v1/tools");
-        $("tool").innerHTML = (data.tools || []).map((name) => `<option value="${name}">${name}</option>`).join("");
+        const data = await api("/tools");
+        const names = (data.tools || []).map((tool) => typeof tool === "string" ? tool : tool.name);
+        $("tool").innerHTML = names.map((name) => `<option value="${name}">${name}</option>`).join("");
         show(data);
       } catch (error) {
         show(error, false);
@@ -156,7 +157,7 @@
     $("call").onclick = async () => {
       try {
         const args = JSON.parse($("args").value || "{}");
-        const data = await api("/v1/tools/call", { name: $("tool").value, arguments: args });
+        const data = await api("/invoke", { name: $("tool").value, arguments: args });
         show(data);
       } catch (error) {
         show(error, false);

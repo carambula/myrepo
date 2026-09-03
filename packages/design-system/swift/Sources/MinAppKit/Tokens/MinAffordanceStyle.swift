@@ -24,13 +24,13 @@ public struct AnyInsettableShape: InsettableShape {
 /// Shared button and control geometry for every min app.
 ///
 /// Appearance sheets bind `borderEnabled` and `shape`. Round uses circle/capsule;
-/// square uses a continuous rounded rectangle. `circleShape` / `capsuleShape` are
-/// `AnyShape` so they can be returned from helpers typed as `AnyShape` (clip, fill,
-/// stroke). Use the `insettable*` variants with `strokeBorder` and frosted surfaces.
-@MainActor
+/// square uses a continuous rounded rectangle. Shape accessors are `nonisolated`
+/// so `Shape.path(in:)` and other helpers (for example `ViewSurface`) can read
+/// them off the main actor. Use the `insettable*` variants with `strokeBorder`
+/// and frosted surfaces.
 @Observable
 public final class MinAffordanceStyle {
-    public static let shared = MinAffordanceStyle()
+    nonisolated(unsafe) public static let shared = MinAffordanceStyle()
 
     public enum Shape: String, CaseIterable, Identifiable, Sendable {
         case round
@@ -54,36 +54,24 @@ public final class MinAffordanceStyle {
         didSet { UserDefaults.standard.set(shape.rawValue, forKey: Self.shapeKey) }
     }
 
-    public var isSquare: Bool { shape == .square }
+    public nonisolated var isSquare: Bool { Self.persistedShape == .square }
 
     /// Circle when round; rounded square when square. Use for icon buttons.
-    public var circleShape: AnyShape {
-        switch shape {
-        case .round: AnyShape(Circle())
-        case .square: AnyShape(squareRect)
-        }
+    public nonisolated var circleShape: AnyShape {
+        Self.circleShape(for: Self.persistedShape)
     }
 
     /// Capsule when round; rounded rectangle when square. Use for bars and fields.
-    public var capsuleShape: AnyShape {
-        switch shape {
-        case .round: AnyShape(Capsule())
-        case .square: AnyShape(squareRect)
-        }
+    public nonisolated var capsuleShape: AnyShape {
+        Self.capsuleShape(for: Self.persistedShape)
     }
 
-    public var insettableCircleShape: AnyInsettableShape {
-        switch shape {
-        case .round: AnyInsettableShape(Circle())
-        case .square: AnyInsettableShape(squareRect)
-        }
+    public nonisolated var insettableCircleShape: AnyInsettableShape {
+        Self.insettableCircleShape(for: Self.persistedShape)
     }
 
-    public var insettableCapsuleShape: AnyInsettableShape {
-        switch shape {
-        case .round: AnyInsettableShape(Capsule())
-        case .square: AnyInsettableShape(squareRect)
-        }
+    public nonisolated var insettableCapsuleShape: AnyInsettableShape {
+        Self.insettableCapsuleShape(for: Self.persistedShape)
     }
 
     public static var borderColor: Color {
@@ -92,10 +80,43 @@ public final class MinAffordanceStyle {
 
     public static let borderLineWidth: CGFloat = 1
 
+    public nonisolated static func circleShape(for shape: Shape) -> AnyShape {
+        switch shape {
+        case .round: AnyShape(Circle())
+        case .square: AnyShape(squareRect)
+        }
+    }
+
+    public nonisolated static func capsuleShape(for shape: Shape) -> AnyShape {
+        switch shape {
+        case .round: AnyShape(Capsule())
+        case .square: AnyShape(squareRect)
+        }
+    }
+
+    public nonisolated static func insettableCircleShape(for shape: Shape) -> AnyInsettableShape {
+        switch shape {
+        case .round: AnyInsettableShape(Circle())
+        case .square: AnyInsettableShape(squareRect)
+        }
+    }
+
+    public nonisolated static func insettableCapsuleShape(for shape: Shape) -> AnyInsettableShape {
+        switch shape {
+        case .round: AnyInsettableShape(Capsule())
+        case .square: AnyInsettableShape(squareRect)
+        }
+    }
+
     private static let borderKey = "min.affordance.borderEnabled"
     private static let shapeKey = "min.affordance.shape"
 
-    private var squareRect: RoundedRectangle {
+    /// Stored independently of actor isolation so `Shape.path(in:)` can resolve geometry.
+    private nonisolated static var persistedShape: Shape {
+        Shape(rawValue: UserDefaults.standard.string(forKey: shapeKey) ?? "") ?? .round
+    }
+
+    private nonisolated static var squareRect: RoundedRectangle {
         RoundedRectangle(cornerRadius: MinCornerRadius.md, style: .continuous)
     }
 

@@ -19,6 +19,7 @@ const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
   credits: row.credits,
   trailer: row.trailer,
   oscarAwards: row.oscar_awards,
+  physicalMedia: row.physical_media ?? null,
   lastUpdated: row.last_updated,
   streamingServices: providers
 });

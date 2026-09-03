@@ -27,6 +27,18 @@ const slugId = (title) =>
     .replace(/^-|-$/g, "")
     .slice(0, 80)}`;
 
+const overlayPath = path.resolve(
+  process.env.PHYSICAL_MEDIA_PATH || path.join(path.dirname(file), "physical_media.json")
+);
+let physicalMediaByTmdbId = {};
+try {
+  const overlay = JSON.parse(await fs.readFile(overlayPath, "utf8"));
+  physicalMediaByTmdbId = overlay.byTmdbId || overlay.physicalMediaByTmdbId || {};
+  console.log(`Loaded physical media overlay (${Object.keys(physicalMediaByTmdbId).length} titles)`);
+} catch {
+  console.log("No physical_media.json overlay found; importing movies only");
+}
+
 const payload = JSON.parse(await fs.readFile(file, "utf8"));
 const movies = (payload.movies || []).map((movie) => ({
   ...movie,
@@ -64,7 +76,14 @@ for (let i = 0; i < movies.length; i += batchSize) {
   console.log(`  ${Math.min(i + batch.length, movies.length)}/${movies.length} rows  movies=${result.importedMovies}`);
 }
 
+let importedPhysicalMedia = 0;
+if (Object.keys(physicalMediaByTmdbId).length) {
+  const overlayResult = await post({ physicalMediaByTmdbId });
+  importedPhysicalMedia = overlayResult.importedPhysicalMedia || 0;
+  console.log(`physical media overlay applied to ${importedPhysicalMedia} titles`);
+}
+
 const health = await fetch(`${baseURL}/v1/admin/health`, {
   headers: { "x-admin-token": token }
 });
-console.log("done", { importedMovies, importedSources, health: await health.json() });
+console.log("done", { importedMovies, importedSources, importedPhysicalMedia, health: await health.json() });

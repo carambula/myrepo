@@ -1,6 +1,11 @@
 import { query } from "../db.js";
 import { config } from "../config.js";
 import { movieIdFromTmdb } from "./passwords.js";
+import {
+  mergePhysicalMedia,
+  normalizePhysicalMedia,
+  overlayMapFromUnknown
+} from "./physical-media.js";
 
 export type ImportSource = {
   identifier?: string;
@@ -31,6 +36,7 @@ export type ImportMovie = {
   sourceTitle?: string | null;
   episodeDate?: string | null;
   podcastEpisode?: unknown;
+  physicalMedia?: unknown;
 };
 
 const toTimestamp = (value: string | null | undefined) => {
@@ -81,9 +87,43 @@ const chunk = <T,>(items: T[], size: number) => {
   return out;
 };
 
+export const applyPhysicalMediaOverlay = async (raw: unknown) => {
+  const overlay = overlayMapFromUnknown(raw);
+  let updated = 0;
+  for (const group of chunk([...overlay.entries()], 80)) {
+    const tmdbIds = group.map(([tmdbId]) => tmdbId);
+    const existing = await query(
+      `SELECT id, tmdb_id, physical_media FROM mov_movies WHERE tmdb_id = ANY($1::int[])`,
+      [tmdbIds]
+    );
+    const byTmdb = new Map(existing.rows.map((row) => [Number(row.tmdb_id), row]));
+    for (const [tmdbId, inferred] of group) {
+      const row = byTmdb.get(tmdbId);
+      if (!row) {
+        continue;
+      }
+      const stored = normalizePhysicalMedia(row.physical_media);
+      if (stored?.manualOverride) {
+        continue;
+      }
+      const merged = mergePhysicalMedia(stored, inferred);
+      if (!merged) {
+        continue;
+      }
+      await query(
+        `UPDATE mov_movies SET physical_media = $2::jsonb, last_updated = NOW() WHERE id = $1`,
+        [row.id, JSON.stringify(merged)]
+      );
+      updated += 1;
+    }
+  }
+  return updated;
+};
+
 export const importMovieCatalog = async (payload: {
   dataSources?: ImportSource[];
   movies?: ImportMovie[];
+  physicalMediaByTmdbId?: unknown;
 }) => {
   const sources = Array.isArray(payload.dataSources) ? payload.dataSources : [];
   const movies = Array.isArray(payload.movies) ? payload.movies : [];
@@ -149,6 +189,13 @@ export const importMovieCatalog = async (payload: {
       if (!existing.oscarAwards && movie.oscarAwards) {
         existing.oscarAwards = movie.oscarAwards;
       }
+      const mergedMedia = mergePhysicalMedia(
+        normalizePhysicalMedia(existing.physicalMedia),
+        normalizePhysicalMedia(movie.physicalMedia)
+      );
+      if (mergedMedia) {
+        existing.physicalMedia = mergedMedia;
+      }
     }
     if (movie.sourceIdentifier) {
       links.push({
@@ -173,9 +220,10 @@ export const importMovieCatalog = async (payload: {
     const values: string[] = [];
     const params: unknown[] = [];
     group.forEach(([id, movie], index) => {
-      const base = index * 13;
+      const base = index * 14;
+      const media = normalizePhysicalMedia(movie.physicalMedia);
       values.push(
-        `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9}::jsonb,$${base + 10},$${base + 11}::jsonb,$${base + 12}::jsonb,$${base + 13}::jsonb,NOW())`
+        `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9}::jsonb,$${base + 10},$${base + 11}::jsonb,$${base + 12}::jsonb,$${base + 13}::jsonb,$${base + 14}::jsonb,NOW())`
       );
       params.push(
         id,
@@ -190,14 +238,15 @@ export const importMovieCatalog = async (payload: {
         movie.imdbId ?? null,
         JSON.stringify(movie.credits ?? null),
         JSON.stringify(movie.trailer ?? null),
-        JSON.stringify(movie.oscarAwards ?? null)
+        JSON.stringify(movie.oscarAwards ?? null),
+        media ? JSON.stringify(media) : null
       );
     });
     await query(
       `
       INSERT INTO mov_movies (
         id, tmdb_id, title, year, poster_path, backdrop_path, overview, mpaa_rating,
-        genres, imdb_id, credits, trailer, oscar_awards, last_updated
+        genres, imdb_id, credits, trailer, oscar_awards, physical_media, last_updated
       )
       VALUES ${values.join(",")}
       ON CONFLICT (id) DO UPDATE SET
@@ -212,6 +261,7 @@ export const importMovieCatalog = async (payload: {
         credits = COALESCE(EXCLUDED.credits, mov_movies.credits),
         trailer = COALESCE(EXCLUDED.trailer, mov_movies.trailer),
         oscar_awards = COALESCE(EXCLUDED.oscar_awards, mov_movies.oscar_awards),
+        physical_media = COALESCE(EXCLUDED.physical_media, mov_movies.physical_media),
         last_updated = NOW()
       `,
       params
@@ -269,6 +319,9 @@ export const importMovieCatalog = async (payload: {
     importedLinks += group.length;
   }
 
-  await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'watchedit'`);
-  return { importedMovies, importedSources, importedLinks };
+  const importedPhysicalMedia = await applyPhysicalMediaOverlay(payload.physicalMediaByTmdbId);
+  if (importedMovies || importedSources || importedLinks || importedPhysicalMedia) {
+    await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'watchedit'`);
+  }
+  return { importedMovies, importedSources, importedLinks, importedPhysicalMedia };
 };

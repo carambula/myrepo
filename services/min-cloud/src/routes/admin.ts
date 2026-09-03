@@ -5,7 +5,8 @@ import { lookupItunesPodcast } from "../lib/itunes.js";
 import { config } from "../config.js";
 import { runNamedJob } from "../jobs.js";
 import { movieIdFromTmdb, podcastIdFromItunes } from "../lib/passwords.js";
-import { importMovieCatalog } from "../lib/catalog-import.js";
+import { applyPhysicalMediaOverlay, importMovieCatalog } from "../lib/catalog-import.js";
+import { normalizePhysicalMedia } from "../lib/physical-media.js";
 
 const router = Router();
 
@@ -32,8 +33,12 @@ router.get("/health", async (_req, res) => {
     `SELECT name, status, started_at, finished_at, stats, error FROM job_runs ORDER BY started_at DESC LIMIT 12`
   );
   const revisions = await query(`SELECT app, revision, generated_at FROM catalog_revisions`);
+  const physicalMedia = await query(
+    `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
+  );
   res.json({
     movies: movies.rows[0].count,
+    physicalMedia: physicalMedia.rows[0].count,
     staleStreaming: staleStreaming.rows[0].count,
     podcasts: podcasts.rows[0].count,
     episodes: episodes.rows[0].count,
@@ -103,6 +108,7 @@ router.post("/mov/movies", async (req, res) => {
 });
 
 router.patch("/mov/movies/:id", async (req, res) => {
+  const physicalMedia = req.body?.physicalMedia ? normalizePhysicalMedia(req.body.physicalMedia) : null;
   await query(
     `
     UPDATE mov_movies
@@ -110,10 +116,18 @@ router.patch("/mov/movies/:id", async (req, res) => {
         year = COALESCE($3, year),
         overview = COALESCE($4, overview),
         poster_path = COALESCE($5, poster_path),
-        last_updated = NOW()
+        last_updated = NOW(),
+        physical_media = COALESCE($6::jsonb, physical_media)
     WHERE id = $1
     `,
-    [String(req.params.id), req.body?.title ?? null, req.body?.year ?? null, req.body?.overview ?? null, req.body?.posterPath ?? null]
+    [
+      String(req.params.id),
+      req.body?.title ?? null,
+      req.body?.year ?? null,
+      req.body?.overview ?? null,
+      req.body?.posterPath ?? null,
+      physicalMedia ? JSON.stringify(physicalMedia) : null
+    ]
   );
   await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'watchedit'`);
   await audit(req, "mov.movie.patch", { id: String(req.params.id) });
@@ -162,10 +176,21 @@ router.post("/mov/sources", async (req, res) => {
 router.post("/mov/import", async (req, res) => {
   const result = await importMovieCatalog({
     dataSources: Array.isArray(req.body?.dataSources) ? req.body.dataSources : [],
-    movies: Array.isArray(req.body?.movies) ? req.body.movies : []
+    movies: Array.isArray(req.body?.movies) ? req.body.movies : [],
+    physicalMediaByTmdbId: req.body?.physicalMediaByTmdbId ?? req.body?.byTmdbId
   });
   await audit(req, "mov.import", result);
   res.json(result);
+});
+
+router.post("/mov/physical-media", async (req, res) => {
+  const overlay = req.body?.physicalMediaByTmdbId ?? req.body?.byTmdbId ?? req.body;
+  const importedPhysicalMedia = await applyPhysicalMediaOverlay(overlay);
+  if (importedPhysicalMedia) {
+    await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'watchedit'`);
+  }
+  await audit(req, "mov.physicalMedia.overlay", { importedPhysicalMedia });
+  res.json({ importedPhysicalMedia });
 });
 
 router.get("/mov/tmdb/search", async (req, res) => {

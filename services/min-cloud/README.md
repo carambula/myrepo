@@ -81,7 +81,8 @@ mincloud.baseURL = http://localhost:4000
 
 - `POST /v1/auth/register` `POST /v1/auth/login`
 - `GET /v1/me` library, devices, notifications
-- `GET /v1/mov/catalog?updatedSince=`
+- `GET /v1/mov/catalog?updatedSince=` (includes `physicalMedia` when known)
+- `POST /v1/admin/mov/physical-media` with WatchedIt `physical_media.json`
 - `GET /v1/pod/catalog` `GET /v1/pod/feeds?url=`
 - `POST /v1/devices/register` `POST /v1/pod/watch` `GET /v1/devices/:deviceId/inbox` — no account required
 - `GET /v1/social/feed` `POST /v1/social/follow`

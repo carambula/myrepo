@@ -89,6 +89,7 @@ final class MinCloudCatalogSync {
                 if let backdrop = remote.backdropPath {
                     movie.backdropPath = backdrop
                 }
+                applyPhysicalMedia(remote.physicalMedia, to: movie)
                 movie.lastUpdated = Date()
                 applied += 1
                 attachSources(remote, movie: movie, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
@@ -105,7 +106,8 @@ final class MinCloudCatalogSync {
                 overview: remote.overview,
                 mpaaRating: remote.mpaaRating,
                 genres: remote.genres ?? [],
-                streamingServices: providers
+                streamingServices: providers,
+                physicalMedia: remote.physicalMedia
             )
             modelContext.insert(created)
             byId[created.id] = created
@@ -118,6 +120,15 @@ final class MinCloudCatalogSync {
 
         try? modelContext.save()
         return applied
+    }
+
+    private func applyPhysicalMedia(_ remote: PhysicalMedia?, to movie: MovieData) {
+        guard let remote, !remote.isEmpty else { return }
+        if let existing = movie.physicalMedia {
+            movie.physicalMedia = existing.merging(inferred: remote)
+        } else {
+            movie.physicalMedia = remote
+        }
     }
 
     private func attachSources(

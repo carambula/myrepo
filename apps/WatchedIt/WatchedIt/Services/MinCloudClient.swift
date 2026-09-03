@@ -47,6 +47,7 @@ struct MinCloudMovieCatalog: Decodable {
         let lastUpdated: String?
         let streamingServices: [Provider]?
         let sources: [SourceLink]?
+        let physicalMedia: PhysicalMedia?
     }
 
     struct Source: Decodable {
@@ -62,6 +63,13 @@ struct MinCloudMovieCatalog: Decodable {
     let movies: [Movie]
     let sources: [Source]
     let truncated: Bool?
+
+    init(revision: Int, movies: [Movie], sources: [Source], truncated: Bool?) {
+        self.revision = revision
+        self.movies = movies
+        self.sources = sources
+        self.truncated = truncated
+    }
 }
 
 enum MinCloudError: Error {
@@ -116,11 +124,28 @@ actor MinCloudClient {
     }
 
     func fetchMovieCatalog(updatedSince: String? = nil, limit: Int = 400) async throws -> MinCloudMovieCatalog {
-        var items: [URLQueryItem] = [URLQueryItem(name: "limit", value: String(limit))]
-        if let updatedSince {
-            items.append(URLQueryItem(name: "updatedSince", value: updatedSince))
+        var movies: [MinCloudMovieCatalog.Movie] = []
+        var sources: [MinCloudMovieCatalog.Source] = []
+        var revision = 0
+        var offset = 0
+        while true {
+            var items: [URLQueryItem] = [
+                URLQueryItem(name: "limit", value: String(limit)),
+                URLQueryItem(name: "offset", value: String(offset))
+            ]
+            if let updatedSince {
+                items.append(URLQueryItem(name: "updatedSince", value: updatedSince))
+            }
+            let page: MinCloudMovieCatalog = try await get(path: "/v1/mov/catalog", query: items)
+            revision = page.revision
+            if sources.isEmpty {
+                sources = page.sources
+            }
+            movies.append(contentsOf: page.movies)
+            guard page.truncated == true, !page.movies.isEmpty else { break }
+            offset += page.movies.count
         }
-        return try await get(path: "/v1/mov/catalog", query: items)
+        return MinCloudMovieCatalog(revision: revision, movies: movies, sources: sources, truncated: false)
     }
 
     func registerDevice(pushToken: String?, timezone: String) async throws {

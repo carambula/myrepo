@@ -34,7 +34,11 @@ let package = Package(
                 "StreamingPreferences.swift",
                 "ThemeManager.swift",
                 "TitleCleaner.swift",
-                "OscarAwards.swift"
+                "OscarAwards.swift",
+                "PhysicalMedia.swift"
+            ],
+            resources: [
+                .process("physical_media.json")
             ]
         )
     ]

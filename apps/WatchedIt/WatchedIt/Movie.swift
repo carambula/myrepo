@@ -24,6 +24,7 @@ public struct Movie: Identifiable, Codable, Hashable {
     public var rewatchablesDiscussion: RewatchablesDiscussion?
     public let trailer: MovieTrailer?
     public let oscarAwards: OscarAwards?
+    public let physicalMedia: PhysicalMedia?
     public var isRewatched: Bool
     public var isListened: Bool
     public var isSaved: Bool
@@ -45,6 +46,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         rewatchablesDiscussion: RewatchablesDiscussion? = nil,
         trailer: MovieTrailer? = nil,
         oscarAwards: OscarAwards? = nil,
+        physicalMedia: PhysicalMedia? = nil,
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
@@ -65,6 +67,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.rewatchablesDiscussion = rewatchablesDiscussion
         self.trailer = trailer
         self.oscarAwards = oscarAwards
+        self.physicalMedia = physicalMedia
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
@@ -242,6 +245,12 @@ extension Movie {
            let decodedAwards = try? JSONDecoder().decode(OscarAwards.self, from: awardsData) {
             oscarAwards = decodedAwards
         }
+
+        var physicalMedia: PhysicalMedia? = nil
+        if let mediaData = record["physicalMedia"] as? Data,
+           let decodedMedia = try? JSONDecoder().decode(PhysicalMedia.self, from: mediaData) {
+            physicalMedia = decodedMedia
+        }
         
         self.init(
             id: id,
@@ -259,6 +268,7 @@ extension Movie {
             rewatchablesDiscussion: rewatchablesDiscussion,
             trailer: trailer,
             oscarAwards: oscarAwards,
+            physicalMedia: physicalMedia,
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
@@ -316,6 +326,11 @@ extension Movie {
         if let oscarAwards = oscarAwards,
            let awardsData = try? JSONEncoder().encode(oscarAwards) {
             record["oscarAwards"] = awardsData
+        }
+
+        if let physicalMedia = physicalMedia,
+           let mediaData = try? JSONEncoder().encode(physicalMedia) {
+            record["physicalMedia"] = mediaData
         }
         
         return record

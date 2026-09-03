@@ -187,7 +187,8 @@ private struct CollectionsHomeContentView: View {
                         onCreditPersonTapped: startPersonSearchFromDetails,
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails
+                        onRatingTapped: startRatingSearchFromDetails,
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails
                     )
                 }
             ))
@@ -638,6 +639,21 @@ private struct CollectionsHomeContentView: View {
             allowsListFilter: true,
             initialQuery: nil,
             initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
+    private func startPhysicalMediaSearchFromDetails(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPersonSearchQuery = nil
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: trimmed,
+            initialFilters: MovieSearchFilters(),
             focusSearchOnOpen: false
         )
         selectedMovie = nil

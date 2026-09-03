@@ -1,0 +1,3888 @@
+{
+  "byTmdbId": {
+    "15": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1104",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1104",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "62": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "76": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-857",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "857",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "80": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-858",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "858",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "93": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-600",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "600",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "95": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-40",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "40",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "99": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1012",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1012",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "110": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-590",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "590",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "147": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-5",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "5",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "155": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "177": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-764",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "764",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "198": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-670",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "670",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "203": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1198",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1198",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "216": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-198",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "198",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "232": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-869",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "869",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "238": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "239": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-950",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "950",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "247": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-575",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "575",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "274": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-13",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "13",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "280": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "307": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-497",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "497",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "345": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1290",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1290",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "346": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-2",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "2",
+          "notes": null
+        },
+        {
+          "id": "criterion-uhd4k-none",
+          "label": "criterion",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "348": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "379": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1112",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1112",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "389": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-591",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "591",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "405": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-219",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "219",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "406": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-381",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "381",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "422": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-140",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "140",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "468": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-277",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "277",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "476": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1251",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1251",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "483": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1334",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1334",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "499": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-73",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "73",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "539": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "548": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-138",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "138",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "550": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "578": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "583": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-61",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "61",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "603": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "624": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-545",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "545",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "627": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1204",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1204",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "638": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1152",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1152",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "654": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-647",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "647",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "679": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "680": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "690": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-314",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "314",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "694": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "705": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1003",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1003",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "713": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1110",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1110",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "746": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-422",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "422",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "769": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "777": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "793": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-977",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "977",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "797": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-701",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "701",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "803": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-197",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "197",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "805": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-630",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "630",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "833": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-201",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "201",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "884": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1059",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1059",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "900": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1085",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1085",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "901": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-680",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "680",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "925": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-97",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "97",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "935": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-821",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "821",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "947": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "949": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "962": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-615",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "615",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "967": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-105",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "105",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "975": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-538",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "538",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "976": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-555",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "555",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "981": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-901",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "901",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "982": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-803",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "803",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "985": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-725",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "725",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "996": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1126",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1126",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1018": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-779",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "779",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1059": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-116",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "116",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1091": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1092": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-64",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "64",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1391": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-723",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "723",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1398": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-888",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "888",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1417": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-838",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "838",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1541": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1180",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1180",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1554": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-166",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "166",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1578": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1134",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1134",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1628": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-281",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "281",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1730": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1175",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1175",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1786": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-330",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "330",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1878": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-175",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "175",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1900": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-151",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "151",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1923": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-898",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "898",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1949": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1955": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1051",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1051",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2039": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1056",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1056",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2108": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-905",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "905",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2255": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-75",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "75",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2457": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-141",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "141",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2493": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-948",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "948",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2649": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-627",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "627",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "2891": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-301",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "301",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3082": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-543",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "543",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3085": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-849",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "849",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3086": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-103",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "103",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3112": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-541",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "541",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3116": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-925",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "925",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3121": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-683",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "683",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3133": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-651",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "651",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3175": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-897",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "897",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3777": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-190",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "190",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "3782": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-221",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "221",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "4593": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-102",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "102",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "4816": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1057",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1057",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "4922": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-476",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "476",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5156": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-374",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "374",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5511": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-306",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "306",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5548": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-23",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "23",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5683": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1293",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1293",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5769": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-910",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "910",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "5801": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-783",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "783",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "6003": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1171",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1171",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "6977": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1243",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1243",
+          "notes": null
+        },
+        {
+          "id": "criterion-uhd4k-none",
+          "label": "criterion",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "7345": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "8051": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-843",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "843",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "8073": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-174",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "174",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "8741": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-536",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "536",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "8892": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-492",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "492",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9303": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1220",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1220",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9428": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-157",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "157",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9451": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-904",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "904",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9571": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-336",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "336",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9576": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-738",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "738",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9693": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "9802": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-108",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "108",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10098": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-799",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "799",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10315": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-700",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "700",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10322": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-864",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "864",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10333": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1022",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1022",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10403": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-812",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "812",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10548": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-998",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "998",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10633": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-959",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "959",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10774": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1300",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1300",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10778": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1301",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1301",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10843": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1185",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1185",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "10971": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-7",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "7",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11031": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-12",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "12",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11235": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-994",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "994",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11300": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-563",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "563",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11368": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-834",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "834",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11524": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-691",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "691",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11542": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1284",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1284",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11644": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-562",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "562",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11660": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-638",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "638",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11712": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-53",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "53",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11782": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-9",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "9",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11830": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-868",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "868",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11878": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-52",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "52",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11898": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-325",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "325",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "11953": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-267",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "267",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "12493": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-24",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "24",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "12548": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-246",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "246",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "12560": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-720",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "720",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "12626": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-552",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "552",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "13342": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1075",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1075",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "13384": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-561",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "561",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "13685": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-450",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "450",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "13820": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-654",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "654",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "13963": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1118",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1118",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "14022": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-247",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "247",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "14275": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-289",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "289",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "14412": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1308",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1308",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "14696": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-309",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "309",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "14736": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1097",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1097",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "15244": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-650",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "650",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "15383": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-385",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "385",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16274": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1009",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1009",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16305": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-118",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "118",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16391": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-93",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "93",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16642": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-409",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "409",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16672": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-394",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "394",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16858": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-724",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "724",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16905": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1297",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1297",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16958": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-847",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "847",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "16980": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-485",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "485",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "17295": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-249",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "249",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "18148": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-217",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "217",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "19426": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-49",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "49",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "20108": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-297",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "297",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "20156": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1150",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1150",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "20530": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-331",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "331",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "20532": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-386",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "386",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "20620": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-667",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "667",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "21450": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-307",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "307",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "21631": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-357",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "357",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "21849": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-970",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "970",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "22596": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-662",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "662",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25188": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-549",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "549",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25237": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1035",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1035",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25364": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-396",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "396",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25538": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-339",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "339",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25623": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-539",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "539",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25680": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-475",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "475",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "25858": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-413",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "413",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "26030": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-150",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "150",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "26719": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-399",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "399",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "27031": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-310",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "310",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "27064": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-432",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "432",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "27205": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "28387": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-349",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "349",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "29005": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-827",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "827",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "29698": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-162",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "162",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "29845": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-253",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "253",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "30368": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-233",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "233",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "31121": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-947",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "947",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "31411": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1033",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1033",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "31442": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-397",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "397",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "32646": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-739",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "739",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "36265": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-460",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "460",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "36819": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-37",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "37",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "37247": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-800",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "800",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "37799": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "41059": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-505",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "505",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "41662": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-230",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "230",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "43003": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-288",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "288",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "45938": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-629",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "629",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "48035": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-126",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "126",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "49842": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-193",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "193",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "50183": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1063",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1063",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "55457": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-967",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "967",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "58429": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-743",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "743",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "59143": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-957",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "957",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "65015": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-356",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "356",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "68924": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-426",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "426",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "76341": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "85350": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-839",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "839",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "86829": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-794",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "794",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "120467": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1025",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1025",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "157336": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "222164": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-none",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "244786": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "268536": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-762",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "762",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "273481": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "361743": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "398978": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1058",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1058",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "399055": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1242",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1242",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "399174": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1281",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1281",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "415786": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-none",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "438631": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "473033": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1101",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1101",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "489985": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1061",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1061",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "492188": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1038",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1038",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "502033": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1151",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1151",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "503919": {
+      "editions": [
+        {
+          "id": "other-uhd4k-none",
+          "label": "other",
+          "format": "uhd4k",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": false,
+      "has4K": true,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "531428": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1034",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1034",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "555604": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1201",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1201",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "597208": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1286",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1286",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "600583": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1158",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1158",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "654120": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-none",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "859319": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-none",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "912044": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-none",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": null,
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1062722": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1332",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1332",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    },
+    "1064213": {
+      "editions": [
+        {
+          "id": "criterion-bluRay-1259",
+          "label": "criterion",
+          "format": "bluRay",
+          "spineNumber": "1259",
+          "notes": null
+        }
+      ],
+      "hasCriterion": true,
+      "has4K": false,
+      "hasBluRay": true,
+      "manualOverride": false
+    }
+  }
+}

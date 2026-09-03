@@ -41,6 +41,10 @@ enum MovieSearchEngine {
                 fields.append(episode.title)
             }
 
+            if let media = movie.physicalMedia {
+                fields.append(contentsOf: media.searchTokens)
+            }
+
             index[movie.id] = fields.joined(separator: " ").lowercased()
         }
 

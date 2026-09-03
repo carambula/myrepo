@@ -1,19 +1,47 @@
 import { Router, type Request } from "express";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { fetchJson, fetchText } from "../lib/http.js";
-import { fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
+import { fetchText } from "../lib/http.js";
+import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
+import { scrapeListItems } from "../lib/list-scrape.js";
+import {
+  determineItemStatus,
+  pickBestTmdbMatch,
+  prepareMovieQuery,
+  shouldSkipPodcastNoise
+} from "../lib/title-match.js";
 import { applyPhysicalMediaOverlay } from "../lib/catalog-import.js";
-import { normalizePhysicalMedia } from "../lib/physical-media.js";
+import {
+  filterIndexToCatalog,
+  normalizePhysicalMedia,
+  overlayFromIndex,
+  physicalMediaStats,
+  seedCriterionFromSources,
+  seedCurated4K
+} from "../lib/physical-media.js";
+import { fetchWikidataPhysicalMediaIndex } from "../lib/physical-media-wikidata.js";
+import {
+  fetchOmdbAwards,
+  fetchOmdbAwardsByTitle,
+  fetchWikidataOscars,
+  mergeWikidataIntoOscar,
+  runOscarOmdbBatch,
+  runOscarWikidataBatch,
+  type OscarAwards
+} from "../lib/oscar-awards.js";
 import {
   adminCatalogHealth,
   buildDedupeGroups,
   bumpWatchedIt,
+  clearInferredPhysicalMedia,
+  clearOscarAwards,
   deleteAdminRow,
   loadAdminBootstrap,
   loadAdminMovies,
   loadAdminSources,
+  updateImdbIdForTmdb,
+  updateOscarAwardsForTmdb,
   upsertAdminMovie,
   type AdminMovie
 } from "../lib/admin-catalog.js";
@@ -21,6 +49,7 @@ import {
   listAudit,
   listSnapshots,
   recordAudit,
+  restorePhysicalMediaFromSnapshot,
   restoreSnapshot,
   revertAudit,
   snapshotIfNeeded,
@@ -182,6 +211,48 @@ const applyTmdbDetails = (movie: AdminMovie, details: Record<string, unknown>) =
         }
       : movie.trailer
   };
+};
+
+const LIST_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+};
+
+const previewIdentifiers = (body: { identifiers?: unknown; sourceIdentifiers?: unknown }) => {
+  if (Array.isArray(body?.sourceIdentifiers)) {
+    return body.sourceIdentifiers.map(String);
+  }
+  if (Array.isArray(body?.identifiers)) {
+    return body.identifiers.map(String);
+  }
+  return [];
+};
+
+const podcastPreviewItem = (
+  episode: { title: string; publishDate: string | null; description: string },
+  sourceIdentifier: string,
+  existing: Set<string>
+) => {
+  const prepared = prepareMovieQuery(episode.title, episode.description);
+  return {
+    title: prepared.title,
+    sourceTitle: episode.title,
+    sourceIdentifier,
+    episodeDate: episode.publishDate,
+    podcastEpisodeDescription: episode.description,
+    isDuplicate: existing.has(episode.title)
+  };
+};
+
+const searchBestMovie = async (query: string, year: number | null) => {
+  if (!query || !config.tmdbApiKey) {
+    return null;
+  }
+  let results = await searchTmdbMovies(query, year ?? undefined, config.tmdbApiKey);
+  if (!results.length && year) {
+    results = await searchTmdbMovies(query, undefined, config.tmdbApiKey);
+  }
+  return pickBestTmdbMatch(query, results, year);
 };
 
 router.get("/bootstrap", async (_req, res) => {
@@ -358,9 +429,10 @@ router.get("/tmdb/search", async (req, res) => {
     res.status(400).json({ error: "Missing query" });
     return;
   }
-  const year = req.query.year ? Number(req.query.year) : undefined;
-  const results = await searchTmdbMovies(term, year, config.tmdbApiKey);
-  res.json({ results });
+  const prepared = prepareMovieQuery(term);
+  const year = req.query.year ? Number(req.query.year) : prepared.year ?? undefined;
+  const results = await searchTmdbMovies(prepared.query || term, year, config.tmdbApiKey);
+  res.json({ results, query: prepared.query, year: year ?? null });
 });
 
 router.post("/tmdb/apply/:index", async (req, res) => {
@@ -385,16 +457,7 @@ router.post("/tmdb/apply/:index", async (req, res) => {
 });
 
 router.get("/physical-media/stats", async (_req, res) => {
-  const movies = await loadAdminMovies();
-  const withMedia = movies.filter((movie) => movie.physicalMedia);
-  res.json({
-    totalMovies: movies.length,
-    withPhysicalMedia: withMedia.length,
-    withCriterion: withMedia.filter((movie) => (movie.physicalMedia as { hasCriterion?: boolean })?.hasCriterion).length,
-    with4K: withMedia.filter((movie) => (movie.physicalMedia as { has4K?: boolean })?.has4K).length,
-    withBluRay: withMedia.filter((movie) => (movie.physicalMedia as { hasBluRay?: boolean })?.hasBluRay).length,
-    manualOverrides: withMedia.filter((movie) => (movie.physicalMedia as { manualOverride?: boolean })?.manualOverride).length
-  });
+  res.json(physicalMediaStats(await loadAdminMovies()));
 });
 
 router.post("/physical-media/update", async (req, res) => {
@@ -414,18 +477,39 @@ router.post("/physical-media/update", async (req, res) => {
 
 router.post("/physical-media/clear", async (req, res) => {
   await takeSnapshot(req, { trigger: "before-physical-clear" });
-  await query(`UPDATE mov_movies SET physical_media = NULL, last_updated = NOW() WHERE COALESCE((physical_media->>'manualOverride')::boolean, false) = false`);
+  const clearedCount = await clearInferredPhysicalMedia();
   await bumpWatchedIt();
-  await recordAudit(req, "catalog.physical-clear", {});
-  res.json({ success: true });
+  await recordAudit(req, "catalog.physical-clear", { clearedCount });
+  res.json({ success: true, clearedCount });
 });
 
-router.post("/physical-media/enrich", async (_req, res) => {
+router.post("/physical-media/enrich", async (req, res) => {
+  const overwriteManual = Boolean(req.body?.overwriteManual);
+  const dryRun = Boolean(req.body?.dryRun);
+  if (!dryRun) {
+    await takeSnapshot(req, { trigger: "before-physical-enrich" });
+  }
+  const movies = await loadAdminMovies();
+  const index = await fetchWikidataPhysicalMediaIndex();
+  seedCriterionFromSources(movies, index);
+  seedCurated4K(index);
+  const catalogIndex = filterIndexToCatalog(index, movies);
+  const overlay = overlayFromIndex(catalogIndex);
+  const updatedCount = dryRun ? 0 : await applyPhysicalMediaOverlay(overlay.byTmdbId, { overwriteManual });
+  if (updatedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.physical-enrich", {
+    updatedCount,
+    overlayCount: Object.keys(overlay.byTmdbId).length
+  });
+  const nextMovies = await loadAdminMovies();
   res.json({
     success: true,
-    updatedCount: 0,
-    overlayCount: 0,
-    message: "Use Cloud Jobs or POST /v1/admin/mov/physical-media with the overlay file. Live Wikidata enrich can take minutes."
+    dryRun,
+    updatedCount,
+    overlayCount: Object.keys(overlay.byTmdbId).length,
+    stats: physicalMediaStats(nextMovies)
   });
 });
 
@@ -459,62 +543,137 @@ router.get("/oscar-awards/stats", async (_req, res) => {
 
 router.post("/oscar-awards/clear", async (req, res) => {
   await takeSnapshot(req, { trigger: "before-oscar-clear" });
-  await query(`UPDATE mov_movies SET oscar_awards = NULL, last_updated = NOW()`);
+  const clearedCount = await clearOscarAwards();
   await bumpWatchedIt();
-  await recordAudit(req, "catalog.oscar-clear", {});
-  res.json({ success: true });
+  await recordAudit(req, "catalog.oscar-clear", { clearedCount });
+  res.json({ success: true, clearedCount });
 });
 
-router.post("/oscar-awards/enrich", async (_req, res) => {
-  res.json({ success: true, updatedCount: 0, message: "Oscar text enrich is available from Wikidata single/bulk endpoints." });
+router.post("/oscar-awards/enrich", async (req, res) => {
+  const omdbApiKey = String(req.body?.omdbApiKey || config.omdbApiKey || "").trim();
+  if (!omdbApiKey) {
+    res.status(400).json({ error: "omdbApiKey required" });
+    return;
+  }
+  const offset = Math.max(Number(req.body?.offset) || 0, 0);
+  const dryRun = Boolean(req.body?.dryRun);
+  if (offset === 0 && !dryRun) {
+    await takeSnapshot(req, { trigger: "before-oscar-enrich" });
+  }
+  const movies = await loadAdminMovies();
+  const result = await runOscarOmdbBatch(
+    movies,
+    {
+      mode: String(req.body?.mode || "missing"),
+      delayMs: Number(req.body?.delayMs ?? 150),
+      dryRun,
+      batchSize: Number(req.body?.batchSize) || 100,
+      offset
+    },
+    {
+      fetchImdbId: (tmdbId) => fetchImdbIdFromTmdb(tmdbId, config.tmdbApiKey),
+      fetchOmdbByImdb: (imdbId) => fetchOmdbAwards(imdbId, omdbApiKey),
+      fetchOmdbByTitle: (title, year) => fetchOmdbAwardsByTitle(title, year, omdbApiKey),
+      persist: async (movie, awards, imdbId) => {
+        if (movie.tmdbId) {
+          await updateOscarAwardsForTmdb(movie.tmdbId, awards, imdbId);
+        }
+      }
+    }
+  );
+  if (!result.dryRun && result.enrichedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.oscar-enrich", {
+    offset,
+    enrichedCount: result.enrichedCount,
+    abortedDueToKey: result.abortedDueToKey
+  });
+  res.json(result);
+});
+
+router.post("/oscar-awards/wikidata-enrich", async (req, res) => {
+  const offset = Math.max(Number(req.body?.offset) || 0, 0);
+  if (offset === 0) {
+    await takeSnapshot(req, { trigger: "before-oscar-wikidata" });
+  }
+  const movies = await loadAdminMovies();
+  const result = await runOscarWikidataBatch(
+    movies,
+    {
+      mode: String(req.body?.mode || "missing"),
+      delayMs: Number(req.body?.delayMs ?? 300),
+      batchSize: Number(req.body?.batchSize) || 50,
+      offset
+    },
+    {
+      fetchImdbId: (tmdbId) => fetchImdbIdFromTmdb(tmdbId, config.tmdbApiKey),
+      fetchWikidata: fetchWikidataOscars,
+      persist: async (movie, awards, imdbId) => {
+        if (movie.tmdbId) {
+          await updateOscarAwardsForTmdb(movie.tmdbId, awards, imdbId);
+        }
+      },
+      persistImdb: async (movie, imdbId) => {
+        if (movie.tmdbId) {
+          await updateImdbIdForTmdb(movie.tmdbId, imdbId);
+        }
+      }
+    }
+  );
+  if (result.enrichedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.oscar-wikidata", {
+    offset,
+    enrichedCount: result.enrichedCount
+  });
+  res.json(result);
 });
 
 router.post("/oscar-awards/wikidata-single", async (req, res) => {
-  const row = await movieAt(Number(req.body?.index ?? -1));
-  const imdbId = String(req.body?.imdbId || row?.imdbId || "");
-  if (!imdbId) {
-    res.status(400).json({ error: "imdbId required" });
+  const tmdbId = Number(req.body?.tmdbId);
+  const movies = await loadAdminMovies();
+  const target =
+    (tmdbId ? movies.find((movie) => movie.tmdbId === tmdbId) : null) ||
+    (await movieAt(Number(req.body?.index ?? -1)));
+  if (!target) {
+    res.status(404).json({ error: "Movie not found" });
     return;
   }
-  const sparql = `
-SELECT ?awardLabel ?type ?recipientLabel WHERE {
-  ?film wdt:P345 "${imdbId}" .
-  { ?film p:P166 ?stmt . ?stmt ps:P166 ?award . OPTIONAL { ?stmt pq:P1346 ?recipient . } BIND("won" AS ?type) }
-  UNION
-  { ?film p:P1411 ?stmt . ?stmt ps:P1411 ?award . OPTIONAL { ?stmt pq:P1346 ?recipient . } BIND("nominated" AS ?type) }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
-}`.trim();
-  const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparql)}`;
-  const parsed = await fetchJson<{ results?: { bindings?: Array<Record<string, { value?: string }>> } }>(url, {
-    "User-Agent": "MinCloud/0.1 (movie catalog)"
-  });
-  const wins: unknown[] = [];
-  const nominations: unknown[] = [];
-  for (const binding of parsed.results?.bindings ?? []) {
-    const label = binding.awardLabel?.value || "";
-    if (!label.toLowerCase().startsWith("academy award")) {
-      continue;
+  try {
+    let imdbId = String(req.body?.imdbId || target.imdbId || "");
+    if (!imdbId && target.tmdbId && config.tmdbApiKey) {
+      imdbId = (await fetchImdbIdFromTmdb(target.tmdbId, config.tmdbApiKey)) || "";
+      if (imdbId && target.tmdbId) {
+        await updateImdbIdForTmdb(target.tmdbId, imdbId);
+      }
     }
-    const entry = {
-      id: `${label}-${binding.recipientLabel?.value || ""}`.slice(0, 80),
-      category: label,
-      year: null,
-      recipient: binding.recipientLabel?.value || null
-    };
-    if (binding.type?.value === "won") {
-      wins.push(entry);
-    } else {
-      nominations.push({ ...entry, nominee: entry.recipient });
+    if (!imdbId) {
+      res.json({ success: false, reason: "no-imdb", title: target.title });
+      return;
     }
+    const wikidata = await fetchWikidataOscars(imdbId);
+    if (!wikidata) {
+      res.json({ success: true, reason: "no-wikidata-oscars", title: target.title });
+      return;
+    }
+    const merged = mergeWikidataIntoOscar(target.oscarAwards as OscarAwards | null, wikidata);
+    if (target.tmdbId && merged) {
+      const before = clone(target);
+      await updateOscarAwardsForTmdb(target.tmdbId, merged, imdbId);
+      await bumpWatchedIt();
+      const after = await findMovie(target.__movieId, target.sourceIdentifier, target.tmdbId);
+      await recordAudit(req, "movie.oscar", { id: target.__movieId, tmdbId: target.tmdbId, imdbId }, before, after);
+    }
+    res.json({ success: true, title: target.title, oscarAwards: merged });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Wikidata lookup failed",
+      title: target.title
+    });
   }
-  const oscarAwards = { wins, nominations, totalWins: wins.length, totalNominations: nominations.length, rawAwardsText: null };
-  if (row) {
-    const before = clone(row);
-    await upsertAdminMovie({ ...row, oscarAwards }, row);
-    const after = await findMovie(row.__movieId, row.sourceIdentifier);
-    await recordAudit(req, "movie.oscar", { id: row.__movieId, imdbId }, before, after);
-  }
-  res.json({ success: true, oscarAwards });
 });
 
 router.get("/dedupe/preview", async (_req, res) => {
@@ -567,7 +726,7 @@ router.post("/podcasts/refresh", async (req, res) => {
 });
 
 router.post("/feeds/preview", async (req, res) => {
-  const identifiers: string[] = Array.isArray(req.body?.sourceIdentifiers) ? req.body.sourceIdentifiers : [];
+  const identifiers = previewIdentifiers(req.body || {});
   const sources = await loadAdminSources();
   const movies = await loadAdminMovies();
   const items: unknown[] = [];
@@ -583,13 +742,11 @@ router.post("/feeds/preview", async (req, res) => {
         movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
       );
       for (const episode of parsed.episodes.slice(0, 40)) {
-        items.push({
-          title: episode.title,
-          sourceTitle: episode.title,
-          sourceIdentifier: identifier,
-          episodeDate: episode.publishDate,
-          isDuplicate: existing.has(episode.title)
-        });
+        const prepared = prepareMovieQuery(episode.title, episode.description);
+        if (!prepared.title || shouldSkipPodcastNoise(identifier, episode.title, prepared.title)) {
+          continue;
+        }
+        items.push(podcastPreviewItem(episode, identifier, existing));
       }
     } catch {
       // skip broken feeds
@@ -600,8 +757,9 @@ router.post("/feeds/preview", async (req, res) => {
 
 router.post("/podcasts/latest/preview", async (req, res) => {
   const sources = await loadAdminSources();
-  const identifiers = Array.isArray(req.body?.sourceIdentifiers)
-    ? req.body.sourceIdentifiers
+  const requested = previewIdentifiers(req.body || {});
+  const identifiers = requested.length
+    ? requested
     : sources.filter((source) => source.type === "podcast").map((source) => source.identifier);
   const movies = await loadAdminMovies();
   const items: unknown[] = [];
@@ -617,13 +775,11 @@ router.post("/podcasts/latest/preview", async (req, res) => {
         movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
       );
       for (const episode of parsed.episodes.slice(0, 20)) {
-        items.push({
-          title: episode.title,
-          sourceTitle: episode.title,
-          sourceIdentifier: identifier,
-          episodeDate: episode.publishDate,
-          isDuplicate: existing.has(episode.title)
-        });
+        const prepared = prepareMovieQuery(episode.title, episode.description);
+        if (!prepared.title || shouldSkipPodcastNoise(identifier, episode.title, prepared.title)) {
+          continue;
+        }
+        items.push(podcastPreviewItem(episode, identifier, existing));
       }
     } catch {
       // skip
@@ -634,27 +790,34 @@ router.post("/podcasts/latest/preview", async (req, res) => {
 
 router.post("/ingest/preview", async (req, res) => {
   const url = String(req.body?.url || "");
+  const sourceType = String(req.body?.sourceType || "");
+  const identifier = String(req.body?.identifier || "");
   if (!url) {
     res.status(400).json({ error: "url required" });
     return;
   }
-  const html = await fetchText(url);
-  const titles: Array<{ title: string; rank: number }> = [];
-  const seen = new Set<string>();
-  const matches = html.match(/<a[^>]*>([^<]{2,120})<\/a>/gi) || [];
-  for (const match of matches) {
-    const text = match.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#039;/g, "'").trim();
-    const key = text.toLowerCase();
-    if (!text || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    titles.push({ title: text, rank: titles.length + 1 });
-    if (titles.length >= 80) {
-      break;
-    }
+  if (sourceType === "podcast") {
+    const xml = await fetchText(url);
+    const parsed = parseRssFeed(xml);
+    const movies = await loadAdminMovies();
+    const existing = new Set(
+      movies.filter((movie) => movie.sourceIdentifier === identifier).map((movie) => movie.sourceTitle || movie.title)
+    );
+    const items = parsed.episodes
+      .map((episode) => podcastPreviewItem(episode, identifier, existing))
+      .filter((item) => item.title && !shouldSkipPodcastNoise(identifier, item.sourceTitle, item.title));
+    res.json({ items, summary: { count: items.length } });
+    return;
   }
-  res.json({ items: titles, summary: { count: titles.length } });
+  const html = await fetchText(url, LIST_FETCH_HEADERS);
+  const isRanked = Boolean(req.body?.isRankedList);
+  const items = scrapeListItems(url, html).map((item) => ({
+    title: item.title,
+    sourceTitle: item.title,
+    rank: isRanked ? item.rank : null,
+    sourceIdentifier: identifier || null
+  }));
+  res.json({ items, summary: { count: items.length } });
 });
 
 router.post("/ingest/enrich", async (req, res) => {
@@ -662,39 +825,41 @@ router.post("/ingest/enrich", async (req, res) => {
   const enriched = [];
   for (const item of items.slice(0, 40)) {
     try {
-      const found = item.title && config.tmdbApiKey ? await searchTmdbMovies(String(item.title), undefined, config.tmdbApiKey) : [];
-      const first = found[0];
-      if (!first) {
-        enriched.push({ ...item, status: "missing" });
+      const prepared = prepareMovieQuery(String(item.title || ""), item.podcastEpisodeDescription);
+      const match = await searchBestMovie(prepared.query, prepared.year);
+      if (!match) {
+        enriched.push({ ...item, title: prepared.title || item.title, sourceTitle: item.sourceTitle || item.title, status: "missing" });
         continue;
       }
-      const details = await fetchTmdbMovieDetails(first.id, config.tmdbApiKey);
+      const details = await fetchTmdbMovieDetails(match.id, config.tmdbApiKey);
+      const merged = applyTmdbDetails(
+        {
+          title: prepared.title || String(item.title || ""),
+          year: null,
+          tmdbId: match.id,
+          sourceIdentifier: item.sourceIdentifier ?? null,
+          sourceTitle: item.sourceTitle ?? item.title,
+          rank: item.rank ?? null,
+          mpaaRating: null,
+          episodeDate: item.episodeDate ?? null,
+          overview: null,
+          posterPath: null,
+          backdropPath: null,
+          genres: [],
+          streamingServices: [],
+          credits: null,
+          trailer: null,
+          oscarAwards: null,
+          physicalMedia: null,
+          podcastEpisodeDescription: item.podcastEpisodeDescription ?? null
+        },
+        details
+      );
       enriched.push({
         ...item,
-        ...applyTmdbDetails(
-          {
-            title: item.title,
-            year: null,
-            tmdbId: first.id,
-            sourceIdentifier: item.sourceIdentifier ?? null,
-            sourceTitle: item.sourceTitle ?? item.title,
-            rank: item.rank ?? null,
-            mpaaRating: null,
-            episodeDate: null,
-            overview: null,
-            posterPath: null,
-            backdropPath: null,
-            genres: [],
-            streamingServices: [],
-            credits: null,
-            trailer: null,
-            oscarAwards: null,
-            physicalMedia: null,
-            podcastEpisodeDescription: null
-          },
-          details
-        ),
-        status: "enriched"
+        ...merged,
+        sourceTitle: item.sourceTitle ?? item.title,
+        status: determineItemStatus(merged)
       });
     } catch {
       enriched.push({ ...item, status: "missing" });
@@ -771,6 +936,16 @@ router.post("/history/snapshots/:id/restore", async (req, res) => {
   }
 });
 
+router.post("/history/snapshots/:id/restore-physical", async (req, res) => {
+  try {
+    const result = await restorePhysicalMediaFromSnapshot(req, String(req.params.id));
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Physical restore failed.";
+    res.status(message.includes("not found") ? 404 : 400).json({ error: message });
+  }
+});
+
 router.post("/history/audit/:id/revert", async (req, res) => {
   try {
     const result = await revertAudit(req, String(req.params.id), historyHandlers);
@@ -800,8 +975,13 @@ const refreshPodcastSource = async (sourceIdentifier: string) => {
       skippedCount += 1;
       continue;
     }
+    const prepared = prepareMovieQuery(episode.title, episode.description);
+    if (!prepared.title || shouldSkipPodcastNoise(sourceIdentifier, episode.title, prepared.title)) {
+      skippedCount += 1;
+      continue;
+    }
     await upsertAdminMovie({
-      title: episode.title,
+      title: prepared.title,
       sourceIdentifier,
       sourceTitle: episode.title,
       episodeDate: episode.publishDate,

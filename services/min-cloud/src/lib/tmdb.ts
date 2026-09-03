@@ -96,6 +96,16 @@ export const fetchTmdbMovieDetails = async (tmdbId: number, apiKey: string) => {
   return fetchJson<Record<string, unknown>>(url.toString());
 };
 
+export const fetchImdbIdFromTmdb = async (tmdbId: number, apiKey: string) => {
+  if (!apiKey || !tmdbId) {
+    return null;
+  }
+  const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}/external_ids`);
+  url.searchParams.set("api_key", apiKey);
+  const data = await fetchJson<{ imdb_id?: string | null }>(url.toString());
+  return data.imdb_id || null;
+};
+
 export const catalogMovieFromTmdb = (movie: TmdbMovie) => {
   const year = movie.release_date ? Number(movie.release_date.slice(0, 4)) : null;
   return {

@@ -3,7 +3,20 @@ import https from "node:https";
 
 const USER_AGENT = "MinCloud/0.1 (+https://min.cloud)";
 
-export const fetchText = (url: string, headers: Record<string, string> = {}) =>
+export type FetchOptions = {
+  timeoutMs?: number;
+};
+
+const safeUrlForError = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return "request";
+  }
+};
+
+export const fetchText = (url: string, headers: Record<string, string> = {}, options: FetchOptions = {}) =>
   new Promise<string>((resolve, reject) => {
     const transport = url.startsWith("http://") ? http : https;
     const request = transport.get(
@@ -18,7 +31,7 @@ export const fetchText = (url: string, headers: Record<string, string> = {}) =>
       (response) => {
         if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           const next = new URL(response.headers.location, url).toString();
-          fetchText(next, headers).then(resolve, reject);
+          fetchText(next, headers, options).then(resolve, reject);
           return;
         }
         const chunks: Buffer[] = [];
@@ -34,12 +47,18 @@ export const fetchText = (url: string, headers: Record<string, string> = {}) =>
       }
     );
     request.on("error", reject);
-    request.setTimeout(20000, () => {
-      request.destroy(new Error(`Request timed out: ${url}`));
+    request.setTimeout(options.timeoutMs ?? 20000, () => {
+      request.destroy(new Error(`Request timed out: ${safeUrlForError(url)}`));
     });
   });
 
-export const fetchJson = async <T>(url: string, headers: Record<string, string> = {}): Promise<T> => {
-  const body = await fetchText(url, headers);
+export const fetchJson = async <T>(
+  url: string,
+  headers: Record<string, string> = {},
+  options: FetchOptions = {}
+): Promise<T> => {
+  const body = await fetchText(url, headers, options);
   return JSON.parse(body) as T;
 };
+
+export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

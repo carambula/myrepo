@@ -87,7 +87,10 @@ const chunk = <T,>(items: T[], size: number) => {
   return out;
 };
 
-export const applyPhysicalMediaOverlay = async (raw: unknown) => {
+export const applyPhysicalMediaOverlay = async (
+  raw: unknown,
+  options: { overwriteManual?: boolean } = {}
+) => {
   const overlay = overlayMapFromUnknown(raw);
   let updated = 0;
   for (const group of chunk([...overlay.entries()], 80)) {
@@ -103,10 +106,11 @@ export const applyPhysicalMediaOverlay = async (raw: unknown) => {
         continue;
       }
       const stored = normalizePhysicalMedia(row.physical_media);
-      if (stored?.manualOverride) {
+      if (stored?.manualOverride && !options.overwriteManual) {
         continue;
       }
-      const merged = mergePhysicalMedia(stored, inferred);
+      const base = options.overwriteManual && stored?.manualOverride ? { ...stored, manualOverride: false } : stored;
+      const merged = mergePhysicalMedia(base, inferred);
       if (!merged) {
         continue;
       }

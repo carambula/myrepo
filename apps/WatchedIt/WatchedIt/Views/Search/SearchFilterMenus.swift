@@ -120,7 +120,7 @@ struct SearchFilterMenus: View {
                 if filters.watchFilter == filter {
                     Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
                 } else {
-                    Text(filter.rawValue)
+                    Label(filter.rawValue, systemImage: filter.systemImage)
                 }
             }
         }

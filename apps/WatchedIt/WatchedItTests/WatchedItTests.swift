@@ -346,6 +346,47 @@ struct WatchedItTests {
         #expect(filtered.map(\.title) == ["Fight Club"])
     }
 
+    @Test func movieSearchEngineAppliesWatchFilterFromHomeToolbar() {
+        let saved = movie(isSaved: true)
+        let rewatched = movie(isRewatched: true)
+        let listened = movie(isListened: true)
+        let complete = movie(isRewatched: true, isListened: true)
+        let movies = [saved, rewatched, listened, complete]
+        let index = MovieSearchEngine.buildIndex(from: movies)
+
+        func ids(for filter: WatchFilter) -> [String] {
+            var filters = MovieSearchFilters()
+            filters.watchFilter = filter
+            return MovieSearchEngine.filterMovies(
+                movies: movies,
+                query: "",
+                filters: filters,
+                movieSearchIndex: index,
+                sourceCache: [:],
+                restrictedMovieIDs: nil
+            ).map(\.id)
+        }
+
+        #expect(ids(for: .saved) == [saved.id])
+        #expect(ids(for: .rewatched) == [rewatched.id, complete.id])
+        #expect(ids(for: .listened) == [listened.id, complete.id])
+        #expect(ids(for: .completed) == [complete.id])
+        #expect(ids(for: .notSaved) == [rewatched.id, listened.id, complete.id])
+        #expect(Set(ids(for: .all)) == Set(movies.map(\.id)))
+    }
+
+    @Test func watchFilterMenuIncludesPairedStatusCases() {
+        let labels = WatchFilter.allCases.map(\.rawValue)
+        #expect(labels.contains("Rewatched"))
+        #expect(labels.contains("Not rewatched"))
+        #expect(labels.contains("Saved"))
+        #expect(labels.contains("Not saved"))
+        #expect(labels.contains("Listened"))
+        #expect(labels.contains("Not listened"))
+        #expect(labels.contains("Complete"))
+        #expect(labels.contains("Not complete"))
+    }
+
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,

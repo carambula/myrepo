@@ -389,6 +389,7 @@ private struct CollectionsHomeContentView: View {
     private var customFloatingBottomToolbar: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             GlassCapsuleToolbar(spacing: customToolbarIconSpacing.points, height: customToolbarControlHeight) {
+                statusMenu
                 listMenu
                 if hasPreferredStreamingServices { streamingServiceMenu }
                 genreMenu
@@ -521,6 +522,17 @@ private struct CollectionsHomeContentView: View {
         } label: {
             GlassCircleButton(systemImage: DesignSystem.Icon.account, foregroundColor: toolbarSecondaryAccentColor, accessibilityLabel: "Account")
         }
+    }
+
+    private var statusMenu: some View {
+        Menu {
+            ForEach(WatchFilter.allCases, id: \.self) { filter in
+                Button(filter.rawValue) { applyStatusFilterFromToolbar(filter) }
+            }
+        } label: {
+            DesignSystemIcon(DesignSystem.Icon.status, size: DesignSystem.IconSize.md, color: toolbarSecondaryAccentColor)
+        }
+        .accessibilityLabel("Status filter")
     }
 
     private var listMenu: some View {
@@ -724,6 +736,12 @@ private struct CollectionsHomeContentView: View {
             initialFilters: nil,
             focusSearchOnOpen: false
         )
+    }
+
+    private func applyStatusFilterFromToolbar(_ filter: WatchFilter) {
+        var filters = MovieSearchFilters()
+        filters.watchFilter = filter
+        presentGlobalSearch(initialFilters: filters)
     }
 
     private func applyGenreFilterFromToolbar(_ genre: String?) {

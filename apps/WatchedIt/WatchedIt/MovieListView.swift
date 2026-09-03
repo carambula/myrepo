@@ -2949,6 +2949,7 @@ struct MovieListView: View {
     @ToolbarContentBuilder
     private var bottomToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
+            statusMenu
             listMenu
             if hasPreferredStreamingServices {
                 streamingServiceMenu
@@ -2965,6 +2966,7 @@ struct MovieListView: View {
     #if os(iOS)
     private var customFloatingFilterGroup: some View {
         GlassCapsuleToolbar(spacing: 24, height: customToolbarControlHeight) {
+            statusMenu
             listMenu
             if hasPreferredStreamingServices {
                 streamingServiceMenu
@@ -3044,19 +3046,29 @@ struct MovieListView: View {
     
     private var statusMenu: some View {
         Menu {
-            ForEach(WatchFilter.allCases, id: \.self) { filter in
-                Button {
-                    watchFilter = filter
-                } label: {
-                    if filter == watchFilter {
-                        Label(filter.rawValue, systemImage: "checkmark")
-                    } else {
-                        Text(filter.rawValue)
-                    }
+            statusMenuContent
+        } label: {
+            DesignSystemIcon(
+                watchFilter == .all ? DesignSystem.Icon.status : watchFilter.systemImage,
+                size: DesignSystem.IconSize.md,
+                color: toolbarIconColor(isActive: watchFilter != .all)
+            )
+        }
+        .accessibilityLabel(watchFilter == .all ? "Status filter" : "Status filter, \(watchFilter.rawValue)")
+    }
+
+    @ViewBuilder
+    private var statusMenuContent: some View {
+        ForEach(WatchFilter.allCases, id: \.self) { filter in
+            Button {
+                applyStatusFilterFromToolbar(filter)
+            } label: {
+                if filter == watchFilter {
+                    Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
+                } else {
+                    Label(filter.rawValue, systemImage: filter.systemImage)
                 }
             }
-        } label: {
-            DesignSystemIcon(DesignSystem.Icon.status, size: DesignSystem.IconSize.md, color: toolbarIconColor(isActive: watchFilter != .all))
         }
     }
     
@@ -3315,6 +3327,16 @@ struct MovieListView: View {
             initialFilters: nil,
             focusSearchOnOpen: false
         )
+    }
+
+    private func applyStatusFilterFromToolbar(_ filter: WatchFilter) {
+        if collectionsOnlyMode {
+            var filters = MovieSearchFilters()
+            filters.watchFilter = filter
+            presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
+            return
+        }
+        watchFilter = filter
     }
 
     private func applyGenreFilterFromToolbar(_ genre: String?) {
@@ -3743,6 +3765,12 @@ struct MovieListView: View {
     
     private var searchFiltersMenu: some View {
         Menu {
+            Menu {
+                statusMenuContent
+            } label: {
+                Label("Status", systemImage: DesignSystem.Icon.status)
+            }
+
             Menu {
                 listMenuContent
             } label: {

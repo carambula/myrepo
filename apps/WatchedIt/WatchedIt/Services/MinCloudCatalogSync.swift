@@ -43,6 +43,7 @@ final class MinCloudCatalogSync {
             MinCloudSettings.lastCatalogSyncedAt = catalog.generatedAt ?? ISO8601DateFormatter().string(from: Date())
             MinCloudSettings.lastCatalogMovieCount = catalogCount
             LocalDatabaseManager.shared.refreshMovies()
+            LocalDatabaseManager.shared.noteCatalogChanged()
             let incomplete = catalog.movies.count < catalogCount
             var unmatchedNote = result.unmatched > 0 ? " \(result.unmatched) titles have no TMDB match." : ""
             if let remoteUnmatched = meta?.unmatchedCount, remoteUnmatched > result.unmatched {
@@ -94,9 +95,12 @@ final class MinCloudCatalogSync {
 
         let existingContents = (try? modelContext.fetch(FetchDescriptor<SourceContent>())) ?? []
         var contentKeys = Set<String>()
+        var contentByKey: [String: SourceContent] = [:]
         for content in existingContents {
             if let movieId = content.movie?.id, let sourceId = content.source?.identifier {
-                contentKeys.insert("\(movieId)|\(sourceId)")
+                let key = "\(movieId)|\(sourceId)"
+                contentKeys.insert(key)
+                contentByKey[key] = content
             }
         }
 
@@ -143,13 +147,19 @@ final class MinCloudCatalogSync {
                 if let oscars = remote.oscarAwards {
                     movie.oscarAwards = oscars
                 }
-                movie.lastUpdated = Date()
                 result.updated += 1
                 if remote.tmdbId == nil {
                     result.unmatched += 1
                 }
                 let beforeLinks = contentKeys.count
-                attachSources(remote, movie: movie, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
+                attachSources(
+                    remote,
+                    movie: movie,
+                    sourceById: sourceById,
+                    contentKeys: &contentKeys,
+                    contentByKey: &contentByKey,
+                    modelContext: modelContext
+                )
                 result.newSourceLinks += contentKeys.count - beforeLinks
                 continue
             }
@@ -175,7 +185,14 @@ final class MinCloudCatalogSync {
             if let tmdbId = created.tmdbId {
                 byTmdb[tmdbId] = created
             }
-            attachSources(remote, movie: created, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
+            attachSources(
+                remote,
+                movie: created,
+                sourceById: sourceById,
+                contentKeys: &contentKeys,
+                contentByKey: &contentByKey,
+                modelContext: modelContext
+            )
             result.added += 1
             if created.tmdbId == nil {
                 result.unmatched += 1
@@ -200,20 +217,84 @@ final class MinCloudCatalogSync {
         movie: MovieData,
         sourceById: [String: DataSource],
         contentKeys: inout Set<String>,
+        contentByKey: inout [String: SourceContent],
         modelContext: ModelContext
     ) {
         for link in remote.sources ?? [] {
             guard let identifier = link.identifier, let source = sourceById[identifier] else { continue }
             let key = "\(movie.id)|\(identifier)"
-            guard !contentKeys.contains(key) else { continue }
+            let episodeDate = Self.parseCatalogDate(link.episodeDate) ?? Self.parseCatalogDate(link.episode?.publishDate)
+            let episode = Self.podcastEpisode(from: link, movieTitle: remote.title, fallbackDate: episodeDate)
+            if let existing = contentByKey[key] {
+                if existing.sourceTitle == nil || existing.sourceTitle?.isEmpty == true {
+                    existing.sourceTitle = link.sourceTitle
+                }
+                if existing.sourceDate == nil {
+                    existing.sourceDate = episodeDate
+                }
+                if existing.podcastEpisode == nil {
+                    existing.podcastEpisode = episode
+                }
+                if let rank = link.rank {
+                    existing.rank = rank
+                }
+                continue
+            }
             let content = SourceContent(
                 movie: movie,
                 source: source,
                 sourceTitle: link.sourceTitle,
-                rank: link.rank
+                sourceDescription: link.episode?.description,
+                sourceDate: episodeDate,
+                rank: link.rank,
+                podcastEpisode: episode
             )
             modelContext.insert(content)
             contentKeys.insert(key)
+            contentByKey[key] = content
         }
+    }
+
+    private static func podcastEpisode(
+        from link: MinCloudMovieCatalog.Movie.SourceLink,
+        movieTitle: String,
+        fallbackDate: Date?
+    ) -> PodcastEpisode? {
+        let title = link.episode?.title ?? link.sourceTitle ?? movieTitle
+        let date = fallbackDate ?? Self.parseCatalogDate(link.episode?.publishDate)
+        let description = link.episode?.description
+        guard date != nil || !(link.sourceTitle ?? "").isEmpty || description != nil else {
+            return nil
+        }
+        return PodcastEpisode(
+            title: title,
+            episodeId: link.episode?.episodeId ?? "\(link.identifier ?? "source")|\(movieTitle)",
+            publishDate: date,
+            description: description
+        )
+    }
+
+    static func parseCatalogDate(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let isoWithFractional = ISO8601DateFormatter()
+        isoWithFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoWithFractional.date(from: raw) {
+            return date
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: raw) {
+            return date
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        for format in ["yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX", "yyyy-MM-dd HH:mm:ssZ", "yyyy-MM-dd"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
     }
 }

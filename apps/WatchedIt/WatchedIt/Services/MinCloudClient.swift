@@ -30,9 +30,31 @@ struct MinCloudMovieCatalog: Decodable {
         }
 
         struct SourceLink: Decodable {
+            struct EpisodeStub: Decodable {
+                let title: String?
+                let episodeId: String?
+                let description: String?
+                let publishDate: String?
+            }
+
             let identifier: String?
             let rank: Int?
             let sourceTitle: String?
+            let episodeDate: String?
+            let episode: EpisodeStub?
+
+            enum CodingKeys: String, CodingKey {
+                case identifier, rank, sourceTitle, episodeDate, episode
+            }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                identifier = try container.decodeIfPresent(String.self, forKey: .identifier)
+                rank = try container.decodeIfPresent(Int.self, forKey: .rank)
+                sourceTitle = try container.decodeIfPresent(String.self, forKey: .sourceTitle)
+                episodeDate = try? container.decodeIfPresent(String.self, forKey: .episodeDate)
+                episode = try? container.decodeIfPresent(EpisodeStub.self, forKey: .episode)
+            }
         }
 
         let id: String

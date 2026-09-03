@@ -2,7 +2,7 @@ import { Router } from "express";
 import { query } from "../db.js";
 import { fetchStreamingServices } from "../lib/tmdb.js";
 import { config } from "../config.js";
-import { catalogCacheHeaders, catalogPageMeta } from "../lib/catalog-response.js";
+import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
 
 const router = Router();
 
@@ -78,13 +78,7 @@ router.get("/catalog", async (req, res) => {
   const linksByMovie = new Map<string, unknown[]>();
   for (const link of links.rows) {
     const list = linksByMovie.get(String(link.movie_id)) ?? [];
-    list.push({
-      identifier: link.source_id,
-      rank: link.rank,
-      sourceTitle: link.source_title,
-      episodeDate: link.episode_date,
-      episode: link.episode
-    });
+    list.push(mapCatalogSourceLink(link as Record<string, unknown>));
     linksByMovie.set(String(link.movie_id), list);
   }
   const mapped = movies.rows.map((row) => ({
@@ -126,7 +120,7 @@ router.get("/movies/:id", async (req, res) => {
   res.json({
     movie: {
       ...mapMovie(result.rows[0], result.rows[0].providers ?? []),
-      sources: links.rows
+      sources: links.rows.map((link) => mapCatalogSourceLink(link as Record<string, unknown>))
     }
   });
 });

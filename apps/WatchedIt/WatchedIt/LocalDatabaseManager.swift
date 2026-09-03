@@ -326,6 +326,11 @@ public class LocalDatabaseManager: ObservableObject {
         }
     }
     
+    /// Bumps UI observers after a catalog apply so source caches and collections rebuild.
+    public func noteCatalogChanged() {
+        movieStatusVersion += 1
+    }
+
     /// Reloads movies without setting isLoading flag (for background refreshes)
     public func refreshMovies() {
         guard let context = modelContext else { return }
@@ -1180,15 +1185,14 @@ public class LocalDatabaseManager: ObservableObject {
         if cloudRestoreAttemptCount >= maxCloudRestoreAttempts {
             return
         }
-        cloudRestoreAttemptCount += 1
-        isRestoringUserData = true
-        
+
         let status = await CloudKitManager.shared.accountStatus()
         guard status == .available else {
-            isRestoringUserData = false
-            scheduleCloudRestoreRetry(after: 2.0)
             return
         }
+
+        cloudRestoreAttemptCount += 1
+        isRestoringUserData = true
         
         // Use zone changes (incremental when token exists; full on first run when token is nil)
         let payloads: [CloudKitManager.UserMovieDataPayload]

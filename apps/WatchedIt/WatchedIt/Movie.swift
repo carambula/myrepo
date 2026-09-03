@@ -73,6 +73,12 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.isSaved = isSaved
         self.lastUpdated = lastUpdated
     }
+
+    /// Newest-first lists use episode date when the catalog/RSS link has one,
+    /// otherwise the row's lastUpdated so admin additions are not buried.
+    public var episodeSortDate: Date {
+        podcastEpisode?.publishDate ?? lastUpdated
+    }
     
     public static func == (lhs: Movie, rhs: Movie) -> Bool {
         lhs.id == rhs.id

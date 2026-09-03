@@ -7,29 +7,41 @@
 
 import Foundation
 
-enum TheatricalFilter: String, CaseIterable, Sendable {
+public enum TheatricalFilter: String, CaseIterable, Sendable {
     case inTheaters = "In Theaters"
     case imax = "IMAX"
 }
 
-struct TheatricalRun: Codable, Hashable, Sendable {
-    var tmdbId: Int?
-    var isInTheaters: Bool
-    var hasIMAX: Bool
-    var title: String?
+public struct TheatricalRun: Codable, Hashable, Sendable {
+    public var tmdbId: Int?
+    public var isInTheaters: Bool
+    public var hasIMAX: Bool
+    public var title: String?
 
-    var hasDisplayableAvailability: Bool {
+    public init(
+        tmdbId: Int? = nil,
+        isInTheaters: Bool = false,
+        hasIMAX: Bool = false,
+        title: String? = nil
+    ) {
+        self.tmdbId = tmdbId
+        self.isInTheaters = isInTheaters
+        self.hasIMAX = hasIMAX
+        self.title = title
+    }
+
+    public var hasDisplayableAvailability: Bool {
         isInTheaters || hasIMAX
     }
 
-    var badgeLabels: [String] {
+    public var badgeLabels: [String] {
         var badges: [String] = []
         if isInTheaters { badges.append("In Theaters") }
         if hasIMAX { badges.append("IMAX") }
         return badges
     }
 
-    var searchTokens: [String] {
+    public var searchTokens: [String] {
         var tokens = Set<String>()
         if isInTheaters {
             tokens.formUnion(["theater", "theaters", "in theaters"])
@@ -40,14 +52,14 @@ struct TheatricalRun: Codable, Hashable, Sendable {
         return Array(tokens)
     }
 
-    func matchesSearchQuery(_ query: String) -> Bool {
+    public func matchesSearchQuery(_ query: String) -> Bool {
         let lower = query.lowercased()
         return searchTokens.contains { token in
             lower == token || lower.contains(token)
         }
     }
 
-    func matches(_ filter: TheatricalFilter) -> Bool {
+    public func matches(_ filter: TheatricalFilter) -> Bool {
         switch filter {
         case .inTheaters:
             return isInTheaters
@@ -57,24 +69,36 @@ struct TheatricalRun: Codable, Hashable, Sendable {
     }
 }
 
-struct TheatricalTicketOffer: Identifiable, Hashable, Sendable {
-    let id: String
-    let title: String
-    let url: URL
+public struct TheatricalTicketOffer: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let title: String
+    public let url: URL
+
+    public init(id: String, title: String, url: URL) {
+        self.id = id
+        self.title = title
+        self.url = url
+    }
 }
 
-struct TheatricalTicketGroup: Identifiable, Hashable, Sendable {
-    let id: String
-    let headline: String
-    let offers: [TheatricalTicketOffer]
+public struct TheatricalTicketGroup: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let headline: String
+    public let offers: [TheatricalTicketOffer]
+
+    public init(id: String, headline: String, offers: [TheatricalTicketOffer]) {
+        self.id = id
+        self.headline = headline
+        self.offers = offers
+    }
 }
 
-enum TheatricalTicketLinkBuilder {
-    static func hasOptions(for run: TheatricalRun?) -> Bool {
+public enum TheatricalTicketLinkBuilder {
+    public static func hasOptions(for run: TheatricalRun?) -> Bool {
         run?.hasDisplayableAvailability == true
     }
 
-    static func groups(for run: TheatricalRun?, title: String, year: Int?) -> [TheatricalTicketGroup] {
+    public static func groups(for run: TheatricalRun?, title: String, year: Int?) -> [TheatricalTicketGroup] {
         guard let run, run.hasDisplayableAvailability else { return [] }
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return [] }
@@ -97,7 +121,7 @@ enum TheatricalTicketLinkBuilder {
         return groups.filter { !$0.offers.isEmpty }
     }
 
-    static func compactOffers(for run: TheatricalRun?, title: String, year: Int?) -> [TheatricalTicketOffer] {
+    public static func compactOffers(for run: TheatricalRun?, title: String, year: Int?) -> [TheatricalTicketOffer] {
         var seen = Set<String>()
         var offers: [TheatricalTicketOffer] = []
         for group in groups(for: run, title: title, year: year) {
@@ -126,28 +150,28 @@ enum TheatricalTicketLinkBuilder {
     }
 }
 
-final class TheatricalCatalog: @unchecked Sendable {
-    static let shared = TheatricalCatalog()
+public final class TheatricalCatalog: @unchecked Sendable {
+    public static let shared = TheatricalCatalog()
 
     private var byTmdbId: [Int: TheatricalRun] = [:]
     private let lock = NSLock()
 
     private init() {}
 
-    func run(forTmdbId tmdbId: Int?) -> TheatricalRun? {
+    public func run(forTmdbId tmdbId: Int?) -> TheatricalRun? {
         guard let tmdbId else { return nil }
         lock.lock()
         defer { lock.unlock() }
         return byTmdbId[tmdbId]
     }
 
-    func replace(_ runs: [Int: TheatricalRun]) {
+    public func replace(_ runs: [Int: TheatricalRun]) {
         lock.lock()
         byTmdbId = runs
         lock.unlock()
     }
 
-    func replaceForTesting(_ runs: [Int: TheatricalRun]) {
+    public func replaceForTesting(_ runs: [Int: TheatricalRun]) {
         replace(runs)
     }
 }

@@ -52,7 +52,7 @@ struct SetTimerDetailSheet: View {
                     }
                 }
                 .padding(.top, DesignSystem.Spacing.lg)
-                .padding(.bottom, controlsPlacement == .lowerCenter ? MinSpacing.bottomSafeArea + 124 : MinSpacing.bottomSafeArea)
+                .padding(.bottom, controlsPlacement == .lowerCenter ? DesignSystem.Spacing.bottomSafeArea + 124 : DesignSystem.Spacing.bottomSafeArea)
             }
 
             if controlsPlacement == .lowerCenter {
@@ -113,7 +113,7 @@ struct SetTimerDetailSheet: View {
                 Button(action: onEdit) {
                     Image(systemName: DesignSystem.Icon.edit)
                 }
-                .buttonStyle(CircularGlassIconButtonStyle(size: MinSpacing.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
+                .buttonStyle(CircularGlassIconButtonStyle(size: DesignSystem.TopControls.buttonSize, foregroundColor: DesignSystem.Colors.accent))
                 .accessibilityLabel("Edit timer")
                 .padding(.trailing, DesignSystem.Spacing.lg)
             }

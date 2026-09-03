@@ -29,6 +29,7 @@ struct MovieDetailView: View {
     var onGenreTapped: ((String) -> Void)? = nil
     var onRatingTapped: ((String) -> Void)? = nil
     var onPhysicalMediaTapped: ((String) -> Void)? = nil
+    var onTheatricalTapped: ((TheatricalFilter) -> Void)? = nil
     @StateObject private var localDB = LocalDatabaseManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage(StreamingPreferences.storageKey) private var preferredServicesData: Data = Data()
@@ -38,6 +39,7 @@ struct MovieDetailView: View {
     @State private var isLoadingDetails = false
     @State private var showRewatchablesEditor = false
     @State private var showPhysicalPurchaseSheet = false
+    @State private var showTheatricalTicketSheet = false
     @State private var hasTriggeredCatalogRefresh = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -125,6 +127,7 @@ struct MovieDetailView: View {
             trailer: current.trailer ?? movie.trailer,
             oscarAwards: current.oscarAwards ?? movie.oscarAwards,
             physicalMedia: current.physicalMedia ?? movie.physicalMedia,
+            theatricalRun: current.theatricalRun ?? movie.theatricalRun,
             // Use local state so status toggles feel instant and glass transitions stay smooth
             isRewatched: localIsRewatched,
             isListened: localIsListened,
@@ -204,8 +207,12 @@ struct MovieDetailView: View {
         PhysicalPurchaseLinkBuilder.hasOptions(for: displayMovie.physicalMedia)
     }
 
+    private var hasTheatricalTicketOptions: Bool {
+        TheatricalTicketLinkBuilder.hasOptions(for: displayMovie.theatricalRun)
+    }
+
     private var showsPlayMenu: Bool {
-        !preferredServiceIndex.isEmpty || hasPhysicalPurchaseOptions
+        !preferredServiceIndex.isEmpty || hasPhysicalPurchaseOptions || hasTheatricalTicketOptions
     }
 
     private var preferredStreamingServices: [StreamingService] {
@@ -420,7 +427,8 @@ struct MovieDetailView: View {
         onYearTapped: ((Int) -> Void)? = nil,
         onGenreTapped: ((String) -> Void)? = nil,
         onRatingTapped: ((String) -> Void)? = nil,
-        onPhysicalMediaTapped: ((String) -> Void)? = nil
+        onPhysicalMediaTapped: ((String) -> Void)? = nil,
+        onTheatricalTapped: ((TheatricalFilter) -> Void)? = nil
     ) {
         self.movie = movie
         self.presentationSource = presentationSource
@@ -429,6 +437,7 @@ struct MovieDetailView: View {
         self.onGenreTapped = onGenreTapped
         self.onRatingTapped = onRatingTapped
         self.onPhysicalMediaTapped = onPhysicalMediaTapped
+        self.onTheatricalTapped = onTheatricalTapped
         _localIsRewatched = State(initialValue: movie.isRewatched)
         _localIsListened = State(initialValue: movie.isListened)
         _localIsSaved = State(initialValue: movie.isSaved)
@@ -643,6 +652,10 @@ struct MovieDetailView: View {
         onPhysicalMediaTapped?(trimmed)
     }
 
+    private func handleTheatricalTap(_ filter: TheatricalFilter) {
+        onTheatricalTapped?(filter)
+    }
+
     private func handleRatingTap(_ rating: String) {
         let trimmedRating = rating.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedRating.isEmpty else { return }
@@ -779,6 +792,51 @@ struct MovieDetailView: View {
                     .accessibilityLabel("4K UHD")
                 }
             }
+
+            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                if run.isInTheaters {
+                    Button(action: { handleTheatricalTap(.inTheaters) }) {
+                        Text("In Theaters")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("In theaters")
+                }
+                if run.hasIMAX {
+                    Button(action: { handleTheatricalTap(.imax) }) {
+                        Text("IMAX")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("IMAX")
+                }
+            }
         }
     }
 
@@ -786,6 +844,13 @@ struct MovieDetailView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(150))
             showPhysicalPurchaseSheet = true
+        }
+    }
+
+    private func presentTheatricalTicketSheet() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            showTheatricalTicketSheet = true
         }
     }
 
@@ -867,6 +932,13 @@ struct MovieDetailView: View {
                                     Divider()
                                     Button(action: presentPhysicalPurchaseSheet) {
                                         Label("Buy disc…", systemImage: DesignSystem.Icon.disc)
+                                    }
+                                }
+
+                                if hasTheatricalTicketOptions {
+                                    Divider()
+                                    Button(action: presentTheatricalTicketSheet) {
+                                        Label("Get tickets…", systemImage: DesignSystem.Icon.ticket)
                                     }
                                 }
                             } label: {
@@ -1168,6 +1240,30 @@ struct MovieDetailView: View {
                         }
                     }
 
+                    if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                            Text("In Theaters")
+                                .labelMedium()
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Color.textSecondary)
+
+                            Text(run.badgeLabels.joined(separator: "   "))
+                                .bodySmall()
+                                .foregroundColor(DesignSystem.Color.textPrimary)
+
+                            if TheatricalTicketLinkBuilder.hasOptions(for: run) {
+                                Button(action: presentTheatricalTicketSheet) {
+                                    Text("Get tickets")
+                                        .labelMedium()
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                }
+                                .buttonStyle(CreditTapButtonStyle())
+                                .accessibilityLabel("Get tickets")
+                            }
+                        }
+                    }
+
                     // Streaming Services
 
                     
@@ -1247,6 +1343,15 @@ struct MovieDetailView: View {
                     movieTitle: displayMovie.title,
                     year: displayMovie.year,
                     media: media
+                )
+            }
+        }
+        .sheet(isPresented: $showTheatricalTicketSheet) {
+            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                TheatricalTicketSheet(
+                    movieTitle: displayMovie.title,
+                    year: displayMovie.year,
+                    run: run
                 )
             }
         }

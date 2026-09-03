@@ -60,6 +60,11 @@ struct SearchFilterMenus: View {
                 }
             }
             Menu {
+                theatricalMenuContent
+            } label: {
+                Label("Theaters", systemImage: DesignSystem.Icon.ticket)
+            }
+            Menu {
                 genreMenuContent
             } label: {
                 Label("Genres", systemImage: DesignSystem.Icon.genre)
@@ -79,6 +84,7 @@ struct SearchFilterMenus: View {
             || filters.selectedGenre != nil
             || filters.selectedMPAARating != nil
             || filters.selectedStreamingService != nil
+            || filters.theatricalFilter != nil
             || (allowsListFilter && filters.selectedListIdentifier != nil)
     }
 
@@ -217,6 +223,24 @@ struct SearchFilterMenus: View {
                     Label("My Services", systemImage: "checkmark")
                 } else {
                     Text("My Services")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var theatricalMenuContent: some View {
+        Button("All Movies") {
+            updateFilters { $0.theatricalFilter = nil }
+        }
+        ForEach(TheatricalFilter.allCases, id: \.self) { filter in
+            Button {
+                updateFilters { $0.theatricalFilter = filter }
+            } label: {
+                if filters.theatricalFilter == filter {
+                    Label(filter.rawValue, systemImage: "checkmark")
+                } else {
+                    Text(filter.rawValue)
                 }
             }
         }

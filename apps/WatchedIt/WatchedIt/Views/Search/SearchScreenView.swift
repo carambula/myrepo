@@ -42,6 +42,7 @@ struct SearchScreenView: View {
     @State private var pendingGenreFilter: String? = nil
     @State private var pendingRatingFilter: String? = nil
     @State private var pendingPhysicalMediaQuery: String? = nil
+    @State private var pendingTheatricalFilter: TheatricalFilter? = nil
     @State private var session: MovieSearchSession? = nil
     @State private var isKeyboardVisible = false
     @State private var forceCompactSearchControls = false
@@ -115,7 +116,8 @@ struct SearchScreenView: View {
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
                         onRatingTapped: startRatingSearchFromDetails,
-                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
+                        onTheatricalTapped: startTheatricalSearchFromDetails
                     )
                 }
             ))
@@ -189,6 +191,7 @@ struct SearchScreenView: View {
         pendingGenreFilter = nil
         pendingRatingFilter = nil
         pendingPhysicalMediaQuery = nil
+        pendingTheatricalFilter = nil
         pendingPersonFilter = trimmedName
         selectedMovie = nil
     }
@@ -199,6 +202,7 @@ struct SearchScreenView: View {
         pendingGenreFilter = nil
         pendingRatingFilter = nil
         pendingPhysicalMediaQuery = nil
+        pendingTheatricalFilter = nil
         selectedMovie = nil
     }
 
@@ -209,6 +213,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingRatingFilter = nil
         pendingPhysicalMediaQuery = nil
+        pendingTheatricalFilter = nil
         pendingGenreFilter = trimmedGenre
         selectedMovie = nil
     }
@@ -221,6 +226,7 @@ struct SearchScreenView: View {
         pendingGenreFilter = nil
         pendingRatingFilter = trimmedRating
         pendingPhysicalMediaQuery = nil
+        pendingTheatricalFilter = nil
         selectedMovie = nil
     }
 
@@ -232,6 +238,17 @@ struct SearchScreenView: View {
         pendingGenreFilter = nil
         pendingRatingFilter = nil
         pendingPhysicalMediaQuery = trimmed
+        pendingTheatricalFilter = nil
+        selectedMovie = nil
+    }
+
+    private func startTheatricalSearchFromDetails(_ filter: TheatricalFilter) {
+        pendingPersonFilter = nil
+        pendingReleaseYearFilter = nil
+        pendingGenreFilter = nil
+        pendingRatingFilter = nil
+        pendingPhysicalMediaQuery = nil
+        pendingTheatricalFilter = filter
         selectedMovie = nil
     }
 
@@ -281,6 +298,12 @@ struct SearchScreenView: View {
             session?.updateFilters { $0 = MovieSearchFilters() }
             session?.updateQuery(pendingMedia)
             return
+        }
+
+        if let pendingTheatrical = pendingTheatricalFilter {
+            pendingTheatricalFilter = nil
+            session?.updateQuery("")
+            session?.updateFilters { $0.theatricalFilter = pendingTheatrical }
         }
     }
 
@@ -790,6 +813,8 @@ struct SearchScreenView: View {
             }
         case .streamingService:
             session.updateFilters { $0.selectedStreamingService = nil }
+        case .theatrical:
+            session.updateFilters { $0.theatricalFilter = nil }
         }
     }
 }
@@ -804,6 +829,7 @@ private enum ActiveSearchToken: Identifiable, Hashable {
     case releaseYear(Int)
     case list(String)
     case streamingService(String)
+    case theatrical(TheatricalFilter)
 
     var id: String {
         switch self {
@@ -825,6 +851,8 @@ private enum ActiveSearchToken: Identifiable, Hashable {
             return "list:\(identifier.lowercased())"
         case .streamingService(let service):
             return "stream:\(service.lowercased())"
+        case .theatrical(let filter):
+            return "theaters:\(filter.rawValue.lowercased())"
         }
     }
 }
@@ -977,6 +1005,9 @@ private struct SearchResultsContent: View {
         }
         if let selectedStreamingService = filters.selectedStreamingService, !selectedStreamingService.isEmpty {
             items.append(ActiveSearchTokenItem(token: .streamingService(selectedStreamingService), label: selectedStreamingService))
+        }
+        if let theatricalFilter = filters.theatricalFilter {
+            items.append(ActiveSearchTokenItem(token: .theatrical(theatricalFilter), label: theatricalFilter.rawValue))
         }
         return items
     }

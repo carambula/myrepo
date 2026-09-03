@@ -75,7 +75,8 @@
       const data = await (await fetch("/v1/admin/health")).json();
       healthEl.textContent = [
         `${data.movies} movies`,
-        `${data.physicalMedia || 0} with physical media`,
+        `${data.physicalMedia || 0} with discs`,
+        `${data.theaterStays || 0} theater stays`,
         `${data.staleStreaming} stale streaming`,
         `${data.podcasts} podcasts`,
         `${data.episodes} episodes`

@@ -46,6 +46,14 @@ import {
   type AdminMovie
 } from "../lib/admin-catalog.js";
 import {
+  clearInferredTheaterStays,
+  findTheaterStay,
+  loadTheaterStayStats,
+  normalizeTheaterStayUpdate,
+  resolveNowPlaying,
+  upsertManualTheaterStay
+} from "../lib/theater-stays.js";
+import {
   listAudit,
   listSnapshots,
   recordAudit,
@@ -251,7 +259,17 @@ router.get("/bootstrap", async (_req, res) => {
 router.get("/data/health", async (_req, res) => {
   const movies = await loadAdminMovies();
   const sources = await loadAdminSources();
-  res.json(adminCatalogHealth(movies, sources));
+  const discs = physicalMediaStats(movies);
+  const theaters = await loadTheaterStayStats(config.tmdbRegion);
+  res.json({
+    ...adminCatalogHealth(movies, sources),
+    withPhysicalMedia: discs.withPhysicalMedia,
+    withCriterion: discs.withCriterion,
+    with4K: discs.with4K,
+    theaterStays: theaters.inTheaters,
+    theaterStaysInCatalog: theaters.inCatalog,
+    theaterStaysIMAX: theaters.withIMAX
+  });
 });
 
 router.post("/bootstrap/regenerate", async (req, res) => {
@@ -500,6 +518,70 @@ router.post("/physical-media/enrich", async (req, res) => {
     overlayCount: Object.keys(overlay.byTmdbId).length,
     stats: physicalMediaStats(nextMovies)
   });
+});
+
+const catalogTmdbIds = async () => {
+  const catalog = await query(`SELECT tmdb_id FROM mov_movies WHERE tmdb_id IS NOT NULL`);
+  return new Set(
+    catalog.rows
+      .map((row) => Number(row.tmdb_id))
+      .filter((id) => Number.isFinite(id))
+  );
+};
+
+router.get("/theater-stays/stats", async (_req, res) => {
+  res.json(await loadTheaterStayStats(config.tmdbRegion));
+});
+
+router.get("/theater-stays/:tmdbId", async (req, res) => {
+  const tmdbId = Number(req.params.tmdbId);
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+    res.status(400).json({ error: "Invalid TMDB id." });
+    return;
+  }
+  res.json({ success: true, theaterStay: await findTheaterStay(config.tmdbRegion, tmdbId) });
+});
+
+router.post("/theater-stays/refresh", async (req, res) => {
+  if (!config.tmdbApiKey) {
+    res.status(503).json({ error: "TMDB API key required to refresh theater stays." });
+    return;
+  }
+  await takeSnapshot(req, { trigger: "before-theater-refresh" });
+  const payload = await resolveNowPlaying(config.tmdbApiKey, config.tmdbRegion, await catalogTmdbIds(), {
+    force: true
+  });
+  const stats = await loadTheaterStayStats(config.tmdbRegion);
+  await recordAudit(req, "catalog.theater-refresh", {
+    region: config.tmdbRegion,
+    inTheaters: stats.inTheaters,
+    withIMAX: stats.withIMAX,
+    source: payload.source
+  });
+  res.json({ success: true, ...payload, stats });
+});
+
+router.post("/theater-stays/clear", async (req, res) => {
+  await takeSnapshot(req, { trigger: "before-theater-clear" });
+  const clearedCount = await clearInferredTheaterStays(config.tmdbRegion);
+  await recordAudit(req, "catalog.theater-clear", { clearedCount, region: config.tmdbRegion });
+  res.json({ success: true, clearedCount, stats: await loadTheaterStayStats(config.tmdbRegion) });
+});
+
+router.post("/theater-stays/update", async (req, res) => {
+  const update = normalizeTheaterStayUpdate(req.body);
+  if (!update) {
+    res.status(400).json({ error: "tmdbId required." });
+    return;
+  }
+  const before = await findTheaterStay(config.tmdbRegion, update.tmdbId);
+  const catalogIds = await catalogTmdbIds();
+  const after = await upsertManualTheaterStay(config.tmdbRegion, {
+    ...update,
+    inCatalog: catalogIds.has(update.tmdbId)
+  });
+  await recordAudit(req, "catalog.theater-stay", { tmdbId: update.tmdbId }, before, after);
+  res.json({ success: true, theaterStay: after });
 });
 
 router.get("/oscar-awards/stats", async (_req, res) => {

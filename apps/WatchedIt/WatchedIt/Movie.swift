@@ -25,6 +25,7 @@ public struct Movie: Identifiable, Codable, Hashable {
     public let trailer: MovieTrailer?
     public let oscarAwards: OscarAwards?
     public let physicalMedia: PhysicalMedia?
+    public let theatricalRun: TheatricalRun?
     public var isRewatched: Bool
     public var isListened: Bool
     public var isSaved: Bool
@@ -47,6 +48,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         trailer: MovieTrailer? = nil,
         oscarAwards: OscarAwards? = nil,
         physicalMedia: PhysicalMedia? = nil,
+        theatricalRun: TheatricalRun? = nil,
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
@@ -68,6 +70,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.trailer = trailer
         self.oscarAwards = oscarAwards
         self.physicalMedia = physicalMedia
+        self.theatricalRun = theatricalRun
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved

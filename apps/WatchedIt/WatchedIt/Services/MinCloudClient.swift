@@ -1,5 +1,18 @@
 import Foundation
 
+struct MinCloudNowPlayingResponse: Decodable {
+    struct Movie: Decodable {
+        let tmdbId: Int
+        let title: String?
+        let hasIMAX: Bool?
+    }
+
+    let region: String?
+    let movies: [Movie]
+    let refreshedAt: String?
+    let source: String?
+}
+
 struct MinCloudSessionResponse: Decodable {
     struct User: Decodable {
         let id: String
@@ -217,6 +230,10 @@ actor MinCloudClient {
         guard MinCloudSettings.token != nil else { return }
         _ = try? await request(path: "/v1/auth/logout", method: "POST", authorized: true)
         MinCloudSettings.clearSession()
+    }
+
+    func fetchNowPlaying() async throws -> MinCloudNowPlayingResponse {
+        try await get(path: "/v1/mov/now-playing")
     }
 
     func fetchCatalogMeta() async throws -> MinCloudCatalogMeta {

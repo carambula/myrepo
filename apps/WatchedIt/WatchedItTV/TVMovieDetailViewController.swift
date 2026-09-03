@@ -111,6 +111,10 @@ final class TVMovieDetailViewController: UIViewController {
             contentStack.addArrangedSubview(physicalMediaSection)
         }
 
+        if let theatersSection = makeTheatersSection() {
+            contentStack.addArrangedSubview(theatersSection)
+        }
+
         if let streamingSection = makeStreamingSection() {
             contentStack.addArrangedSubview(streamingSection)
         }
@@ -316,6 +320,25 @@ final class TVMovieDetailViewController: UIViewController {
             actions.append(UIMenu(title: "Buy disc", children: buyActions))
         }
 
+        let ticketOffers = TheatricalTicketLinkBuilder.compactOffers(
+            for: movie.theatricalRun,
+            title: movie.title,
+            year: movie.year
+        )
+        if !ticketOffers.isEmpty {
+            let ticketActions = ticketOffers.map { offer in
+                UIAction(title: offer.title) { [weak self] _ in
+                    self?.openURLPreferApp(
+                        appURL: nil,
+                        fallbackAppURL: nil,
+                        webURL: offer.url,
+                        preferUniversalLink: true
+                    )
+                }
+            }
+            actions.append(UIMenu(title: "Get tickets", children: ticketActions))
+        }
+
         return UIMenu(title: "", children: actions)
     }
 
@@ -435,6 +458,12 @@ final class TVMovieDetailViewController: UIViewController {
             }
         }
 
+        if let run = movie.theatricalRun, run.hasDisplayableAvailability {
+            for badge in run.badgeLabels {
+                items.append(makeTagLabel(badge))
+            }
+        }
+
         guard !items.isEmpty else { return nil }
 
         let stack = UIStackView(arrangedSubviews: items)
@@ -483,6 +512,11 @@ final class TVMovieDetailViewController: UIViewController {
             }
         }
         return makeSection(title: "Physical Media", rows: rows)
+    }
+
+    private func makeTheatersSection() -> UIStackView? {
+        guard let run = movie.theatricalRun, run.hasDisplayableAvailability else { return nil }
+        return makeSection(title: "In Theaters", rows: [makeFocusableBodyLabel(run.badgeLabels.joined(separator: "   "))])
     }
 
     private func makeStreamingSection() -> UIStackView? {

@@ -33,9 +33,11 @@ router.get("/health", async (_req, res) => {
   const physicalMedia = await query(
     `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
   );
+  const theaterStays = await query(`SELECT COUNT(*)::int AS count FROM mov_theater_stays`);
   res.json({
     movies: movies.rows[0].count,
     physicalMedia: physicalMedia.rows[0].count,
+    theaterStays: theaterStays.rows[0].count,
     staleStreaming: staleStreaming.rows[0].count,
     podcasts: podcasts.rows[0].count,
     episodes: episodes.rows[0].count,

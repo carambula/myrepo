@@ -406,6 +406,7 @@ final class MovieData {
             trailer: trailer,
             oscarAwards: oscarAwards,
             physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(stored: physicalMedia, tmdbId: tmdbId),
+            theatricalRun: TheatricalCatalog.shared.run(forTmdbId: tmdbId),
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,

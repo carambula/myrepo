@@ -554,6 +554,41 @@ public class MovieDataService {
         print("✅ TMDB: Found \(services.count) streaming service(s) for movie \(tmdbId)")
         return services
     }
+
+    func fetchNowPlayingMovies(region: String = "US", maxPages: Int = 5) async -> [TheatricalRun] {
+        var runs: [Int: TheatricalRun] = [:]
+        for page in 1...maxPages {
+            let urlString = "\(baseURL)/movie/now_playing?api_key=\(apiKey)&region=\(region)&page=\(page)"
+            guard let url = URL(string: urlString) else { break }
+            do {
+                let (data, _) = try await fetchDataIgnoringTaskCancellation(from: url)
+                let decoded = try JSONDecoder().decode(TMDBNowPlayingResponse.self, from: data)
+                for movie in decoded.results {
+                    runs[movie.id] = TheatricalRun(tmdbId: movie.id, isInTheaters: true, hasIMAX: false, title: movie.title)
+                }
+                if page >= decoded.totalPages { break }
+            } catch {
+                break
+            }
+        }
+        return Array(runs.values)
+    }
+
+    func releaseHasIMAX(tmdbId: Int, region: String = "US") async -> Bool {
+        let urlString = "\(baseURL)/movie/\(tmdbId)/release_dates?api_key=\(apiKey)"
+        guard let url = URL(string: urlString) else { return false }
+        do {
+            let (data, _) = try await fetchDataIgnoringTaskCancellation(from: url)
+            let decoded = try JSONDecoder().decode(TMDBReleaseDatesResponse.self, from: data)
+            let regional = decoded.results.first(where: { $0.iso31661 == region })
+                ?? decoded.results.first(where: { $0.iso31661 == "US" })
+            return regional?.releaseDates.contains { note in
+                (note.note ?? "").range(of: "imax", options: .caseInsensitive) != nil
+            } ?? false
+        } catch {
+            return false
+        }
+    }
     
     public func getPosterURL(path: String?, size: ImageSize = .medium) -> String? {
         guard let path = path, !path.isEmpty else {
@@ -690,6 +725,18 @@ public class MovieDataService {
 
 struct TMDBSearchResponse: Codable {
     let results: [TMDBMovie]
+}
+
+struct TMDBNowPlayingResponse: Codable {
+    let page: Int
+    let totalPages: Int
+    let results: [TMDBMovie]
+
+    enum CodingKeys: String, CodingKey {
+        case page
+        case totalPages = "total_pages"
+        case results
+    }
 }
 
 struct TMDBMovie: Codable {
@@ -921,6 +968,7 @@ struct TMDBReleaseDateCountry: Codable {
 struct TMDBReleaseDate: Codable {
     let certification: String
     let type: Int // 1 = Premiere, 2 = Limited, 3 = Theatrical, 4 = Digital, 5 = Physical, 6 = TV
+    let note: String?
 }
 
 struct TMDBVideosResponse: Codable {

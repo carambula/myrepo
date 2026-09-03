@@ -394,7 +394,7 @@ router.post("/streaming/refresh-all", async (req, res) => {
     try {
       const providers = await fetchStreamingServices(movie.tmdbId, config.tmdbApiKey, String(req.body?.region || config.tmdbRegion));
       const before = JSON.stringify(movie.streamingServices ?? []);
-      await upsertAdminMovie({ ...movie, streamingServices: providers }, movie, { bump: false });
+      await upsertAdminMovie({ ...movie, streamingServices: providers }, movie, { bump: false, touch: false });
       if (before !== JSON.stringify(providers)) {
         updatedCount += 1;
         items.push({ title: movie.title, tmdbId: movie.tmdbId, status: "updated" });

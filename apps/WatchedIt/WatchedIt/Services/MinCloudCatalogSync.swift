@@ -1,39 +1,67 @@
 import Foundation
 import SwiftData
 
+struct CatalogApplyResult {
+    var added = 0
+    var updated = 0
+    var newSourceLinks = 0
+    var unmatched = 0
+}
+
 @MainActor
 final class MinCloudCatalogSync {
     static let shared = MinCloudCatalogSync()
     private init() {}
 
-    func syncIfAvailable(modelContext: ModelContext) async -> String {
+    func syncIfAvailable(modelContext: ModelContext, force: Bool = false) async -> String {
         let reachable = await MinCloudClient.shared.isReachable()
         guard reachable else {
             return "Min Cloud unavailable. Using the local catalog."
         }
         do {
-            let lastSyncedAt = MinCloudSettings.lastCatalogSyncedAt
-            if let meta = try? await MinCloudClient.shared.fetchCatalogMeta(),
-               lastSyncedAt != nil,
-               meta.revision == MinCloudSettings.lastCatalogRevision {
-                return "Catalog already current (revision \(meta.revision))."
+            let localCount = ((try? modelContext.fetchCount(FetchDescriptor<MovieData>())) ?? LocalDatabaseManager.shared.movies.count)
+            let meta = try? await MinCloudClient.shared.fetchCatalogMeta()
+            let hasSyncedBefore = MinCloudSettings.lastCatalogSyncedAt != nil
+            let remoteCount = meta?.movieCount
+            let shouldSkip = !force
+                && hasSyncedBefore
+                && meta?.revision == MinCloudSettings.lastCatalogRevision
+                && (remoteCount == nil || remoteCount! <= localCount)
+
+            if shouldSkip, let meta {
+                return "Catalog already current (\(localCount) titles, revision \(meta.revision))."
             }
-            let catalog = try await MinCloudClient.shared.fetchMovieCatalog(updatedSince: lastSyncedAt)
-            let applied = apply(catalog, modelContext: modelContext)
+
+            let remoteHasMore = (remoteCount ?? 0) > localCount
+            let needsFullPull = force || !hasSyncedBefore || remoteHasMore
+            let catalog = try await MinCloudClient.shared.fetchMovieCatalog(
+                updatedSince: needsFullPull ? nil : MinCloudSettings.lastCatalogSyncedAt
+            )
+            let result = apply(catalog, modelContext: modelContext)
+            let catalogCount = catalog.total ?? meta?.movieCount ?? catalog.movies.count
             MinCloudSettings.lastCatalogRevision = catalog.revision
             MinCloudSettings.lastCatalogSyncedAt = catalog.generatedAt ?? ISO8601DateFormatter().string(from: Date())
+            MinCloudSettings.lastCatalogMovieCount = catalogCount
             LocalDatabaseManager.shared.refreshMovies()
-            if lastSyncedAt == nil {
-                return "Imported \(applied) titles from Min Cloud (revision \(catalog.revision))."
+            let incomplete = catalog.movies.count < catalogCount
+            var unmatchedNote = result.unmatched > 0 ? " \(result.unmatched) titles have no TMDB match." : ""
+            if let remoteUnmatched = meta?.unmatchedCount, remoteUnmatched > result.unmatched {
+                unmatchedNote = " \(remoteUnmatched) titles have no TMDB match."
             }
-            return "Updated \(applied) titles from Min Cloud (revision \(catalog.revision))."
+            let incompleteNote = incomplete
+                ? " Incomplete catalog: received \(catalog.movies.count) of \(catalogCount) titles."
+                : ""
+            if result.added > 0 {
+                return "Added \(result.added) new titles, updated \(result.updated). Catalog \(catalogCount) titles, revision \(catalog.revision).\(unmatchedNote)\(incompleteNote)"
+            }
+            return "No new titles. Catalog \(catalogCount) titles, revision \(catalog.revision).\(unmatchedNote)\(incompleteNote)"
         } catch {
             return "Min Cloud sync failed: \(error.localizedDescription)"
         }
     }
 
     @discardableResult
-    func apply(_ catalog: MinCloudMovieCatalog, modelContext: ModelContext) -> Int {
+    func apply(_ catalog: MinCloudMovieCatalog, modelContext: ModelContext) -> CatalogApplyResult {
         let existing = (try? modelContext.fetch(FetchDescriptor<MovieData>())) ?? []
         var byId: [String: MovieData] = [:]
         var byTmdb: [Int: MovieData] = [:]
@@ -72,7 +100,7 @@ final class MinCloudCatalogSync {
             }
         }
 
-        var applied = 0
+        var result = CatalogApplyResult()
         for remote in catalog.movies {
             let movie = byId[remote.id] ?? remote.tmdbId.flatMap { byTmdb[$0] }
             let providers = (remote.streamingServices ?? []).compactMap { provider -> StreamingService? in
@@ -87,6 +115,12 @@ final class MinCloudCatalogSync {
             }
 
             if let movie {
+                if movie.id == remote.id, !remote.title.isEmpty {
+                    movie.title = remote.title
+                }
+                if movie.id == remote.id, let year = remote.year {
+                    movie.year = year
+                }
                 if !providers.isEmpty {
                     movie.streamingServices = providers
                 }
@@ -110,8 +144,13 @@ final class MinCloudCatalogSync {
                     movie.oscarAwards = oscars
                 }
                 movie.lastUpdated = Date()
-                applied += 1
+                result.updated += 1
+                if remote.tmdbId == nil {
+                    result.unmatched += 1
+                }
+                let beforeLinks = contentKeys.count
                 attachSources(remote, movie: movie, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
+                result.newSourceLinks += contentKeys.count - beforeLinks
                 continue
             }
 
@@ -137,11 +176,14 @@ final class MinCloudCatalogSync {
                 byTmdb[tmdbId] = created
             }
             attachSources(remote, movie: created, sourceById: sourceById, contentKeys: &contentKeys, modelContext: modelContext)
-            applied += 1
+            result.added += 1
+            if created.tmdbId == nil {
+                result.unmatched += 1
+            }
         }
 
         try? modelContext.save()
-        return applied
+        return result
     }
 
     private func applyPhysicalMedia(_ remote: PhysicalMedia?, to movie: MovieData) {

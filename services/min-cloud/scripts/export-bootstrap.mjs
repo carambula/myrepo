@@ -157,7 +157,11 @@ export const fetchFullCatalog = async (baseURL, limit = 1000) => {
     }
     const batch = Array.isArray(page.movies) ? page.movies : [];
     movies.push(...batch);
-    if (page.truncated !== true || batch.length === 0) {
+    const total = Number.isFinite(Number(page.total)) ? Number(page.total) : null;
+    const hasMore =
+      batch.length > 0 &&
+      (total != null ? movies.length < total : page.truncated === true);
+    if (!hasMore) {
       break;
     }
     offset += batch.length;

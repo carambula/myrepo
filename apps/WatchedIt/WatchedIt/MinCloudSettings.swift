@@ -8,6 +8,7 @@ public enum MinCloudSettings {
     public static let iCloudBackupEnabledKey = "mincloud.icloudBackupEnabled"
     static let lastCatalogRevisionKey = "mincloud.mov.revision"
     static let lastCatalogSyncedAtKey = "mincloud.mov.syncedAt"
+    static let lastCatalogMovieCountKey = "mincloud.mov.movieCount"
     static let deviceIdKey = "mincloud.deviceId"
     static let pushTokenKey = "mincloud.pushToken"
 
@@ -61,6 +62,11 @@ public enum MinCloudSettings {
     static var lastCatalogSyncedAt: String? {
         get { UserDefaults.standard.string(forKey: lastCatalogSyncedAtKey) }
         set { UserDefaults.standard.set(newValue, forKey: lastCatalogSyncedAtKey) }
+    }
+
+    static var lastCatalogMovieCount: Int {
+        get { UserDefaults.standard.integer(forKey: lastCatalogMovieCountKey) }
+        set { UserDefaults.standard.set(newValue, forKey: lastCatalogMovieCountKey) }
     }
 
     static var deviceId: String {

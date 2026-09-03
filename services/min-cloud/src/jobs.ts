@@ -117,7 +117,6 @@ export const refreshStreamingCatalog = async (limit = 200) => {
           `,
           [row.id, config.tmdbRegion, JSON.stringify(providers)]
         );
-        await query(`UPDATE mov_movies SET last_updated = NOW() WHERE id = $1`, [row.id]);
         updated += 1;
       } catch {
         failed += 1;

@@ -1,5 +1,6 @@
 import { query, withTransaction } from "../db.js";
 import { loadNowPlaying, resetNowPlayingCacheForTests, seedNowPlayingCache } from "./now-playing.js";
+import { attachResolvedTicketLinks, hintsFromNowPlaying } from "./ticket-link-resolve.js";
 import {
   isFreshTheaterStaySnapshot,
   mergeTheaterStayRefresh,
@@ -255,9 +256,10 @@ export const resolveNowPlaying = async (
   try {
     const incoming = await loadNowPlaying(apiKey, region, catalogTmdbIds);
     const merged = mergeTheaterStayRefresh(stored?.stays ?? [], incoming, catalogTmdbIds);
+    const attached = await attachResolvedTicketLinks(merged, hintsFromNowPlaying(incoming), { apiKey });
     const refreshedAt = new Date().toISOString();
-    await saveTheaterStaySnapshot(region, merged, refreshedAt, "tmdb");
-    return { movies: toPublicMovies(merged), refreshedAt, source: "tmdb" as const };
+    await saveTheaterStaySnapshot(region, attached.stays, refreshedAt, "tmdb");
+    return { movies: toPublicMovies(attached.stays), refreshedAt, source: "tmdb" as const };
   } catch (error) {
     if (stored) {
       return publicPayload(stored, "store");

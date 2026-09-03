@@ -10,13 +10,15 @@ export type NowPlayingMovie = {
   tmdbId: number;
   title: string;
   hasIMAX: boolean;
+  year?: number;
+  originalTitle?: string;
   ticketLinks?: TicketLinks;
 };
 
 type TmdbNowPlaying = {
   page?: number;
   total_pages?: number;
-  results?: Array<{ id?: number; title?: string }>;
+  results?: Array<{ id?: number; title?: string; original_title?: string; release_date?: string }>;
 };
 
 type TmdbReleaseDates = {
@@ -56,6 +58,11 @@ export const fetchReleaseDates = async (tmdbId: number, apiKey: string) => {
   return fetchJson<TmdbReleaseDates>(url.toString());
 };
 
+export const yearFromReleaseDate = (value?: string | null) => {
+  const year = Number(String(value || "").slice(0, 4));
+  return year >= 1900 && year <= 2100 ? year : undefined;
+};
+
 export const loadNowPlaying = async (
   apiKey: string,
   region: string,
@@ -63,12 +70,19 @@ export const loadNowPlaying = async (
   options: { maxPages?: number } = {}
 ) => {
   const maxPages = options.maxPages ?? 5;
-  const playing = new Map<number, string>();
+  const playing = new Map<
+    number,
+    { title: string; originalTitle?: string; year?: number }
+  >();
   for (let page = 1; page <= maxPages; page += 1) {
     const data = await fetchNowPlayingPage(apiKey, region, page);
     for (const movie of data.results ?? []) {
       if (typeof movie.id === "number") {
-        playing.set(movie.id, movie.title || "");
+        playing.set(movie.id, {
+          title: movie.title || "",
+          originalTitle: movie.original_title || undefined,
+          year: yearFromReleaseDate(movie.release_date)
+        });
       }
     }
     if ((data.page ?? page) >= (data.total_pages ?? page)) {
@@ -77,7 +91,7 @@ export const loadNowPlaying = async (
   }
 
   const movies: NowPlayingMovie[] = [];
-  for (const [tmdbId, title] of playing) {
+  for (const [tmdbId, meta] of playing) {
     let hasIMAX = false;
     if (catalogTmdbIds.has(tmdbId)) {
       try {
@@ -87,7 +101,13 @@ export const loadNowPlaying = async (
         hasIMAX = false;
       }
     }
-    movies.push({ tmdbId, title, hasIMAX });
+    movies.push({
+      tmdbId,
+      title: meta.title,
+      hasIMAX,
+      ...(meta.year ? { year: meta.year } : {}),
+      ...(meta.originalTitle && meta.originalTitle !== meta.title ? { originalTitle: meta.originalTitle } : {})
+    });
   }
   return movies;
 };

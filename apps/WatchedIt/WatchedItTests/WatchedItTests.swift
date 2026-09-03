@@ -147,6 +147,65 @@ struct WatchedItTests {
         #expect(haystack.contains("4k"))
     }
 
+    @Test func latestCarouselDateUsesClosetDiscoveryFallback() {
+        let discovered = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(
+            LatestPodcastPicker.entryDate(
+                sourceIdentifier: ClosetPicksSource.identifier,
+                sourceDate: nil,
+                episodePublishDate: nil,
+                discoveredAt: discovered
+            ) == discovered
+        )
+        #expect(
+            LatestPodcastPicker.entryDate(
+                sourceIdentifier: "rewatchables",
+                sourceDate: nil,
+                episodePublishDate: nil,
+                discoveredAt: discovered
+            ) == nil
+        )
+    }
+
+    @Test func latestCarouselIncludesMultipleClosetPicksFromLatestDrop() {
+        let older = Date(timeIntervalSince1970: 1_700_000_000)
+        let newest = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(movieId: "closet-old-a", date: older, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "old-drop"),
+            .init(movieId: "closet-old-b", date: older, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "old-drop"),
+            .init(movieId: "closet-new-a", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "closet-new-b", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "closet-new-c", date: newest, sourceIdentifier: ClosetPicksSource.identifier, groupKey: "new-drop"),
+            .init(movieId: "rewatchable", date: newest, sourceIdentifier: "rewatchables")
+        ], multiEntryLimit: 3)
+        #expect(ids == ["closet-new-a", "closet-new-b", "closet-new-c", "rewatchable"])
+    }
+
+    @Test func latestCarouselCapsClosetPicksAndKeepsOnePodcastPerSource() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        var entries: [LatestPodcastPicker.Entry] = [
+            .init(movieId: "rewatch-old", date: Date(timeIntervalSince1970: 1_700_000_000), sourceIdentifier: "rewatchables"),
+            .init(movieId: "rewatch-new", date: date, sourceIdentifier: "rewatchables"),
+            .init(movieId: "blank-check", date: date, sourceIdentifier: "blank-check")
+        ]
+        for index in 1...10 {
+            entries.append(
+                .init(
+                    movieId: "closet-\(index)",
+                    date: date,
+                    sourceIdentifier: ClosetPicksSource.identifier,
+                    groupKey: "guest-drop"
+                )
+            )
+        }
+        let ids = LatestPodcastPicker.carouselMovieIds(from: entries, limit: 8, multiEntryLimit: 5)
+        #expect(ids.contains("rewatch-new"))
+        #expect(!ids.contains("rewatch-old"))
+        #expect(ids.contains("blank-check"))
+        #expect(ids.filter { $0.hasPrefix("closet-") }.count == 5)
+        #expect(ids.count == 7)
+    }
+
     @Test func latestPodcastCarouselKeepsOneNewestPerSource() {
         let older = Date(timeIntervalSince1970: 1_700_000_000)
         let mid = Date(timeIntervalSince1970: 1_750_000_000)
@@ -385,6 +444,40 @@ struct WatchedItTests {
         #expect(labels.contains("Not listened"))
         #expect(labels.contains("Complete"))
         #expect(labels.contains("Not complete"))
+    }
+
+    @Test func closetPicksKeepsListenedAffordanceWithoutPodcastEpisode() {
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: true, isOnClosetPicks: false))
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: false, isOnClosetPicks: true))
+        #expect(ClosetPicksSource.showsListenedAction(hasPodcastEpisode: true, isOnClosetPicks: true))
+        #expect(!ClosetPicksSource.showsListenedAction(hasPodcastEpisode: false, isOnClosetPicks: false))
+    }
+
+    @Test func closetPicksDestinationPrefersEpisodePageThenIndex() {
+        let episodeURL = "https://www.criterion.com/current/closet-picks-matthew-mcconaughey"
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: episodeURL, episodeId: nil).absoluteString == episodeURL)
+        #expect(
+            ClosetPicksSource.destinationURL(
+                sourceUrl: nil,
+                episodeId: "https://www.criterion.com/current/posts/123"
+            ).absoluteString == "https://www.criterion.com/current/posts/123"
+        )
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: "not-a-url", episodeId: nil) == ClosetPicksSource.indexURL)
+        #expect(ClosetPicksSource.destinationURL(sourceUrl: nil, episodeId: nil) == ClosetPicksSource.indexURL)
+    }
+
+    @Test func closetPicksMenuTitleUsesEpisodeName() {
+        #expect(
+            ClosetPicksSource.menuTitle(
+                sourceTitle: "Matthew McConaughey's Closet Picks",
+                sourceName: "Criterion Closet Picks"
+            ) == "Matthew McConaughey's Closet Picks"
+        )
+        #expect(
+            ClosetPicksSource.menuTitle(sourceTitle: "  ", sourceName: "Criterion Closet Picks")
+                == "Criterion Closet Picks"
+        )
+        #expect(ClosetPicksSource.menuTitle(sourceTitle: nil, sourceName: nil) == "Criterion Closet Picks")
     }
 
     private func movie(

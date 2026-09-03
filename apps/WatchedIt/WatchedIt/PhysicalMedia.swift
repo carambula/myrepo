@@ -231,7 +231,7 @@ public final class PhysicalMediaCatalog: @unchecked Sendable {
         }
     }
 
-    public func apply(to movieData: MovieData) {
+    func apply(to movieData: MovieData) {
         guard let overlay = media(forTmdbId: movieData.tmdbId), !overlay.isEmpty else { return }
         if let existing = movieData.physicalMedia {
             movieData.physicalMedia = existing.merging(inferred: overlay)

@@ -264,6 +264,80 @@ router.post("/pod/podcasts", async (req, res) => {
   res.status(201).json({ podcast });
 });
 
+router.post("/pod/import", async (req, res) => {
+  const categories = Array.isArray(req.body?.categories) ? req.body.categories : [];
+  let imported = 0;
+  let failed = 0;
+  for (const [index, category] of categories.entries()) {
+    const name = String(category?.name || "").trim();
+    if (name) {
+      await query(
+        `INSERT INTO pod_categories (name, sort_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`,
+        [name, index]
+      );
+    }
+    for (const item of Array.isArray(category?.podcasts) ? category.podcasts : []) {
+      const itunesId = String(item?.itunesID || item?.itunesId || "").trim();
+      const title = String(item?.name || item?.title || "Untitled");
+      try {
+        let podcast = {
+          id: itunesId ? podcastIdFromItunes(itunesId) : "",
+          itunesId: itunesId || null,
+          title,
+          author: "",
+          feedUrl: String(item?.feedUrl || ""),
+          artworkUrl: item?.artworkUrl ?? null,
+          artworkUrl600: item?.artworkUrl600 ?? null,
+          categories: name ? [name] : [],
+          websiteUrl: null as string | null
+        };
+        if (itunesId) {
+          const found = await lookupItunesPodcast(itunesId);
+          if (found) {
+            podcast = { ...podcast, ...found, categories: name ? [name] : found.categories ?? [] };
+          }
+        }
+        if (!podcast.feedUrl || !podcast.id) {
+          failed += 1;
+          continue;
+        }
+        await query(
+          `
+          INSERT INTO pod_podcasts (id, itunes_id, title, author, feed_url, artwork_url, artwork_url_600, categories, website_url, updated_at)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,NOW())
+          ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            author = EXCLUDED.author,
+            feed_url = EXCLUDED.feed_url,
+            artwork_url = COALESCE(EXCLUDED.artwork_url, pod_podcasts.artwork_url),
+            categories = EXCLUDED.categories,
+            updated_at = NOW()
+          `,
+          [
+            podcast.id,
+            podcast.itunesId,
+            podcast.title,
+            podcast.author,
+            podcast.feedUrl,
+            podcast.artworkUrl,
+            podcast.artworkUrl600,
+            JSON.stringify(podcast.categories),
+            podcast.websiteUrl
+          ]
+        );
+        imported += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+  }
+  if (imported) {
+    await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'podlink'`);
+  }
+  await audit(req, "pod.import", { imported, failed });
+  res.json({ imported, failed });
+});
+
 router.delete("/pod/podcasts/:id", async (req, res) => {
   await query(`DELETE FROM pod_podcasts WHERE id = $1`, [String(req.params.id)]);
   await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'podlink'`);

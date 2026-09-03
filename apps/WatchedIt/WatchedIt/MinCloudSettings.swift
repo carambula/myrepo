@@ -7,6 +7,9 @@ public enum MinCloudSettings {
     static let emailKey = "mincloud.email"
     public static let iCloudBackupEnabledKey = "mincloud.icloudBackupEnabled"
     static let lastCatalogRevisionKey = "mincloud.mov.revision"
+    static let lastCatalogSyncedAtKey = "mincloud.mov.syncedAt"
+    static let deviceIdKey = "mincloud.deviceId"
+    static let pushTokenKey = "mincloud.pushToken"
 
     public static var defaultBaseURL: URL {
         URL(string: "https://min-cloud-production.up.railway.app")!
@@ -53,6 +56,25 @@ public enum MinCloudSettings {
     static var lastCatalogRevision: Int {
         get { UserDefaults.standard.integer(forKey: lastCatalogRevisionKey) }
         set { UserDefaults.standard.set(newValue, forKey: lastCatalogRevisionKey) }
+    }
+
+    static var lastCatalogSyncedAt: String? {
+        get { UserDefaults.standard.string(forKey: lastCatalogSyncedAtKey) }
+        set { UserDefaults.standard.set(newValue, forKey: lastCatalogSyncedAtKey) }
+    }
+
+    static var deviceId: String {
+        if let existing = UserDefaults.standard.string(forKey: deviceIdKey), !existing.isEmpty {
+            return existing
+        }
+        let created = UUID().uuidString
+        UserDefaults.standard.set(created, forKey: deviceIdKey)
+        return created
+    }
+
+    static var pushToken: String? {
+        get { UserDefaults.standard.string(forKey: pushTokenKey) }
+        set { UserDefaults.standard.set(newValue, forKey: pushTokenKey) }
     }
 
     static func storeSession(token: String, handle: String?, email: String?) {

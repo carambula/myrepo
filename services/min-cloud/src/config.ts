@@ -17,6 +17,10 @@ export const config = {
   tmdbRegion: process.env.TMDB_REGION || "US",
   enableJobs: (process.env.ENABLE_JOBS || "true") === "true",
   cronSecret: process.env.CRON_SECRET || "",
+  apnsKeyId: process.env.APNS_KEY_ID || "",
+  apnsTeamId: process.env.APNS_TEAM_ID || "",
+  apnsKey: process.env.APNS_KEY || "",
+  apnsBundleId: process.env.APNS_BUNDLE_ID || "",
   nodeEnv: process.env.NODE_ENV || "development"
 };
 

@@ -24,6 +24,21 @@ const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
   streamingServices: providers
 });
 
+router.get("/meta", async (_req, res) => {
+  const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
+  const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies`);
+  const physicalMedia = await query(
+    `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
+  );
+  res.json({
+    app: "watchedit",
+    revision: Number(revision.rows[0]?.revision ?? 0),
+    generatedAt: revision.rows[0]?.generated_at ?? null,
+    movieCount: movies.rows[0].count,
+    physicalMediaCount: physicalMedia.rows[0].count
+  });
+});
+
 router.get("/catalog", async (req, res) => {
   const since = typeof req.query.updatedSince === "string" ? req.query.updatedSince : null;
   const limit = Math.min(Number(req.query.limit) || 400, 1000);

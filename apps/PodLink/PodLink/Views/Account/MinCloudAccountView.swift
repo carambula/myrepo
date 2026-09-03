@@ -70,8 +70,8 @@ struct MinCloudAccountView: View {
         defer { isWorking = false }
         do {
             _ = try await MinCloudClient.shared.login(email: email, password: password)
-            await pushFollowedPodcasts()
-            statusMessage = "Signed in. Feeds and notifications can now use Min Cloud."
+            await restoreLibrary()
+            statusMessage = "Signed in. Feeds and library now sync through Min Cloud."
         } catch {
             statusMessage = error.localizedDescription
         }
@@ -86,11 +86,38 @@ struct MinCloudAccountView: View {
                 password: password,
                 displayName: displayName.isEmpty ? nil : displayName
             )
-            await pushFollowedPodcasts()
+            await restoreLibrary()
             statusMessage = "Account created."
         } catch {
             statusMessage = error.localizedDescription
         }
+    }
+
+    private func restoreLibrary() async {
+        if let remote = try? await MinCloudClient.shared.fetchPodcastLibrary() {
+            var merged = Podcast.loadFollowedPodcasts()
+            var seen = Set(merged.map { PrivateFeedAuthStore.canonicalFeedURL($0.feedURL).absoluteString })
+            for item in remote {
+                guard item.isFollowed != false,
+                      let feed = item.feedUrl.flatMap(URL.init(string:)) else { continue }
+                let key = PrivateFeedAuthStore.canonicalFeedURL(feed).absoluteString
+                guard !seen.contains(key) else { continue }
+                seen.insert(key)
+                merged.append(
+                    Podcast(
+                        id: item.podcastId,
+                        title: item.title ?? "Podcast",
+                        author: "",
+                        feedURL: feed,
+                        artworkURL: item.artworkUrl.flatMap(URL.init(string:)),
+                        isFollowed: true,
+                        notificationsEnabled: item.notificationsEnabled ?? false
+                    )
+                )
+            }
+            Podcast.saveFollowedPodcasts(merged)
+        }
+        await pushFollowedPodcasts()
     }
 
     private func pushFollowedPodcasts() async {

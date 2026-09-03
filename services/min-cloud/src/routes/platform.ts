@@ -235,7 +235,18 @@ router.get("/me/library/mov", requireUser, async (req, res) => {
      FROM user_library_mov WHERE user_id = $1`,
     [user.id]
   );
-  res.json({ items: result.rows });
+  res.json({
+    items: result.rows.map((row) => ({
+      movieId: row.movie_id,
+      isWatched: row.is_watched,
+      isSaved: row.is_saved,
+      isRewatched: row.is_rewatched,
+      isListened: row.is_listened,
+      rating: row.rating,
+      notes: row.notes,
+      updatedAt: row.updated_at
+    }))
+  });
 });
 
 router.put("/me/library/mov", requireUser, async (req, res) => {
@@ -281,7 +292,18 @@ router.get("/me/library/pod", requireUser, async (req, res) => {
      FROM user_library_pod WHERE user_id = $1`,
     [user.id]
   );
-  res.json({ items: result.rows });
+  res.json({
+    items: result.rows.map((row) => ({
+      podcastId: row.podcast_id,
+      feedUrl: row.feed_url,
+      title: row.title,
+      artworkUrl: row.artwork_url,
+      isFollowed: row.is_followed,
+      notificationsEnabled: row.notifications_enabled,
+      playback: row.playback,
+      updatedAt: row.updated_at
+    }))
+  });
 });
 
 router.put("/me/library/pod", requireUser, async (req, res) => {

@@ -35,6 +35,15 @@ struct MinCloudFeedResponse: Decodable {
     let episodes: [MinCloudFeedEpisode]
 }
 
+struct MinCloudPodLibraryItem: Decodable {
+    let podcastId: String
+    let feedUrl: String?
+    let title: String?
+    let artworkUrl: String?
+    let isFollowed: Bool?
+    let notificationsEnabled: Bool?
+}
+
 struct MinCloudInboxItem: Decodable {
     let id: String
     let title: String
@@ -153,18 +162,36 @@ actor MinCloudClient {
         )
     }
 
+    func fetchPodcastLibrary() async throws -> [MinCloudPodLibraryItem] {
+        let data = try await request(
+            path: "/v1/me/library/pod",
+            method: "GET",
+            authorized: true
+        )
+        let decoded = try JSONDecoder().decode(LibraryResponse.self, from: data)
+        return decoded.items
+    }
+
     func registerDevice() async {
+        var body: [String: Any] = [
+            "deviceId": MinCloudSettings.deviceId,
+            "app": "podlink",
+            "platform": "ios",
+            "timezone": TimeZone.current.identifier
+        ]
+        if let token = MinCloudSettings.pushToken {
+            body["pushToken"] = token
+        }
         _ = try? await request(
             path: "/v1/devices/register",
             method: "POST",
             authorized: MinCloudSettings.isSignedIn,
-            body: [
-                "deviceId": MinCloudSettings.deviceId,
-                "app": "podlink",
-                "platform": "ios",
-                "timezone": TimeZone.current.identifier
-            ]
+            body: body
         )
+    }
+
+    private struct LibraryResponse: Decodable {
+        let items: [MinCloudPodLibraryItem]
     }
 
     func syncFollowedWatches(_ podcasts: [Podcast]) async {

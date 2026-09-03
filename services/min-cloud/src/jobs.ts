@@ -349,13 +349,14 @@ export const dispatchNotifications = async () => {
       `
     );
     let delivered = 0;
+    const canPush = Boolean(config.apnsKeyId && config.apnsTeamId && config.apnsKey && config.apnsBundleId);
     for (const row of pending.rows) {
-      // Tokens are stored so a later APNs/Web Push adapter can send. Until keys
-      // are configured the inbox API is the delivery surface.
+      // Device tokens are stored on register. When APNS_* keys are set, a later
+      // adapter can send. Until then the inbox API and local alerts are delivery.
       await query(`UPDATE notification_queue SET sent_at = NOW() WHERE id = $1`, [row.id]);
       delivered += 1;
     }
-    return { pending: pending.rowCount ?? 0, delivered };
+    return { pending: pending.rowCount ?? 0, delivered, apnsConfigured: canPush };
   });
 };
 

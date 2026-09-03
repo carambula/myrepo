@@ -14,7 +14,6 @@ import {
   CLOSET_PICKS_INDEX_URL,
   CLOSET_PICKS_SOURCE_ID,
   collapseClosetPicks,
-  closetPicksSourceRecord,
   parseClosetPicksEpisode,
   parseClosetPicksIndex,
   toClosetPicksCatalogItem,
@@ -22,7 +21,7 @@ import {
 } from "../src/lib/closet-picks-scrape.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, "../..");
+const repoRoot = path.resolve(here, "../../..");
 const bootstrapPath = path.resolve(
   process.env.BOOTSTRAP_PATH || path.join(repoRoot, "apps/WatchedIt/WatchedIt/bootstrap_data.json")
 );
@@ -37,22 +36,35 @@ const episodeLimit = limitArg ? Number(limitArg) : Number(process.env.EPISODE_LI
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const waybackUrl = (url: string) =>
-  `https://web.archive.org/web/${waybackSnapshot}id_/${url}`;
+const waybackUrl = (url: string, snapshot = waybackSnapshot) =>
+  `https://web.archive.org/web/${snapshot}id_/${url}`;
 
 const fetchHtml = async (url: string) => {
   const response = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml"
-    }
+    },
+    signal: AbortSignal.timeout(12000)
   });
   if (!response.ok) {
     throw new Error(`GET ${url} failed ${response.status}`);
   }
   return response.text();
+};
+
+const mapPool = async <T, R>(items: T[], concurrency: number, worker: (item: T, index: number) => Promise<R>) => {
+  const results: R[] = [];
+  let next = 0;
+  const run = async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await worker(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, concurrency) }, run));
+  return results;
 };
 
 const looksLikeChallenge = (html: string) =>
@@ -82,12 +94,23 @@ const loadIndex = async () => {
 };
 
 const loadEpisode = async (episode: ClosetPicksEpisode, origin: "live" | "wayback") => {
-  const url = origin === "wayback" ? waybackUrl(episode.episodeUrl) : episode.episodeUrl;
-  const html = await fetchHtml(url);
-  if (looksLikeChallenge(html)) {
-    throw new Error("challenge");
+  const candidates =
+    origin === "wayback"
+      ? [waybackUrl(episode.episodeUrl), waybackUrl(episode.episodeUrl, "2"), episode.episodeUrl]
+      : [episode.episodeUrl, waybackUrl(episode.episodeUrl), waybackUrl(episode.episodeUrl, "2")];
+  let lastError: unknown;
+  for (const url of candidates) {
+    try {
+      const html = await fetchHtml(url);
+      if (looksLikeChallenge(html)) {
+        throw new Error("challenge");
+      }
+      return parseClosetPicksEpisode(html);
+    } catch (error) {
+      lastError = error;
+    }
   }
-  return parseClosetPicksEpisode(html);
+  throw lastError instanceof Error ? lastError : new Error("episode fetch failed");
 };
 
 const normalizeTitle = (title: string) =>
@@ -105,26 +128,12 @@ const mergeBootstrap = async (
   }
 ) => {
   const payload = JSON.parse(await fs.readFile(bootstrapPath, "utf8")) as {
-    dataSources: Array<{
-      identifier: string;
-      name: string;
-      type: string;
-      url?: string | null;
-      isRankedList: boolean;
-      movieCount: number;
-    }>;
     movies: Array<Record<string, unknown>>;
-    generatedDate?: string;
   };
-
-  const source = closetPicksSourceRecord();
-  source.movieCount = snapshot.movies.length;
-  const sourceIndex = payload.dataSources.findIndex((row) => row.identifier === CLOSET_PICKS_SOURCE_ID);
-  if (sourceIndex >= 0) {
-    payload.dataSources[sourceIndex] = source;
-  } else {
-    payload.dataSources.push(source);
-    payload.dataSources.sort((left, right) => left.name.localeCompare(right.name));
+  if (payload.movies.some((movie) => movie.sourceIdentifier === CLOSET_PICKS_SOURCE_ID)) {
+    throw new Error(
+      "bootstrap_data.json already has criterion-closet-picks rows; remove them before merging or use --snapshot-only"
+    );
   }
 
   const enrichmentByTitle = new Map<string, Record<string, unknown>>();
@@ -136,10 +145,9 @@ const mergeBootstrap = async (
     enrichmentByTitle.set(title, movie);
   }
 
-  payload.movies = payload.movies.filter((movie) => movie.sourceIdentifier !== CLOSET_PICKS_SOURCE_ID);
-  for (const item of snapshot.movies) {
+  const rows = snapshot.movies.map((item) => {
     const existing = enrichmentByTitle.get(normalizeTitle(item.title)) || {};
-    payload.movies.push({
+    return {
       title: item.title,
       sourceIdentifier: item.sourceIdentifier,
       rank: item.rank,
@@ -157,14 +165,29 @@ const mergeBootstrap = async (
       streamingServices: existing.streamingServices ?? [],
       credits: existing.credits ?? null,
       trailer: existing.trailer ?? null
-    });
-  }
+    };
+  });
 
-  payload.generatedDate = snapshot.generatedDate;
-  await fs.writeFile(bootstrapPath, `${JSON.stringify(payload, null, 2)}\n`);
+  let text = await fs.readFile(bootstrapPath, "utf8");
+  text = text.replace(
+    /("identifier": "criterion-closet-picks",\s*"isRankedList": true,\s*"movieCount": )(\d+)/,
+    `$1${rows.length}`
+  );
+  const indentRow = (row: (typeof rows)[number]) =>
+    JSON.stringify(row, null, 2)
+      .split("\n")
+      .map((line) => `    ${line}`)
+      .join("\n");
+  const appended = rows.map(indentRow).join(",\n");
+  const moviesClose = `\n  ],\n  "version": "1.0"\n}`;
+  if (!text.endsWith(moviesClose) && !text.includes(moviesClose)) {
+    throw new Error("bootstrap_data.json ending did not match the expected movies/version footer");
+  }
+  text = text.replace(moviesClose, `,\n${appended}\n  ],\n  "version": "1.0"\n}`);
+  await fs.writeFile(bootstrapPath, text.endsWith("\n") ? text : `${text}\n`);
   const matched = snapshot.movies.filter((movie) => enrichmentByTitle.has(normalizeTitle(movie.title))).length;
   console.log(
-    `Merged ${snapshot.movies.length} Closet Picks rows into bootstrap (${matched} copied enrichment from existing titles)`
+    `Merged ${rows.length} Closet Picks rows into bootstrap (${matched} copied enrichment from existing titles)`
   );
 };
 
@@ -173,19 +196,21 @@ const main = async () => {
   const selected = episodeLimit > 0 ? episodes.slice(0, episodeLimit) : episodes;
   console.log(`Loaded ${episodes.length} episodes from ${origin}; fetching ${selected.length}`);
 
+  const concurrency = Number(process.env.FETCH_CONCURRENCY || 6);
   const visits: Array<{ episode: ClosetPicksEpisode; films: ReturnType<typeof parseClosetPicksEpisode> }> = [];
-  for (const [index, episode] of selected.entries()) {
+  let finished = 0;
+  await mapPool(selected, concurrency, async (episode) => {
     try {
       const films = await loadEpisode(episode, origin);
       visits.push({ episode, films });
-      if ((index + 1) % 10 === 0 || index === selected.length - 1) {
-        console.log(`  ${index + 1}/${selected.length} ${episode.guestName} (${films.length} films)`);
-      }
     } catch (error) {
       console.warn(`  skip ${episode.guestName}: ${error instanceof Error ? error.message : error}`);
     }
-    await sleep(origin === "wayback" ? 250 : 150);
-  }
+    finished += 1;
+    if (finished % 20 === 0 || finished === selected.length) {
+      console.log(`  ${finished}/${selected.length} fetched (${visits.length} ok)`);
+    }
+  });
 
   const collapsed = collapseClosetPicks(visits);
   const snapshot = {

@@ -32,6 +32,7 @@ extension BootstrapDataService {
         var credits: BootstrapCredits?
         var trailer: BootstrapTrailer?
         var podcastEpisodeDescription: String?
+        var physicalMedia: PhysicalMedia?
     }
     
     struct BootstrapStreamingService: Codable {

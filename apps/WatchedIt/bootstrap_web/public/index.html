@@ -146,6 +146,7 @@
                   </div>
                 </div>
                 <div id="detailOscars" class="detail-oscars hidden"></div>
+                <div id="detailPhysicalMedia" class="detail-oscars hidden"></div>
                 <div id="detailMeta" class="detail-meta hidden"></div>
                 <form id="movieForm" class="movie-form hidden">
                   <div class="form-grid">
@@ -295,6 +296,7 @@
                 <div class="operations-actions">
                   <button id="refreshStreamingAllBtn">Refresh Streaming (All)</button>
                   <button id="oscarAwardsBtn">Oscar Awards</button>
+                  <button id="physicalMediaBtn">Physical Media</button>
                   <button id="dataHealthBtn">Data Health</button>
                   <button id="dedupeBtn">Deduplicates</button>
                   <button id="themesOpsBtn">Themes</button>
@@ -2188,6 +2190,25 @@
       </div>
     </div>
 
+    <div id="physicalMediaModal" class="modal hidden">
+      <div class="modal-content oscar-modal">
+        <div class="modal-header">
+          <div class="pane-title">Physical Media Enrichment</div>
+          <button id="physicalMediaCloseBtn">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="physicalMediaStats" class="health-metrics oscar-stats"></div>
+          <p class="design-lead">Wikidata Criterion spines (P2755), 4K/Blu-ray formats (P437), and boutique labels, plus movies already on the Criterion list source.</p>
+          <div class="oscar-actions">
+            <button id="physicalMediaRefreshStatsBtn">Refresh Stats</button>
+            <button id="physicalMediaEnrichBtn" class="primary">Enrich from Wikidata</button>
+            <button id="physicalMediaClearBtn" class="danger">Clear All</button>
+          </div>
+          <div id="physicalMediaStatus" class="status-text"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="oscarModal" class="modal hidden">
       <div class="modal-content oscar-modal">
         <div class="modal-header">
@@ -2247,7 +2268,7 @@
 
     <div id="toast" class="toast hidden"></div>
     <script src="https://unpkg.com/lucide@1.6.0/dist/umd/lucide.js"></script>
-    <script src="/app.js?v=2026-03-25-10"></script>
+    <script src="/app.js?v=2026-09-03-physical-media"></script>
   </body>
 </html>
 

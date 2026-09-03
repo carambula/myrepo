@@ -25,6 +25,7 @@ These rules protect shared state and prevent data forking between iOS and tvOS.
 - Schema changes are additive unless both apps ship together.
 - New fields must be optional or have defaults.
 - Migration logic is shared and shipped to both targets.
+- Catalog physical media (`PhysicalMedia` / `physicalMediaData`) is optional. Shipping data lives in bundled `physical_media.json` (keyed by TMDB id) and is merged at read time. Bootstrap JSON may also carry `physicalMedia` for admin edits. Manual overrides win over inferred Wikidata/list seeds.
 
 ## 6) Idempotent Writes, Deterministic Conflict Rules
 - Writes must be safe to apply multiple times.

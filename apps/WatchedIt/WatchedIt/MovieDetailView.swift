@@ -28,6 +28,7 @@ struct MovieDetailView: View {
     var onYearTapped: ((Int) -> Void)? = nil
     var onGenreTapped: ((String) -> Void)? = nil
     var onRatingTapped: ((String) -> Void)? = nil
+    var onPhysicalMediaTapped: ((String) -> Void)? = nil
     @StateObject private var localDB = LocalDatabaseManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage(StreamingPreferences.storageKey) private var preferredServicesData: Data = Data()
@@ -122,6 +123,7 @@ struct MovieDetailView: View {
             rewatchablesDiscussion: current.rewatchablesDiscussion ?? movie.rewatchablesDiscussion,
             trailer: current.trailer ?? movie.trailer,
             oscarAwards: current.oscarAwards ?? movie.oscarAwards,
+            physicalMedia: current.physicalMedia ?? movie.physicalMedia,
             // Use local state so status toggles feel instant and glass transitions stay smooth
             isRewatched: localIsRewatched,
             isListened: localIsListened,
@@ -408,7 +410,8 @@ struct MovieDetailView: View {
         onCreditPersonTapped: ((String) -> Void)? = nil,
         onYearTapped: ((Int) -> Void)? = nil,
         onGenreTapped: ((String) -> Void)? = nil,
-        onRatingTapped: ((String) -> Void)? = nil
+        onRatingTapped: ((String) -> Void)? = nil,
+        onPhysicalMediaTapped: ((String) -> Void)? = nil
     ) {
         self.movie = movie
         self.presentationSource = presentationSource
@@ -416,6 +419,7 @@ struct MovieDetailView: View {
         self.onYearTapped = onYearTapped
         self.onGenreTapped = onGenreTapped
         self.onRatingTapped = onRatingTapped
+        self.onPhysicalMediaTapped = onPhysicalMediaTapped
         _localIsRewatched = State(initialValue: movie.isRewatched)
         _localIsListened = State(initialValue: movie.isListened)
         _localIsSaved = State(initialValue: movie.isSaved)
@@ -624,6 +628,12 @@ struct MovieDetailView: View {
         onGenreTapped?(trimmedGenre)
     }
 
+    private func handlePhysicalMediaTap(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        onPhysicalMediaTapped?(trimmed)
+    }
+
     private func handleRatingTap(_ rating: String) {
         let trimmedRating = rating.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedRating.isEmpty else { return }
@@ -714,6 +724,51 @@ struct MovieDetailView: View {
                         .foregroundColor(DesignSystem.Color.textSecondary)
                 }
                 .buttonStyle(CreditTapButtonStyle())
+            }
+
+            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                if media.hasCriterion {
+                    Button(action: { handlePhysicalMediaTap("criterion") }) {
+                        Text("Criterion")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("Criterion Collection")
+                }
+                if media.has4K {
+                    Button(action: { handlePhysicalMediaTap("4k") }) {
+                        Text("4K")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("4K UHD")
+                }
             }
         }
     }
@@ -1053,6 +1108,30 @@ struct MovieDetailView: View {
                         }
                     }
                     
+                    if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                            Text("Physical Media")
+                                .labelMedium()
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Color.textSecondary)
+
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                                if media.editions.isEmpty {
+                                    let fallback = media.badgeLabels.joined(separator: "   ")
+                                    Text(fallback)
+                                        .bodySmall()
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                } else {
+                                    ForEach(media.editions) { edition in
+                                        Text(edition.displayLine)
+                                            .bodySmall()
+                                            .foregroundColor(DesignSystem.Color.textPrimary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Streaming Services
 
                     

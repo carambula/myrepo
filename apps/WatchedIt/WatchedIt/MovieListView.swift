@@ -678,6 +678,10 @@ struct MovieListView: View {
             }
         }
         
+        if let media = movie.physicalMedia, media.matchesSearchQuery(searchText) {
+            return true
+        }
+
         // Oscar awards search
         if let awards = movie.oscarAwards {
             // Search for "oscar", "academy award", "win", "nomination"
@@ -1212,6 +1216,10 @@ struct MovieListView: View {
 
             if let episode = movie.podcastEpisode {
                 fields.append(episode.title)
+            }
+
+            if let media = movie.physicalMedia {
+                fields.append(contentsOf: media.searchTokens)
             }
 
             if let discussion = movie.rewatchablesDiscussion {
@@ -3359,6 +3367,21 @@ struct MovieListView: View {
         selectedMovie = nil
     }
 
+    private func startPhysicalMediaSearchFromDetails(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPersonSearchQuery = nil
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: trimmed,
+            initialFilters: MovieSearchFilters(),
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
     private func startYearSearchFromDetails(_ year: Int) {
         pendingPersonSearchQuery = nil
         var filters = MovieSearchFilters()
@@ -3921,7 +3944,8 @@ struct MovieListView: View {
                         onCreditPersonTapped: startPersonSearchFromDetails,
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails
+                        onRatingTapped: startRatingSearchFromDetails,
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails
                     )
                     .onAppear {
                         logMovieDetailPresented(movie.id)

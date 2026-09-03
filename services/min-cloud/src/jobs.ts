@@ -1,5 +1,12 @@
 import { config } from "./config.js";
 import { query } from "./db.js";
+import {
+  isApnsConfigured,
+  isInvalidDeviceToken,
+  isTransientApnsStatus,
+  sendApnsNotification,
+  type ApnsApp
+} from "./lib/apns.js";
 import { lookupItunesPodcast } from "./lib/itunes.js";
 import { fetchText } from "./lib/http.js";
 import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
@@ -337,11 +344,45 @@ const enqueueNewEpisodeNotifications = async (
   return enqueued;
 };
 
+const pushTokensForNotification = async (row: {
+  user_id: string | null;
+  device_id: string | null;
+  app: string;
+}) => {
+  const tokens = new Set<string>();
+  if (row.device_id) {
+    const device = await query(`SELECT push_token FROM devices WHERE id = $1 AND push_token IS NOT NULL`, [
+      row.device_id
+    ]);
+    for (const item of device.rows) {
+      if (item.push_token) {
+        tokens.add(String(item.push_token));
+      }
+    }
+  }
+  if (row.user_id) {
+    const devices = await query(
+      `SELECT push_token FROM devices WHERE user_id = $1 AND app = $2 AND push_token IS NOT NULL`,
+      [row.user_id, row.app]
+    );
+    for (const item of devices.rows) {
+      if (item.push_token) {
+        tokens.add(String(item.push_token));
+      }
+    }
+  }
+  return [...tokens];
+};
+
+const clearInvalidPushToken = async (token: string) => {
+  await query(`UPDATE devices SET push_token = NULL, updated_at = NOW() WHERE push_token = $1`, [token]);
+};
+
 export const dispatchNotifications = async () => {
   return recordJob("notifications.dispatch", async () => {
     const pending = await query(
       `
-      SELECT id, user_id, app, type, title, body, payload
+      SELECT id, user_id, device_id, app, type, title, body, payload
       FROM notification_queue
       WHERE sent_at IS NULL AND scheduled_for <= NOW()
       ORDER BY scheduled_for ASC
@@ -349,14 +390,65 @@ export const dispatchNotifications = async () => {
       `
     );
     let delivered = 0;
-    const canPush = Boolean(config.apnsKeyId && config.apnsTeamId && config.apnsKey && config.apnsBundleId);
+    let pushed = 0;
+    let failed = 0;
+    let deferred = 0;
+    const canPush = isApnsConfigured();
     for (const row of pending.rows) {
-      // Device tokens are stored on register. When APNS_* keys are set, a later
-      // adapter can send. Until then the inbox API and local alerts are delivery.
-      await query(`UPDATE notification_queue SET sent_at = NOW() WHERE id = $1`, [row.id]);
-      delivered += 1;
+      const tokens = canPush ? await pushTokensForNotification(row) : [];
+      if (!canPush || tokens.length === 0) {
+        await query(`UPDATE notification_queue SET sent_at = NOW() WHERE id = $1`, [row.id]);
+        delivered += 1;
+        continue;
+      }
+      let anySuccess = false;
+      let anyTransient = false;
+      for (const token of tokens) {
+        try {
+          const result = await sendApnsNotification({
+            token,
+            app: row.app === "watchedit" ? "watchedit" : ("podlink" as ApnsApp),
+            title: String(row.title),
+            body: String(row.body),
+            type: String(row.type),
+            payload: (row.payload ?? {}) as Record<string, unknown>
+          });
+          if (result.status >= 200 && result.status < 300) {
+            anySuccess = true;
+            pushed += 1;
+            continue;
+          }
+          if (isInvalidDeviceToken(result)) {
+            await clearInvalidPushToken(token);
+            failed += 1;
+            continue;
+          }
+          if (isTransientApnsStatus(result.status)) {
+            anyTransient = true;
+            failed += 1;
+            continue;
+          }
+          failed += 1;
+        } catch {
+          anyTransient = true;
+          failed += 1;
+        }
+      }
+      if (anySuccess || !anyTransient) {
+        await query(`UPDATE notification_queue SET sent_at = NOW() WHERE id = $1`, [row.id]);
+        delivered += 1;
+      } else {
+        deferred += 1;
+      }
     }
-    return { pending: pending.rowCount ?? 0, delivered, apnsConfigured: canPush };
+    return {
+      pending: pending.rowCount ?? 0,
+      delivered,
+      pushed,
+      failed,
+      deferred,
+      apnsConfigured: canPush
+    };
   });
 };
 

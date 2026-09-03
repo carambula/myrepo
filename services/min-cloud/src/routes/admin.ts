@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import { query } from "../db.js";
 import { catalogMovieFromTmdb, fetchTmdbMovie, searchTmdbMovie } from "../lib/tmdb.js";
 import { lookupItunesPodcast } from "../lib/itunes.js";
+import { isApnsConfigured, topicForApp } from "../lib/apns.js";
 import { config } from "../config.js";
 import { runNamedJob } from "../jobs.js";
 import { movieIdFromTmdb, podcastIdFromItunes } from "../lib/passwords.js";
@@ -44,7 +45,14 @@ router.get("/health", async (_req, res) => {
     episodes: episodes.rows[0].count,
     users: users.rows[0].count,
     revisions: revisions.rows,
-    jobs: jobs.rows
+    jobs: jobs.rows,
+    apns: {
+      configured: isApnsConfigured(),
+      topics: {
+        podlink: topicForApp("podlink"),
+        watchedit: topicForApp("watchedit")
+      }
+    }
   });
 });
 

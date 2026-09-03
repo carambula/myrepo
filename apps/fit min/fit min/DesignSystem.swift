@@ -23,7 +23,7 @@ struct DesignSystem {
     enum TitleType {
         static let horizontalPadding: CGFloat = Spacing.screenHorizontalPadding
         static let markOffsetY: CGFloat = 0
-        static let scrollTopPadding: CGFloat = Spacing.xxl
+        static let scrollTopPadding: CGFloat = MinSpacing.TitleType.scrollTopPadding
         static let contentTopSpacing: CGFloat = Spacing.xl
         static let maxWidth: CGFloat = 220
         static let maxHeight: CGFloat = 38

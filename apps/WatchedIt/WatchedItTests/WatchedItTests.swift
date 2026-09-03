@@ -206,4 +206,68 @@ struct WatchedItTests {
         #expect(decoded.physicalMedia?.has4K == true)
     }
 
+    @Test func physicalPurchaseLinksIncludeBoutiqueAndMarketplaces() {
+        let media = PhysicalMedia(
+            editions: [
+                PhysicalEdition(id: "c-4k", label: .criterion, format: .uhd4k, spineNumber: "2")
+            ],
+            hasCriterion: true,
+            has4K: true
+        )
+        let groups = PhysicalPurchaseLinkBuilder.groups(
+            for: media,
+            title: "Seven Samurai",
+            year: 1954
+        )
+        #expect(groups.count == 1)
+        #expect(groups[0].headline == "Criterion   4K UHD   Spine 2")
+        let retailers = groups[0].offers.map(\.retailer)
+        #expect(retailers == [.criterion, .amazon, .ebay])
+        #expect(groups[0].offers.contains { offer in
+            offer.retailer == .criterion && offer.url.absoluteString.contains("criterion.com/search")
+        })
+        #expect(groups[0].offers.contains { offer in
+            offer.retailer == .amazon
+                && offer.url.absoluteString.contains("amazon.com/s")
+                && offer.url.absoluteString.contains("Seven")
+                && offer.url.absoluteString.contains("1954")
+                && offer.url.absoluteString.contains("4K")
+        })
+    }
+
+    @Test func physicalPurchaseFlagOnlyStillOffersAmazon() {
+        let media = PhysicalMedia(has4K: true)
+        #expect(PhysicalPurchaseLinkBuilder.hasOptions(for: media))
+        let groups = PhysicalPurchaseLinkBuilder.groups(for: media, title: "The Matrix", year: 1999)
+        #expect(groups.count == 1)
+        #expect(groups[0].headline == "4K")
+        #expect(groups[0].offers.contains { $0.retailer == .amazon })
+        #expect(groups[0].offers.contains { $0.retailer == .ebay })
+        #expect(!groups[0].offers.contains { $0.retailer == .criterion })
+    }
+
+    @Test func physicalPurchaseEmptyMediaHasNoOffers() {
+        #expect(!PhysicalPurchaseLinkBuilder.hasOptions(for: nil))
+        #expect(!PhysicalPurchaseLinkBuilder.hasOptions(for: PhysicalMedia()))
+        #expect(PhysicalPurchaseLinkBuilder.groups(for: nil, title: "Heat", year: 1995).isEmpty)
+    }
+
+    @Test func physicalPurchaseCompactOffersDedupesRetailers() {
+        let media = PhysicalMedia(
+            editions: [
+                PhysicalEdition(id: "c-4k", label: .criterion, format: .uhd4k),
+                PhysicalEdition(id: "arrow", label: .arrow, format: .bluRay)
+            ],
+            hasCriterion: true,
+            has4K: true
+        )
+        let offers = PhysicalPurchaseLinkBuilder.compactOffers(
+            for: media,
+            title: "Heat",
+            year: 1995
+        )
+        let retailers = offers.map(\.retailer)
+        #expect(retailers == [.arrow, .amazon, .ebay, .criterion])
+    }
+
 }

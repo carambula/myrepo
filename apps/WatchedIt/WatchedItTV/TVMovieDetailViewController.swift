@@ -297,6 +297,25 @@ final class TVMovieDetailViewController: UIViewController {
             })
         }
 
+        let buyOffers = PhysicalPurchaseLinkBuilder.compactOffers(
+            for: movie.physicalMedia,
+            title: movie.title,
+            year: movie.year
+        )
+        if !buyOffers.isEmpty {
+            let buyActions = buyOffers.map { offer in
+                UIAction(title: offer.title) { [weak self] _ in
+                    self?.openURLPreferApp(
+                        appURL: nil,
+                        fallbackAppURL: nil,
+                        webURL: offer.url,
+                        preferUniversalLink: true
+                    )
+                }
+            }
+            actions.append(UIMenu(title: "Buy disc", children: buyActions))
+        }
+
         return UIMenu(title: "", children: actions)
     }
 

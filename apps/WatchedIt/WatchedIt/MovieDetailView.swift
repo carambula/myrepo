@@ -37,6 +37,7 @@ struct MovieDetailView: View {
     @AppStorage(MovieDetailLayoutParameters.storageKey) private var layoutParametersData: Data = MovieDetailLayoutParameters().encode()
     @State private var isLoadingDetails = false
     @State private var showRewatchablesEditor = false
+    @State private var showPhysicalPurchaseSheet = false
     @State private var hasTriggeredCatalogRefresh = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -197,6 +198,14 @@ struct MovieDetailView: View {
 
     private var preferredPodcastApp: PodcastApp {
         PodcastAppPreferences.preferredApp(from: preferredPodcastAppName)
+    }
+
+    private var hasPhysicalPurchaseOptions: Bool {
+        PhysicalPurchaseLinkBuilder.hasOptions(for: displayMovie.physicalMedia)
+    }
+
+    private var showsPlayMenu: Bool {
+        !preferredServiceIndex.isEmpty || hasPhysicalPurchaseOptions
     }
 
     private var preferredStreamingServices: [StreamingService] {
@@ -773,6 +782,13 @@ struct MovieDetailView: View {
         }
     }
 
+    private func presentPhysicalPurchaseSheet() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            showPhysicalPurchaseSheet = true
+        }
+    }
+
     private func openStreamingService(_ service: StreamingService) {
         let link = StreamingServiceLinkBuilder.link(
             for: service,
@@ -831,13 +847,7 @@ struct MovieDetailView: View {
                         let hasPodcastEpisode = displayMovie.podcastEpisode != nil
                         let activeActionColor = DesignSystem.Color.secondaryAccent ?? DesignSystem.Color.accent
                         // Play button
-                        if preferredServiceIndex.isEmpty {
-                            Button(action: openTrailerOrYouTubeSearch) {
-                                DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
-                                    .frame(width: 60, height: 60)
-                            }
-                            .buttonStyle(.liquidGlassCompact)
-                        } else {
+                        if showsPlayMenu {
                             Menu {
                                 Button(action: openTrailerOrYouTubeSearch) {
                                     Label("Trailer", systemImage: DesignSystem.Icon.play)
@@ -852,11 +862,26 @@ struct MovieDetailView: View {
                                         }
                                     }
                                 }
+
+                                if hasPhysicalPurchaseOptions {
+                                    Divider()
+                                    Button(action: presentPhysicalPurchaseSheet) {
+                                        Label("Buy disc…", systemImage: DesignSystem.Icon.disc)
+                                    }
+                                }
                             } label: {
                                 DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
                                     .frame(width: 60, height: 60)
                             }
                             .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel("Play")
+                        } else {
+                            Button(action: openTrailerOrYouTubeSearch) {
+                                DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
+                                    .frame(width: 60, height: 60)
+                            }
+                            .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel("Play trailer")
                         }
                         
                         // Rewatched button
@@ -1129,6 +1154,17 @@ struct MovieDetailView: View {
                                     }
                                 }
                             }
+
+                            if PhysicalPurchaseLinkBuilder.hasOptions(for: media) {
+                                Button(action: presentPhysicalPurchaseSheet) {
+                                    Text("Buy disc")
+                                        .labelMedium()
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                }
+                                .buttonStyle(CreditTapButtonStyle())
+                                .accessibilityLabel("Buy disc")
+                            }
                         }
                     }
 
@@ -1205,6 +1241,15 @@ struct MovieDetailView: View {
             }
         }
 
+        .sheet(isPresented: $showPhysicalPurchaseSheet) {
+            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                PhysicalPurchaseSheet(
+                    movieTitle: displayMovie.title,
+                    year: displayMovie.year,
+                    media: media
+                )
+            }
+        }
         .onAppear {
             // Sync local state from database when view appears
             syncLocalState()
@@ -1914,6 +1959,13 @@ private func createPreviewContainer() -> ModelContainer {
                 name: "Official Trailer",
                 youtubeKey: "vKQi3bBA1y8",
                 isOfficial: true
+            ),
+            physicalMedia: PhysicalMedia(
+                editions: [
+                    PhysicalEdition(id: "matrix-4k", label: .other, format: .uhd4k)
+                ],
+                has4K: true,
+                hasBluRay: true
             )
         ))
         .modelContainer(createPreviewContainer())

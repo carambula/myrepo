@@ -371,6 +371,7 @@ enum DesignSystem {
         static let backdrop = "photo.artframe"
         static let play = "play.fill"
         static let pause = "pause.fill"
+        static let disc = "opticaldisc"
         
         // Status Icons
         static let checkmark = "checkmark"

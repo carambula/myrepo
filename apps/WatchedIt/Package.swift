@@ -39,7 +39,8 @@ let package = Package(
                 "ThemeManager.swift",
                 "TitleCleaner.swift",
                 "OscarAwards.swift",
-                "PhysicalMedia.swift"
+                "PhysicalMedia.swift",
+                "PhysicalPurchase.swift"
             ],
             resources: [
                 .process("physical_media.json")

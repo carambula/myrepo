@@ -414,50 +414,7 @@ struct SearchScreenView: View {
 
     private func compactSearchToolbar(session: MovieSearchSession) -> some View {
         HStack(spacing: DesignSystem.Spacing.md) {
-            Menu {
-                ForEach(WatchFilter.allCases, id: \.self) { filter in
-                    Button {
-                        session.updateFilters { $0.watchFilter = filter }
-                    } label: {
-                        if session.filters.watchFilter == filter {
-                            Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
-                        } else {
-                            Label(filter.rawValue, systemImage: filter.systemImage)
-                        }
-                    }
-                }
-            } label: {
-                GlassCircleButton(
-                    systemImage: session.filters.watchFilter == .all
-                        ? DesignSystem.Icon.status
-                        : session.filters.watchFilter.systemImage,
-                    foregroundColor: session.filters.watchFilter == .all
-                        ? searchControlForegroundColor
-                        : DesignSystem.Color.accent,
-                    accessibilityLabel: session.filters.watchFilter == .all
-                        ? "Status filter"
-                        : "Status filter, \(session.filters.watchFilter.rawValue)"
-                )
-            }
-            .menuIndicator(.hidden)
-
-            SearchFilterMenus(
-                filters: Binding(
-                    get: { session.filters },
-                    set: { newValue in
-                        session.updateFilters { filters in
-                            filters = newValue
-                        }
-                    }
-                ),
-                allowsListFilter: context.allowsListFilter,
-                availableGenres: session.availableGenres,
-                availableMPAARatings: session.availableMPAARatings,
-                availableStreamingServices: session.availableStreamingServices,
-                preferredStreamingServices: preferredStreamingServices,
-                preferredDataSources: preferredDataSources,
-                controlSize: searchControlSize
-            )
+            searchFilterMenus(session: session)
 
             SearchInputBar(
                 committedText: Binding(
@@ -481,34 +438,9 @@ struct SearchScreenView: View {
 
     private func expandedFilterToolbar(session: MovieSearchSession) -> some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
-            HStack(spacing: compactExpandedIconSpacing) {
-                Menu {
-                    ForEach(WatchFilter.allCases, id: \.self) { filter in
-                        Button {
-                            session.updateFilters { $0.watchFilter = filter }
-                        } label: {
-                            if session.filters.watchFilter == filter {
-                                Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
-                            } else {
-                                Text(filter.rawValue)
-                            }
-                        }
-                    }
-                } label: {
-                    toolbarIcon(
-                        session.filters.watchFilter == .all
-                            ? DesignSystem.Icon.status
-                            : session.filters.watchFilter.systemImage,
-                        isActive: session.filters.watchFilter != .all
-                    )
-                }
-                .menuIndicator(.hidden)
-                .accessibilityLabel(
-                    session.filters.watchFilter == .all
-                        ? "Status filter"
-                        : "Status filter, \(session.filters.watchFilter.rawValue)"
-                )
+            searchFilterMenus(session: session)
 
+            HStack(spacing: compactExpandedIconSpacing) {
                 if context.allowsListFilter {
                     Menu {
                         Button {
@@ -654,6 +586,26 @@ struct SearchScreenView: View {
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.vertical, DesignSystem.Spacing.sm)
+    }
+
+    private func searchFilterMenus(session: MovieSearchSession) -> some View {
+        SearchFilterMenus(
+            filters: Binding(
+                get: { session.filters },
+                set: { newValue in
+                    session.updateFilters { filters in
+                        filters = newValue
+                    }
+                }
+            ),
+            allowsListFilter: context.allowsListFilter,
+            availableGenres: session.availableGenres,
+            availableMPAARatings: session.availableMPAARatings,
+            availableStreamingServices: session.availableStreamingServices,
+            preferredStreamingServices: preferredStreamingServices,
+            preferredDataSources: preferredDataSources,
+            controlSize: searchControlSize
+        )
     }
 
     private var expandedToolbarSearchButton: some View {

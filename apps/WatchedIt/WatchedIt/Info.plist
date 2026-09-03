@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.watchedit.sync</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.movmin.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>movmin</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>disneyplus</string>
+		<string>hbomax</string>
+		<string>hulu</string>
+		<string>max</string>
+		<string>mgmplus</string>
+		<string>nflx</string>
+		<string>paramountplus</string>
+		<string>peacock</string>
+		<string>playmovies</string>
+		<string>plex</string>
+		<string>primevideo</string>
+		<string>podmin</string>
+		<string>starz</string>
+		<string>tv</string>
+		<string>vudu</string>
+		<string>youtube</string>
+		<string>vidmin</string>
+		<string>movmin</string>
+		<string>cycmin</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Rotina-ExtraThin.woff2</string>
+		<string>Rotina-Thin.woff2</string>
+		<string>Rotina-ExtraLight.woff2</string>
+		<string>Rotina-Light.woff2</string>
+		<string>Rotina-Regular.woff2</string>
+		<string>Rotina-Medium.woff2</string>
+		<string>Rotina-Bold.woff2</string>
+		<string>Rotina-ExtraBold.woff2</string>
+		<string>Rotina-ExtraThinItalic.woff2</string>
+		<string>Rotina-ThinItalic.woff2</string>
+		<string>Rotina-ExtraLightItalic.woff2</string>
+		<string>Rotina-LightItalic.woff2</string>
+		<string>Rotina-Italic.woff2</string>
+		<string>Rotina-MediumItalic.woff2</string>
+		<string>Rotina-BoldItalic.woff2</string>
+		<string>Rotina-ExtraBoldItalic.woff2</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
+</dict>
+</plist>

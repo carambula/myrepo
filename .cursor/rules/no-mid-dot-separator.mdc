@@ -1,0 +1,40 @@
+---
+description: Never use middle dot (·) as a UI separator — use three spaces instead
+alwaysApply: true
+---
+
+# No mid-dot separators in UI text
+
+All inline metadata (subtitles, captions, status labels, detail rows, progress text) must separate segments with **exactly three ASCII spaces** (`"   "`), never a middle dot (`·`), bullet (`•`), pipe, or slash.
+
+## Tokens
+
+Use `metadataSeparator` from `@min-apps/design-system/tokens` in JavaScript/TypeScript:
+
+```js
+import { metadataSeparator } from '@min-apps/design-system/tokens';
+// metadataSeparator === '   '
+```
+
+In Swift, join components with `"   "`:
+
+```swift
+components.joined(separator: "   ")
+```
+
+## Banned patterns
+
+```
+" · "          // middle dot (U+00B7)
+" • "          // bullet (U+2022)
+" | "          // pipe used as metadata separator
+.joined(separator: " · ")
+```
+
+## Correct examples
+
+```
+`${year}   ${genre}`
+`${count} movies   ${enriched} enriched`
+components.joined(separator: "   ")
+```

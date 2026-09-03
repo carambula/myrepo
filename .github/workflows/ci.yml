@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  spinmin:
+    name: SpinMin build and test
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/SpinMin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select iPhone simulator
+        id: sim
+        run: |
+          DESTINATION="$(python3 - <<'PY'
+          import json, subprocess
+          data = json.loads(subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"], text=True
+          ))
+          preferred = (
+              "iPhone 17", "iPhone 16", "iPhone 16 Pro", "iPhone 16e",
+              "iPhone 15", "iPhone 15 Pro", "iPhone 14",
+          )
+          names = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime:
+                  continue
+              for device in devices:
+                  name = device.get("name", "")
+                  if device.get("isAvailable") and name.startswith("iPhone"):
+                      names.append(name)
+          available = list(dict.fromkeys(names))
+          chosen = next((name for name in preferred if name in available), None)
+          if chosen is None and available:
+              chosen = available[-1]
+          if not chosen:
+              raise SystemExit("No available iPhone simulator")
+          print(f"platform=iOS Simulator,name={chosen}")
+          PY
+          )"
+          echo "Using destination: $DESTINATION"
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SpinMin.xcodeproj \
+            -scheme SpinMin \
+            -destination '${{ steps.sim.outputs.destination }}' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions || exit 1
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project SpinMin.xcodeproj \
+            -scheme SpinMin \
+            -destination '${{ steps.sim.outputs.destination }}' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions || exit 1
+
+      - name: Show crash reports
+        if: failure()
+        run: |
+          echo "== DiagnosticReports =="
+          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null || true
+          for f in ~/Library/Logs/DiagnosticReports/*; do
+            echo "===== $f ====="
+            head -120 "$f" || true
+          done 2>/dev/null || true

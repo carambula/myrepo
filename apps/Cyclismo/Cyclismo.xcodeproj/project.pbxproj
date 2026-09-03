@@ -1,0 +1,657 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D904C5012F817E10001C6F56 /* MinAppKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60718293B50A1 /* MinAppKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D94F3E032F395E6600CDE80A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D94F3DE92F395E6500CDE80A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D94F3DF02F395E6500CDE80A;
+			remoteInfo = "Cyclismo Guide";
+		};
+		D94F3E0D2F395E6600CDE80A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D94F3DE92F395E6500CDE80A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D94F3DF02F395E6500CDE80A;
+			remoteInfo = "Cyclismo Guide";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D94F3DF12F395E6500CDE80A /* Cyclismo Guide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cyclismo Guide.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D94F3E022F395E6600CDE80A /* Cyclismo GuideTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cyclismo GuideTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D94F3E0C2F395E6600CDE80A /* Cyclismo GuideUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cyclismo GuideUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D97145222F606F7A001E9012 /* Exceptions for "Cyclismo Guide" folder in "Cyclismo Guide" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D94F3DF02F395E6500CDE80A /* Cyclismo Guide */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D94F3E052F395E6600CDE80A /* Cyclismo GuideTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = "Cyclismo GuideTests";
+			path = CyclismoTests;
+			sourceTree = "<group>";
+		};
+		D94F3E0F2F395E6600CDE80A /* Cyclismo GuideUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = "Cyclismo GuideUITests";
+			path = CyclismoUITests;
+			sourceTree = "<group>";
+		};
+		D97145212F606D9C001E9012 /* Cyclismo Guide */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D97145222F606F7A001E9012 /* Exceptions for "Cyclismo Guide" folder in "Cyclismo Guide" target */,
+			);
+			name = "Cyclismo Guide";
+			path = Cyclismo;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D94F3DEE2F395E6500CDE80A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D904C5012F817E10001C6F56 /* MinAppKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3DFF2F395E6600CDE80A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3E092F395E6600CDE80A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D94F3DE82F395E6500CDE80A = {
+			isa = PBXGroup;
+			children = (
+				D97145212F606D9C001E9012 /* Cyclismo Guide */,
+				D94F3E052F395E6600CDE80A /* Cyclismo GuideTests */,
+				D94F3E0F2F395E6600CDE80A /* Cyclismo GuideUITests */,
+				D94F3DF22F395E6500CDE80A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D94F3DF22F395E6500CDE80A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D94F3DF12F395E6500CDE80A /* Cyclismo Guide.app */,
+				D94F3E022F395E6600CDE80A /* Cyclismo GuideTests.xctest */,
+				D94F3E0C2F395E6600CDE80A /* Cyclismo GuideUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D94F3DF02F395E6500CDE80A /* Cyclismo Guide */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D94F3E152F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo Guide" */;
+			buildPhases = (
+				9B1C2D3E4F567890ABCDEF01 /* ShellScript */,
+				D94F3DED2F395E6500CDE80A /* Sources */,
+				D94F3DEE2F395E6500CDE80A /* Frameworks */,
+				D94F3DEF2F395E6500CDE80A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D97145212F606D9C001E9012 /* Cyclismo Guide */,
+			);
+			name = "Cyclismo Guide";
+			packageProductDependencies = (
+				A1B2C3D4E5F60718293B50A1 /* MinAppKit */,
+			);
+			productName = "Cyclismo Guide";
+			productReference = D94F3DF12F395E6500CDE80A /* Cyclismo Guide.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D94F3E012F395E6600CDE80A /* Cyclismo GuideTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D94F3E1A2F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo GuideTests" */;
+			buildPhases = (
+				D94F3DFE2F395E6600CDE80A /* Sources */,
+				D94F3DFF2F395E6600CDE80A /* Frameworks */,
+				D94F3E002F395E6600CDE80A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D94F3E042F395E6600CDE80A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D94F3E052F395E6600CDE80A /* Cyclismo GuideTests */,
+			);
+			name = "Cyclismo GuideTests";
+			packageProductDependencies = (
+			);
+			productName = "Cyclismo GuideTests";
+			productReference = D94F3E022F395E6600CDE80A /* Cyclismo GuideTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D94F3E0B2F395E6600CDE80A /* Cyclismo GuideUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D94F3E1D2F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo GuideUITests" */;
+			buildPhases = (
+				D94F3E082F395E6600CDE80A /* Sources */,
+				D94F3E092F395E6600CDE80A /* Frameworks */,
+				D94F3E0A2F395E6600CDE80A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D94F3E0E2F395E6600CDE80A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D94F3E0F2F395E6600CDE80A /* Cyclismo GuideUITests */,
+			);
+			name = "Cyclismo GuideUITests";
+			packageProductDependencies = (
+			);
+			productName = "Cyclismo GuideUITests";
+			productReference = D94F3E0C2F395E6600CDE80A /* Cyclismo GuideUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D94F3DE92F395E6500CDE80A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2610;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					D94F3DF02F395E6500CDE80A = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					D94F3E012F395E6600CDE80A = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = D94F3DF02F395E6500CDE80A;
+					};
+					D94F3E0B2F395E6600CDE80A = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = D94F3DF02F395E6500CDE80A;
+					};
+				};
+			};
+			buildConfigurationList = D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D94F3DE82F395E6500CDE80A;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A1B2C3D4E5F60718293B50A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D94F3DF22F395E6500CDE80A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D94F3DF02F395E6500CDE80A /* Cyclismo Guide */,
+				D94F3E012F395E6600CDE80A /* Cyclismo GuideTests */,
+				D94F3E0B2F395E6600CDE80A /* Cyclismo GuideUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D94F3DEF2F395E6500CDE80A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3E002F395E6600CDE80A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3E0A2F395E6600CDE80A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9B1C2D3E4F567890ABCDEF01 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Cyclismo/bootstrap_database.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if ! command -v npm >/dev/null 2>&1; then\n  echo \"npm not found; skipping bootstrap generation.\"\n  exit 0\nfi\n\ncd \"${SRCROOT}/ingestion\"\n\nnpm run generate-bootstrap\n\nBOOTSTRAP_SRC=\"${SRCROOT}/Cyclismo/bootstrap_database.json\"\nBOOTSTRAP_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/bootstrap_database.json\"\nif [ -f \"$BOOTSTRAP_SRC\" ]; then\n  cp \"$BOOTSTRAP_SRC\" \"$BOOTSTRAP_DST\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D94F3DED2F395E6500CDE80A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3DFE2F395E6600CDE80A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D94F3E082F395E6600CDE80A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D94F3E042F395E6600CDE80A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D94F3DF02F395E6500CDE80A /* Cyclismo Guide */;
+			targetProxy = D94F3E032F395E6600CDE80A /* PBXContainerItemProxy */;
+		};
+		D94F3E0E2F395E6600CDE80A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D94F3DF02F395E6500CDE80A /* Cyclismo Guide */;
+			targetProxy = D94F3E0D2F395E6600CDE80A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D94F3E162F395E6600CDE80A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Cyclismo/Cyclismo.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cyclismo/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.Cyclismo";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		D94F3E172F395E6600CDE80A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Cyclismo/Cyclismo.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cyclismo/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.Cyclismo";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D94F3E182F395E6600CDE80A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D94F3E192F395E6600CDE80A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D94F3E1B2F395E6600CDE80A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.CyclismoTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cyclismo Guide.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Cyclismo Guide";
+			};
+			name = Debug;
+		};
+		D94F3E1C2F395E6600CDE80A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.CyclismoTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cyclismo Guide.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Cyclismo Guide";
+			};
+			name = Release;
+		};
+		D94F3E1E2F395E6600CDE80A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.CyclismoUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Cyclismo Guide";
+			};
+			name = Debug;
+		};
+		D94F3E1F2F395E6600CDE80A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8XGDTANS45;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Carambula-Projects.CyclismoUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Cyclismo Guide";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D94F3DEC2F395E6500CDE80A /* Build configuration list for PBXProject "Cyclismo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D94F3E182F395E6600CDE80A /* Debug */,
+				D94F3E192F395E6600CDE80A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D94F3E152F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo Guide" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D94F3E162F395E6600CDE80A /* Debug */,
+				D94F3E172F395E6600CDE80A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D94F3E1A2F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo GuideTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D94F3E1B2F395E6600CDE80A /* Debug */,
+				D94F3E1C2F395E6600CDE80A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D94F3E1D2F395E6600CDE80A /* Build configuration list for PBXNativeTarget "Cyclismo GuideUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D94F3E1E2F395E6600CDE80A /* Debug */,
+				D94F3E1F2F395E6600CDE80A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A1B2C3D4E5F60718293B50A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../packages/design-system/swift";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F60718293B50A1 /* MinAppKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F60718293B50A0 /* XCLocalSwiftPackageReference "../../packages/design-system/swift" */;
+			productName = MinAppKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D94F3DE92F395E6500CDE80A /* Project object */;
+}

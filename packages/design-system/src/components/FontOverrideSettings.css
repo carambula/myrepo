@@ -1,0 +1,179 @@
+/**
+ * Font Override Settings Styles
+ */
+
+.min-font-override-settings {
+  padding: var(--spacing-page-margin-top, 24px) var(--spacing-page-margin-side, 16px);
+  max-width: 800px;
+}
+
+.min-font-override-header {
+  margin-bottom: 24px;
+}
+
+.min-font-override-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text-primary);
+}
+
+.min-font-override-description {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.min-font-override-toggle {
+  padding: 16px;
+  background-color: var(--color-background-secondary);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.min-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.min-toggle-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.min-font-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.min-font-tier-selector {
+  padding: 16px;
+  background-color: var(--color-background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-primary);
+}
+
+.min-font-tier-header {
+  margin-bottom: 12px;
+}
+
+.min-font-tier-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.min-font-tier-description {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.min-font-tier-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background-color: var(--color-background-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 200ms ease-in-out;
+}
+
+.min-font-tier-select:hover {
+  border-color: var(--color-border-hover);
+}
+
+.min-font-tier-select:focus {
+  outline: none;
+  border-color: var(--color-primary-main);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.min-font-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--color-background-primary);
+  border-radius: 4px;
+  font-size: 16px;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-secondary);
+}
+
+.min-font-override-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.min-font-override-note {
+  padding: 16px;
+  background-color: var(--color-background-info, #E3F2FD);
+  border-left: 4px solid var(--color-primary-main);
+  border-radius: 4px;
+}
+
+.min-font-override-note p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.min-font-override-note strong {
+  font-weight: 600;
+}
+
+/* Button styles (if not already defined) */
+.min-button {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 200ms ease-in-out;
+  border: none;
+  outline: none;
+}
+
+.min-button-secondary {
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.min-button-secondary:hover {
+  background-color: var(--color-background-tertiary);
+  border-color: var(--color-border-hover);
+}
+
+.min-button-secondary:active {
+  transform: translateY(1px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .min-font-override-settings {
+    padding: 16px 12px;
+  }
+
+  .min-font-tier-selector {
+    padding: 12px;
+  }
+
+  .min-font-preview {
+    font-size: 14px;
+  }
+}

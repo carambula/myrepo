@@ -1,33 +1,23 @@
 {
-  "name": "@min-apps/design-system",
-  "version": "1.0.0",
-  "description": "Unified design system for the min apps suite (WatchedIt, podlink, yourtube, Cyclismo guide)",
-  "main": "src/index.js",
-  "type": "module",
-  "scripts": {
-    "build": "node build.js",
-    "dev": "node build.js --watch"
-  },
-  "keywords": [
-    "design-system",
-    "tokens",
-    "components",
-    "theming"
-  ],
+  "name": "min-apps",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for the min apps suite: WatchedIt, podlink, yourtube, Cyclismo guide",
   "author": "carambula",
   "license": "MIT",
-  "peerDependencies": {
-    "react": ">=16.8.0"
+  "packageManager": "npm@11.9.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "studio": "npm run dev --workspace=@min-apps/design-studio",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
   },
-  "devDependencies": {},
-  "exports": {
-    ".": "./src/index.js",
-    "./tokens": "./src/tokens/index.js",
-    "./themes": "./src/themes/index.js",
-    "./components": "./src/components/index.js",
-    "./layouts": "./src/layouts/index.js",
-    "./notifications": "./src/notifications/index.js",
-    "./onboarding": "./src/onboarding/index.js",
-    "./styles.css": "./dist/styles.css"
+  "devDependencies": {
+    "turbo": "^2.4.0"
   }
 }

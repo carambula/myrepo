@@ -1,0 +1,159 @@
+/**
+ * Rotina Font Family
+ * @font-face declarations for the Rotina typeface
+ * 
+ * Usage: Import this file to load Rotina fonts
+ * import '@min-apps/design-system/src/assets/fonts/rotina/rotina.css';
+ */
+
+/* Rotina ExtraThin (200) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraThin.woff2') format('woff2'),
+       url('./Rotina-ExtraThin.woff') format('woff');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraThinItalic.woff2') format('woff2'),
+       url('./Rotina-ExtraThinItalic.woff') format('woff');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina Thin (250) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Thin.woff2') format('woff2'),
+       url('./Rotina-Thin.woff') format('woff');
+  font-weight: 250;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ThinItalic.woff2') format('woff2'),
+       url('./Rotina-ThinItalic.woff') format('woff');
+  font-weight: 250;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina ExtraLight (275) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraLight.woff2') format('woff2'),
+       url('./Rotina-ExtraLight.woff') format('woff');
+  font-weight: 275;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraLightItalic.woff2') format('woff2'),
+       url('./Rotina-ExtraLightItalic.woff') format('woff');
+  font-weight: 275;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina Light (300) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Light.woff2') format('woff2'),
+       url('./Rotina-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-LightItalic.woff2') format('woff2'),
+       url('./Rotina-LightItalic.woff') format('woff');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina Regular (400) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Regular.woff2') format('woff2'),
+       url('./Rotina-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Italic.woff2') format('woff2'),
+       url('./Rotina-Italic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina Medium (500) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Medium.woff2') format('woff2'),
+       url('./Rotina-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-MediumItalic.woff2') format('woff2'),
+       url('./Rotina-MediumItalic.woff') format('woff');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina Bold (700) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-Bold.woff2') format('woff2'),
+       url('./Rotina-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-BoldItalic.woff2') format('woff2'),
+       url('./Rotina-BoldItalic.woff') format('woff');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Rotina ExtraBold (800) */
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraBold.woff2') format('woff2'),
+       url('./Rotina-ExtraBold.woff') format('woff');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rotina';
+  src: url('./Rotina-ExtraBoldItalic.woff2') format('woff2'),
+       url('./Rotina-ExtraBoldItalic.woff') format('woff');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}

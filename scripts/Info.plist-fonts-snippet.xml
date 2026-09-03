@@ -1,0 +1,35 @@
+<!-- Add this to your iOS app's Info.plist file -->
+<!-- This tells iOS about the custom fonts included in your app bundle -->
+
+<key>UIAppFonts</key>
+<array>
+    <!-- Rotina Regular Weights -->
+    <string>Rotina-ExtraThin.woff2</string>
+    <string>Rotina-Thin.woff2</string>
+    <string>Rotina-Light.woff2</string>
+    <string>Rotina-Regular.woff2</string>
+    <string>Rotina-Medium.woff2</string>
+    <string>Rotina-SemiBold.woff2</string>
+    <string>Rotina-Bold.woff2</string>
+    <string>Rotina-ExtraBold.woff2</string>
+    
+    <!-- Rotina Italic Weights -->
+    <string>Rotina-ExtraThinItalic.woff2</string>
+    <string>Rotina-ThinItalic.woff2</string>
+    <string>Rotina-LightItalic.woff2</string>
+    <string>Rotina-Italic.woff2</string>
+    <string>Rotina-MediumItalic.woff2</string>
+    <string>Rotina-SemiBoldItalic.woff2</string>
+    <string>Rotina-BoldItalic.woff2</string>
+    <string>Rotina-ExtraBoldItalic.woff2</string>
+</array>
+
+<!-- 
+Alternative key name (older iOS versions):
+If UIAppFonts doesn't work, try:
+<key>Fonts provided by application</key>
+
+Note: You can use either .woff2 or .ttf/.otf files.
+WOFF2 files work in iOS 10+ and are smaller in size.
+If you need iOS 9 support, convert to .ttf or .otf format.
+-->

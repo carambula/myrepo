@@ -1,0 +1,410 @@
+[
+  {
+    "id": "ddda1d68-3e8b-4a4e-bcd7-b9ed6a71ce34",
+    "name": "Grand Budapest",
+    "builtInThemeName": "Grand Budapest",
+    "headlineFontStyle": "system-default",
+    "bodyFontStyle": "system-default",
+    "accent": {
+      "red": 0.8823529411764706,
+      "green": 0.4470588235294118,
+      "blue": 0.4196078431372549,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 0.8941176470588236,
+      "green": 0.7411764705882353,
+      "blue": 0.5176470588235295,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 0.8823529411764706,
+      "green": 0.4470588235294118,
+      "blue": 0.4196078431372549,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 0.8823529411764706,
+      "green": 0.4470588235294118,
+      "blue": 0.4196078431372549,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 0.8823529411764706,
+      "green": 0.4470588235294118,
+      "blue": 0.4196078431372549,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.15172549019607842,
+      "green": 0.06423529411764706,
+      "blue": 0.05662745098039215,
+      "alpha": 1
+    },
+    "darkModeBackgroundTint": {
+      "red": 0.15172549019607842,
+      "green": 0.06423529411764706,
+      "blue": 0.05662745098039215,
+      "alpha": 1
+    },
+    "lightModeBackgroundTint": {
+      "red": 0.9585882352941176,
+      "green": 0.9091372549019607,
+      "blue": 0.8330588235294117,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.12549019607843137,
+      "green": 0.03529411764705882,
+      "blue": 0.027450980392156862,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 0.9882352941176471,
+      "green": 0.9372549019607843,
+      "blue": 0.8588235294117647,
+      "alpha": 1
+    },
+    "supportsLightMode": true,
+    "createdAt": "2026-02-28T15:19:31.363Z",
+    "lastUpdated": "2026-03-01T21:48:06.479Z"
+  },
+  {
+    "id": "3A8F1262-8F6E-4043-93A8-204C5CF743D6",
+    "name": "I'm Batman",
+    "builtInThemeName": "I'm Batman",
+    "headlineFontStyle": "system-default",
+    "bodyFontStyle": "system-default",
+    "accent": {
+      "red": 1,
+      "green": 0.8509803921568627,
+      "blue": 0,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 0.6588235294117647,
+      "green": 0.5450980392156862,
+      "blue": 0,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 1,
+      "green": 0.8509803921568627,
+      "blue": 0,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 1,
+      "green": 0.8509803921568627,
+      "blue": 0,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 1,
+      "green": 0.8509803921568627,
+      "blue": 0,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.060431372549019605,
+      "green": 0.09086274509803921,
+      "blue": 0.1631372549019608,
+      "alpha": 1
+    },
+    "darkModeBackgroundTint": {
+      "red": 0.060431372549019605,
+      "green": 0.09086274509803921,
+      "blue": 0.1631372549019608,
+      "alpha": 1
+    },
+    "lightModeBackgroundTint": {
+      "red": 0.817843137254902,
+      "green": 0.8596862745098038,
+      "blue": 0.9623921568627452,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.03137254901960784,
+      "green": 0.06274509803921569,
+      "blue": 0.13725490196078433,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 0.8431372549019608,
+      "green": 0.8862745098039215,
+      "blue": 0.9921568627450981,
+      "alpha": 1
+    },
+    "supportsLightMode": false,
+    "createdAt": "2026-02-28T00:00:00Z",
+    "lastUpdated": "2026-03-01T21:47:59.446Z"
+  },
+  {
+    "id": "A3C975DB-0A6B-4041-8D18-E83F17A3403E",
+    "name": "Matrix",
+    "builtInThemeName": "Matrix",
+    "headlineFontStyle": "system-monospaced",
+    "bodyFontStyle": "system-monospaced",
+    "accent": {
+      "red": 0,
+      "green": 1,
+      "blue": 0,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 0.08627450980392157,
+      "green": 0.6509803921568628,
+      "blue": 0.2196078431372549,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 0,
+      "green": 1,
+      "blue": 0,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 0,
+      "green": 1,
+      "blue": 0,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 0.1803921568627451,
+      "green": 0.7803921568627451,
+      "blue": 0.3215686274509804,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.049019607843137254,
+      "green": 0.10607843137254902,
+      "blue": 0.049019607843137254,
+      "alpha": 1
+    },
+    "darkModeBackgroundTint": {
+      "red": 0.049019607843137254,
+      "green": 0.10607843137254902,
+      "blue": 0.049019607843137254,
+      "alpha": 1
+    },
+    "lightModeBackgroundTint": {
+      "red": 0.8939215686274509,
+      "green": 0.97,
+      "blue": 0.8939215686274509,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.0196078431372549,
+      "green": 0.0784313725490196,
+      "blue": 0.0196078431372549,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 0.9215686274509803,
+      "green": 1,
+      "blue": 0.9215686274509803,
+      "alpha": 1
+    },
+    "supportsLightMode": true,
+    "createdAt": "2026-02-28T00:00:00Z",
+    "lastUpdated": "2026-03-01T21:47:54.480Z"
+  },
+  {
+    "id": "CA8BF4D0-3EC6-4092-AE62-EABDAA03A3D0",
+    "name": "McQueen",
+    "builtInThemeName": "McQueen",
+    "headlineFontStyle": "system-condensed",
+    "bodyFontStyle": "system-default",
+    "accent": {
+      "red": 0.4,
+      "green": 0.8,
+      "blue": 1,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 1,
+      "green": 0.6,
+      "blue": 0,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 0.4,
+      "green": 0.8,
+      "blue": 1,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 0.4,
+      "green": 0.8,
+      "blue": 1,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 0,
+      "green": 0,
+      "blue": 0,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.5372549019607843,
+      "green": 0.807843137254902,
+      "blue": 0.9450980392156862,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.050980392156862744,
+      "green": 0.14901960784313725,
+      "blue": 0.2196078431372549,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 0.807843137254902,
+      "green": 0.9137254901960784,
+      "blue": 0.9725490196078431,
+      "alpha": 1
+    },
+    "supportsLightMode": true,
+    "createdAt": "2026-02-28T00:00:00Z",
+    "lastUpdated": "2026-03-01T13:54:45.210Z"
+  },
+  {
+    "id": "9A5BFD52-E6B1-4E25-8E26-24E2F4C50E7C",
+    "name": "Sepia",
+    "builtInThemeName": "Sepia",
+    "headlineFontStyle": "new-york",
+    "bodyFontStyle": "system-default",
+    "accent": {
+      "red": 0.7725490196078432,
+      "green": 0.7215686274509804,
+      "blue": 0.6588235294117647,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 0.5725490196078431,
+      "green": 0.5215686274509804,
+      "blue": 0.4549019607843137,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 0.9529411764705882,
+      "green": 0.8784313725490196,
+      "blue": 0.796078431372549,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 0.9529411764705882,
+      "green": 0.8784313725490196,
+      "blue": 0.796078431372549,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 0,
+      "green": 0,
+      "blue": 0,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.14792156862745098,
+      "green": 0.14411764705882352,
+      "blue": 0.13650980392156864,
+      "alpha": 1
+    },
+    "darkModeBackgroundTint": {
+      "red": 0.14792156862745098,
+      "green": 0.14411764705882352,
+      "blue": 0.13650980392156864,
+      "alpha": 1
+    },
+    "lightModeBackgroundTint": {
+      "red": 0.9509803921568627,
+      "green": 0.9205490196078431,
+      "blue": 0.852078431372549,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.12156862745098039,
+      "green": 0.11764705882352941,
+      "blue": 0.10980392156862745,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 0.9803921568627451,
+      "green": 0.9490196078431372,
+      "blue": 0.8784313725490196,
+      "alpha": 1
+    },
+    "supportsLightMode": true,
+    "createdAt": "2026-02-28T00:00:00Z",
+    "lastUpdated": "2026-03-01T21:48:20.552Z"
+  },
+  {
+    "id": "1E49E19B-8613-4D29-9B4A-A718B1F4E2AC",
+    "name": "Watched It",
+    "builtInThemeName": "Watched It",
+    "headlineFontStyle": "system-default",
+    "bodyFontStyle": "system-default",
+    "accent": {
+      "red": 0.2196078431372549,
+      "green": 0.4392156862745098,
+      "blue": 0.9490196078431372,
+      "alpha": 1
+    },
+    "secondaryAccent": {
+      "red": 0.3607843137254902,
+      "green": 0.4980392156862745,
+      "blue": 0.8117647058823529,
+      "alpha": 1
+    },
+    "headlineColor": {
+      "red": 1,
+      "green": 1,
+      "blue": 1,
+      "alpha": 1
+    },
+    "darkModeHeadlineColor": {
+      "red": 1,
+      "green": 1,
+      "blue": 1,
+      "alpha": 1
+    },
+    "lightModeHeadlineColor": {
+      "red": 0,
+      "green": 0,
+      "blue": 0,
+      "alpha": 1
+    },
+    "backgroundTint": {
+      "red": 0.12509803921568627,
+      "green": 0.12509803921568627,
+      "blue": 0.12509803921568627,
+      "alpha": 1
+    },
+    "darkModeBackgroundTint": {
+      "red": 0.12509803921568627,
+      "green": 0.12509803921568627,
+      "blue": 0.12509803921568627,
+      "alpha": 1
+    },
+    "lightModeBackgroundTint": {
+      "red": 0.97,
+      "green": 0.97,
+      "blue": 0.97,
+      "alpha": 1
+    },
+    "darkModeBackground": {
+      "red": 0.09803921568627451,
+      "green": 0.09803921568627451,
+      "blue": 0.09803921568627451,
+      "alpha": 1
+    },
+    "lightModeBackground": {
+      "red": 1,
+      "green": 1,
+      "blue": 1,
+      "alpha": 1
+    },
+    "supportsLightMode": true,
+    "createdAt": "2026-02-28T00:00:00Z",
+    "lastUpdated": "2026-03-01T21:48:34.801Z"
+  }
+]

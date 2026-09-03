@@ -46,4 +46,28 @@ enum LatestPodcastPicker {
         }
         return movieIds
     }
+
+    struct SourceItem: Equatable {
+        let movieId: String
+        let date: Date?
+        let title: String
+    }
+
+    /// Latest-first for a single podcast source. Missing dates go last so a
+    /// catalog dump that stamps `lastUpdated` cannot jump old titles to the front.
+    static func sourceCarouselMovieIds(from items: [SourceItem]) -> [String] {
+        items.sorted { lhs, rhs in
+            switch (lhs.date, rhs.date) {
+            case let (left?, right?):
+                if left != right { return left > right }
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
+        }.map(\.movieId)
+    }
 }

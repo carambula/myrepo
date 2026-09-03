@@ -257,12 +257,17 @@ final class CatalogSnapshotService {
             }
         } else if source.type == "podcast" {
             let dates = latestPodcastDateBySourceIdentifier[source.identifier] ?? [:]
-            sectionMovies.sort { lhs, rhs in
-                let leftDate = dates[lhs.id] ?? lhs.episodeSortDate
-                let rightDate = dates[rhs.id] ?? rhs.episodeSortDate
-                if leftDate != rightDate { return leftDate > rightDate }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: sectionMovies.map { ($0.id, $0) })
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: sectionMovies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: dates[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title
+                    )
+                }
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         } else {
             sectionMovies.sort { lhs, rhs in
                 lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending

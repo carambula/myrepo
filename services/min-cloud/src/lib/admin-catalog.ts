@@ -320,4 +320,47 @@ export const buildDedupeGroups = (movies: AdminMovie[], sources: AdminSource[]) 
   return [...groups.values()].filter((group) => group.items.length > 1);
 };
 
+export const updateOscarAwardsForTmdb = async (
+  tmdbId: number,
+  oscarAwards: unknown,
+  imdbId?: string | null
+) => {
+  await query(
+    `
+    UPDATE mov_movies
+    SET oscar_awards = $2::jsonb,
+        imdb_id = COALESCE($3, imdb_id),
+        last_updated = NOW()
+    WHERE tmdb_id = $1
+    `,
+    [tmdbId, JSON.stringify(oscarAwards ?? null), imdbId ?? null]
+  );
+};
+
+export const updateImdbIdForTmdb = async (tmdbId: number, imdbId: string) => {
+  await query(
+    `UPDATE mov_movies SET imdb_id = COALESCE(imdb_id, $2), last_updated = NOW() WHERE tmdb_id = $1`,
+    [tmdbId, imdbId]
+  );
+};
+
+export const clearOscarAwards = async () => {
+  const result = await query(
+    `UPDATE mov_movies SET oscar_awards = NULL, last_updated = NOW() WHERE oscar_awards IS NOT NULL`
+  );
+  return result.rowCount ?? 0;
+};
+
+export const clearInferredPhysicalMedia = async () => {
+  const result = await query(
+    `
+    UPDATE mov_movies
+    SET physical_media = NULL, last_updated = NOW()
+    WHERE physical_media IS NOT NULL
+      AND COALESCE((physical_media->>'manualOverride')::boolean, false) = false
+    `
+  );
+  return result.rowCount ?? 0;
+};
+
 export { bumpWatchedIt };

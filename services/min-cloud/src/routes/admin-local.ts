@@ -1,8 +1,8 @@
 import { Router, type Request } from "express";
 import { query } from "../db.js";
 import { config } from "../config.js";
-import { fetchJson, fetchText } from "../lib/http.js";
-import { fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
+import { fetchText } from "../lib/http.js";
+import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
 import { scrapeListItems } from "../lib/list-scrape.js";
 import {
@@ -12,15 +12,36 @@ import {
   shouldSkipPodcastNoise
 } from "../lib/title-match.js";
 import { applyPhysicalMediaOverlay } from "../lib/catalog-import.js";
-import { normalizePhysicalMedia } from "../lib/physical-media.js";
+import {
+  filterIndexToCatalog,
+  normalizePhysicalMedia,
+  overlayFromIndex,
+  physicalMediaStats,
+  seedCriterionFromSources,
+  seedCurated4K
+} from "../lib/physical-media.js";
+import { fetchWikidataPhysicalMediaIndex } from "../lib/physical-media-wikidata.js";
+import {
+  fetchOmdbAwards,
+  fetchOmdbAwardsByTitle,
+  fetchWikidataOscars,
+  mergeWikidataIntoOscar,
+  runOscarOmdbBatch,
+  runOscarWikidataBatch,
+  type OscarAwards
+} from "../lib/oscar-awards.js";
 import {
   adminCatalogHealth,
   buildDedupeGroups,
   bumpWatchedIt,
+  clearInferredPhysicalMedia,
+  clearOscarAwards,
   deleteAdminRow,
   loadAdminBootstrap,
   loadAdminMovies,
   loadAdminSources,
+  updateImdbIdForTmdb,
+  updateOscarAwardsForTmdb,
   upsertAdminMovie,
   type AdminMovie
 } from "../lib/admin-catalog.js";
@@ -435,16 +456,7 @@ router.post("/tmdb/apply/:index", async (req, res) => {
 });
 
 router.get("/physical-media/stats", async (_req, res) => {
-  const movies = await loadAdminMovies();
-  const withMedia = movies.filter((movie) => movie.physicalMedia);
-  res.json({
-    totalMovies: movies.length,
-    withPhysicalMedia: withMedia.length,
-    withCriterion: withMedia.filter((movie) => (movie.physicalMedia as { hasCriterion?: boolean })?.hasCriterion).length,
-    with4K: withMedia.filter((movie) => (movie.physicalMedia as { has4K?: boolean })?.has4K).length,
-    withBluRay: withMedia.filter((movie) => (movie.physicalMedia as { hasBluRay?: boolean })?.hasBluRay).length,
-    manualOverrides: withMedia.filter((movie) => (movie.physicalMedia as { manualOverride?: boolean })?.manualOverride).length
-  });
+  res.json(physicalMediaStats(await loadAdminMovies()));
 });
 
 router.post("/physical-media/update", async (req, res) => {
@@ -464,18 +476,35 @@ router.post("/physical-media/update", async (req, res) => {
 
 router.post("/physical-media/clear", async (req, res) => {
   await takeSnapshot(req, { trigger: "before-physical-clear" });
-  await query(`UPDATE mov_movies SET physical_media = NULL, last_updated = NOW() WHERE COALESCE((physical_media->>'manualOverride')::boolean, false) = false`);
+  const clearedCount = await clearInferredPhysicalMedia();
   await bumpWatchedIt();
-  await recordAudit(req, "catalog.physical-clear", {});
-  res.json({ success: true });
+  await recordAudit(req, "catalog.physical-clear", { clearedCount });
+  res.json({ success: true, clearedCount });
 });
 
-router.post("/physical-media/enrich", async (_req, res) => {
+router.post("/physical-media/enrich", async (req, res) => {
+  const overwriteManual = Boolean(req.body?.overwriteManual);
+  await takeSnapshot(req, { trigger: "before-physical-enrich" });
+  const movies = await loadAdminMovies();
+  const index = await fetchWikidataPhysicalMediaIndex();
+  seedCriterionFromSources(movies, index);
+  seedCurated4K(index);
+  const catalogIndex = filterIndexToCatalog(index, movies);
+  const overlay = overlayFromIndex(catalogIndex);
+  const updatedCount = await applyPhysicalMediaOverlay(overlay.byTmdbId, { overwriteManual });
+  if (updatedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.physical-enrich", {
+    updatedCount,
+    overlayCount: Object.keys(overlay.byTmdbId).length
+  });
+  const nextMovies = await loadAdminMovies();
   res.json({
     success: true,
-    updatedCount: 0,
-    overlayCount: 0,
-    message: "Use Cloud Jobs or POST /v1/admin/mov/physical-media with the overlay file. Live Wikidata enrich can take minutes."
+    updatedCount,
+    overlayCount: Object.keys(overlay.byTmdbId).length,
+    stats: physicalMediaStats(nextMovies)
   });
 });
 
@@ -509,62 +538,136 @@ router.get("/oscar-awards/stats", async (_req, res) => {
 
 router.post("/oscar-awards/clear", async (req, res) => {
   await takeSnapshot(req, { trigger: "before-oscar-clear" });
-  await query(`UPDATE mov_movies SET oscar_awards = NULL, last_updated = NOW()`);
+  const clearedCount = await clearOscarAwards();
   await bumpWatchedIt();
-  await recordAudit(req, "catalog.oscar-clear", {});
-  res.json({ success: true });
+  await recordAudit(req, "catalog.oscar-clear", { clearedCount });
+  res.json({ success: true, clearedCount });
 });
 
-router.post("/oscar-awards/enrich", async (_req, res) => {
-  res.json({ success: true, updatedCount: 0, message: "Oscar text enrich is available from Wikidata single/bulk endpoints." });
+router.post("/oscar-awards/enrich", async (req, res) => {
+  const omdbApiKey = String(req.body?.omdbApiKey || config.omdbApiKey || "").trim();
+  if (!omdbApiKey) {
+    res.status(400).json({ error: "omdbApiKey required" });
+    return;
+  }
+  const offset = Math.max(Number(req.body?.offset) || 0, 0);
+  if (offset === 0) {
+    await takeSnapshot(req, { trigger: "before-oscar-enrich" });
+  }
+  const movies = await loadAdminMovies();
+  const result = await runOscarOmdbBatch(
+    movies,
+    {
+      mode: String(req.body?.mode || "missing"),
+      delayMs: Number(req.body?.delayMs ?? 150),
+      dryRun: Boolean(req.body?.dryRun),
+      batchSize: Number(req.body?.batchSize) || 100,
+      offset
+    },
+    {
+      fetchImdbId: (tmdbId) => fetchImdbIdFromTmdb(tmdbId, config.tmdbApiKey),
+      fetchOmdbByImdb: (imdbId) => fetchOmdbAwards(imdbId, omdbApiKey),
+      fetchOmdbByTitle: (title, year) => fetchOmdbAwardsByTitle(title, year, omdbApiKey),
+      persist: async (movie, awards, imdbId) => {
+        if (movie.tmdbId) {
+          await updateOscarAwardsForTmdb(movie.tmdbId, awards, imdbId);
+        }
+      }
+    }
+  );
+  if (!result.dryRun && result.enrichedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.oscar-enrich", {
+    offset,
+    enrichedCount: result.enrichedCount,
+    abortedDueToKey: result.abortedDueToKey
+  });
+  res.json(result);
+});
+
+router.post("/oscar-awards/wikidata-enrich", async (req, res) => {
+  const offset = Math.max(Number(req.body?.offset) || 0, 0);
+  if (offset === 0) {
+    await takeSnapshot(req, { trigger: "before-oscar-wikidata" });
+  }
+  const movies = await loadAdminMovies();
+  const result = await runOscarWikidataBatch(
+    movies,
+    {
+      mode: String(req.body?.mode || "missing"),
+      delayMs: Number(req.body?.delayMs ?? 300),
+      batchSize: Number(req.body?.batchSize) || 50,
+      offset
+    },
+    {
+      fetchImdbId: (tmdbId) => fetchImdbIdFromTmdb(tmdbId, config.tmdbApiKey),
+      fetchWikidata: fetchWikidataOscars,
+      persist: async (movie, awards, imdbId) => {
+        if (movie.tmdbId) {
+          await updateOscarAwardsForTmdb(movie.tmdbId, awards, imdbId);
+        }
+      },
+      persistImdb: async (movie, imdbId) => {
+        if (movie.tmdbId) {
+          await updateImdbIdForTmdb(movie.tmdbId, imdbId);
+        }
+      }
+    }
+  );
+  if (result.enrichedCount > 0) {
+    await bumpWatchedIt();
+  }
+  await recordAudit(req, "catalog.oscar-wikidata", {
+    offset,
+    enrichedCount: result.enrichedCount
+  });
+  res.json(result);
 });
 
 router.post("/oscar-awards/wikidata-single", async (req, res) => {
-  const row = await movieAt(Number(req.body?.index ?? -1));
-  const imdbId = String(req.body?.imdbId || row?.imdbId || "");
-  if (!imdbId) {
-    res.status(400).json({ error: "imdbId required" });
+  const tmdbId = Number(req.body?.tmdbId);
+  const movies = await loadAdminMovies();
+  const target =
+    (tmdbId ? movies.find((movie) => movie.tmdbId === tmdbId) : null) ||
+    (await movieAt(Number(req.body?.index ?? -1)));
+  if (!target) {
+    res.status(404).json({ error: "Movie not found" });
     return;
   }
-  const sparql = `
-SELECT ?awardLabel ?type ?recipientLabel WHERE {
-  ?film wdt:P345 "${imdbId}" .
-  { ?film p:P166 ?stmt . ?stmt ps:P166 ?award . OPTIONAL { ?stmt pq:P1346 ?recipient . } BIND("won" AS ?type) }
-  UNION
-  { ?film p:P1411 ?stmt . ?stmt ps:P1411 ?award . OPTIONAL { ?stmt pq:P1346 ?recipient . } BIND("nominated" AS ?type) }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
-}`.trim();
-  const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparql)}`;
-  const parsed = await fetchJson<{ results?: { bindings?: Array<Record<string, { value?: string }>> } }>(url, {
-    "User-Agent": "MinCloud/0.1 (movie catalog)"
-  });
-  const wins: unknown[] = [];
-  const nominations: unknown[] = [];
-  for (const binding of parsed.results?.bindings ?? []) {
-    const label = binding.awardLabel?.value || "";
-    if (!label.toLowerCase().startsWith("academy award")) {
-      continue;
+  try {
+    let imdbId = String(req.body?.imdbId || target.imdbId || "");
+    if (!imdbId && target.tmdbId && config.tmdbApiKey) {
+      imdbId = (await fetchImdbIdFromTmdb(target.tmdbId, config.tmdbApiKey)) || "";
+      if (imdbId && target.tmdbId) {
+        await updateImdbIdForTmdb(target.tmdbId, imdbId);
+      }
     }
-    const entry = {
-      id: `${label}-${binding.recipientLabel?.value || ""}`.slice(0, 80),
-      category: label,
-      year: null,
-      recipient: binding.recipientLabel?.value || null
-    };
-    if (binding.type?.value === "won") {
-      wins.push(entry);
-    } else {
-      nominations.push({ ...entry, nominee: entry.recipient });
+    if (!imdbId) {
+      res.json({ success: false, reason: "no-imdb", title: target.title });
+      return;
     }
+    const wikidata = await fetchWikidataOscars(imdbId);
+    if (!wikidata) {
+      res.json({ success: true, reason: "no-wikidata-oscars", title: target.title });
+      return;
+    }
+    const merged = mergeWikidataIntoOscar(target.oscarAwards as OscarAwards | null, wikidata);
+    if (target.tmdbId && merged) {
+      const before = clone(target);
+      await updateOscarAwardsForTmdb(target.tmdbId, merged, imdbId);
+      await bumpWatchedIt();
+      const after = await findMovie(target.__movieId, target.sourceIdentifier, target.tmdbId);
+      await recordAudit(req, "movie.oscar", { id: target.__movieId, tmdbId: target.tmdbId, imdbId }, before, after);
+    }
+    res.json({ success: true, title: target.title, oscarAwards: merged });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Wikidata lookup failed",
+      title: target.title
+    });
   }
-  const oscarAwards = { wins, nominations, totalWins: wins.length, totalNominations: nominations.length, rawAwardsText: null };
-  if (row) {
-    const before = clone(row);
-    await upsertAdminMovie({ ...row, oscarAwards }, row);
-    const after = await findMovie(row.__movieId, row.sourceIdentifier);
-    await recordAudit(req, "movie.oscar", { id: row.__movieId, imdbId }, before, after);
-  }
-  res.json({ success: true, oscarAwards });
 });
 
 router.get("/dedupe/preview", async (_req, res) => {

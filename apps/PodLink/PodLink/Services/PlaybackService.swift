@@ -103,6 +103,9 @@ class PlaybackService {
 
     init() {
         state.playbackRate = Self.preferredPlaybackRateFromDefaults()
+        // Hydrate the mini player from disk synchronously so it appears on the very first frame.
+        // No network, no podcast list traversal beyond the synchronous followed-podcasts cache.
+        restoreResumeSessionFromDiskIfNeeded()
         observeAudioSessionInterruptions()
         configureRemoteCommands()
     }
@@ -351,32 +354,23 @@ class PlaybackService {
         persistCurrentPlaybackSnapshotNow()
     }
 
-    /// Restores `state` without loading `AVPlayer` so the mini player shows correct artwork, title, and progress; playback starts on play.
-    func restoreResumeSessionIfNeeded() async {
-        guard state.currentEpisode == nil else { return }
+    /// Synchronous, no-network restore that populates `state` from the on-disk archive plus the
+    /// followed-podcasts and episode-progress caches. Called from `init()` so the mini player can
+    /// render on the first frame after launch without waiting on a Task hop or an RSS round trip.
+    @discardableResult
+    func restoreResumeSessionFromDiskIfNeeded() -> Bool {
+        guard state.currentEpisode == nil else { return false }
+        guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
+              let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
+        else { return false }
 
-        // Decode the archive, load followed podcasts, and merge stored progress off the main thread.
-        // These are JSON decodes plus `EpisodePlaybackStore`/`DownloadMetadataStore` disk reads that
-        // previously ran synchronously on the MainActor at launch.
-        let restored = await Task.detached(priority: .userInitiated) { () -> (Podcast, Episode, Episode)? in
-            guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
-                  let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
-            else { return nil }
-
-            let followed = Podcast.loadFollowedPodcasts()
-            let resolvedPodcast =
-                followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
-            let mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
-            return (resolvedPodcast, mergedEpisode, archive.episode)
-        }.value
-
-        guard let (resolvedPodcast, mergedEpisode, archiveEpisode) = restored else { return }
-        // Re-check after the suspension: playback may have started while we were decoding.
-        guard state.currentEpisode == nil else { return }
-
+        let followed = Podcast.loadFollowedPodcasts()
+        let resolvedPodcast =
+            followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
+        let mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
         let restoredPosition = Self.restoredResumePosition(
             mergedEpisode: mergedEpisode,
-            archiveEpisode: archiveEpisode
+            archiveEpisode: archive.episode
         )
         var restoredEpisode = mergedEpisode
         restoredEpisode.playbackPosition = restoredPosition
@@ -384,14 +378,68 @@ class PlaybackService {
         state.currentPodcast = resolvedPodcast
         state.currentEpisode = restoredEpisode
         state.currentTime = restoredPosition
-        state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archiveEpisode.duration
+        state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archive.episode.duration
         state.isPlaying = false
         state.isBuffering = false
         applyPreferredVideoMode(for: mergedEpisode)
+        return true
+    }
 
-        refreshRestoredResumeSessionIfNeeded(
-            archive: LastResumeSessionArchive(episode: archiveEpisode, podcast: resolvedPodcast)
-        )
+    /// Restores `state` without loading `AVPlayer` so the mini player shows correct artwork, title, and progress; playback starts on play.
+    /// The synchronous portion now happens in `restoreResumeSessionFromDiskIfNeeded()` (called from `init`);
+    /// this method exists for callers that also want the background RSS refresh (Siri intents, etc.).
+    func restoreResumeSessionIfNeeded() async {
+        if state.currentEpisode == nil {
+            // Decode the archive, load followed podcasts, and merge stored progress off the main thread
+            // when we haven't already restored from disk (e.g. after `stop()` cleared the archive).
+            let restored = await Task.detached(priority: .userInitiated) { () -> (Podcast, Episode, Episode)? in
+                guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
+                      let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
+                else { return nil }
+
+                let followed = Podcast.loadFollowedPodcasts()
+                let resolvedPodcast =
+                    followed.first { $0.id == archive.podcast.id || $0.feedURL == archive.podcast.feedURL } ?? archive.podcast
+                let mergedEpisode = EpisodePlaybackStore.merge(archive.episode)
+                return (resolvedPodcast, mergedEpisode, archive.episode)
+            }.value
+
+            guard let (resolvedPodcast, mergedEpisode, archiveEpisode) = restored else { return }
+            guard state.currentEpisode == nil else { return }
+
+            let restoredPosition = Self.restoredResumePosition(
+                mergedEpisode: mergedEpisode,
+                archiveEpisode: archiveEpisode
+            )
+            var restoredEpisode = mergedEpisode
+            restoredEpisode.playbackPosition = restoredPosition
+
+            state.currentPodcast = resolvedPodcast
+            state.currentEpisode = restoredEpisode
+            state.currentTime = restoredPosition
+            state.duration = mergedEpisode.duration > 0 ? mergedEpisode.duration : archiveEpisode.duration
+            state.isPlaying = false
+            state.isBuffering = false
+            applyPreferredVideoMode(for: mergedEpisode)
+        }
+
+        // Whether the state was just hydrated by us or was already in memory from `init()`, kick off
+        // a background feed refresh so the resume episode picks up the latest artwork/metadata.
+        refreshResumeSessionFromCurrentState()
+    }
+
+    /// Public entry point used by `ContentView.task` — kicks off the background feed refresh for
+    /// whichever episode we're currently resuming. Fire-and-forget; safe to `await` (it returns
+    /// immediately because the actual refresh runs in a detached `Task`).
+    func refreshResumeSessionFromFeed() async {
+        refreshResumeSessionFromCurrentState()
+    }
+
+    private func refreshResumeSessionFromCurrentState() {
+        guard let data = UserDefaults.standard.data(forKey: Self.lastResumeSessionDefaultsKey),
+              let archive = try? JSONDecoder().decode(LastResumeSessionArchive.self, from: data)
+        else { return }
+        refreshRestoredResumeSessionIfNeeded(archive: archive)
     }
 
     private func refreshRestoredResumeSessionIfNeeded(archive: LastResumeSessionArchive) {

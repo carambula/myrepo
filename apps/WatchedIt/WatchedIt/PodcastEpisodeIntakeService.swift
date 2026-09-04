@@ -128,7 +128,8 @@ public final class PodcastEpisodeIntakeService {
         let prefixes = [
             #"^the rewatchables\s*[:\-–—]\s*"#,
             #"^the big picture\s*[:\-–—]\s*"#,
-            #"^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*"#
+            #"^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*"#,
+            #"^the confused breakfast\s*[:\-–—]\s*"#
         ]
         for prefix in prefixes {
             cleaned = cleaned.replacingOccurrences(of: prefix, with: "", options: [.regularExpression, .caseInsensitive])
@@ -291,19 +292,58 @@ public final class PodcastEpisodeIntakeService {
     }
 
     public func shouldSkipPodcastNoise(sourceIdentifier: String, rawTitle: String, cleanedTitle: String) -> Bool {
-        let normalizedRaw = normalizeEpisodeTitle(rawTitle)
         let normalizedCleaned = normalizeEpisodeTitle(cleanedTitle)
         if normalizedCleaned.isEmpty {
             return true
         }
+        if isBrunchPodcastNoiseTitle(rawTitle) || isBrunchPodcastNoiseTitle(cleanedTitle) {
+            return true
+        }
 
+        let haystack = "\(rawTitle) \(cleanedTitle)"
         if sourceIdentifier == "big-picture" {
             let pattern = #"\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b"#
-            if normalizedRaw.range(of: pattern, options: .regularExpression) != nil {
+            if haystack.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
+                return true
+            }
+        }
+        if sourceIdentifier == "blank-check" {
+            let pattern = #"\b(mailbag|patreon|miniseries announcement|housekeeping)\b"#
+            if haystack.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
+                return true
+            }
+        }
+        if sourceIdentifier == "confused-breakfast" {
+            let pattern = #"\b(mailbag|q\s*&\s*a|q and a)\b"#
+            if haystack.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
                 return true
             }
         }
         return false
+    }
+
+    private func stripShowPrefixes(_ title: String) -> String {
+        var cleaned = title.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefixes = [
+            #"^the rewatchables\s*[:\-–—]\s*"#,
+            #"^the big picture\s*[:\-–—]\s*"#,
+            #"^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*"#,
+            #"^the confused breakfast\s*[:\-–—]\s*"#,
+            #"^(?:miniseries|minisode|rewatch(?:ables)?)\s*[:\-–—]\s*"#
+        ]
+        for prefix in prefixes {
+            cleaned = cleaned.replacingOccurrences(of: prefix, with: "", options: [.regularExpression, .caseInsensitive])
+        }
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func isBrunchPodcastNoiseTitle(_ title: String) -> Bool {
+        let pattern = #"^\s*brunch\b"#
+        if title.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+        return stripShowPrefixes(title).range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
     private func normalizedFeedURLString(_ rawValue: String) -> String {

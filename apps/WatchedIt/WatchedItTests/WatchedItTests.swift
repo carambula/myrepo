@@ -64,6 +64,35 @@ struct WatchedItTests {
         #expect(!service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Heat", cleanedTitle: "Heat"))
     }
 
+    @Test func podcastIntakeSkipsConfusedBreakfastBrunchAndBlankCheckNoise() async throws {
+        let service = PodcastEpisodeIntakeService.shared
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "BRUNCH: Talking Movies With Our DADS!",
+            cleanedTitle: "BRUNCH: Talking Movies With Our DADS!"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "BRUNCH- We Got These Movie Ratings WRONG...",
+            cleanedTitle: "BRUNCH- We Got These Movie Ratings WRONG..."
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "The Shawshank Redemption (1994)",
+            cleanedTitle: "The Shawshank Redemption"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "blank-check",
+            rawTitle: "Patreon Mailbag",
+            cleanedTitle: "Patreon Mailbag"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "blank-check",
+            rawTitle: "The Matrix",
+            cleanedTitle: "The Matrix"
+        ))
+    }
+
     @Test func podcastTitleCleaningRemovesTrailingYearSuffix() async throws {
         let service = PodcastEpisodeIntakeService.shared
         #expect(service.cleanPodcastTitle("Heat (1995)") == "Heat")

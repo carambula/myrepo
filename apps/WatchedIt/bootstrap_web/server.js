@@ -840,21 +840,50 @@ function normalizeEpisodeTitle(title) {
   return (title || "").trim().toLowerCase();
 }
 
+function stripShowPrefixes(title) {
+  let cleaned = String(title || "").replace(/\s+/g, " ").trim();
+  const prefixes = [
+    /^the rewatchables\s*[:\-–—]\s*/i,
+    /^the big picture\s*[:\-–—]\s*/i,
+    /^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*/i,
+    /^the confused breakfast\s*[:\-–—]\s*/i,
+    /^(?:miniseries|minisode|rewatch(?:ables)?)\s*[:\-–—]\s*/i
+  ];
+  for (const pattern of prefixes) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.trim();
+}
+
+function isBrunchPodcastNoiseTitle(title) {
+  const brunchTitle = /^\s*brunch\b/i;
+  return brunchTitle.test(title || "") || brunchTitle.test(stripShowPrefixes(title));
+}
+
 function shouldSkipPodcastNoise(sourceIdentifier, rawTitle, cleanedTitle) {
-  const normalizedRaw = normalizeEpisodeTitle(rawTitle);
   const normalizedCleaned = normalizeEpisodeTitle(cleanedTitle);
   if (!normalizedCleaned) {
     return true;
   }
+  if (isBrunchPodcastNoiseTitle(rawTitle) || isBrunchPodcastNoiseTitle(cleanedTitle)) {
+    return true;
+  }
 
+  const haystack = `${rawTitle} ${cleanedTitle}`;
   // Big Picture has many non-movie episodes (mailbags, drafts, news).
   // Keep this conservative to avoid skipping obvious movie episodes.
   if (sourceIdentifier === "big-picture") {
     const bigPictureNoisePattern =
       /\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b/i;
-    if (bigPictureNoisePattern.test(normalizedRaw)) {
+    if (bigPictureNoisePattern.test(haystack)) {
       return true;
     }
+  }
+  if (sourceIdentifier === "blank-check") {
+    return /\b(mailbag|patreon|miniseries announcement|housekeeping)\b/i.test(haystack);
+  }
+  if (sourceIdentifier === "confused-breakfast") {
+    return /\b(mailbag|q\s*&\s*a|q and a)\b/i.test(haystack);
   }
 
   return false;

@@ -13,7 +13,9 @@ import {
   pickBestTmdbMatch,
   prepareMovieQuery,
   scoreTmdbMatch,
-  shouldSkipPodcastNoise
+  shouldSkipPodcastNoise,
+  decidePodcastEpisodeIngest,
+  isBrunchPodcastNoiseTitle
 } from "../src/lib/title-match.ts";
 
 describe("title cleaning and matching", () => {
@@ -165,6 +167,72 @@ describe("title cleaning and matching", () => {
     assert.equal(determineItemStatus({ tmdbId: 275, year: null, posterPath: null, overview: null, genres: [] }), "light");
     assert.equal(shouldSkipPodcastNoise("big-picture", "Oscars Mailbag 2026", "Oscars Mailbag 2026"), true);
     assert.equal(shouldSkipPodcastNoise("big-picture", "Heat", "Heat"), false);
+  });
+
+  it("skips Confused Breakfast BRUNCH bonuses and keeps Thursday reviews", () => {
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "BRUNCH: Talking Movies With Our DADS!",
+        "BRUNCH: Talking Movies With Our DADS!"
+      ),
+      true
+    );
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "BRUNCH- We Got These Movie Ratings WRONG...",
+        "BRUNCH- We Got These Movie Ratings WRONG..."
+      ),
+      true
+    );
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "The Shawshank Redemption (1994)",
+        "The Shawshank Redemption"
+      ),
+      false
+    );
+    assert.equal(isBrunchPodcastNoiseTitle("The Confused Breakfast: BRUNCH: Talking Movies"), true);
+    assert.equal(isBrunchPodcastNoiseTitle("The Shawshank Redemption"), false);
+    assert.equal(
+      shouldSkipPodcastNoise("confused-breakfast", "Mailbag: Listener Letters", "Mailbag: Listener Letters"),
+      true
+    );
+  });
+
+  it("does not insert unmatched RSS leftovers as catalog stubs", () => {
+    const existing = new Set<string>();
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "BRUNCH: Talking Movies With Our DADS!",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "BRUNCH: Talking Movies With Our DADS!"
+      }),
+      { action: "skip", reason: "noise" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "An Obscure Topic Episode",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "An Obscure Topic Episode",
+        match: null
+      }),
+      { action: "skip", reason: "unmatched" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "The Shawshank Redemption (1994)",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "The Shawshank Redemption",
+        match: { id: 278 }
+      }),
+      { action: "upsert" }
+    );
   });
 
   it("scrapes IMDb title links and skips chrome", () => {

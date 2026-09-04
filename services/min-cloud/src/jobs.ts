@@ -17,6 +17,9 @@ import { ingestPodcastEpisode } from "./lib/podcast-ingest.js";
 import { rematchClosetPicks } from "./lib/closet-picks-rematch.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
+type JobReport = (stats: JobStats) => Promise<void>;
+
+const backgroundJobNames = new Set<string>();
 
 const bumpRevision = async (app: "watchedit" | "podlink") => {
   await query(
@@ -25,27 +28,83 @@ const bumpRevision = async (app: "watchedit" | "podlink") => {
   );
 };
 
-const recordJob = async (name: string, runner: () => Promise<JobStats>) => {
+const writeJobStats = async (id: string, stats: JobStats) => {
+  await query(`UPDATE job_runs SET stats = $2 WHERE id = $1 AND status = 'running'`, [id, JSON.stringify(stats)]);
+};
+
+const finishJobOk = async (id: string, stats: JobStats) => {
+  await query(`UPDATE job_runs SET status = 'ok', finished_at = NOW(), stats = $2 WHERE id = $1`, [
+    id,
+    JSON.stringify(stats)
+  ]);
+};
+
+const finishJobError = async (id: string, message: string) => {
+  await query(`UPDATE job_runs SET status = 'error', finished_at = NOW(), error = $2 WHERE id = $1`, [id, message]);
+};
+
+export const markInterruptedJobs = async () => {
+  await query(
+    `UPDATE job_runs
+     SET status = 'error', finished_at = NOW(), error = 'interrupted (process restart)'
+     WHERE status = 'running'`
+  );
+};
+
+const recordJob = async (name: string, runner: (report: JobReport) => Promise<JobStats>) => {
   const inserted = await query(
     `INSERT INTO job_runs (name, status) VALUES ($1, 'running') RETURNING id`,
     [name]
   );
   const id = inserted.rows[0].id as string;
   try {
-    const stats = await runner();
-    await query(
-      `UPDATE job_runs SET status = 'ok', finished_at = NOW(), stats = $2 WHERE id = $1`,
-      [id, JSON.stringify(stats)]
-    );
+    const stats = await runner((next) => writeJobStats(id, next));
+    await finishJobOk(id, stats);
     return { id, name, status: "ok" as const, stats };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await query(
-      `UPDATE job_runs SET status = 'error', finished_at = NOW(), error = $2 WHERE id = $1`,
-      [id, message]
-    );
+    await finishJobError(id, message);
     return { id, name, status: "error" as const, error: message };
   }
+};
+
+const startBackgroundJob = async (name: string, runner: (report: JobReport) => Promise<JobStats>) => {
+  if (backgroundJobNames.has(name)) {
+    const existing = await query(
+      `SELECT id FROM job_runs WHERE name = $1 AND status = 'running' ORDER BY started_at DESC LIMIT 1`,
+      [name]
+    );
+    return { id: existing.rows[0]?.id as string | undefined, name, status: "already_running" as const };
+  }
+  const existing = await query(
+    `SELECT id FROM job_runs WHERE name = $1 AND status = 'running' ORDER BY started_at DESC LIMIT 1`,
+    [name]
+  );
+  if (existing.rows.length) {
+    return { id: existing.rows[0].id as string, name, status: "already_running" as const };
+  }
+
+  backgroundJobNames.add(name);
+  const inserted = await query(
+    `INSERT INTO job_runs (name, status, stats) VALUES ($1, 'running', $2::jsonb) RETURNING id`,
+    [name, JSON.stringify({ phase: "starting" })]
+  );
+  const id = inserted.rows[0].id as string;
+
+  void (async () => {
+    try {
+      const stats = await runner((next) => writeJobStats(id, next));
+      await finishJobOk(id, stats);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`${name} failed:`, error);
+      await finishJobError(id, message);
+    } finally {
+      backgroundJobNames.delete(name);
+    }
+  })();
+
+  return { id, name, status: "running" as const };
 };
 
 const upsertEpisode = async (
@@ -544,9 +603,13 @@ export const enrichDefaultPodcasts = async () => {
 };
 
 export const rematchClosetPicksCatalog = async () => {
-  return recordJob("mov.closet.rematch", async () => {
-    const result = await rematchClosetPicks({ fetchFilmPages: true });
+  return startBackgroundJob("mov.closet.rematch", async (report) => {
+    const result = await rematchClosetPicks({
+      fetchFilmPages: true,
+      onProgress: (progress) => report(progress)
+    });
     return {
+      phase: "done",
       scanned: result.scanned,
       matched: result.matched,
       corrected: result.corrected,

@@ -5,6 +5,7 @@ import { lookupItunesPodcast } from "../lib/itunes.js";
 import { isApnsConfigured, topicForApp } from "../lib/apns.js";
 import { config } from "../config.js";
 import { runNamedJob } from "../jobs.js";
+import { withJobProgressLabel } from "../lib/closet-picks-progress.js";
 import { movieIdFromTmdb, podcastIdFromItunes } from "../lib/passwords.js";
 import { applyPhysicalMediaOverlay, importMovieCatalog } from "../lib/catalog-import.js";
 import { normalizePhysicalMedia } from "../lib/physical-media.js";
@@ -43,7 +44,7 @@ router.get("/health", async (_req, res) => {
     episodes: episodes.rows[0].count,
     users: users.rows[0].count,
     revisions: revisions.rows,
-    jobs: jobs.rows,
+    jobs: jobs.rows.map((job) => withJobProgressLabel(job)),
     apns: {
       configured: isApnsConfigured(),
       topics: {
@@ -58,7 +59,7 @@ router.get("/jobs", async (_req, res) => {
   const result = await query(
     `SELECT id, name, status, started_at, finished_at, stats, error FROM job_runs ORDER BY started_at DESC LIMIT 40`
   );
-  res.json({ jobs: result.rows });
+  res.json({ jobs: result.rows.map((job) => withJobProgressLabel(job)) });
 });
 
 router.post("/jobs/:name", async (req, res) => {

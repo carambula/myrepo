@@ -88,7 +88,7 @@ mincloud.baseURL = http://localhost:4000
 - `GET /v1/mov/now-playing` — persisted theater stays (TMDB now-playing + IMAX notes, admin pins, and AMC/Fandango/Atom movie URLs resolved from public sitemaps)
 - Admin Data Operations: Discs (Wikidata physical media) and Theater Stays (refresh/clear/pin/optional ticket-link overrides)
 - `POST /v1/admin/jobs/mov.theaters.refresh` — refresh the shared theater-stay snapshot
-- `POST /v1/admin/jobs/mov.closet.rematch` — re-scrape Closet Picks and rematch TMDB IDs using Criterion year/director (not guest names)
+- `POST /v1/admin/jobs/mov.closet.rematch` — start Closet Picks rematch (returns immediately). Progress is written to `job_runs.stats` and shown on `/v1/admin/health` as `progressLabel`. A second start while one is running returns `already_running`.
 - `GET /v1/me/library/mov` `GET /v1/me/library/pod` — pull on sign-in
 - `POST /v1/admin/pod/import` with PodLink `DefaultPodcasts.json`
 - `POST /v1/admin/mov/physical-media` with WatchedIt `physical_media.json`

@@ -65,12 +65,23 @@
   };
 
   const bindCloudJobs = () => {
+    const REMATCH_JOB = "mov.closet.rematch";
     const status = document.getElementById("cloudJobStatus");
     const healthEl = document.getElementById("cloudHealth");
     const body = document.getElementById("cloudJobsBody");
+    const rematchButton = document.querySelector(`[data-cloud-job="${REMATCH_JOB}"]`);
+    let rematchPoll = null;
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const latestJob = (jobs, name) => (jobs || []).find((job) => job.name === name);
+    const isRematchRunning = (jobs) => latestJob(jobs, REMATCH_JOB)?.status === "running";
     const renderHealth = async () => {
       if (!healthEl || !body) {
-        return;
+        return [];
       }
       const data = await (await fetch("/v1/admin/health")).json();
       healthEl.textContent = [
@@ -81,33 +92,100 @@
         `${data.podcasts} podcasts`,
         `${data.episodes} episodes`
       ].join("   ");
-      body.innerHTML = (data.jobs || [])
+      const jobs = data.jobs || [];
+      body.innerHTML = jobs
         .map(
           (job) =>
-            `<tr><td>${job.name}</td><td>${job.status}</td><td>${job.started_at ? new Date(job.started_at).toLocaleString() : ""}</td></tr>`
+            `<tr><td>${escapeHtml(job.name)}</td><td>${escapeHtml(job.status)}</td><td>${escapeHtml(job.progressLabel || job.error || "")}</td><td>${job.started_at ? new Date(job.started_at).toLocaleString() : ""}</td></tr>`
         )
         .join("");
+      if (rematchButton) {
+        rematchButton.disabled = isRematchRunning(jobs);
+      }
+      const rematch = latestJob(jobs, REMATCH_JOB);
+      if (status && rematch) {
+        if (rematch.status === "running" || status.dataset.watchRematch === "1") {
+          status.textContent = rematch.progressLabel || `Rematch ${rematch.status}…`;
+          if (rematch.status !== "running") {
+            delete status.dataset.watchRematch;
+          }
+        }
+      }
+      return jobs;
+    };
+    const stopRematchPoll = () => {
+      if (rematchPoll) {
+        clearInterval(rematchPoll);
+        rematchPoll = null;
+      }
+    };
+    const watchRematch = async () => {
+      if (status) {
+        status.dataset.watchRematch = "1";
+      }
+      const jobs = await renderHealth();
+      if (!isRematchRunning(jobs)) {
+        stopRematchPoll();
+        return jobs;
+      }
+      if (!rematchPoll) {
+        rematchPoll = setInterval(async () => {
+          try {
+            const next = await renderHealth();
+            if (!isRematchRunning(next)) {
+              stopRematchPoll();
+            }
+          } catch {
+            // keep polling through transient errors
+          }
+        }, 2000);
+      }
+      return jobs;
     };
     document.querySelectorAll("[data-cloud-job]").forEach((button) => {
       button.addEventListener("click", async () => {
+        const name = button.getAttribute("data-cloud-job");
         if (status) {
-          status.textContent = `Running ${button.getAttribute("data-cloud-job")}…`;
+          status.textContent = name === REMATCH_JOB ? "Starting rematch…" : `Running ${name}…`;
         }
         try {
-          const result = await (await fetch(`/v1/admin/jobs/${button.getAttribute("data-cloud-job")}`, { method: "POST" })).json();
+          const result = await (await fetch(`/v1/admin/jobs/${name}`, { method: "POST" })).json();
+          if (name === REMATCH_JOB) {
+            if (status) {
+              status.dataset.watchRematch = "1";
+              if (result.status === "already_running") {
+                status.textContent = "Rematch already running — showing live progress.";
+              } else if (result.status === "running") {
+                status.textContent = "Rematch started…";
+              } else {
+                status.textContent = result.error || result.progressLabel || "Rematch ran.";
+              }
+            }
+            await watchRematch();
+            return;
+          }
           if (status) {
             status.textContent = result.status === "ok" ? "Job finished." : result.error || "Job ran.";
           }
           await renderHealth();
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Job failed.";
+          if (name === REMATCH_JOB && /load failed|failed to fetch|networkerror|aborted/i.test(message)) {
+            if (status) {
+              status.dataset.watchRematch = "1";
+              status.textContent = "Browser dropped the wait — checking whether rematch is still running…";
+            }
+            await watchRematch();
+            return;
+          }
           if (status) {
-            status.textContent = error instanceof Error ? error.message : "Job failed.";
+            status.textContent = message;
           }
         }
       });
     });
     if (token()) {
-      renderHealth().catch(() => {});
+      watchRematch().catch(() => {});
     }
   };
 

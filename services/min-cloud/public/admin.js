@@ -35,7 +35,7 @@ const renderHealth = (data) => {
   document.getElementById("jobsBody").innerHTML = (data.jobs || [])
     .map(
       (job) =>
-        `<tr><td>${job.name}</td><td>${job.status}</td><td>${new Date(job.started_at).toLocaleString()}</td></tr>`
+        `<tr><td>${job.name}</td><td>${job.status}</td><td>${job.progressLabel || job.error || ""}</td><td>${new Date(job.started_at).toLocaleString()}</td></tr>`
     )
     .join("");
 };
@@ -60,7 +60,15 @@ document.querySelectorAll("[data-job]").forEach((button) => {
   button.addEventListener("click", async () => {
     try {
       const result = await api(`/v1/admin/jobs/${button.getAttribute("data-job")}`, { method: "POST" });
-      toast(result.status === "ok" ? "Job finished" : result.error || "Job ran");
+      toast(
+        result.status === "ok"
+          ? "Job finished"
+          : result.status === "running"
+            ? "Job started"
+            : result.status === "already_running"
+              ? "Job already running"
+              : result.error || "Job ran"
+      );
       loadHealth();
     } catch (error) {
       toast(error.message);

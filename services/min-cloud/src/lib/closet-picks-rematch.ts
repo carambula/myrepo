@@ -17,11 +17,34 @@ import { resolveTmdbMatch } from "./podcast-ingest.js";
 import { fetchTmdbMovieDetails } from "./tmdb.js";
 import { config } from "../config.js";
 
+export type ClosetPicksRematchProgress = {
+  phase:
+    | "fetching-index"
+    | "scraping-episodes"
+    | "fetching-film-pages"
+    | "loading-wikidata"
+    | "matching"
+    | "done";
+  episodeDone?: number;
+  episodeTotal?: number;
+  filmPageDone?: number;
+  filmPageTotal?: number;
+  matchDone?: number;
+  matchTotal?: number;
+  scanned?: number;
+  matched?: number;
+  corrected?: number;
+  unchanged?: number;
+  added?: number;
+  missing?: number;
+};
+
 export type ClosetPicksRematchOptions = {
   dryRun?: boolean;
   episodeLimit?: number;
   fetchFilmPages?: boolean;
   preferWayback?: boolean;
+  onProgress?: (progress: ClosetPicksRematchProgress) => void | Promise<void>;
 };
 
 export type ClosetPicksRematchItem = {
@@ -77,29 +100,64 @@ const detailsPayload = (details: Record<string, unknown>, film: CollapsedClosetP
   };
 };
 
+const reportProgress = async (
+  onProgress: ClosetPicksRematchOptions["onProgress"],
+  progress: ClosetPicksRematchProgress
+) => {
+  try {
+    await onProgress?.(progress);
+  } catch {
+    // progress is best-effort
+  }
+};
+
 const scrapeClosetPicksFilms = async (options: ClosetPicksRematchOptions) => {
+  await reportProgress(options.onProgress, { phase: "fetching-index" });
   const indexHtml = await fetchClosetPicksPage(CLOSET_PICKS_INDEX_URL, {
     preferWayback: options.preferWayback
   });
   const episodes = parseClosetPicksIndex(indexHtml);
   const selected = options.episodeLimit ? episodes.slice(0, options.episodeLimit) : episodes;
   const visits: Array<{ episode: ClosetPicksEpisode; films: ReturnType<typeof parseClosetPicksEpisode> }> = [];
+  let episodeDone = 0;
+  await reportProgress(options.onProgress, {
+    phase: "scraping-episodes",
+    episodeDone: 0,
+    episodeTotal: selected.length
+  });
   await mapPool(selected, 6, async (episode) => {
     try {
       const html = await fetchClosetPicksPage(episode.episodeUrl, { preferWayback: options.preferWayback });
       visits.push({ episode, films: parseClosetPicksEpisode(html) });
     } catch {
       // skip unreachable episode pages
+    } finally {
+      episodeDone += 1;
+      await reportProgress(options.onProgress, {
+        phase: "scraping-episodes",
+        episodeDone,
+        episodeTotal: selected.length
+      });
     }
   });
   return collapseClosetPicks(visits);
 };
 
-const fillFilmPageMetadata = async (films: CollapsedClosetPick[], preferWayback?: boolean) => {
+const fillFilmPageMetadata = async (
+  films: CollapsedClosetPick[],
+  options: Pick<ClosetPicksRematchOptions, "preferWayback" | "onProgress">
+) => {
   const needsPage = films.filter((film) => film.filmUrl && (!film.year || !film.director));
+  let filmPageDone = 0;
+  await reportProgress(options.onProgress, {
+    phase: "fetching-film-pages",
+    filmPageDone: 0,
+    filmPageTotal: needsPage.length,
+    scanned: films.length
+  });
   await mapPool(needsPage, 4, async (film) => {
     try {
-      const html = await fetchClosetPicksPage(film.filmUrl as string, { preferWayback });
+      const html = await fetchClosetPicksPage(film.filmUrl as string, { preferWayback: options.preferWayback });
       const parsed = parseCriterionFilmPage(html);
       if (!film.year && parsed.year) {
         film.year = parsed.year;
@@ -112,6 +170,14 @@ const fillFilmPageMetadata = async (films: CollapsedClosetPick[], preferWayback?
       }
     } catch {
       // keep card metadata
+    } finally {
+      filmPageDone += 1;
+      await reportProgress(options.onProgress, {
+        phase: "fetching-film-pages",
+        filmPageDone,
+        filmPageTotal: needsPage.length,
+        scanned: films.length
+      });
     }
   });
   return films;
@@ -135,7 +201,7 @@ const writeMatch = async (existing: AdminMovie | undefined, film: CollapsedClose
   const details = await fetchTmdbMovieDetails(tmdbId, config.tmdbApiKey);
   const payload = detailsPayload(details, film);
   if (existing?.__movieId && existing.tmdbId && existing.tmdbId !== tmdbId) {
-    await deleteAdminRow({ ...existing, sourceIdentifier: CLOSET_PICKS_SOURCE_ID });
+    await deleteAdminRow({ ...existing, sourceIdentifier: CLOSET_PICKS_SOURCE_ID }, { bump: false });
   }
   await upsertAdminMovie(payload, existing?.tmdbId === tmdbId ? existing : null, { bump: false });
 };
@@ -143,9 +209,10 @@ const writeMatch = async (existing: AdminMovie | undefined, film: CollapsedClose
 export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}) => {
   const films = await scrapeClosetPicksFilms(options);
   if (options.fetchFilmPages !== false) {
-    await fillFilmPageMetadata(films, options.preferWayback);
+    await fillFilmPageMetadata(films, options);
   }
 
+  await reportProgress(options.onProgress, { phase: "loading-wikidata", scanned: films.length });
   let wikiHits: CriterionTmdbHit[] = [];
   try {
     wikiHits = await loadCriterionTmdbIndex();
@@ -168,6 +235,19 @@ export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}
   let unchanged = 0;
   let added = 0;
   let missing = 0;
+  let matchDone = 0;
+
+  await reportProgress(options.onProgress, {
+    phase: "matching",
+    matchDone: 0,
+    matchTotal: films.length,
+    scanned: films.length,
+    matched,
+    corrected,
+    unchanged,
+    added,
+    missing
+  });
 
   for (const film of films) {
     const existing = byTitle.get(normalizeClosetPicksTitle(film.title));
@@ -182,38 +262,62 @@ export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}
         previousTmdbId: existing?.tmdbId ?? null,
         status: "missing"
       });
-      continue;
-    }
-
-    const alreadyCorrect = existing?.tmdbId === tmdbId && !closetPicksMatchLooksWrong(existing, film);
-    const status = !existing ? "added" : existing.tmdbId === tmdbId ? (alreadyCorrect ? "unchanged" : "matched") : "corrected";
-    if (status === "added") {
-      added += 1;
-    } else if (status === "corrected") {
-      corrected += 1;
-    } else if (status === "unchanged") {
-      unchanged += 1;
     } else {
-      matched += 1;
+      const alreadyCorrect = existing?.tmdbId === tmdbId && !closetPicksMatchLooksWrong(existing, film);
+      const status = !existing ? "added" : existing.tmdbId === tmdbId ? (alreadyCorrect ? "unchanged" : "matched") : "corrected";
+      if (status === "added") {
+        added += 1;
+      } else if (status === "corrected") {
+        corrected += 1;
+      } else if (status === "unchanged") {
+        unchanged += 1;
+      } else {
+        matched += 1;
+      }
+
+      items.push({
+        title: film.title,
+        director: film.director,
+        year: film.year,
+        tmdbId,
+        previousTmdbId: existing?.tmdbId ?? null,
+        status
+      });
+
+      if (!options.dryRun && status !== "unchanged") {
+        await writeMatch(existing, film, tmdbId);
+      }
     }
 
-    items.push({
-      title: film.title,
-      director: film.director,
-      year: film.year,
-      tmdbId,
-      previousTmdbId: existing?.tmdbId ?? null,
-      status
+    matchDone += 1;
+    await reportProgress(options.onProgress, {
+      phase: "matching",
+      matchDone,
+      matchTotal: films.length,
+      scanned: films.length,
+      matched,
+      corrected,
+      unchanged,
+      added,
+      missing
     });
-
-    if (!options.dryRun && status !== "unchanged") {
-      await writeMatch(existing, film, tmdbId);
-    }
   }
 
   if (!options.dryRun && (matched || corrected || added)) {
     await bumpWatchedIt();
   }
+
+  await reportProgress(options.onProgress, {
+    phase: "done",
+    matchDone,
+    matchTotal: films.length,
+    scanned: films.length,
+    matched,
+    corrected,
+    unchanged,
+    added,
+    missing
+  });
 
   return {
     scanned: films.length,

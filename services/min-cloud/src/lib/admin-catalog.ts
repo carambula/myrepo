@@ -252,7 +252,7 @@ export const upsertAdminMovie = async (
   return id;
 };
 
-export const deleteAdminRow = async (row: AdminMovie) => {
+export const deleteAdminRow = async (row: AdminMovie, options: { bump?: boolean } = {}) => {
   if (row.sourceIdentifier && row.__movieId) {
     await query(`DELETE FROM mov_movie_sources WHERE movie_id = $1 AND source_id = $2`, [
       row.__movieId,
@@ -274,7 +274,9 @@ export const deleteAdminRow = async (row: AdminMovie) => {
   } else if (row.__movieId) {
     await query(`DELETE FROM mov_movies WHERE id = $1`, [row.__movieId]);
   }
-  await bumpWatchedIt();
+  if (options.bump !== false) {
+    await bumpWatchedIt();
+  }
 };
 
 export const adminCatalogHealth = (movies: AdminMovie[], sources: AdminSource[]) => {

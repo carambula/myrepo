@@ -13,7 +13,10 @@ import {
   pickBestTmdbMatch,
   prepareMovieQuery,
   scoreTmdbMatch,
-  shouldSkipPodcastNoise
+  shouldSkipPodcastNoise,
+  decidePodcastEpisodeIngest,
+  isBrunchPodcastNoiseTitle,
+  isAvailabilityBlurbTitle
 } from "../src/lib/title-match.ts";
 
 describe("title cleaning and matching", () => {
@@ -167,10 +170,108 @@ describe("title cleaning and matching", () => {
     assert.equal(shouldSkipPodcastNoise("big-picture", "Heat", "Heat"), false);
   });
 
+  it("skips Confused Breakfast BRUNCH bonuses and keeps Thursday reviews", () => {
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "BRUNCH: Talking Movies With Our DADS!",
+        "BRUNCH: Talking Movies With Our DADS!"
+      ),
+      true
+    );
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "BRUNCH- We Got These Movie Ratings WRONG...",
+        "BRUNCH- We Got These Movie Ratings WRONG..."
+      ),
+      true
+    );
+    assert.equal(
+      shouldSkipPodcastNoise(
+        "confused-breakfast",
+        "The Shawshank Redemption (1994)",
+        "The Shawshank Redemption"
+      ),
+      false
+    );
+    assert.equal(isBrunchPodcastNoiseTitle("The Confused Breakfast: BRUNCH: Talking Movies"), true);
+    assert.equal(isBrunchPodcastNoiseTitle("The Shawshank Redemption"), false);
+    assert.equal(
+      shouldSkipPodcastNoise("confused-breakfast", "Mailbag: Listener Letters", "Mailbag: Listener Letters"),
+      true
+    );
+  });
+
+  it("skips availability blurbs from any source and keeps real movie titles", () => {
+    assert.equal(
+      shouldSkipPodcastNoise("criterion-closet-picks", "Available January 15, 2025", "Available January 15, 2025"),
+      true
+    );
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "Available now", "Available now"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available March 4", "Available March 4"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available 4/15/26", "Available 4/15/26"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available Feb 4, 2025", "Available Feb 4, 2025"), true);
+    assert.equal(
+      shouldSkipPodcastNoise("criterion-closet-picks", "Released Dec 10, 2024", "Released Dec 10, 2024"),
+      true
+    );
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "The Shawshank Redemption", "The Shawshank Redemption"), false);
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "Heat", "Heat"), false);
+    assert.equal(isAvailabilityBlurbTitle("Available January 15, 2025"), true);
+    assert.equal(isAvailabilityBlurbTitle("Available now"), true);
+    assert.equal(isAvailabilityBlurbTitle("The Shawshank Redemption"), false);
+    assert.equal(isAvailabilityBlurbTitle("Heat"), false);
+    assert.equal(isAvailabilityBlurbTitle("Everything Available"), false);
+  });
+
+  it("does not insert unmatched RSS leftovers as catalog stubs", () => {
+    const existing = new Set<string>();
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "BRUNCH: Talking Movies With Our DADS!",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "BRUNCH: Talking Movies With Our DADS!"
+      }),
+      { action: "skip", reason: "noise" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "An Obscure Topic Episode",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "An Obscure Topic Episode",
+        match: null
+      }),
+      { action: "skip", reason: "unmatched" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "The Shawshank Redemption (1994)",
+        sourceIdentifier: "confused-breakfast",
+        existingTitles: existing,
+        preparedTitle: "The Shawshank Redemption",
+        match: { id: 278 }
+      }),
+      { action: "upsert" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "Available Feb 4, 2025",
+        sourceIdentifier: "criterion-closet-picks",
+        existingTitles: existing,
+        preparedTitle: "Available Feb 4, 2025",
+        match: { id: 1 }
+      }),
+      { action: "skip", reason: "noise" }
+    );
+  });
+
   it("scrapes IMDb title links and skips chrome", () => {
     const items = scrapeListItems(
       "https://www.imdb.com/list/ls042702401/",
-      `<a href="/title/tt0075314/">Taxi Driver</a><a href="/chart">IMDb</a><a href="/title/tt0114709/">Toy Story</a>`
+      `<a href="/title/tt0075314/">Taxi Driver</a><a href="/chart">IMDb</a><a href="/title/tt0114709/">Toy Story</a><a href="/title/tt0000001/">Available Feb 4, 2025</a>`
     );
     assert.deepEqual(items.map((item) => item.title), ["Taxi Driver", "Toy Story"]);
   });

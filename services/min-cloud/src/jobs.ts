@@ -13,7 +13,7 @@ import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
 import { bumpWatchedIt } from "./lib/admin-catalog.js";
 import { resolveNowPlaying } from "./lib/theater-stays.js";
-import { ingestPodcastEpisode } from "./lib/podcast-ingest.js";
+import { ingestPodcastEpisode, purgePodcastNoiseMovies } from "./lib/podcast-ingest.js";
 import { rematchClosetPicks } from "./lib/closet-picks-rematch.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
@@ -285,6 +285,7 @@ export const refreshPodcastFeeds = async (limit = 80) => {
 
 export const refreshMoviePodcastSources = async () => {
   return recordJob("mov.feeds.refresh", async () => {
+    const purged = await purgePodcastNoiseMovies();
     const sources = await query(
       `SELECT identifier, name, url FROM mov_sources WHERE type = 'podcast' AND enabled = TRUE AND url IS NOT NULL`
     );
@@ -348,7 +349,15 @@ export const refreshMoviePodcastSources = async () => {
     if (addedMovies > 0) {
       await bumpWatchedIt();
     }
-    return { scanned: sources.rowCount ?? 0, refreshed, failed, addedMovies, skippedMovies };
+    return {
+      scanned: sources.rowCount ?? 0,
+      refreshed,
+      failed,
+      addedMovies,
+      skippedMovies,
+      purgedMovies: purged.purgedMovies,
+      purgedLinks: purged.purgedLinks
+    };
   });
 };
 

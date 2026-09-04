@@ -1,13 +1,15 @@
 import { config } from "../config.js";
-import { upsertAdminMovie } from "./admin-catalog.js";
+import { query } from "../db.js";
+import { bumpWatchedIt, upsertAdminMovie } from "./admin-catalog.js";
 import { fetchTmdbMovieDetails, searchTmdbMovies } from "./tmdb.js";
 import {
+  decidePodcastEpisodeIngest,
   determineItemStatus,
+  isNonMovieTitle,
   matchNeedsCreditCheck,
   pickBestTmdbMatch,
   prepareMovieQuery,
   scoreTmdbMatch,
-  shouldSkipPodcastNoise,
   type EpisodeMovieHints,
   type MatchHints,
   type TmdbCreditsHint,
@@ -101,29 +103,30 @@ export const ingestPodcastEpisode = async (input: {
   existingTitles: Set<string>;
   bump?: boolean;
 }) => {
-  if (input.existingTitles.has(input.sourceTitle)) {
-    return { added: false, skipped: true, reason: "duplicate" as const };
-  }
   const prepared = prepareMovieQuery(input.title || input.sourceTitle, input.description);
-  if (!prepared.title || shouldSkipPodcastNoise(input.sourceIdentifier, input.sourceTitle, prepared.title)) {
-    return { added: false, skipped: true, reason: "noise" as const };
+  const early = decidePodcastEpisodeIngest({
+    sourceTitle: input.sourceTitle,
+    sourceIdentifier: input.sourceIdentifier,
+    existingTitles: input.existingTitles,
+    preparedTitle: prepared.title
+  });
+  if (early.action === "skip") {
+    return { added: false, skipped: true, reason: early.reason };
   }
   const match = await resolveTmdbMatch(prepared);
+  // Do not upsert unmatched leftovers — that created empty BRUNCH / topic stubs.
+  const decided = decidePodcastEpisodeIngest({
+    sourceTitle: input.sourceTitle,
+    sourceIdentifier: input.sourceIdentifier,
+    existingTitles: input.existingTitles,
+    preparedTitle: prepared.title,
+    match
+  });
   if (!match) {
-    await upsertAdminMovie(
-    {
-      title: prepared.title,
-      sourceIdentifier: input.sourceIdentifier,
-      sourceTitle: input.sourceTitle,
-      episodeDate: input.episodeDate ?? null,
-      overview: input.description ?? null,
-      podcastEpisodeDescription: input.description ?? null
-    },
-    null,
-    { bump: input.bump !== false }
-  );
-    input.existingTitles.add(input.sourceTitle);
-    return { added: true, skipped: false, reason: "unmatched" as const, title: prepared.title };
+    return { added: false, skipped: true, reason: "unmatched" as const };
+  }
+  if (decided.action === "skip") {
+    return { added: false, skipped: true, reason: decided.reason };
   }
   const details = await fetchTmdbMovieDetails(match.id, config.tmdbApiKey);
   const releaseDate = details.release_date ? String(details.release_date) : "";
@@ -167,4 +170,89 @@ export const ingestPodcastEpisode = async (input: {
     title: String(details.title || prepared.title),
     tmdbId: Number(details.id)
   };
+};
+
+const updateSourceMovieCount = async (sourceId: string) => {
+  await query(
+    `
+    UPDATE mov_sources SET movie_count = (
+      SELECT COUNT(*) FROM mov_movie_sources WHERE source_id = $1
+    ), updated_at = NOW()
+    WHERE identifier = $1
+    `,
+    [sourceId]
+  );
+};
+
+/**
+ * Remove catalog leftovers that are not movies: Confused Breakfast BRUNCH stubs
+ * and Criterion-style "Available …" / "Released …" availability badges.
+ * Does not delete matched movies that only mention those words in overview.
+ */
+export const purgePodcastNoiseMovies = async () => {
+  const candidates = await query(
+    `
+    SELECT ms.movie_id, ms.source_id, ms.source_title, m.title, m.tmdb_id
+    FROM mov_movie_sources ms
+    JOIN mov_movies m ON m.id = ms.movie_id
+    LEFT JOIN mov_sources s ON s.identifier = ms.source_id
+    WHERE (
+      ms.source_id = 'confused-breakfast'
+      AND (
+        COALESCE(ms.source_title, '') ~* 'brunch'
+        OR COALESCE(m.title, '') ~* 'brunch'
+      )
+    )
+    OR (
+      m.tmdb_id IS NULL
+      AND (s.type IS NULL OR s.type = 'podcast')
+      AND (
+        COALESCE(ms.source_title, '') ~* 'brunch'
+        OR COALESCE(m.title, '') ~* 'brunch'
+      )
+    )
+    OR (
+      COALESCE(ms.source_title, '') ~* '^\\s*(available|released)\\b'
+      OR COALESCE(m.title, '') ~* '^\\s*(available|released)\\b'
+    )
+    `
+  );
+
+  const sourceIds = new Set<string>();
+  const movieIds = new Set<string>();
+  let purgedLinks = 0;
+
+  for (const row of candidates.rows) {
+    const sourceTitle = String(row.source_title || "");
+    const title = String(row.title || "");
+    if (!isNonMovieTitle(sourceTitle) && !isNonMovieTitle(title)) {
+      continue;
+    }
+    await query(`DELETE FROM mov_movie_sources WHERE movie_id = $1 AND source_id = $2`, [
+      row.movie_id,
+      row.source_id
+    ]);
+    purgedLinks += 1;
+    sourceIds.add(String(row.source_id));
+    movieIds.add(String(row.movie_id));
+  }
+
+  let purgedMovies = 0;
+  for (const movieId of movieIds) {
+    const remaining = await query(`SELECT 1 FROM mov_movie_sources WHERE movie_id = $1 LIMIT 1`, [movieId]);
+    if (!remaining.rowCount) {
+      await query(`DELETE FROM mov_movies WHERE id = $1`, [movieId]);
+      purgedMovies += 1;
+    }
+  }
+
+  for (const sourceId of sourceIds) {
+    await updateSourceMovieCount(sourceId);
+  }
+
+  if (purgedLinks > 0 || purgedMovies > 0) {
+    await bumpWatchedIt();
+  }
+
+  return { purgedMovies, purgedLinks };
 };

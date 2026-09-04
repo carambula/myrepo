@@ -1,7 +1,11 @@
+import { isAvailabilityBlurbTitle } from "./title-match.js";
+
 export type ScrapedTitle = {
   title: string;
   rank: number;
 };
+
+const isScrapedNoiseTitle = (title: string) => !title || title.length > 200 || isAvailabilityBlurbTitle(title);
 
 const decode = (value: string) =>
   value
@@ -21,7 +25,7 @@ export const scrapeRottenTomatoesGuide = (html: string): ScrapedTitle[] => {
       continue;
     }
     const title = decode(textMatch[1]);
-    if (!title || title.length > 200) {
+    if (isScrapedNoiseTitle(title)) {
       continue;
     }
     const key = title.toLowerCase();
@@ -44,7 +48,7 @@ export const scrapeImdbList = (html: string): ScrapedTitle[] => {
       continue;
     }
     const title = decode(textMatch[1]).replace(/\(\d{4}\)\s*$/, "").trim();
-    if (!title || title.length > 200) {
+    if (isScrapedNoiseTitle(title)) {
       continue;
     }
     const key = title.toLowerCase();
@@ -65,7 +69,7 @@ const scrapeGenericLinks = (html: string): ScrapedTitle[] => {
   for (const match of matches) {
     const text = decode(match.replace(/<[^>]+>/g, ""));
     const key = text.toLowerCase();
-    if (!text || seen.has(key) || skip.test(text)) {
+    if (!text || seen.has(key) || skip.test(text) || isAvailabilityBlurbTitle(text)) {
       continue;
     }
     seen.add(key);

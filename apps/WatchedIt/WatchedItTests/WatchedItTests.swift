@@ -64,6 +64,65 @@ struct WatchedItTests {
         #expect(!service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Heat", cleanedTitle: "Heat"))
     }
 
+    @Test func podcastIntakeSkipsConfusedBreakfastBrunchAndBlankCheckNoise() async throws {
+        let service = PodcastEpisodeIntakeService.shared
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "BRUNCH: Talking Movies With Our DADS!",
+            cleanedTitle: "BRUNCH: Talking Movies With Our DADS!"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "BRUNCH- We Got These Movie Ratings WRONG...",
+            cleanedTitle: "BRUNCH- We Got These Movie Ratings WRONG..."
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "confused-breakfast",
+            rawTitle: "The Shawshank Redemption (1994)",
+            cleanedTitle: "The Shawshank Redemption"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "blank-check",
+            rawTitle: "Patreon Mailbag",
+            cleanedTitle: "Patreon Mailbag"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "blank-check",
+            rawTitle: "The Matrix",
+            cleanedTitle: "The Matrix"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available January 15, 2025",
+            cleanedTitle: "Available January 15, 2025"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "Available now",
+            cleanedTitle: "Available now"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available March 4",
+            cleanedTitle: "Available March 4"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available 4/15/26",
+            cleanedTitle: "Available 4/15/26"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "The Shawshank Redemption",
+            cleanedTitle: "The Shawshank Redemption"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "Heat",
+            cleanedTitle: "Heat"
+        ))
+    }
+
     @Test func podcastTitleCleaningRemovesTrailingYearSuffix() async throws {
         let service = PodcastEpisodeIntakeService.shared
         #expect(service.cleanPodcastTitle("Heat (1995)") == "Heat")

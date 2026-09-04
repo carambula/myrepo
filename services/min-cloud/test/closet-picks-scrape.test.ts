@@ -52,6 +52,9 @@ describe("closet-picks scrape", () => {
     assert.equal(shouldSkipClosetPicksFilmTitle("The Complete Jacques Tati"), true);
     assert.equal(shouldSkipClosetPicksFilmTitle("Rumble Fish"), false);
     assert.equal(shouldSkipClosetPicksFilmTitle("Released Dec 10, 2024"), true);
+    assert.equal(shouldSkipClosetPicksFilmTitle("Available Feb 4, 2025"), true);
+    assert.equal(shouldSkipClosetPicksFilmTitle("Available now"), true);
+    assert.equal(shouldSkipClosetPicksFilmTitle("Available Mar 4, 2025"), true);
   });
 
   it("reads director and year from a credit line", () => {

@@ -40,6 +40,34 @@ const SHOW_PREFIXES = [
   /^(?:miniseries|minisode|rewatch(?:ables)?)\s*[:\-–—]\s*/i
 ];
 
+const stripShowAffixes = (title: string) => {
+  let cleaned = String(title || "").replace(/\s+/g, " ").trim();
+  for (const pattern of SHOW_PREFIXES) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  for (const pattern of SHOW_SUFFIXES) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.trim();
+};
+
+const BRUNCH_TITLE_PATTERN = /^\s*brunch\b/i;
+const AVAILABILITY_BLURB_PATTERN = /^\s*(?:available|released)\b/i;
+
+/** Confused Breakfast Monday bonuses are titled BRUNCH, not a single movie. */
+export const isBrunchPodcastNoiseTitle = (title: string) => {
+  const raw = String(title || "");
+  return BRUNCH_TITLE_PATTERN.test(raw) || BRUNCH_TITLE_PATTERN.test(stripShowAffixes(raw));
+};
+
+/** Criterion shop chrome and similar list leftovers: "Available Feb 4, 2025", "Released Dec 10, 2024", "Available now". */
+export const isAvailabilityBlurbTitle = (title: string) => {
+  const raw = String(title || "");
+  return AVAILABILITY_BLURB_PATTERN.test(raw) || AVAILABILITY_BLURB_PATTERN.test(stripShowAffixes(raw));
+};
+
+export const isNonMovieTitle = (title: string) => isBrunchPodcastNoiseTitle(title) || isAvailabilityBlurbTitle(title);
+
 const SHOW_SUFFIXES = [
   /\s*[:\-–—]\s*(?:the rewatchables|the big picture|blank check|the confused breakfast)\s*$/i
 ];
@@ -472,6 +500,9 @@ export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: strin
   if (!normalizeEpisodeTitle(cleanedTitle)) {
     return true;
   }
+  if (isNonMovieTitle(rawTitle) || isNonMovieTitle(cleanedTitle)) {
+    return true;
+  }
   const haystack = `${rawTitle} ${cleanedTitle}`;
   if (sourceIdentifier === "big-picture") {
     return /\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b/i.test(
@@ -481,5 +512,32 @@ export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: strin
   if (sourceIdentifier === "blank-check") {
     return /\b(mailbag|patreon|miniseries announcement|housekeeping)\b/i.test(haystack);
   }
+  if (sourceIdentifier === "confused-breakfast") {
+    return /\b(mailbag|q\s*&\s*a|q and a)\b/i.test(haystack);
+  }
   return false;
+};
+
+export type PodcastIngestDecision =
+  | { action: "skip"; reason: "duplicate" | "noise" | "unmatched" }
+  | { action: "upsert" };
+
+/** Decide whether auto ingest should commit a catalog row. Unmatched must not insert stubs. */
+export const decidePodcastEpisodeIngest = (input: {
+  sourceTitle: string;
+  sourceIdentifier: string;
+  existingTitles: Set<string>;
+  preparedTitle: string;
+  match?: { id: number } | null;
+}): PodcastIngestDecision => {
+  if (input.existingTitles.has(input.sourceTitle)) {
+    return { action: "skip", reason: "duplicate" };
+  }
+  if (!input.preparedTitle || shouldSkipPodcastNoise(input.sourceIdentifier, input.sourceTitle, input.preparedTitle)) {
+    return { action: "skip", reason: "noise" };
+  }
+  if (input.match === null) {
+    return { action: "skip", reason: "unmatched" };
+  }
+  return { action: "upsert" };
 };

@@ -16,7 +16,7 @@ import { isClosetPicksSource, prepareClosetPicksQuery } from "../lib/closet-pick
 import { fetchImdbIdFromTmdb, fetchStreamingServices, fetchTmdbMovieDetails, searchTmdbMovies } from "../lib/tmdb.js";
 import { parseRssFeed } from "../lib/rss.js";
 import { scrapeListItems } from "../lib/list-scrape.js";
-import { ingestPodcastEpisode, resolveTmdbMatch } from "../lib/podcast-ingest.js";
+import { ingestPodcastEpisode, purgePodcastNoiseMovies, resolveTmdbMatch } from "../lib/podcast-ingest.js";
 import {
   determineItemStatus,
   prepareMovieQuery,
@@ -805,6 +805,7 @@ router.post("/dedupe/commit", async (req, res) => {
 
 router.post("/feeds/refresh-all", async (req, res) => {
   await takeSnapshot(req, { trigger: "before-feeds-refresh" });
+  const purged = await purgePodcastNoiseMovies();
   const sources = await loadAdminSources();
   let addedCount = 0;
   let skippedCount = 0;
@@ -813,8 +814,19 @@ router.post("/feeds/refresh-all", async (req, res) => {
     addedCount += result.addedCount;
     skippedCount += result.skippedCount;
   }
-  await recordAudit(req, "catalog.feeds-refresh", { addedCount, skippedCount });
-  res.json({ success: true, addedCount, skippedCount });
+  await recordAudit(req, "catalog.feeds-refresh", {
+    addedCount,
+    skippedCount,
+    purgedMovies: purged.purgedMovies,
+    purgedLinks: purged.purgedLinks
+  });
+  res.json({
+    success: true,
+    addedCount,
+    skippedCount,
+    purgedMovies: purged.purgedMovies,
+    purgedLinks: purged.purgedLinks
+  });
 });
 
 router.post("/podcasts/refresh", async (req, res) => {

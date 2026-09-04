@@ -41,6 +41,7 @@ struct SearchScreenView: View {
     @State private var pendingReleaseYearFilter: Int? = nil
     @State private var pendingGenreFilter: String? = nil
     @State private var pendingRatingFilter: String? = nil
+    @State private var pendingPhysicalMediaFilter: PhysicalMediaFilter? = nil
     @State private var pendingPhysicalMediaQuery: String? = nil
     @State private var pendingTheatricalFilter: TheatricalFilter? = nil
     @State private var session: MovieSearchSession? = nil
@@ -190,6 +191,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaFilter = nil
         pendingPhysicalMediaQuery = nil
         pendingTheatricalFilter = nil
         pendingPersonFilter = trimmedName
@@ -201,6 +203,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = year
         pendingGenreFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaFilter = nil
         pendingPhysicalMediaQuery = nil
         pendingTheatricalFilter = nil
         selectedMovie = nil
@@ -212,6 +215,7 @@ struct SearchScreenView: View {
         pendingPersonFilter = nil
         pendingReleaseYearFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaFilter = nil
         pendingPhysicalMediaQuery = nil
         pendingTheatricalFilter = nil
         pendingGenreFilter = trimmedGenre
@@ -225,6 +229,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = trimmedRating
+        pendingPhysicalMediaFilter = nil
         pendingPhysicalMediaQuery = nil
         pendingTheatricalFilter = nil
         selectedMovie = nil
@@ -237,7 +242,8 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = nil
-        pendingPhysicalMediaQuery = trimmed
+        pendingPhysicalMediaFilter = PhysicalMediaFilter.fromSearchToken(trimmed)
+        pendingPhysicalMediaQuery = pendingPhysicalMediaFilter == nil ? trimmed : nil
         pendingTheatricalFilter = nil
         selectedMovie = nil
     }
@@ -247,6 +253,7 @@ struct SearchScreenView: View {
         pendingReleaseYearFilter = nil
         pendingGenreFilter = nil
         pendingRatingFilter = nil
+        pendingPhysicalMediaFilter = nil
         pendingPhysicalMediaQuery = nil
         pendingTheatricalFilter = filter
         selectedMovie = nil
@@ -268,6 +275,7 @@ struct SearchScreenView: View {
             session?.updateQuery("")
             session?.updateFilters {
                 $0.selectedReleaseYear = pendingYear
+                $0.selectedPeriod = nil
                 $0.selectedPersonName = nil
             }
             return
@@ -293,9 +301,16 @@ struct SearchScreenView: View {
             return
         }
 
+        if let pendingMediaFilter = pendingPhysicalMediaFilter {
+            pendingPhysicalMediaFilter = nil
+            pendingPhysicalMediaQuery = nil
+            session?.updateQuery("")
+            session?.updateFilters { $0.physicalMediaFilter = pendingMediaFilter }
+            return
+        }
+
         if let pendingMedia = pendingPhysicalMediaQuery {
             pendingPhysicalMediaQuery = nil
-            session?.updateFilters { $0 = MovieSearchFilters() }
             session?.updateQuery(pendingMedia)
             return
         }
@@ -438,140 +453,12 @@ struct SearchScreenView: View {
 
     private func expandedFilterToolbar(session: MovieSearchSession) -> some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
-            searchFilterMenus(session: session)
-
-            HStack(spacing: compactExpandedIconSpacing) {
-                if context.allowsListFilter {
-                    Menu {
-                        Button {
-                            session.updateFilters {
-                                $0.selectedListIdentifier = nil
-                                $0.sortOption = .episodeDateDesc
-                            }
-                        } label: {
-                            if session.filters.selectedListIdentifier == nil {
-                                Label("All Lists", systemImage: "checkmark")
-                            } else {
-                                Text("All Lists")
-                            }
-                        }
-                        if !preferredDataSources.isEmpty {
-                            Divider()
-                            ForEach(preferredDataSources) { list in
-                                Button {
-                                    session.updateFilters {
-                                        $0.selectedListIdentifier = list.identifier
-                                        if list.isRankedList {
-                                            $0.sortOption = .ranking
-                                        }
-                                    }
-                                } label: {
-                                    if session.filters.selectedListIdentifier == list.identifier {
-                                        Label(list.name, systemImage: "checkmark")
-                                    } else {
-                                        Text(list.name)
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        toolbarIcon(DesignSystem.Icon.listRectangle, isActive: session.filters.selectedListIdentifier != nil)
-                    }
-                }
-
-                Menu {
-                    Button {
-                        session.updateFilters { $0.selectedStreamingService = nil }
-                    } label: {
-                        if session.filters.selectedStreamingService == nil {
-                            Label("All Services", systemImage: DesignSystem.Icon.checkmark)
-                        } else {
-                            Text("All Services")
-                        }
-                    }
-                    if hasPreferredStreamingServices {
-                        Divider()
-                        ForEach(preferredStreamingServices, id: \.self) { service in
-                            Button {
-                                session.updateFilters { $0.selectedStreamingService = service }
-                            } label: {
-                                if session.filters.selectedStreamingService == service {
-                                    Label(service, systemImage: DesignSystem.Icon.checkmark)
-                                } else {
-                                    Text(service)
-                                }
-                            }
-                        }
-                        Divider()
-                        Button {
-                            session.updateFilters { $0.selectedStreamingService = "My Services" }
-                        } label: {
-                            if session.filters.selectedStreamingService == "My Services" {
-                                Label("My Services", systemImage: DesignSystem.Icon.checkmark)
-                            } else {
-                                Text("My Services")
-                            }
-                        }
-                    }
-                } label: {
-                    toolbarIcon("play.square.stack.fill", isActive: session.filters.selectedStreamingService != nil)
-                }
-
-                Menu {
-                    Button {
-                        session.updateFilters { $0.selectedGenre = nil }
-                    } label: {
-                        if session.filters.selectedGenre == nil {
-                            Label("All", systemImage: DesignSystem.Icon.checkmark)
-                        } else {
-                            Text("All")
-                        }
-                    }
-                    Divider()
-                    ForEach(session.availableGenres, id: \.self) { genre in
-                        Button {
-                            session.updateFilters { $0.selectedGenre = genre }
-                        } label: {
-                            if session.filters.selectedGenre == genre {
-                                Label(genre, systemImage: DesignSystem.Icon.checkmark)
-                            } else {
-                                Text(genre)
-                            }
-                        }
-                    }
-                } label: {
-                    toolbarIcon(DesignSystem.Icon.genre, isActive: session.filters.selectedGenre != nil)
-                }
-
-                Menu {
-                    Section("MPAA Rating") {
-                        Button {
-                            session.updateFilters { $0.selectedMPAARating = nil }
-                        } label: {
-                            if session.filters.selectedMPAARating == nil {
-                                Label("All Ratings", systemImage: DesignSystem.Icon.checkmark)
-                            } else {
-                                Text("All Ratings")
-                            }
-                        }
-                        ratingButton("G", session: session)
-                        ratingButton("PG", session: session)
-                        ratingButton("PG-13", session: session)
-                        ratingButton("R", session: session)
-                        ratingButton("NC-17", session: session)
-                    }
-                } label: {
-                    toolbarIcon(DesignSystem.Icon.rating, isActive: session.filters.selectedMPAARating != nil)
-                }
-            }
-            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-            .frame(height: searchControlSize)
-            .background(GlassControl.toolbarMaterial)
-            .clipShape(MinAffordanceStyle.shared.capsuleShape)
-            .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(GlassControl.Border.standard.color, lineWidth: GlassControl.Border.standard.width) } }
-
-            if mainToolbarLayoutStyle == .separated {
-                Spacer(minLength: DesignSystem.Spacing.sm)
+            GlassCapsuleToolbar(
+                spacing: compactExpandedIconSpacing,
+                height: searchControlSize,
+                scrolls: true
+            ) {
+                searchFilterMenus(session: session, presentation: .lifestyleIcons)
             }
 
             if shouldShowCloseSearchButton && mainToolbarLayoutStyle == .separated {
@@ -588,7 +475,10 @@ struct SearchScreenView: View {
         .padding(.vertical, DesignSystem.Spacing.sm)
     }
 
-    private func searchFilterMenus(session: MovieSearchSession) -> some View {
+    private func searchFilterMenus(
+        session: MovieSearchSession,
+        presentation: SearchFilterMenus.Presentation = .overflowButton
+    ) -> some View {
         SearchFilterMenus(
             filters: Binding(
                 get: { session.filters },
@@ -602,9 +492,12 @@ struct SearchScreenView: View {
             availableGenres: session.availableGenres,
             availableMPAARatings: session.availableMPAARatings,
             availableStreamingServices: session.availableStreamingServices,
+            availablePeriods: session.availablePeriods,
+            availablePhysicalMediaFilters: session.availablePhysicalMediaFilters,
             preferredStreamingServices: preferredStreamingServices,
             preferredDataSources: preferredDataSources,
-            controlSize: searchControlSize
+            controlSize: searchControlSize,
+            presentation: presentation
         )
     }
 
@@ -618,14 +511,6 @@ struct SearchScreenView: View {
         } label: {
             GlassCircleButton(systemImage: DesignSystem.Icon.search, foregroundColor: searchControlForegroundColor, accessibilityLabel: "Search")
         }
-    }
-
-    private func toolbarIcon(_ systemImage: String, isActive: Bool) -> some View {
-        DesignSystemIcon(
-            systemImage,
-            size: DesignSystem.IconSize.md,
-            color: isActive ? DesignSystem.Color.accent : searchControlForegroundColor
-        )
     }
 
     private var closeSearchButton: some View {
@@ -692,23 +577,6 @@ struct SearchScreenView: View {
         return preferredListIdentifiers.compactMap { lookup[$0] }
     }
 
-    private var hasPreferredStreamingServices: Bool {
-        !preferredStreamingServices.isEmpty
-    }
-
-    @ViewBuilder
-    private func ratingButton(_ rating: String, session: MovieSearchSession) -> some View {
-        Button {
-            session.updateFilters { $0.selectedMPAARating = rating }
-        } label: {
-            if session.filters.selectedMPAARating == rating {
-                Label(rating, systemImage: "checkmark")
-            } else {
-                Text(rating)
-            }
-        }
-    }
-
     private var isSearchQueryEmpty: Bool {
         session?.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
     }
@@ -767,6 +635,10 @@ struct SearchScreenView: View {
             session.updateFilters { $0.selectedStreamingService = nil }
         case .theatrical:
             session.updateFilters { $0.theatricalFilter = nil }
+        case .period:
+            session.updateFilters { $0.selectedPeriod = nil }
+        case .physicalMedia:
+            session.updateFilters { $0.physicalMediaFilter = nil }
         }
     }
 }
@@ -782,6 +654,8 @@ private enum ActiveSearchToken: Identifiable, Hashable {
     case list(String)
     case streamingService(String)
     case theatrical(TheatricalFilter)
+    case period(Int)
+    case physicalMedia(PhysicalMediaFilter)
 
     var id: String {
         switch self {
@@ -805,6 +679,10 @@ private enum ActiveSearchToken: Identifiable, Hashable {
             return "stream:\(service.lowercased())"
         case .theatrical(let filter):
             return "theaters:\(filter.rawValue.lowercased())"
+        case .period(let decade):
+            return "period:\(decade)"
+        case .physicalMedia(let filter):
+            return "discs:\(filter.rawValue.lowercased())"
         }
     }
 }
@@ -908,7 +786,6 @@ private struct SearchResultsContent: View {
                     }
                 }
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                .padding(.leading, DesignSystem.Spacing.sm)
                 .padding(.vertical, DesignSystem.Spacing.sm)
             }
         }
@@ -960,6 +837,12 @@ private struct SearchResultsContent: View {
         }
         if let theatricalFilter = filters.theatricalFilter {
             items.append(ActiveSearchTokenItem(token: .theatrical(theatricalFilter), label: theatricalFilter.rawValue))
+        }
+        if let selectedPeriod = filters.selectedPeriod {
+            items.append(ActiveSearchTokenItem(token: .period(selectedPeriod), label: ReleasePeriod(decade: selectedPeriod).label))
+        }
+        if let physicalMediaFilter = filters.physicalMediaFilter {
+            items.append(ActiveSearchTokenItem(token: .physicalMedia(physicalMediaFilter), label: physicalMediaFilter.rawValue))
         }
         return items
     }

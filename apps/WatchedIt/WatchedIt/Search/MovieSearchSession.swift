@@ -19,6 +19,8 @@ final class MovieSearchSession: ObservableObject {
     @Published private(set) var availableGenres: [String] = []
     @Published private(set) var availableMPAARatings: [String] = []
     @Published private(set) var availableStreamingServices: [String] = []
+    @Published private(set) var availablePeriods: [Int] = []
+    @Published private(set) var availablePhysicalMediaFilters: [PhysicalMediaFilter] = []
     @Published private(set) var sourceLineByMovieID: [String: String] = [:]
 
     let title: String
@@ -107,6 +109,14 @@ final class MovieSearchSession: ObservableObject {
             StreamingServiceAssets.normalizedName($0.name)
         }.filter { !$0.isEmpty })
         availableStreamingServices = Array(uniqueServices).sorted()
+
+        availablePeriods = Array(
+            Set(pool.compactMap(\.year).map { ReleasePeriod.from(year: $0).decade })
+        ).sorted(by: >)
+
+        availablePhysicalMediaFilters = PhysicalMediaFilter.allCases.filter { filter in
+            pool.contains { $0.physicalMedia?.matches(filter) == true }
+        }
     }
 
     private func initialScopedMovies() -> [Movie] {

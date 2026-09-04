@@ -514,6 +514,56 @@ struct WatchedItTests {
         #expect(filtered.map(\.title) == ["Fight Club"])
     }
 
+    @Test func physicalMediaFilterFromSearchToken() {
+        #expect(PhysicalMediaFilter.fromSearchToken("criterion") == .criterion)
+        #expect(PhysicalMediaFilter.fromSearchToken("4K") == .uhd4k)
+        #expect(PhysicalMediaFilter.fromSearchToken("blu-ray") == .bluRay)
+        #expect(PhysicalMediaFilter.fromSearchToken("arrow") == .arrow)
+        #expect(PhysicalMediaFilter.fromSearchToken("unknown") == nil)
+        #expect(PhysicalMediaFilter.uhd4k.group == .format)
+        #expect(PhysicalMediaFilter.criterion.group == .partnership)
+    }
+
+    @Test func searchEngineFiltersByPeriodAndPhysicalMedia() {
+        let seventies = Movie(title: "Jaws", year: 1975)
+        let nineties = Movie(
+            title: "Seven Samurai",
+            year: 1993,
+            physicalMedia: PhysicalMedia(hasCriterion: true, has4K: true)
+        )
+        let arrow = Movie(
+            title: "Heat",
+            year: 1995,
+            physicalMedia: PhysicalMedia(
+                editions: [PhysicalEdition(label: .arrow, format: .bluRay)],
+                hasBluRay: true
+            )
+        )
+        let movies = [seventies, nineties, arrow]
+        let index = MovieSearchEngine.buildIndex(from: movies)
+
+        func titles(_ mutate: (inout MovieSearchFilters) -> Void) -> [String] {
+            var filters = MovieSearchFilters()
+            mutate(&filters)
+            return MovieSearchEngine.filterMovies(
+                movies: movies,
+                query: "",
+                filters: filters,
+                movieSearchIndex: index,
+                sourceCache: [:],
+                restrictedMovieIDs: nil
+            ).map(\.title)
+        }
+
+        #expect(titles { $0.selectedPeriod = 1970 } == ["Jaws"])
+        #expect(titles { $0.selectedPeriod = 1990 } == ["Heat", "Seven Samurai"])
+        #expect(titles { $0.physicalMediaFilter = .criterion } == ["Seven Samurai"])
+        #expect(titles { $0.physicalMediaFilter = .uhd4k } == ["Seven Samurai"])
+        #expect(titles { $0.physicalMediaFilter = .arrow } == ["Heat"])
+        #expect(titles { $0.physicalMediaFilter = .bluRay } == ["Heat"])
+        #expect(ReleasePeriod.from(year: 1999).label == "1990s")
+    }
+
     @Test func movieSearchEngineAppliesWatchFilterFromHomeToolbar() {
         let saved = movie(isSaved: true)
         let rewatched = movie(isRewatched: true)

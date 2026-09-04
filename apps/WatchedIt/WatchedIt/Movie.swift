@@ -24,7 +24,7 @@ public struct Movie: Identifiable, Codable, Hashable {
     public var rewatchablesDiscussion: RewatchablesDiscussion?
     public let trailer: MovieTrailer?
     public let oscarAwards: OscarAwards?
-    public let physicalMedia: PhysicalMedia?    
+    public let physicalMedia: PhysicalMedia?
     public let theatricalRun: TheatricalRun?
     public var isRewatched: Bool
     public var isListened: Bool

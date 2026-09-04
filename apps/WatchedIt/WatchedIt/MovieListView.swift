@@ -5036,6 +5036,11 @@ struct AccountSheetView: View {
                 .designSystemGroupedListRow()
                 #endif
 
+                Section("Feedback") {
+                    FeedbackSettingsLink(app: .mov)
+                }
+                .designSystemGroupedListRow()
+
                 Section("Agents") {
                     AgentSettingsLink(app: .mov, exporter: MovieAgentService.shared)
                 }

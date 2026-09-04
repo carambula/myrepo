@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ideas & Bugs — Min Cloud</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Min Cloud</div>
+      <nav>
+        <a href="/">Browse</a>
+        <a href="/feedback" class="is-active">Ideas & Bugs</a>
+        <a href="/#account">Account</a>
+        <a href="/admin">Admin</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Ideas & Bugs</h1>
+      <p class="lede">
+        Vote on existing notes or add one. Each min app has its own board. No account needed.
+      </p>
+    </section>
+
+    <div class="feedback-toolbar">
+      <label>App
+        <select id="appFilter">
+          <option value="mov">mov min</option>
+          <option value="pod">pod min</option>
+          <option value="vid">vid min</option>
+          <option value="cyc">cyc min</option>
+          <option value="spin">spin min</option>
+          <option value="fit">fit min</option>
+        </select>
+      </label>
+      <div class="tabs" style="margin: 0">
+        <button data-kind="idea" class="is-active">Ideas</button>
+        <button data-kind="bug">Bugs</button>
+      </div>
+    </div>
+
+    <section id="board" class="feedback-list"></section>
+
+    <section class="panel" style="margin: 32px 0 48px">
+      <h2 id="composeTitle">New idea</h2>
+      <form id="composeForm" class="stack">
+        <label>Title<input id="title" maxlength="120" placeholder="What should we add?" /></label>
+        <label>Details<textarea id="body" rows="4" maxlength="4000" placeholder="More detail (optional)"></textarea></label>
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/feedback.js"></script>
+  </body>
+</html>

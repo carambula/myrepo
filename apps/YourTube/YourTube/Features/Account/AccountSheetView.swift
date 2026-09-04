@@ -130,6 +130,11 @@ struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
 
+                Section("Feedback") {
+                    FeedbackSettingsLink(app: .vid)
+                }
+                .designSystemGroupedListRow()
+
                 Section("Agents") {
                     AgentSettingsLink(app: .vid, exporter: VideoAgentExportAdapter(context: modelContext))
                 }

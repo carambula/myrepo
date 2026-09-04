@@ -148,6 +148,11 @@ struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
 
+                Section("Feedback") {
+                    FeedbackSettingsLink(app: .fit)
+                }
+                .designSystemGroupedListRow()
+
                 Section("Agents") {
                     AgentSettingsLink(app: .fit, exporter: TimerAgentExportAdapter(context: modelContext))
                 }

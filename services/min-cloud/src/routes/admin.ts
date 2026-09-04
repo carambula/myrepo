@@ -10,6 +10,15 @@ import { movieIdFromTmdb, podcastIdFromItunes } from "../lib/passwords.js";
 import { applyPhysicalMediaOverlay, importMovieCatalog } from "../lib/catalog-import.js";
 import { normalizePhysicalMedia } from "../lib/physical-media.js";
 import { recordAudit, takeSnapshot } from "../lib/admin-history.js";
+import {
+  FeedbackInputError,
+  isFeedbackStatus,
+  mapFeedbackItem,
+  normalizeBody,
+  normalizeTitle,
+  type FeedbackRow
+} from "../lib/feedback.js";
+import { listFeedbackItems } from "../lib/feedback-store.js";
 
 const router = Router();
 
@@ -35,6 +44,9 @@ router.get("/health", async (_req, res) => {
     `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
   );
   const theaterStays = await query(`SELECT COUNT(*)::int AS count FROM mov_theater_stays`);
+  const feedback = await query(
+    `SELECT COUNT(*)::int AS count FROM feedback_items WHERE status <> 'hidden'`
+  );
   res.json({
     movies: movies.rows[0].count,
     physicalMedia: physicalMedia.rows[0].count,
@@ -43,6 +55,7 @@ router.get("/health", async (_req, res) => {
     podcasts: podcasts.rows[0].count,
     episodes: episodes.rows[0].count,
     users: users.rows[0].count,
+    feedback: feedback.rows[0].count,
     revisions: revisions.rows,
     jobs: jobs.rows.map((job) => withJobProgressLabel(job)),
     apns: {
@@ -352,6 +365,75 @@ router.delete("/pod/podcasts/:id", async (req, res) => {
   await query(`UPDATE catalog_revisions SET revision = revision + 1, generated_at = NOW() WHERE app = 'podlink'`);
   await audit(req, "pod.podcast.delete", { id: String(req.params.id) });
   res.json({ ok: true });
+});
+
+router.get("/feedback", async (req, res) => {
+  try {
+    const items = await listFeedbackItems({
+      app: req.query.app,
+      kind: req.query.kind,
+      status: req.query.status,
+      q: req.query.q,
+      includeHidden: true,
+      includeBody: true
+    });
+    res.json({ items });
+  } catch (error) {
+    if (error instanceof FeedbackInputError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.patch("/feedback/:id", async (req, res) => {
+  try {
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    if (req.body?.title != null) {
+      params.push(normalizeTitle(req.body.title));
+      updates.push(`title = $${params.length}`);
+    }
+    if (req.body?.body != null) {
+      params.push(normalizeBody(req.body.body));
+      updates.push(`body = $${params.length}`);
+    }
+    if (req.body?.status != null) {
+      if (!isFeedbackStatus(req.body.status)) {
+        throw new FeedbackInputError("Unknown status.");
+      }
+      params.push(req.body.status);
+      updates.push(`status = $${params.length}`);
+    }
+    if (!updates.length) {
+      throw new FeedbackInputError("Nothing to update.");
+    }
+    updates.push("updated_at = NOW()");
+    params.push(req.params.id);
+    const result = await query(
+      `
+      UPDATE feedback_items
+      SET ${updates.join(", ")}
+      WHERE id = $${params.length}
+      RETURNING id, app, kind, status, title, body, context, vote_count, author_handle, created_at, updated_at
+      `,
+      params
+    );
+    if (!result.rows[0]) {
+      res.status(404).json({ error: "Feedback not found." });
+      return;
+    }
+    const item = mapFeedbackItem(result.rows[0] as FeedbackRow);
+    await audit(req, "feedback.update", { id: item.id, status: item.status });
+    res.json({ item });
+  } catch (error) {
+    if (error instanceof FeedbackInputError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 export default router;

@@ -2129,6 +2129,11 @@ private struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
 
+                Section("Feedback") {
+                    FeedbackSettingsLink(app: .cyc)
+                }
+                .designSystemGroupedListRow()
+
                 Section("Agents") {
                     AgentSettingsLink(app: .cyc, exporter: CyclingAgentService.shared)
                 }

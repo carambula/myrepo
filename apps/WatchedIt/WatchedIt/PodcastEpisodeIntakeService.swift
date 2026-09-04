@@ -670,13 +670,20 @@ public final class PodcastEpisodeIntakeService {
             print("✅ Matched '\(cleanedTitle)' to '\(tmdbDetails.title)' (\(tmdbDetails.year?.description ?? "N/A")) using year hint: \(year)")
         }
 
-        async let servicesTask = movieService.getStreamingProviders(tmdbId: match.id)
-        async let mpaaTask = movieService.getMPAARating(tmdbId: match.id)
-        async let videosTask = movieService.getMovieVideos(tmdbId: match.id)
-
-        let streamingServices = (try? await servicesTask) ?? []
-        let mpaaRating = (try? await mpaaTask) ?? nil
-        let videos = (try? await videosTask) ?? []
+        // Run ancillary TMDB calls sequentially to reduce parallel burst rate-limiting against
+        // search + details requests; log streaming failures instead of silently emptying providers.
+        let streamingServices: [StreamingService]
+        do {
+            streamingServices = try await movieService.getStreamingProviders(tmdbId: match.id)
+        } catch {
+            print(
+                "⚠️ [PODCAST] Streaming providers failed for TMDB \(match.id) " +
+                    "('\(cleanedTitle)'): \(error.localizedDescription)"
+            )
+            streamingServices = []
+        }
+        let mpaaRating = (try? await movieService.getMPAARating(tmdbId: match.id)) ?? nil
+        let videos = (try? await movieService.getMovieVideos(tmdbId: match.id)) ?? []
 
         let episodeDate = parseRSSDate(candidate.episodeDate)
         let normalizedSourceTitle = normalizeEpisodeTitle(candidate.sourceTitle)

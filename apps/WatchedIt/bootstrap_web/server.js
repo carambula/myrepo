@@ -1131,10 +1131,14 @@ function mapStreamingProviders(result, region) {
     return [];
   }
 
+  // Order buckets like WatchedIt MovieDataService.getStreamingProviders:
+  // flatrate, rent, buy, free-with-ads, ad-supported tiers.
   const providerBuckets = [
     ...(regionData.flatrate || []),
     ...(regionData.rent || []),
     ...(regionData.buy || []),
+    ...(regionData.free || []),
+    ...(regionData.ads || []),
   ];
 
   const providerMap = new Map();
@@ -1246,7 +1250,8 @@ function markDuplicates(items, bootstrapData, sourceIdentifier) {
   }));
 }
 
-async function enrichItems(items) {
+async function enrichItems(items, options = {}) {
+  const fetchStreamingProviders = options.fetchStreamingProviders !== false;
   const enriched = [];
   for (const item of items) {
     try {
@@ -1268,8 +1273,20 @@ async function enrichItems(items) {
       detailsUrl.searchParams.set("append_to_response", "credits,videos,release_dates");
       const details = await requestJson(detailsUrl.toString());
       const merged = applyTmdbData(item, details);
+      let streamingServices = Array.isArray(item.streamingServices) ? item.streamingServices : [];
+      if (fetchStreamingProviders && details.id) {
+        try {
+          streamingServices = await fetchStreamingServices(details.id, "US");
+        } catch (error) {
+          console.warn(
+            `[bootstrap] watch/providers failed TMDB=${details.id} (${details.title ?? item.title ?? "?"}): ${
+              error?.message ?? error
+            }`
+          );
+        }
+      }
       const status = determineItemStatus(merged);
-      enriched.push({ ...merged, tmdbId: details.id, status });
+      enriched.push({ ...merged, tmdbId: details.id, streamingServices, status });
     } catch {
       enriched.push({ ...item, status: "missing" });
     }

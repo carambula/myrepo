@@ -16,6 +16,7 @@ When updating podcast title reliability, candidate filtering, or TMDB query shap
 2. TMDB query/year extraction logic is equivalent (`buildTmdbSearchInput` in web, `buildTMDBSearchInput` in Swift).
 3. Noise filtering rules are equivalent (`shouldSkipPodcastNoise`).
 4. Tests are updated in `WatchedItTests/WatchedItTests.swift` for changed behavior.
+5. TMDB `/movie/{id}/watch/providers` (US region) enrichment stays aligned between web and app: bootstrap `fetchStreamingServices` / `mapStreamingProviders` in `bootstrap_web/server.js` and `MovieDataService.getStreamingProviders` in `PodcastEpisodeIntakeService.swift`'s `enrichCandidate`.
 
 ## Why
 

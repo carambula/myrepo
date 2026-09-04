@@ -13,7 +13,11 @@ struct CollectionSection: Identifiable, Equatable {
     let title: String
     let subtitle: String?
     let sourceIdentifier: String?
+    let isRankedList: Bool
     let movies: [Movie]
+    /// Full set used when the section header opens search. Nil means use the
+    /// source list filter (`sourceIdentifier`) or fall back to `movies`.
+    let headerSearchMovieIDs: Set<String>?
 }
 
 struct CatalogSnapshot {
@@ -80,14 +84,16 @@ final class CatalogSnapshotService {
             preferredSourceIdentifiers: preferredSet,
             movieToSourceIdentifiers: sourceIndexData.movieToSourceIdentifiers
         )
-        if !latestPodcastMovies.isEmpty {
+        if !latestPodcastMovies.carousel.isEmpty {
             sections.append(
                 CollectionSection(
                     id: "inspiration-latest-podcasts",
                     title: "Latest",
                     subtitle: "Recent episodes and Closet Picks",
                     sourceIdentifier: nil,
-                    movies: latestPodcastMovies
+                    isRankedList: false,
+                    movies: latestPodcastMovies.carousel,
+                    headerSearchMovieIDs: Set(latestPodcastMovies.searchIDs)
                 )
             )
         }
@@ -96,8 +102,6 @@ final class CatalogSnapshotService {
             movies
                 .filter { $0.isSaved }
                 .sorted { $0.lastUpdated > $1.lastUpdated }
-                .prefix(25)
-                .map { $0 }
         )
         if !recentlySaved.isEmpty {
             sections.append(
@@ -106,7 +110,9 @@ final class CatalogSnapshotService {
                     title: "Recently saved",
                     subtitle: "Continue where you left off",
                     sourceIdentifier: nil,
-                    movies: recentlySaved
+                    isRankedList: false,
+                    movies: Array(recentlySaved.prefix(25)),
+                    headerSearchMovieIDs: Set(recentlySaved.map(\.id))
                 )
             )
         }
@@ -115,8 +121,6 @@ final class CatalogSnapshotService {
             movies
                 .filter { isToCompleteMovie($0) }
                 .sorted { $0.lastUpdated > $1.lastUpdated }
-                .prefix(25)
-                .map { $0 }
         )
         if !toComplete.isEmpty {
             sections.append(
@@ -125,7 +129,9 @@ final class CatalogSnapshotService {
                     title: "To complete",
                     subtitle: "Half-finished picks",
                     sourceIdentifier: nil,
-                    movies: toComplete
+                    isRankedList: false,
+                    movies: Array(toComplete.prefix(25)),
+                    headerSearchMovieIDs: Set(toComplete.map(\.id))
                 )
             )
         }
@@ -145,7 +151,9 @@ final class CatalogSnapshotService {
                     title: source.name,
                     subtitle: source.isRankedList ? "Ranked list" : (source.type == "podcast" ? "Podcast collection" : nil),
                     sourceIdentifier: source.identifier,
-                    movies: Array(sectionMovies.prefix(25))
+                    isRankedList: source.isRankedList,
+                    movies: Array(sectionMovies.prefix(25)),
+                    headerSearchMovieIDs: nil
                 )
             )
         }
@@ -309,7 +317,7 @@ final class CatalogSnapshotService {
         latestGroupKeyBySourceIdentifier: [String: [String: String]],
         preferredSourceIdentifiers: Set<String>,
         movieToSourceIdentifiers: [String: Set<String>]
-    ) -> [Movie] {
+    ) -> (carousel: [Movie], searchIDs: [String]) {
         let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
         var entries: [LatestPodcastPicker.Entry] = []
         let groupKeys = latestGroupKeyBySourceIdentifier
@@ -336,8 +344,12 @@ final class CatalogSnapshotService {
                 )
             }
         }
-        let movieIds = LatestPodcastPicker.carouselMovieIds(from: entries)
-        return movieIds.compactMap { movieByIdentifier[$0] }
+        let carouselIds = LatestPodcastPicker.carouselMovieIds(from: entries)
+        let searchIDs = LatestPodcastPicker.recentMovieIds(from: entries)
+        return (
+            carouselIds.compactMap { movieByIdentifier[$0] },
+            searchIDs
+        )
     }
 
     private func recordLatestEntry(

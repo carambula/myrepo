@@ -243,6 +243,56 @@ struct WatchedItTests {
         #expect(ids == ["newest-episode", "older-episode", "undated-saved"])
     }
 
+    @Test func latestPodcastSearchIncludesMultipleEpisodesPerShowAndCaps() {
+        let older = Date(timeIntervalSince1970: 1_700_000_000)
+        let mid = Date(timeIntervalSince1970: 1_750_000_000)
+        let newest = Date(timeIntervalSince1970: 1_800_000_000)
+        let entries = [
+            LatestPodcastPicker.Entry(movieId: "old-rewatchable", date: older, sourceIdentifier: "rewatchables"),
+            LatestPodcastPicker.Entry(movieId: "new-rewatchable", date: newest, sourceIdentifier: "rewatchables"),
+            LatestPodcastPicker.Entry(movieId: "mid-rewatchable", date: mid, sourceIdentifier: "rewatchables"),
+            LatestPodcastPicker.Entry(movieId: "blank-check-old", date: older, sourceIdentifier: "blank-check"),
+            LatestPodcastPicker.Entry(movieId: "blank-check-latest", date: mid, sourceIdentifier: "blank-check"),
+            LatestPodcastPicker.Entry(movieId: "big-picture", date: newest, sourceIdentifier: "big-picture")
+        ]
+        #expect(
+            LatestPodcastPicker.recentMovieIds(from: entries)
+            == ["big-picture", "new-rewatchable", "blank-check-latest", "mid-rewatchable", "blank-check-old", "old-rewatchable"]
+        )
+        #expect(LatestPodcastPicker.recentMovieIds(from: entries, limit: 3) == ["big-picture", "new-rewatchable", "blank-check-latest"])
+        #expect(LatestPodcastPicker.searchLimit == 100)
+    }
+
+    @Test func collectionHeaderSearchUsesFullListOrLatestCap() {
+        let carousel = [
+            Movie(id: "visible-1", title: "Heat"),
+            Movie(id: "visible-2", title: "Fargo")
+        ]
+        let podcastSection = CollectionSection(
+            id: "source-rewatchables",
+            title: "The Rewatchables",
+            subtitle: "Podcast collection",
+            sourceIdentifier: "rewatchables",
+            isRankedList: false,
+            movies: carousel,
+            headerSearchMovieIDs: nil
+        )
+        #expect(MovieQueryService.headerSearchScope(for: podcastSection) == .list(identifier: "rewatchables", isRankedList: false))
+
+        let latestIDs = Set((1...120).map { "episode-\($0)" })
+        let latestSection = CollectionSection(
+            id: "inspiration-latest-podcasts",
+            title: "Latest podcasts",
+            subtitle: "Recent episodes",
+            sourceIdentifier: nil,
+            isRankedList: false,
+            movies: carousel,
+            headerSearchMovieIDs: latestIDs
+        )
+        #expect(MovieQueryService.headerSearchScope(for: latestSection) == .movieIDs(latestIDs))
+        #expect(MovieQueryService.headerSearchMovieIDs(for: latestSection).count == 120)
+    }
+
     @Test func minCloudSourceLinkDecodesEpisodeDate() throws {
         let json = Data(#"""
         {"identifier":"rewatchables","sourceTitle":"Heat","episodeDate":"2026-01-15T12:00:00.000Z"}

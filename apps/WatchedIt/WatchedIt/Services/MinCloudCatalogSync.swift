@@ -62,6 +62,17 @@ final class MinCloudCatalogSync {
     }
 
     @discardableResult
+    func applyStreaming(tmdbId: Int, providers: [StreamingService], modelContext: ModelContext) -> Bool {
+        guard !providers.isEmpty else { return false }
+        let existing = (try? modelContext.fetch(FetchDescriptor<MovieData>())) ?? []
+        guard let movie = existing.first(where: { $0.tmdbId == tmdbId }) else { return false }
+        movie.streamingServices = providers
+        try? modelContext.save()
+        LocalDatabaseManager.shared.refreshMovies()
+        return true
+    }
+
+    @discardableResult
     func apply(_ catalog: MinCloudMovieCatalog, modelContext: ModelContext) -> CatalogApplyResult {
         let existing = (try? modelContext.fetch(FetchDescriptor<MovieData>())) ?? []
         var byId: [String: MovieData] = [:]

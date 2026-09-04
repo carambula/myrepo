@@ -2,6 +2,7 @@ import { Router } from "express";
 import { query } from "../db.js";
 import { fetchStreamingServices } from "../lib/tmdb.js";
 import { resolveNowPlaying } from "../lib/theater-stays.js";
+import { isFreshStreamingCache, persistStreamingProviders } from "../lib/streaming-cache.js";
 import { config } from "../config.js";
 import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
 
@@ -54,12 +55,19 @@ router.get("/catalog", async (req, res) => {
   let where = "";
   if (since) {
     params.push(since);
-    where = `WHERE m.last_updated > $${params.length}`;
+    where = `WHERE m.last_updated > $${params.length} OR s.refreshed_at > $${params.length}`;
   }
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
   const totalResult = await query(
-    `SELECT COUNT(*)::int AS count FROM mov_movies m ${since ? "WHERE m.last_updated > $1" : ""}`,
-    since ? [since] : []
+    since
+      ? `
+    SELECT COUNT(*)::int AS count
+    FROM mov_movies m
+    LEFT JOIN mov_streaming s ON s.movie_id = m.id AND s.region = $2
+    WHERE m.last_updated > $1 OR s.refreshed_at > $1
+    `
+      : `SELECT COUNT(*)::int AS count FROM mov_movies m`,
+    since ? [since, config.tmdbRegion] : []
   );
   const movies = await query(
     `
@@ -153,31 +161,63 @@ router.get("/streaming/:tmdbId", async (req, res) => {
   }
   const cached = await query(
     `
-    SELECT s.providers, s.refreshed_at
-    FROM mov_streaming s
-    JOIN mov_movies m ON m.id = s.movie_id
-    WHERE m.tmdb_id = $1 AND s.region = $2
+    SELECT m.id, s.providers, s.refreshed_at
+    FROM mov_movies m
+    LEFT JOIN mov_streaming s ON s.movie_id = m.id AND s.region = $2
+    WHERE m.tmdb_id = $1
     `,
     [tmdbId, config.tmdbRegion]
   );
-  if (cached.rowCount) {
+  const movieId = cached.rows[0]?.id ? String(cached.rows[0].id) : null;
+  const cachedProviders = cached.rows[0]?.providers ?? null;
+  const refreshedAt = cached.rows[0]?.refreshed_at ?? null;
+  if (cachedProviders && isFreshStreamingCache(refreshedAt)) {
     res.json({
       tmdbId,
       region: config.tmdbRegion,
-      providers: cached.rows[0].providers,
-      refreshedAt: cached.rows[0].refreshed_at,
+      providers: cachedProviders,
+      refreshedAt,
       source: "cache"
     });
     return;
   }
   if (!config.tmdbApiKey) {
+    if (cachedProviders) {
+      res.json({
+        tmdbId,
+        region: config.tmdbRegion,
+        providers: cachedProviders,
+        refreshedAt,
+        source: "cache"
+      });
+      return;
+    }
     res.status(503).json({ error: "Streaming lookup unavailable." });
     return;
   }
   try {
     const providers = await fetchStreamingServices(tmdbId, config.tmdbApiKey, config.tmdbRegion);
-    res.json({ tmdbId, region: config.tmdbRegion, providers, source: "tmdb" });
+    if (movieId) {
+      await persistStreamingProviders(movieId, providers);
+    }
+    res.json({
+      tmdbId,
+      region: config.tmdbRegion,
+      providers,
+      refreshedAt: new Date().toISOString(),
+      source: "tmdb"
+    });
   } catch (error) {
+    if (cachedProviders) {
+      res.json({
+        tmdbId,
+        region: config.tmdbRegion,
+        providers: cachedProviders,
+        refreshedAt,
+        source: "cache"
+      });
+      return;
+    }
     res.status(502).json({ error: error instanceof Error ? error.message : "TMDB lookup failed." });
   }
 });

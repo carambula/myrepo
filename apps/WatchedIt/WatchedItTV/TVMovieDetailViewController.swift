@@ -292,9 +292,9 @@ final class TVMovieDetailViewController: UIViewController {
             actions.append(UIAction(title: "YouTube Trailer", attributes: [.disabled]) { _ in })
         }
 
-        let preferred = preferredStreamingServicesForMenu()
-        if !preferred.isEmpty {
-            actions.append(contentsOf: preferred.map { service in
+        let streamers = streamingServicesForMenu()
+        if !streamers.isEmpty {
+            actions.append(contentsOf: streamers.map { service in
                 UIAction(title: normalizedName(service.name)) { [weak self] _ in
                     self?.openStreamingService(service)
                 }
@@ -340,6 +340,19 @@ final class TVMovieDetailViewController: UIViewController {
         }
 
         return UIMenu(title: "", children: actions)
+    }
+
+    private func streamingServicesForMenu() -> [StreamingService] {
+        let preferred = preferredStreamingServicesForMenu()
+        if !preferred.isEmpty {
+            return preferred
+        }
+        var seen = Set<String>()
+        return movie.streamingServices.filter { service in
+            let key = normalizedCaseKey(service.name)
+            guard !key.isEmpty, seen.insert(key).inserted else { return false }
+            return true
+        }
     }
 
     private func preferredStreamingServicesForMenu() -> [StreamingService] {

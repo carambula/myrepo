@@ -33,6 +33,7 @@ struct MovieDetailView: View {
     @StateObject private var localDB = LocalDatabaseManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage(StreamingPreferences.storageKey) private var preferredServicesData: Data = Data()
+    @AppStorage(StreamingPreferences.hiddenStorageKey) private var hiddenServicesData: Data = Data()
     @AppStorage(PodcastAppPreferences.storageKey) private var preferredPodcastAppName: String = PodcastApp.applePodcasts.rawValue
     @AppStorage("movieDetailLayoutStyle") private var layoutStyleRaw: String = MovieDetailLayoutStyle.posterFocus.rawValue
     @AppStorage(MovieDetailLayoutParameters.storageKey) private var layoutParametersData: Data = MovieDetailLayoutParameters().encode()
@@ -54,6 +55,7 @@ struct MovieDetailView: View {
     @State private var sourceContentSnapshot: [SourceContentSnapshot] = []
     @State private var podcastFeedURLSnapshot: [String: String] = [:]
     @State private var hasLoadedSourceSnapshots = false
+    @State private var liveStreamingServices: [StreamingService] = []
     
     // Get current movie state from database
     private var currentMovie: Movie? {
@@ -102,7 +104,32 @@ struct MovieDetailView: View {
     
     private var displayMovie: Movie {
         guard let current = currentMovie else {
-            return movie
+            if liveStreamingServices.isEmpty {
+                return movie
+            }
+            return Movie(
+                id: movie.id,
+                title: movie.title,
+                year: movie.year,
+                tmdbId: movie.tmdbId,
+                posterPath: movie.posterPath,
+                backdropPath: movie.backdropPath,
+                overview: movie.overview,
+                mpaaRating: movie.mpaaRating,
+                genres: movie.genres,
+                streamingServices: liveStreamingServices,
+                podcastEpisode: movie.podcastEpisode,
+                credits: movie.credits,
+                rewatchablesDiscussion: movie.rewatchablesDiscussion,
+                trailer: movie.trailer,
+                oscarAwards: movie.oscarAwards,
+                physicalMedia: movie.physicalMedia,
+                theatricalRun: movie.theatricalRun,
+                isRewatched: localIsRewatched,
+                isListened: localIsListened,
+                isSaved: localIsSaved,
+                lastUpdated: movie.lastUpdated
+            )
         }
         
         return Movie(
@@ -120,7 +147,12 @@ struct MovieDetailView: View {
             }(),
             mpaaRating: current.mpaaRating ?? movie.mpaaRating,
             genres: current.genres.isEmpty ? movie.genres : current.genres,
-            streamingServices: current.streamingServices.isEmpty ? movie.streamingServices : current.streamingServices,
+            streamingServices: {
+                if !liveStreamingServices.isEmpty {
+                    return liveStreamingServices
+                }
+                return current.streamingServices.isEmpty ? movie.streamingServices : current.streamingServices
+            }(),
             podcastEpisode: current.podcastEpisode ?? movie.podcastEpisode,
             credits: current.credits ?? movie.credits,
             rewatchablesDiscussion: current.rewatchablesDiscussion ?? movie.rewatchablesDiscussion,
@@ -212,7 +244,31 @@ struct MovieDetailView: View {
     }
 
     private var showsPlayMenu: Bool {
-        !preferredServiceIndex.isEmpty || hasPhysicalPurchaseOptions || hasTheatricalTicketOptions
+        !playMenuStreamingServices.isEmpty || hasPhysicalPurchaseOptions || hasTheatricalTicketOptions
+    }
+
+    private var hiddenStreamingKeys: Set<String> {
+        Set(
+            StreamingPreferences.decode(from: hiddenServicesData).map {
+                StreamingServiceAssets.normalizedName($0).lowercased()
+            }
+        )
+    }
+
+    private var playMenuStreamingServices: [StreamingService] {
+        let hidden = hiddenStreamingKeys
+        let available = uniqueStreamingServices.filter { service in
+            let key = StreamingServiceAssets.normalizedName(service.name).lowercased()
+            return !hidden.contains(key)
+        }
+        let preferred = preferredStreamingServices.filter { service in
+            let key = StreamingServiceAssets.normalizedName(service.name).lowercased()
+            return !hidden.contains(key)
+        }
+        if !preferred.isEmpty {
+            return preferred
+        }
+        return available
     }
 
     private var preferredStreamingServices: [StreamingService] {
@@ -929,6 +985,22 @@ struct MovieDetailView: View {
         }
     }
 
+    private func refreshLiveStreamingProviders() async {
+        guard let tmdbId = displayMovie.tmdbId else { return }
+        do {
+            let providers = try await MinCloudClient.shared.fetchStreamingProviders(tmdbId: tmdbId)
+            guard !providers.isEmpty else { return }
+            liveStreamingServices = providers
+            _ = MinCloudCatalogSync.shared.applyStreaming(
+                tmdbId: tmdbId,
+                providers: providers,
+                modelContext: modelContext
+            )
+        } catch {
+            return
+        }
+    }
+
     private func presentPhysicalPurchaseSheet() {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(150))
@@ -1006,9 +1078,9 @@ struct MovieDetailView: View {
                                     Label("Trailer", systemImage: DesignSystem.Icon.play)
                                 }
 
-                                if !preferredStreamingServices.isEmpty {
+                                if !playMenuStreamingServices.isEmpty {
                                     Divider()
-                                    ForEach(preferredStreamingServices) { service in
+                                    ForEach(playMenuStreamingServices) { service in
                                         let serviceName = StreamingServiceAssets.normalizedName(service.name)
                                         Button(action: { openStreamingService(service) }) {
                                             Label(serviceName, systemImage: DesignSystem.Icon.streaming)
@@ -1457,6 +1529,7 @@ struct MovieDetailView: View {
             await MainActor.run {
                 loadSourceSnapshotsIfNeeded(force: true)
             }
+            await refreshLiveStreamingProviders()
         }
         .bottomSheetPullToDismiss()
 //        .toolbar {

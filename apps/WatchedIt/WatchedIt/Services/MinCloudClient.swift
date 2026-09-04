@@ -1,5 +1,18 @@
 import Foundation
 
+private struct StreamingLookupResponse: Decodable {
+    struct Provider: Decodable {
+        let id: String?
+        let name: String?
+        let logoPath: String?
+        let url: String?
+        let providerId: Int?
+        let providerName: String?
+    }
+
+    let providers: [Provider]
+}
+
 struct MinCloudNowPlayingResponse: Decodable {
     struct Movie: Decodable {
         struct TicketLinks: Decodable {
@@ -241,6 +254,20 @@ actor MinCloudClient {
 
     func fetchNowPlaying() async throws -> MinCloudNowPlayingResponse {
         try await get(path: "/v1/mov/now-playing")
+    }
+
+    func fetchStreamingProviders(tmdbId: Int) async throws -> [StreamingService] {
+        let payload: StreamingLookupResponse = try await get(path: "/v1/mov/streaming/\(tmdbId)")
+        return payload.providers.compactMap { provider in
+            let name = provider.name ?? provider.providerName
+            guard let name, !name.isEmpty else { return nil }
+            return StreamingService(
+                id: provider.id ?? String(provider.providerId ?? 0),
+                name: name,
+                logoPath: provider.logoPath,
+                url: provider.url
+            )
+        }
     }
 
     func fetchCatalogMeta() async throws -> MinCloudCatalogMeta {

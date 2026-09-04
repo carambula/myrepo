@@ -3,24 +3,6 @@ import Foundation
 import UIKit
 #endif
 
-/// Apps that publish an Ideas & Bugs board through Min Cloud.
-public enum FeedbackAppID: String, CaseIterable, Codable, Sendable {
-    case mov
-    case pod
-    case vid
-    case cyc
-    case spin
-    case fit
-
-    public init(_ app: AgentAppID) {
-        self = FeedbackAppID(rawValue: app.rawValue) ?? .mov
-    }
-
-    public var displayName: String {
-        AgentAppID(rawValue: rawValue)?.displayName ?? rawValue
-    }
-}
-
 public enum FeedbackKind: String, CaseIterable, Codable, Sendable {
     case idea
     case bug
@@ -160,7 +142,7 @@ public actor FeedbackClient {
         let item: FeedbackItem
     }
 
-    public func list(app: FeedbackAppID, kind: FeedbackKind) async throws -> [FeedbackItem] {
+    public func list(app: AgentAppID, kind: FeedbackKind) async throws -> [FeedbackItem] {
         let url = try makeURL(
             "v1/feedback",
             query: [
@@ -183,7 +165,7 @@ public actor FeedbackClient {
     }
 
     public func submit(
-        app: FeedbackAppID,
+        app: AgentAppID,
         kind: FeedbackKind,
         title: String,
         body: String

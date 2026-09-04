@@ -2,14 +2,10 @@ import SwiftUI
 
 /// Account-sheet entry point for the shared Ideas & Bugs board.
 public struct FeedbackSettingsLink: View {
-    public let app: FeedbackAppID
-
-    public init(app: FeedbackAppID) {
-        self.app = app
-    }
+    public let app: AgentAppID
 
     public init(app: AgentAppID) {
-        self.app = FeedbackAppID(app)
+        self.app = app
     }
 
     public var body: some View {
@@ -22,7 +18,7 @@ public struct FeedbackSettingsLink: View {
 }
 
 public struct FeedbackBoardView: View {
-    public let app: FeedbackAppID
+    public let app: AgentAppID
 
     @State private var kind: FeedbackKind = .idea
     @State private var items: [FeedbackItem] = []
@@ -30,12 +26,8 @@ public struct FeedbackBoardView: View {
     @State private var errorMessage: String?
     @State private var showsComposer = false
 
-    public init(app: FeedbackAppID) {
-        self.app = app
-    }
-
     public init(app: AgentAppID) {
-        self.app = FeedbackAppID(app)
+        self.app = app
     }
 
     public var body: some View {
@@ -192,14 +184,14 @@ public struct FeedbackBoardView: View {
 }
 
 public struct FeedbackDetailView: View {
-    public let app: FeedbackAppID
+    public let app: AgentAppID
     @State private var item: FeedbackItem
     var onChange: (FeedbackItem) -> Void
 
     @State private var isWorking = false
     @State private var errorMessage: String?
 
-    public init(app: FeedbackAppID, item: FeedbackItem, onChange: @escaping (FeedbackItem) -> Void) {
+    public init(app: AgentAppID, item: FeedbackItem, onChange: @escaping (FeedbackItem) -> Void) {
         self.app = app
         _item = State(initialValue: item)
         self.onChange = onChange
@@ -274,7 +266,7 @@ public struct FeedbackDetailView: View {
 }
 
 public struct FeedbackComposeView: View {
-    public let app: FeedbackAppID
+    public let app: AgentAppID
     @State private var kind: FeedbackKind
     var onCreated: (FeedbackItem) -> Void
 
@@ -284,7 +276,7 @@ public struct FeedbackComposeView: View {
     @State private var isWorking = false
     @State private var errorMessage: String?
 
-    public init(app: FeedbackAppID, kind: FeedbackKind, onCreated: @escaping (FeedbackItem) -> Void) {
+    public init(app: AgentAppID, kind: FeedbackKind, onCreated: @escaping (FeedbackItem) -> Void) {
         self.app = app
         _kind = State(initialValue: kind)
         self.onCreated = onCreated

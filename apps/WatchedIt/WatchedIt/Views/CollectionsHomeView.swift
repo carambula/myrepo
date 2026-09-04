@@ -730,16 +730,26 @@ private struct CollectionsHomeContentView: View {
     }
 
     private func presentScopedSearch(title: String, section: CollectionSection) {
-        let ids = MovieQueryService.movieIdentifiers(for: section)
-        guard !ids.isEmpty else { return }
-        activeSearchContext = SearchPresentationContext(
-            title: title,
-            restrictedMovieIDs: ids,
-            allowsListFilter: false,
-            initialQuery: nil,
-            initialFilters: nil,
-            focusSearchOnOpen: false
-        )
+        switch MovieQueryService.headerSearchScope(for: section) {
+        case .list(let identifier, let isRankedList):
+            var filters = MovieSearchFilters()
+            filters.selectedListIdentifier = identifier
+            if isRankedList {
+                filters.sortOption = .ranking
+            }
+            presentGlobalSearch(initialFilters: filters)
+        case .movieIDs(let ids):
+            activeSearchContext = SearchPresentationContext(
+                title: title,
+                restrictedMovieIDs: ids,
+                allowsListFilter: false,
+                initialQuery: nil,
+                initialFilters: nil,
+                focusSearchOnOpen: false
+            )
+        case nil:
+            return
+        }
     }
 
     private func applyStatusFilterFromToolbar(_ filter: WatchFilter) {

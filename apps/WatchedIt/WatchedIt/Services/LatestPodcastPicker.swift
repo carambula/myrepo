@@ -3,6 +3,7 @@ import Foundation
 enum LatestPodcastPicker {
     static let defaultLimit = 50
     static let defaultMultiEntryLimit = 36
+    static let searchLimit = 100
 
     struct Entry: Equatable {
         let movieId: String
@@ -80,6 +81,32 @@ enum LatestPodcastPicker {
             }
         }
         return movieIds
+    }
+
+    /// Newest episodes across every show, for header search. Same movie from
+    /// multiple sources keeps the newest date. Caps so Latest does not dump
+    /// the entire catalog.
+    static func recentMovieIds(from entries: [Entry], limit: Int = searchLimit) -> [String] {
+        guard limit > 0, !entries.isEmpty else { return [] }
+
+        var newestDateByMovie: [String: Date] = [:]
+        for entry in entries {
+            if let current = newestDateByMovie[entry.movieId] {
+                if entry.date > current {
+                    newestDateByMovie[entry.movieId] = entry.date
+                }
+            } else {
+                newestDateByMovie[entry.movieId] = entry.date
+            }
+        }
+
+        return newestDateByMovie
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key < rhs.key
+            }
+            .prefix(limit)
+            .map(\.key)
     }
 
     struct SourceItem: Equatable {

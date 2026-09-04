@@ -52,12 +52,21 @@ const stripShowAffixes = (title: string) => {
 };
 
 const BRUNCH_TITLE_PATTERN = /^\s*brunch\b/i;
+const AVAILABILITY_BLURB_PATTERN = /^\s*(?:available|released)\b/i;
 
 /** Confused Breakfast Monday bonuses are titled BRUNCH, not a single movie. */
 export const isBrunchPodcastNoiseTitle = (title: string) => {
   const raw = String(title || "");
   return BRUNCH_TITLE_PATTERN.test(raw) || BRUNCH_TITLE_PATTERN.test(stripShowAffixes(raw));
 };
+
+/** Criterion shop chrome and similar list leftovers: "Available Feb 4, 2025", "Released Dec 10, 2024", "Available now". */
+export const isAvailabilityBlurbTitle = (title: string) => {
+  const raw = String(title || "");
+  return AVAILABILITY_BLURB_PATTERN.test(raw) || AVAILABILITY_BLURB_PATTERN.test(stripShowAffixes(raw));
+};
+
+export const isNonMovieTitle = (title: string) => isBrunchPodcastNoiseTitle(title) || isAvailabilityBlurbTitle(title);
 
 const SHOW_SUFFIXES = [
   /\s*[:\-–—]\s*(?:the rewatchables|the big picture|blank check|the confused breakfast)\s*$/i
@@ -491,7 +500,7 @@ export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: strin
   if (!normalizeEpisodeTitle(cleanedTitle)) {
     return true;
   }
-  if (isBrunchPodcastNoiseTitle(rawTitle) || isBrunchPodcastNoiseTitle(cleanedTitle)) {
+  if (isNonMovieTitle(rawTitle) || isNonMovieTitle(cleanedTitle)) {
     return true;
   }
   const haystack = `${rawTitle} ${cleanedTitle}`;

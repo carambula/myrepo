@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { isAvailabilityBlurbTitle } from "./title-match.js";
 
 export const CLOSET_PICKS_SOURCE_ID = "criterion-closet-picks";
 export const CLOSET_PICKS_SOURCE_NAME = "Criterion Closet Picks";
@@ -105,11 +106,11 @@ export const normalizeClosetPicksTitle = (title: string) =>
     .trim();
 
 const SKIP_FILM_TITLE =
-  /^(watch\s*&\s*shop)$|collector['\u2019]?s\s+set|collectors\s+set|box\s+set|^the complete\s|cinema\s+collection|^released\s/i;
+  /^(watch\s*&\s*shop)$|collector['\u2019]?s\s+set|collectors\s+set|box\s+set|^the complete\s|cinema\s+collection/i;
 
 export const shouldSkipClosetPicksFilmTitle = (title: string) => {
   const cleaned = decode(title);
-  return !cleaned || cleaned.length > 160 || SKIP_FILM_TITLE.test(cleaned);
+  return !cleaned || cleaned.length > 160 || SKIP_FILM_TITLE.test(cleaned) || isAvailabilityBlurbTitle(cleaned);
 };
 
 const titleFromCollectionSlug = (href: string) => {

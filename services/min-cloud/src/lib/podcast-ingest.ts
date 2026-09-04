@@ -5,7 +5,7 @@ import { fetchTmdbMovieDetails, searchTmdbMovies } from "./tmdb.js";
 import {
   decidePodcastEpisodeIngest,
   determineItemStatus,
-  isBrunchPodcastNoiseTitle,
+  isNonMovieTitle,
   matchNeedsCreditCheck,
   pickBestTmdbMatch,
   prepareMovieQuery,
@@ -185,8 +185,9 @@ const updateSourceMovieCount = async (sourceId: string) => {
 };
 
 /**
- * Remove Confused Breakfast BRUNCH leftovers and unmatched BRUNCH podcast stubs.
- * Does not delete matched movies that only mention brunch in overview.
+ * Remove catalog leftovers that are not movies: Confused Breakfast BRUNCH stubs
+ * and Criterion-style "Available …" / "Released …" availability badges.
+ * Does not delete matched movies that only mention those words in overview.
  */
 export const purgePodcastNoiseMovies = async () => {
   const candidates = await query(
@@ -210,6 +211,10 @@ export const purgePodcastNoiseMovies = async () => {
         OR COALESCE(m.title, '') ~* 'brunch'
       )
     )
+    OR (
+      COALESCE(ms.source_title, '') ~* '^\\s*(available|released)\\b'
+      OR COALESCE(m.title, '') ~* '^\\s*(available|released)\\b'
+    )
     `
   );
 
@@ -220,7 +225,7 @@ export const purgePodcastNoiseMovies = async () => {
   for (const row of candidates.rows) {
     const sourceTitle = String(row.source_title || "");
     const title = String(row.title || "");
-    if (!isBrunchPodcastNoiseTitle(sourceTitle) && !isBrunchPodcastNoiseTitle(title)) {
+    if (!isNonMovieTitle(sourceTitle) && !isNonMovieTitle(title)) {
       continue;
     }
     await query(`DELETE FROM mov_movie_sources WHERE movie_id = $1 AND source_id = $2`, [

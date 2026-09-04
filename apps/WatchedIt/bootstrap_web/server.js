@@ -860,12 +860,21 @@ function isBrunchPodcastNoiseTitle(title) {
   return brunchTitle.test(title || "") || brunchTitle.test(stripShowPrefixes(title));
 }
 
+function isAvailabilityBlurbTitle(title) {
+  const availabilityTitle = /^\s*(?:available|released)\b/i;
+  return availabilityTitle.test(title || "") || availabilityTitle.test(stripShowPrefixes(title));
+}
+
+function isNonMovieTitle(title) {
+  return isBrunchPodcastNoiseTitle(title) || isAvailabilityBlurbTitle(title);
+}
+
 function shouldSkipPodcastNoise(sourceIdentifier, rawTitle, cleanedTitle) {
   const normalizedCleaned = normalizeEpisodeTitle(cleanedTitle);
   if (!normalizedCleaned) {
     return true;
   }
-  if (isBrunchPodcastNoiseTitle(rawTitle) || isBrunchPodcastNoiseTitle(cleanedTitle)) {
+  if (isNonMovieTitle(rawTitle) || isNonMovieTitle(cleanedTitle)) {
     return true;
   }
 

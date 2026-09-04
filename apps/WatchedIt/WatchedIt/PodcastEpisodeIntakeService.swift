@@ -296,7 +296,7 @@ public final class PodcastEpisodeIntakeService {
         if normalizedCleaned.isEmpty {
             return true
         }
-        if isBrunchPodcastNoiseTitle(rawTitle) || isBrunchPodcastNoiseTitle(cleanedTitle) {
+        if isNonMovieTitle(rawTitle) || isNonMovieTitle(cleanedTitle) {
             return true
         }
 
@@ -344,6 +344,18 @@ public final class PodcastEpisodeIntakeService {
             return true
         }
         return stripShowPrefixes(title).range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private func isAvailabilityBlurbTitle(_ title: String) -> Bool {
+        let pattern = #"^\s*(?:available|released)\b"#
+        if title.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+        return stripShowPrefixes(title).range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private func isNonMovieTitle(_ title: String) -> Bool {
+        isBrunchPodcastNoiseTitle(title) || isAvailabilityBlurbTitle(title)
     }
 
     private func normalizedFeedURLString(_ rawValue: String) -> String {

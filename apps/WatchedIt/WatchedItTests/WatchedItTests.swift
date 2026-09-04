@@ -91,6 +91,36 @@ struct WatchedItTests {
             rawTitle: "The Matrix",
             cleanedTitle: "The Matrix"
         ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available January 15, 2025",
+            cleanedTitle: "Available January 15, 2025"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "Available now",
+            cleanedTitle: "Available now"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available March 4",
+            cleanedTitle: "Available March 4"
+        ))
+        #expect(service.shouldSkipPodcastNoise(
+            sourceIdentifier: "criterion-closet-picks",
+            rawTitle: "Available 4/15/26",
+            cleanedTitle: "Available 4/15/26"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "The Shawshank Redemption",
+            cleanedTitle: "The Shawshank Redemption"
+        ))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "rewatchables",
+            rawTitle: "Heat",
+            cleanedTitle: "Heat"
+        ))
     }
 
     @Test func podcastTitleCleaningRemovesTrailingYearSuffix() async throws {

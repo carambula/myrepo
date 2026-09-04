@@ -15,7 +15,8 @@ import {
   scoreTmdbMatch,
   shouldSkipPodcastNoise,
   decidePodcastEpisodeIngest,
-  isBrunchPodcastNoiseTitle
+  isBrunchPodcastNoiseTitle,
+  isAvailabilityBlurbTitle
 } from "../src/lib/title-match.ts";
 
 describe("title cleaning and matching", () => {
@@ -202,6 +203,28 @@ describe("title cleaning and matching", () => {
     );
   });
 
+  it("skips availability blurbs from any source and keeps real movie titles", () => {
+    assert.equal(
+      shouldSkipPodcastNoise("criterion-closet-picks", "Available January 15, 2025", "Available January 15, 2025"),
+      true
+    );
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "Available now", "Available now"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available March 4", "Available March 4"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available 4/15/26", "Available 4/15/26"), true);
+    assert.equal(shouldSkipPodcastNoise("criterion-closet-picks", "Available Feb 4, 2025", "Available Feb 4, 2025"), true);
+    assert.equal(
+      shouldSkipPodcastNoise("criterion-closet-picks", "Released Dec 10, 2024", "Released Dec 10, 2024"),
+      true
+    );
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "The Shawshank Redemption", "The Shawshank Redemption"), false);
+    assert.equal(shouldSkipPodcastNoise("rewatchables", "Heat", "Heat"), false);
+    assert.equal(isAvailabilityBlurbTitle("Available January 15, 2025"), true);
+    assert.equal(isAvailabilityBlurbTitle("Available now"), true);
+    assert.equal(isAvailabilityBlurbTitle("The Shawshank Redemption"), false);
+    assert.equal(isAvailabilityBlurbTitle("Heat"), false);
+    assert.equal(isAvailabilityBlurbTitle("Everything Available"), false);
+  });
+
   it("does not insert unmatched RSS leftovers as catalog stubs", () => {
     const existing = new Set<string>();
     assert.deepEqual(
@@ -233,12 +256,22 @@ describe("title cleaning and matching", () => {
       }),
       { action: "upsert" }
     );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "Available Feb 4, 2025",
+        sourceIdentifier: "criterion-closet-picks",
+        existingTitles: existing,
+        preparedTitle: "Available Feb 4, 2025",
+        match: { id: 1 }
+      }),
+      { action: "skip", reason: "noise" }
+    );
   });
 
   it("scrapes IMDb title links and skips chrome", () => {
     const items = scrapeListItems(
       "https://www.imdb.com/list/ls042702401/",
-      `<a href="/title/tt0075314/">Taxi Driver</a><a href="/chart">IMDb</a><a href="/title/tt0114709/">Toy Story</a>`
+      `<a href="/title/tt0075314/">Taxi Driver</a><a href="/chart">IMDb</a><a href="/title/tt0114709/">Toy Story</a><a href="/title/tt0000001/">Available Feb 4, 2025</a>`
     );
     assert.deepEqual(items.map((item) => item.title), ["Taxi Driver", "Toy Story"]);
   });

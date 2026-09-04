@@ -1374,41 +1374,6 @@ struct MovieDetailView: View {
                         }
                     }
                     
-                    if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
-                            Text("Physical Media")
-                                .labelMedium()
-                                .fontWeight(.semibold)
-                                .foregroundColor(DesignSystem.Color.textSecondary)
-
-                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-                                if media.editions.isEmpty {
-                                    let fallback = media.badgeLabels.joined(separator: "   ")
-                                    Text(fallback)
-                                        .bodySmall()
-                                        .foregroundColor(DesignSystem.Color.textPrimary)
-                                } else {
-                                    ForEach(media.editions) { edition in
-                                        Text(edition.displayLine)
-                                            .bodySmall()
-                                            .foregroundColor(DesignSystem.Color.textPrimary)
-                                    }
-                                }
-                            }
-
-                            if PhysicalPurchaseLinkBuilder.hasOptions(for: media) {
-                                Button(action: presentPhysicalPurchaseSheet) {
-                                    Text("Buy disc")
-                                        .labelMedium()
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(DesignSystem.Color.textPrimary)
-                                }
-                                .buttonStyle(CreditTapButtonStyle())
-                                .accessibilityLabel("Buy disc")
-                            }
-                        }
-                    }
-
                     if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
                             Text("In Theaters")

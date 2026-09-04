@@ -107,10 +107,6 @@ final class TVMovieDetailViewController: UIViewController {
             contentStack.addArrangedSubview(creditsSection)
         }
 
-        if let physicalMediaSection = makePhysicalMediaSection() {
-            contentStack.addArrangedSubview(physicalMediaSection)
-        }
-
         if let theatersSection = makeTheatersSection() {
             contentStack.addArrangedSubview(theatersSection)
         }
@@ -512,19 +508,6 @@ final class TVMovieDetailViewController: UIViewController {
 
         guard !rows.isEmpty else { return nil }
         return makeSection(title: "Credits", rows: rows)
-    }
-
-    private func makePhysicalMediaSection() -> UIStackView? {
-        guard let media = movie.physicalMedia, media.hasDisplayableAvailability else { return nil }
-        var rows: [UIView] = []
-        if media.editions.isEmpty {
-            rows.append(makeFocusableBodyLabel(media.badgeLabels.joined(separator: "   ")))
-        } else {
-            for edition in media.editions {
-                rows.append(makeFocusableBodyLabel(edition.displayLine))
-            }
-        }
-        return makeSection(title: "Physical Media", rows: rows)
     }
 
     private func makeTheatersSection() -> UIStackView? {

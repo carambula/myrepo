@@ -62,7 +62,7 @@ struct GlassButtonStyle: ButtonStyle {
     private var standardGlass: some View {
         ZStack {
             Color.clear
-                .background(.ultraThinMaterial)
+                .background(.thinMaterial)
             if MinAffordanceStyle.shared.borderEnabled {
                 RoundedRectangle(cornerRadius: 100)
                     .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
@@ -73,7 +73,7 @@ struct GlassButtonStyle: ButtonStyle {
     private var enhancedGlass: some View {
         ZStack {
             Color.clear
-                .background(.ultraThinMaterial)
+                .background(.thinMaterial)
             if MinAffordanceStyle.shared.borderEnabled {
                 RoundedRectangle(cornerRadius: 100)
                     .strokeBorder(
@@ -91,7 +91,7 @@ struct GlassButtonStyle: ButtonStyle {
     private var premiumGlass: some View {
         ZStack {
             Color.clear
-                .background(.ultraThinMaterial)
+                .background(.thinMaterial)
 
             LinearGradient(
                 colors: [.white.opacity(0.15), .white.opacity(0.05), .clear, .white.opacity(0.02)],
@@ -131,7 +131,7 @@ struct GlassToolbarModifier: ViewModifier {
             .background {
                 shape
                     .fill(.clear)
-                    .background(.ultraThinMaterial)
+                    .background(.thinMaterial)
                     .clipShape(MinAffordanceStyle.shared.capsuleShape)
                     .overlay {
                         if MinAffordanceStyle.shared.borderEnabled {
@@ -296,7 +296,7 @@ extension ButtonStyle where Self == LiquidGlassButtonStyle {
 // MARK: - Frosted Surface
 
 /// Shared frosted-glass background used by the micro player, floating circular
-/// controls, and any other surface that needs the thin-material blur treatment.
+/// controls, and any other surface that needs the thick-material blur treatment.
 /// Parameterised by shape so it works as both `Circle` and `Capsule`.
 struct FrostedSurfaceModifier<S: InsettableShape>: ViewModifier {
     let shape: S
@@ -324,7 +324,7 @@ extension View {
 
 // MARK: - Frosted Icon Button Style
 
-/// Circular thin-material button with press feedback.
+/// Circular thick-material button with press feedback.
 /// Use for floating controls (grid/list toggle, account, search, etc.).
 struct FrostedIconButtonStyle: ButtonStyle {
     var size: CGFloat = 56

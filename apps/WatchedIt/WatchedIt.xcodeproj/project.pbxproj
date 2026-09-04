@@ -340,9 +340,11 @@
 				"$(SRCROOT)/enrich_bootstrap_data.swift",
 				"$(SRCROOT)/generate_bootstrap_database.swift",
 				"$(SRCROOT)/build_bootstrap_database.sh",
+				"$(SRCROOT)/../../services/min-cloud/scripts/export-bootstrap.mjs",
 			);
 			outputPaths = (
 				"$(SRCROOT)/bootstrap_data_enriched.json",
+				"$(SRCROOT)/WatchedIt/bootstrap_data.cloud.json",
 				"$(SRCROOT)/WatchedIt/bootstrap_database.store",
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -68,8 +68,22 @@ enum PodLinkEpisodeSuggestions {
 }
 
 enum PodLinkIntentPlayback {
+    private struct PlaybackCandidate {
+        var podcast: Podcast
+        var episode: Episode
+    }
+
     static func followedPodcast(id: String) -> Podcast? {
         Podcast.loadFollowedPodcasts().first { $0.id == id || $0.feedURL.absoluteString == id }
+    }
+
+    static func followedPodcast(matching search: String) -> Podcast? {
+        let normalizedSearch = normalized(search)
+        guard !normalizedSearch.isEmpty else { return nil }
+        let podcasts = Podcast.loadFollowedPodcasts()
+        return podcasts.first { normalized($0.title) == normalizedSearch }
+            ?? podcasts.first { normalized($0.title).contains(normalizedSearch) }
+            ?? podcasts.first { normalized($0.author).contains(normalizedSearch) }
     }
 
     static func playEpisode(compositeID: String) async throws {
@@ -95,12 +109,33 @@ enum PodLinkIntentPlayback {
         guard let podcast = followedPodcast(id: podcastID) else {
             throw PodLinkIntentError.podcastNotInLibrary
         }
-        let episodes = try await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL)
-        let merged = episodes.map { EpisodePlaybackStore.merge($0) }.sorted { $0.publishDate > $1.publishDate }
-        guard let pick = merged.first(where: { !$0.isEffectivelyFinished }) ?? merged.first else {
+        guard let pick = try await latestPlayableEpisode(for: podcast) else {
             throw PodLinkIntentError.episodeNotFound
         }
         await PlaybackService.shared.play(episode: pick, podcast: podcast)
+    }
+
+    static func playLatestEpisode() async throws {
+        guard let candidate = try await latestPlayableEpisodeFromFollowedPodcasts() else {
+            throw PodLinkIntentError.episodeNotFound
+        }
+        await PlaybackService.shared.play(episode: candidate.episode, podcast: candidate.podcast)
+    }
+
+    static func playShow(named search: String) async throws {
+        guard let podcast = followedPodcast(matching: search) else {
+            throw PodLinkIntentError.podcastNotInLibrary
+        }
+        try await playLatestEpisode(podcastID: podcast.id)
+    }
+
+    static func playNextPodcast() async throws {
+        let playback = PlaybackService.shared
+        if !playback.state.queue.isEmpty {
+            await playback.playNextInQueue()
+            return
+        }
+        try await playLatestEpisode()
     }
 
     static func resumePlayback() async throws {
@@ -109,9 +144,54 @@ enum PodLinkIntentPlayback {
             // Fast, synchronous on-disk restore — no RSS round-trip required to start playback.
             _ = await MainActor.run { playback.restoreResumeSessionFromDiskIfNeeded() }
         }
-        guard playback.state.currentEpisode != nil else {
-            throw PodLinkIntentError.nothingPlaying
+        if playback.state.currentEpisode != nil {
+            playback.resume()
+            return
         }
-        playback.resume()
+        if !playback.state.queue.isEmpty {
+            await playback.playNextInQueue()
+            return
+        }
+        try await playLatestEpisode()
+    }
+
+    private static func latestPlayableEpisode(for podcast: Podcast) async throws -> Episode? {
+        let episodes = try await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL)
+        let merged = episodes.map { EpisodePlaybackStore.merge($0) }.sorted { $0.publishDate > $1.publishDate }
+        return merged.first(where: { !$0.isEffectivelyFinished }) ?? merged.first
+    }
+
+    private static func latestPlayableEpisodeFromFollowedPodcasts() async throws -> PlaybackCandidate? {
+        let podcasts = Podcast.loadFollowedPodcasts()
+        guard !podcasts.isEmpty else { throw PodLinkIntentError.emptyLibrary }
+
+        return await withTaskGroup(of: PlaybackCandidate?.self, returning: PlaybackCandidate?.self) { group in
+            for podcast in podcasts {
+                group.addTask {
+                    guard let episode = try? await latestPlayableEpisode(for: podcast) else { return nil }
+                    return PlaybackCandidate(podcast: podcast, episode: episode)
+                }
+            }
+
+            var best: PlaybackCandidate?
+            for await candidate in group {
+                guard let candidate else { continue }
+                if let currentBest = best {
+                    if candidate.episode.publishDate > currentBest.episode.publishDate {
+                        best = candidate
+                    }
+                } else {
+                    best = candidate
+                }
+            }
+            return best
+        }
+    }
+
+    private static func normalized(_ value: String) -> String {
+        value
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }

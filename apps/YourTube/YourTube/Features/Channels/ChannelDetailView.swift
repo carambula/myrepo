@@ -121,7 +121,7 @@ private struct ChannelVideoRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: DesignSystem.Spacing.lg) {
+        HStack(spacing: DesignSystem.Spacing.md) {
             Button {
                 onPlay()
             } label: {
@@ -151,11 +151,11 @@ private struct ChannelVideoRowView: View {
             } label: {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(video.title.decodedHTMLEntities)
-                        .font(DesignSystem.Typography.bodyMedium.weight(.semibold))
+                        .font(DesignSystem.Typography.headlineSmall)
                         .foregroundStyle(theme.text)
                         .lineLimit(2)
                     Text(publishedText)
-                        .font(DesignSystem.Typography.captionLarge)
+                        .font(DesignSystem.Typography.captionMedium)
                         .foregroundStyle(theme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

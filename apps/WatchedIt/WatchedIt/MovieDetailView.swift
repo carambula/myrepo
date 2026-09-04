@@ -28,6 +28,8 @@ struct MovieDetailView: View {
     var onYearTapped: ((Int) -> Void)? = nil
     var onGenreTapped: ((String) -> Void)? = nil
     var onRatingTapped: ((String) -> Void)? = nil
+    var onPhysicalMediaTapped: ((String) -> Void)? = nil
+    var onTheatricalTapped: ((TheatricalFilter) -> Void)? = nil
     @StateObject private var localDB = LocalDatabaseManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage(StreamingPreferences.storageKey) private var preferredServicesData: Data = Data()
@@ -36,6 +38,8 @@ struct MovieDetailView: View {
     @AppStorage(MovieDetailLayoutParameters.storageKey) private var layoutParametersData: Data = MovieDetailLayoutParameters().encode()
     @State private var isLoadingDetails = false
     @State private var showRewatchablesEditor = false
+    @State private var showPhysicalPurchaseSheet = false
+    @State private var showTheatricalTicketSheet = false
     @State private var hasTriggeredCatalogRefresh = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -122,6 +126,8 @@ struct MovieDetailView: View {
             rewatchablesDiscussion: current.rewatchablesDiscussion ?? movie.rewatchablesDiscussion,
             trailer: current.trailer ?? movie.trailer,
             oscarAwards: current.oscarAwards ?? movie.oscarAwards,
+            physicalMedia: current.physicalMedia ?? movie.physicalMedia,
+            theatricalRun: current.theatricalRun ?? movie.theatricalRun,
             // Use local state so status toggles feel instant and glass transitions stay smooth
             isRewatched: localIsRewatched,
             isListened: localIsListened,
@@ -195,6 +201,18 @@ struct MovieDetailView: View {
 
     private var preferredPodcastApp: PodcastApp {
         PodcastAppPreferences.preferredApp(from: preferredPodcastAppName)
+    }
+
+    private var hasPhysicalPurchaseOptions: Bool {
+        PhysicalPurchaseLinkBuilder.hasOptions(for: displayMovie.physicalMedia)
+    }
+
+    private var hasTheatricalTicketOptions: Bool {
+        TheatricalTicketLinkBuilder.hasOptions(for: displayMovie.theatricalRun)
+    }
+
+    private var showsPlayMenu: Bool {
+        !preferredServiceIndex.isEmpty || hasPhysicalPurchaseOptions || hasTheatricalTicketOptions
     }
 
     private var preferredStreamingServices: [StreamingService] {
@@ -408,7 +426,9 @@ struct MovieDetailView: View {
         onCreditPersonTapped: ((String) -> Void)? = nil,
         onYearTapped: ((Int) -> Void)? = nil,
         onGenreTapped: ((String) -> Void)? = nil,
-        onRatingTapped: ((String) -> Void)? = nil
+        onRatingTapped: ((String) -> Void)? = nil,
+        onPhysicalMediaTapped: ((String) -> Void)? = nil,
+        onTheatricalTapped: ((TheatricalFilter) -> Void)? = nil
     ) {
         self.movie = movie
         self.presentationSource = presentationSource
@@ -416,6 +436,8 @@ struct MovieDetailView: View {
         self.onYearTapped = onYearTapped
         self.onGenreTapped = onGenreTapped
         self.onRatingTapped = onRatingTapped
+        self.onPhysicalMediaTapped = onPhysicalMediaTapped
+        self.onTheatricalTapped = onTheatricalTapped
         _localIsRewatched = State(initialValue: movie.isRewatched)
         _localIsListened = State(initialValue: movie.isListened)
         _localIsSaved = State(initialValue: movie.isSaved)
@@ -471,11 +493,100 @@ struct MovieDetailView: View {
 
     private func openPodcastMenuItem(_ item: PodcastMenuItem) {
         guard let url = preferredPodcastLink(for: item) else { return }
+        openExternalURL(url)
+    }
+
+    private struct ClosetPicksMenuItem: Identifiable {
+        let id: String
+        let title: String
+        let url: URL
+    }
+
+    private var closetPicksSourceContents: [SourceContentSnapshot] {
+        uniqueMovieSourceContentSnapshots.filter { $0.sourceIdentifier == ClosetPicksSource.identifier }
+    }
+
+    private var closetPicksLegacySources: [LegacySourceSnapshot] {
+        legacySources.filter { $0.sourceIdentifier == ClosetPicksSource.identifier }
+    }
+
+    private var isOnClosetPicks: Bool {
+        !closetPicksSourceContents.isEmpty || !closetPicksLegacySources.isEmpty
+    }
+
+    private var showsListenedAction: Bool {
+        ClosetPicksSource.showsListenedAction(
+            hasPodcastEpisode: displayMovie.podcastEpisode != nil,
+            isOnClosetPicks: isOnClosetPicks
+        )
+    }
+
+    private var closetPicksMenuItems: [ClosetPicksMenuItem] {
+        var items: [ClosetPicksMenuItem] = []
+
+        for content in closetPicksSourceContents {
+            guard let url = sourceLinkDestinationURL(
+                identifier: content.sourceIdentifier,
+                sourceUrl: content.sourceUrl,
+                episode: content.podcastEpisode,
+                sourceName: content.sourceName
+            ) else { continue }
+            items.append(ClosetPicksMenuItem(
+                id: "closet-\(content.id)",
+                title: ClosetPicksSource.menuTitle(sourceTitle: content.sourceTitle, sourceName: content.sourceName),
+                url: url
+            ))
+        }
+
+        if items.isEmpty {
+            for legacy in closetPicksLegacySources {
+                guard let url = sourceLinkDestinationURL(
+                    identifier: legacy.sourceIdentifier,
+                    sourceUrl: legacy.sourceUrl,
+                    episode: legacy.podcastEpisode,
+                    sourceName: legacy.sourceName
+                ) else { continue }
+                items.append(ClosetPicksMenuItem(
+                    id: "closet-legacy-\(legacy.sourceIdentifier)-\(url.absoluteString)",
+                    title: ClosetPicksSource.menuTitle(sourceTitle: legacy.sourceTitle, sourceName: legacy.sourceName),
+                    url: url
+                ))
+            }
+        }
+
+        var seenURLs = Set<String>()
+        return items.filter { seenURLs.insert($0.url.absoluteString).inserted }
+    }
+
+    private func openClosetPicksMenuItem(_ item: ClosetPicksMenuItem) {
+        openExternalURL(item.url)
+    }
+
+    private func openExternalURL(_ url: URL) {
         #if os(tvOS)
         openURL(url)
         #else
         UIApplication.shared.open(url)
         #endif
+    }
+
+    private func sourceLinkDestinationURL(
+        identifier: String,
+        sourceUrl: String?,
+        episode: PodcastEpisode?,
+        sourceName: String
+    ) -> URL? {
+        if identifier == ClosetPicksSource.identifier {
+            return ClosetPicksSource.destinationURL(sourceUrl: sourceUrl, episodeId: episode?.episodeId)
+        }
+        return episode.flatMap { episode in
+            preferredPodcastLink(
+                podcastName: sourceName,
+                dataSourceIdentifier: identifier,
+                episode: episode,
+                movieTitle: displayMovie.title
+            )
+        }
     }
 
     private func preferredPodcastLink(
@@ -512,7 +623,8 @@ struct MovieDetailView: View {
             return createPocketCastsSearchURL(podcastName: podcastName, episodeTitle: episode.title)
         case .podMin:
             if let deepLink = createPodMinDeepLinkURL(
-                dataSourceIdentifier: dataSourceIdentifier
+                dataSourceIdentifier: dataSourceIdentifier,
+                episode: episode
             ) {
                 return deepLink
             }
@@ -548,7 +660,8 @@ struct MovieDetailView: View {
     }
 
     private func createPodMinDeepLinkURL(
-        dataSourceIdentifier: String?
+        dataSourceIdentifier: String?,
+        episode: PodcastEpisode
     ) -> URL? {
         guard let identifier = dataSourceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
               !identifier.isEmpty,
@@ -558,10 +671,20 @@ struct MovieDetailView: View {
 
         var components = URLComponents()
         components.scheme = "podmin"
-        components.host = "show"
-        components.queryItems = [
-            URLQueryItem(name: "feed", value: feedURL)
-        ]
+        var items = [URLQueryItem(name: "feed", value: feedURL)]
+
+        // Our dataset has no per-episode audio URL, so deep link by episode title.
+        // pod min matches the title within the feed and opens that episode directly,
+        // falling back to the show screen if it can't find a match.
+        let episodeTitle = episode.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if episodeTitle.isEmpty {
+            components.host = "show"
+        } else {
+            components.host = "episode"
+            items.append(URLQueryItem(name: "title", value: episodeTitle))
+        }
+
+        components.queryItems = items
         return components.url
     }
 
@@ -610,6 +733,16 @@ struct MovieDetailView: View {
         let trimmedGenre = genre.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedGenre.isEmpty else { return }
         onGenreTapped?(trimmedGenre)
+    }
+
+    private func handlePhysicalMediaTap(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        onPhysicalMediaTapped?(trimmed)
+    }
+
+    private func handleTheatricalTap(_ filter: TheatricalFilter) {
+        onTheatricalTapped?(filter)
     }
 
     private func handleRatingTap(_ rating: String) {
@@ -703,6 +836,110 @@ struct MovieDetailView: View {
                 }
                 .buttonStyle(CreditTapButtonStyle())
             }
+
+            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                if media.hasCriterion {
+                    Button(action: { handlePhysicalMediaTap("criterion") }) {
+                        Text("Criterion")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("Criterion Collection")
+                }
+                if media.has4K {
+                    Button(action: { handlePhysicalMediaTap("4k") }) {
+                        Text("4K")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("4K UHD")
+                }
+            }
+
+            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                if run.isInTheaters {
+                    Button(action: { handleTheatricalTap(.inTheaters) }) {
+                        Text("In Theaters")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("In theaters")
+                }
+                if run.hasIMAX {
+                    Button(action: { handleTheatricalTap(.imax) }) {
+                        Text("IMAX")
+                            .labelMedium()
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Color.textPrimary)
+                            .padding(.horizontal, DesignSystem.Spacing.sm)
+                            .padding(.vertical, DesignSystem.Spacing.xs)
+                            .frame(minHeight: ratingBadgeHeight)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                    .fill(DesignSystem.Color.accent.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
+                    .accessibilityLabel("IMAX")
+                }
+            }
+        }
+    }
+
+    private func presentPhysicalPurchaseSheet() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            showPhysicalPurchaseSheet = true
+        }
+    }
+
+    private func presentTheatricalTicketSheet() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            showTheatricalTicketSheet = true
         }
     }
 
@@ -761,16 +998,9 @@ struct MovieDetailView: View {
                     
                     // Top button row: play, rewatched, listened, save, menu
                     HStack(spacing: DesignSystem.Spacing.lg) {
-                        let hasPodcastEpisode = displayMovie.podcastEpisode != nil
                         let activeActionColor = DesignSystem.Color.secondaryAccent ?? DesignSystem.Color.accent
                         // Play button
-                        if preferredServiceIndex.isEmpty {
-                            Button(action: openTrailerOrYouTubeSearch) {
-                                DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
-                                    .frame(width: 60, height: 60)
-                            }
-                            .buttonStyle(.liquidGlassCompact)
-                        } else {
+                        if showsPlayMenu {
                             Menu {
                                 Button(action: openTrailerOrYouTubeSearch) {
                                     Label("Trailer", systemImage: DesignSystem.Icon.play)
@@ -785,11 +1015,33 @@ struct MovieDetailView: View {
                                         }
                                     }
                                 }
+
+                                if hasPhysicalPurchaseOptions {
+                                    Divider()
+                                    Button(action: presentPhysicalPurchaseSheet) {
+                                        Label("Buy disc…", systemImage: DesignSystem.Icon.disc)
+                                    }
+                                }
+
+                                if hasTheatricalTicketOptions {
+                                    Divider()
+                                    Button(action: presentTheatricalTicketSheet) {
+                                        Label("Get tickets…", systemImage: DesignSystem.Icon.ticket)
+                                    }
+                                }
                             } label: {
                                 DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
                                     .frame(width: 60, height: 60)
                             }
                             .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel("Play")
+                        } else {
+                            Button(action: openTrailerOrYouTubeSearch) {
+                                DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.textPrimary)
+                                    .frame(width: 60, height: 60)
+                            }
+                            .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel("Play trailer")
                         }
                         
                         // Rewatched button
@@ -832,15 +1084,23 @@ struct MovieDetailView: View {
                         let listenedIcon = DesignSystemIcon(
                             localIsListened ? DesignSystem.Icon.listenFill : DesignSystem.Icon.listen,
                             size: DesignSystem.IconSize.lg,
-                            color: hasPodcastEpisode
+                            color: showsListenedAction
                                 ? (localIsListened ? activeActionColor : DesignSystem.Color.textPrimary)
                                 : DesignSystem.Color.textSecondary
                         )
-                        if hasPodcastEpisode {
+                        if showsListenedAction {
                             Menu {
                                 Button(action: toggleListenedStatus) {
                                     Label(localIsListened ? "Mark unlistened" : "Mark listened",
                                           systemImage: localIsListened ? DesignSystem.Icon.listenFill : DesignSystem.Icon.listen)
+                                }
+                                if !closetPicksMenuItems.isEmpty {
+                                    Divider()
+                                    ForEach(closetPicksMenuItems) { item in
+                                        Button(action: { openClosetPicksMenuItem(item) }) {
+                                            Label(item.title, systemImage: DesignSystem.Icon.link)
+                                        }
+                                    }
                                 }
                                 if !podcastMenuItems.isEmpty {
                                     Divider()
@@ -856,6 +1116,7 @@ struct MovieDetailView: View {
                                     .scaleEffect(buttonScale["listened"] ?? 1.0)
                             }
                             .buttonStyle(.liquidGlassCompact)
+                            .accessibilityLabel(localIsListened ? "Listened" : "Listen")
                         }
                         
                         // Save button
@@ -1041,6 +1302,65 @@ struct MovieDetailView: View {
                         }
                     }
                     
+                    if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                            Text("Physical Media")
+                                .labelMedium()
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Color.textSecondary)
+
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                                if media.editions.isEmpty {
+                                    let fallback = media.badgeLabels.joined(separator: "   ")
+                                    Text(fallback)
+                                        .bodySmall()
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                } else {
+                                    ForEach(media.editions) { edition in
+                                        Text(edition.displayLine)
+                                            .bodySmall()
+                                            .foregroundColor(DesignSystem.Color.textPrimary)
+                                    }
+                                }
+                            }
+
+                            if PhysicalPurchaseLinkBuilder.hasOptions(for: media) {
+                                Button(action: presentPhysicalPurchaseSheet) {
+                                    Text("Buy disc")
+                                        .labelMedium()
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                }
+                                .buttonStyle(CreditTapButtonStyle())
+                                .accessibilityLabel("Buy disc")
+                            }
+                        }
+                    }
+
+                    if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                            Text("In Theaters")
+                                .labelMedium()
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Color.textSecondary)
+
+                            Text(run.badgeLabels.joined(separator: "   "))
+                                .bodySmall()
+                                .foregroundColor(DesignSystem.Color.textPrimary)
+
+                            if TheatricalTicketLinkBuilder.hasOptions(for: run) {
+                                Button(action: presentTheatricalTicketSheet) {
+                                    Text("Get tickets")
+                                        .labelMedium()
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(DesignSystem.Color.textPrimary)
+                                }
+                                .buttonStyle(CreditTapButtonStyle())
+                                .accessibilityLabel("Get tickets")
+                            }
+                        }
+                    }
+
                     // Streaming Services
 
                     
@@ -1068,14 +1388,12 @@ struct MovieDetailView: View {
                                     SourceContentCardView(
                                         sourceContent: sourceContent,
                                         podcastFeedURLString: podcastFeedURLs[sourceContent.sourceIdentifier.lowercased()],
-                                        podcastDestinationURL: sourceContent.podcastEpisode.flatMap { episode in
-                                            preferredPodcastLink(
-                                                podcastName: sourceContent.sourceName,
-                                                dataSourceIdentifier: sourceContent.sourceIdentifier,
-                                                episode: episode,
-                                                movieTitle: displayMovie.title
-                                            )
-                                        }
+                                        podcastDestinationURL: sourceLinkDestinationURL(
+                                            identifier: sourceContent.sourceIdentifier,
+                                            sourceUrl: sourceContent.sourceUrl,
+                                            episode: sourceContent.podcastEpisode,
+                                            sourceName: sourceContent.sourceName
+                                        )
                                     )
                                 }
                             } else {
@@ -1094,14 +1412,12 @@ struct MovieDetailView: View {
                                         legacySource: legacySource,
                                         movieTitle: displayMovie.title,
                                         podcastFeedURLString: podcastFeedURLs[legacySource.sourceIdentifier.lowercased()],
-                                        podcastDestinationURL: legacySource.podcastEpisode.flatMap { episode in
-                                            preferredPodcastLink(
-                                                podcastName: legacySource.sourceName,
-                                                dataSourceIdentifier: legacySource.sourceIdentifier,
-                                                episode: episode,
-                                                movieTitle: displayMovie.title
-                                            )
-                                        }
+                                        podcastDestinationURL: sourceLinkDestinationURL(
+                                            identifier: legacySource.sourceIdentifier,
+                                            sourceUrl: legacySource.sourceUrl,
+                                            episode: legacySource.podcastEpisode,
+                                            sourceName: legacySource.sourceName
+                                        )
                                     )
                                 }
                             }
@@ -1114,6 +1430,24 @@ struct MovieDetailView: View {
             }
         }
 
+        .sheet(isPresented: $showPhysicalPurchaseSheet) {
+            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                PhysicalPurchaseSheet(
+                    movieTitle: displayMovie.title,
+                    year: displayMovie.year,
+                    media: media
+                )
+            }
+        }
+        .sheet(isPresented: $showTheatricalTicketSheet) {
+            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                TheatricalTicketSheet(
+                    movieTitle: displayMovie.title,
+                    year: displayMovie.year,
+                    run: run
+                )
+            }
+        }
         .onAppear {
             // Sync local state from database when view appears
             syncLocalState()
@@ -1596,7 +1930,7 @@ struct SourceContentCardView: View {
     
     var body: some View {
         Group {
-            if sourceContent.podcastEpisode != nil, let podcastDestinationURL {
+            if let podcastDestinationURL {
                 Link(destination: podcastDestinationURL) {
                     content
                 }
@@ -1609,7 +1943,7 @@ struct SourceContentCardView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            HStack(alignment: sourceContent.sourceType.lowercased() == "podcast" ? .top : .center, spacing: DesignSystem.Spacing.md) {
+            HStack(alignment: sourceContent.podcastEpisode != nil || sourceContent.sourceTitle != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if sourceContent.sourceType.lowercased() == "podcast" {
                     podcastArtworkView
                 } else {
@@ -1631,7 +1965,6 @@ struct SourceContentCardView: View {
                     }
 
                     if let episode = sourceContent.podcastEpisode {
-
                         Text(episode.title)
                             .captionMedium()
                             .fontWeight(.medium)
@@ -1644,19 +1977,22 @@ struct SourceContentCardView: View {
                                 .captionMedium()
                                 .foregroundColor(DesignSystem.Color.textSecondary)
                         }
-
+                    } else if let sourceTitle = sourceContent.sourceTitle, !sourceTitle.isEmpty {
+                        Text(sourceTitle)
+                            .captionMedium()
+                            .fontWeight(.medium)
+                            .foregroundColor(DesignSystem.Color.textSecondary)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
-            
-            // Podcast-only details
-            if let episode = sourceContent.podcastEpisode {
-                if let description = episode.description, !description.isEmpty {
-                    Text(description)
-                        .captionMedium()
-                        .foregroundColor(DesignSystem.Color.textSecondary)
-                        .lineLimit(4)
-                }
+
+            if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
+                Text(description)
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
             }
         }
     }
@@ -1823,6 +2159,13 @@ private func createPreviewContainer() -> ModelContainer {
                 name: "Official Trailer",
                 youtubeKey: "vKQi3bBA1y8",
                 isOfficial: true
+            ),
+            physicalMedia: PhysicalMedia(
+                editions: [
+                    PhysicalEdition(id: "matrix-4k", label: .other, format: .uhd4k)
+                ],
+                has4K: true,
+                hasBluRay: true
             )
         ))
         .modelContainer(createPreviewContainer())

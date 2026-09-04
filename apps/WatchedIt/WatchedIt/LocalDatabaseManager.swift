@@ -326,6 +326,11 @@ public class LocalDatabaseManager: ObservableObject {
         }
     }
     
+    /// Bumps UI observers after a catalog apply so source caches and collections rebuild.
+    public func noteCatalogChanged() {
+        movieStatusVersion += 1
+    }
+
     /// Reloads movies without setting isLoading flag (for background refreshes)
     public func refreshMovies() {
         guard let context = modelContext else { return }
@@ -621,7 +626,7 @@ public class LocalDatabaseManager: ObservableObject {
                 if !normalized.isEmpty {
                     titleSetBySource[identifier, default: []].insert(normalized)
                 }
-                let date = content.podcastEpisode?.publishDate ?? content.sourceDate
+                let date = [content.podcastEpisode?.publishDate, content.sourceDate].compactMap { $0 }.max()
                 if let date, (latestDateBySource[identifier] == nil || date > latestDateBySource[identifier]!) {
                     latestDateBySource[identifier] = date
                     latestTitleBySource[identifier] = sourceTitle
@@ -1180,15 +1185,14 @@ public class LocalDatabaseManager: ObservableObject {
         if cloudRestoreAttemptCount >= maxCloudRestoreAttempts {
             return
         }
-        cloudRestoreAttemptCount += 1
-        isRestoringUserData = true
-        
+
         let status = await CloudKitManager.shared.accountStatus()
         guard status == .available else {
-            isRestoringUserData = false
-            scheduleCloudRestoreRetry(after: 2.0)
             return
         }
+
+        cloudRestoreAttemptCount += 1
+        isRestoringUserData = true
         
         // Use zone changes (incremental when token exists; full on first run when token is nil)
         let payloads: [CloudKitManager.UserMovieDataPayload]
@@ -1824,6 +1828,13 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
         }
     }
     
@@ -1870,6 +1881,13 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
         }
     }
     
@@ -1916,6 +1934,56 @@ public class LocalDatabaseManager: ObservableObject {
             
             // Sync user data separately to CloudKit (if enabled)
             syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched
+            )
+        }
+    }
+
+    func applyMinCloudLibrary(_ items: [MinCloudMovLibraryItem]) {
+        guard let modelContext else { return }
+        for item in items {
+            let movieId = item.movieId
+            let descriptor = FetchDescriptor<MovieData>(
+                predicate: #Predicate<MovieData> { $0.id == movieId }
+            )
+            guard let movieData = try? modelContext.fetch(descriptor).first else { continue }
+            let userData = getOrCreateUserMovieData(for: movieData, modelContext: modelContext)
+            userData.isSaved = userData.isSaved || (item.isSaved ?? false)
+            userData.isRewatched = userData.isRewatched || (item.isRewatched ?? false)
+            userData.isListened = userData.isListened || (item.isListened ?? false)
+            userData.isWatched = userData.isWatched || (item.isWatched ?? false)
+            if let rating = item.rating { userData.userRating = rating }
+            if let notes = item.notes { userData.userNotes = notes }
+            userData.lastUpdated = Date()
+            updateMovieInCache(movieId)
+        }
+        try? modelContext.save()
+        refreshMovies()
+    }
+
+    func minCloudLibraryPayload() -> [[String: Any]] {
+        guard let modelContext else { return [] }
+        let rows = (try? modelContext.fetch(FetchDescriptor<UserMovieData>())) ?? []
+        return rows.compactMap { userData -> [String: Any]? in
+            guard let movieId = userData.movie?.id else { return nil }
+            guard userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched else {
+                return nil
+            }
+            var item: [String: Any] = [
+                "movieId": movieId,
+                "isSaved": userData.isSaved,
+                "isRewatched": userData.isRewatched,
+                "isListened": userData.isListened,
+                "isWatched": userData.isWatched
+            ]
+            if let rating = userData.userRating { item["rating"] = rating }
+            if let notes = userData.userNotes { item["notes"] = notes }
+            return item
         }
     }
     
@@ -2164,6 +2232,13 @@ public class LocalDatabaseManager: ObservableObject {
         }
         if target.oscarAwards == nil && source.oscarAwards != nil {
             target.oscarAwards = source.oscarAwards
+        }
+        if let sourceMedia = source.physicalMedia {
+            if let existing = target.physicalMedia {
+                target.physicalMedia = existing.merging(inferred: sourceMedia)
+            } else {
+                target.physicalMedia = sourceMedia
+            }
         }
         
         // Merge user data (new schema) and fallback MovieState
@@ -2623,6 +2698,10 @@ public class LocalDatabaseManager: ObservableObject {
                     credits: bootstrapMovie.credits,
                     trailer: bootstrapMovie.trailer,
                     oscarAwards: bootstrapMovie.oscarAwards,
+                    physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(
+                        stored: bootstrapMovie.physicalMedia,
+                        tmdbId: bootstrapMovie.tmdbId
+                    ),
                     keywords: bootstrapMovie.keywords,
                     lastUpdated: Date(),
                     createdAt: bootstrapMovie.createdAt,
@@ -3036,6 +3115,17 @@ public class LocalDatabaseManager: ObservableObject {
         }
         if let oscarAwards = source.oscarAwards {
             target.oscarAwards = oscarAwards
+        }
+        if let physicalMedia = source.physicalMedia {
+            if let existing = target.physicalMedia, existing.manualOverride {
+                target.physicalMedia = existing
+            } else if let existing = target.physicalMedia {
+                target.physicalMedia = existing.merging(inferred: physicalMedia)
+            } else {
+                target.physicalMedia = physicalMedia
+            }
+        } else if target.physicalMedia == nil {
+            target.physicalMedia = PhysicalMediaCatalog.shared.media(forTmdbId: target.tmdbId)
         }
         if !source.keywords.isEmpty {
             target.keywords = source.keywords

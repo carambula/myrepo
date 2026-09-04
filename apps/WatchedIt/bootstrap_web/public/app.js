@@ -178,6 +178,15 @@ const elements = {
   toast: document.getElementById("toast"),
   designContent: document.getElementById("designContent"),
   oscarAwardsBtn: document.getElementById("oscarAwardsBtn"),
+  physicalMediaBtn: document.getElementById("physicalMediaBtn"),
+  physicalMediaModal: document.getElementById("physicalMediaModal"),
+  physicalMediaCloseBtn: document.getElementById("physicalMediaCloseBtn"),
+  physicalMediaStats: document.getElementById("physicalMediaStats"),
+  physicalMediaRefreshStatsBtn: document.getElementById("physicalMediaRefreshStatsBtn"),
+  physicalMediaEnrichBtn: document.getElementById("physicalMediaEnrichBtn"),
+  physicalMediaClearBtn: document.getElementById("physicalMediaClearBtn"),
+  physicalMediaStatus: document.getElementById("physicalMediaStatus"),
+  detailPhysicalMedia: document.getElementById("detailPhysicalMedia"),
   oscarModal: document.getElementById("oscarModal"),
   oscarCloseBtn: document.getElementById("oscarCloseBtn"),
   oscarStats: document.getElementById("oscarStats"),
@@ -1000,6 +1009,7 @@ function fillForm(movie) {
   elements.detailBackdrop.src = backdropUrl || "";
   elements.detailBackdrop.style.visibility = backdropUrl ? "visible" : "hidden";
   renderDetailOscars(movie);
+  renderDetailPhysicalMedia(movie);
   renderDetailMeta(movie);
 
   const cleanedTitle = sanitizeTmdbQuery(movie.title || "");
@@ -1093,6 +1103,7 @@ async function deleteMovie() {
   elements.movieForm.classList.add("hidden");
   elements.detailMedia.classList.add("hidden");
   elements.detailOscars.classList.add("hidden");
+  if (elements.detailPhysicalMedia) elements.detailPhysicalMedia.classList.add("hidden");
   elements.detailMeta.classList.add("hidden");
   elements.detailEmpty.classList.remove("hidden");
   await reloadData();
@@ -2683,6 +2694,14 @@ function bindEvents() {
     event.preventDefault();
     openOscarModal();
   });
+  bindClick(elements.physicalMediaBtn, (event) => {
+    event.preventDefault();
+    openPhysicalMediaModal();
+  });
+  bindClick(elements.physicalMediaCloseBtn, () => closePhysicalMediaModal());
+  bindClick(elements.physicalMediaRefreshStatsBtn, () => loadPhysicalMediaStats());
+  bindClick(elements.physicalMediaEnrichBtn, () => runPhysicalMediaEnrichment());
+  bindClick(elements.physicalMediaClearBtn, () => clearPhysicalMedia());
   bindClick(elements.oscarCloseBtn, () => closeOscarModal());
   bindClick(elements.oscarRefreshStatsBtn, () => loadOscarStats());
   bindClick(elements.oscarEnrichBtn, () => runOscarEnrichment());
@@ -3407,6 +3426,125 @@ function initAppearanceSettings() {
   applyActionBarLayout(actionBarSel ? actionBarSel.value : "leftAligned");
 
   applyDeviceChrome(false);
+}
+
+// ---- Physical Media ----
+
+function openPhysicalMediaModal() {
+  elements.physicalMediaModal.classList.remove("hidden");
+  elements.physicalMediaStatus.textContent = "";
+  loadPhysicalMediaStats();
+}
+
+function closePhysicalMediaModal() {
+  elements.physicalMediaModal.classList.add("hidden");
+}
+
+async function loadPhysicalMediaStats() {
+  const response = await fetch("/api/physical-media/stats");
+  const stats = await response.json();
+  elements.physicalMediaStats.innerHTML = `
+    <div>Tagged ${stats.withPhysicalMedia || 0}</div>
+    <div>Criterion ${stats.withCriterion || 0}</div>
+    <div>4K ${stats.with4K || 0}</div>
+    <div>Manual ${stats.manualOverrides || 0}</div>
+  `;
+}
+
+async function runPhysicalMediaEnrichment() {
+  elements.physicalMediaStatus.textContent = "Querying Wikidata…";
+  elements.physicalMediaEnrichBtn.disabled = true;
+  try {
+    const response = await fetch("/api/physical-media/enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error || "Enrichment failed");
+    elements.physicalMediaStatus.textContent = `Updated ${data.updatedCount} movies (${data.overlayCount} overlay titles).`;
+    await loadPhysicalMediaStats();
+    showToast("Physical media overlay updated");
+  } catch (error) {
+    elements.physicalMediaStatus.textContent = error.message;
+    showToast(error.message, true);
+  } finally {
+    elements.physicalMediaEnrichBtn.disabled = false;
+  }
+}
+
+async function clearPhysicalMedia() {
+  if (!confirm("Clear all physical media tags from bootstrap_data.json?")) return;
+  const response = await fetch("/api/physical-media/clear", { method: "POST" });
+  const data = await response.json();
+  elements.physicalMediaStatus.textContent = `Cleared ${data.clearedCount || 0} movies.`;
+  await loadPhysicalMediaStats();
+}
+
+function renderDetailPhysicalMedia(movie) {
+  if (!elements.detailPhysicalMedia) return;
+  if (!movie.tmdbId && !movie.physicalMedia) {
+    elements.detailPhysicalMedia.classList.add("hidden");
+    elements.detailPhysicalMedia.innerHTML = "";
+    return;
+  }
+  elements.detailPhysicalMedia.classList.remove("hidden");
+  const media = movie.physicalMedia || {};
+  const spine = (media.editions || []).find((edition) => edition.spineNumber)?.spineNumber || "";
+  elements.detailPhysicalMedia.innerHTML = `
+    <div class="oscar-detail-row">
+      <div class="oscar-detail-header">Physical Media</div>
+      <button class="oscar-fetch-btn" data-save="1">Save</button>
+    </div>
+    <label><input type="checkbox" data-flag="hasCriterion" ${media.hasCriterion ? "checked" : ""}/> Criterion</label>
+    <label><input type="checkbox" data-flag="has4K" ${media.has4K ? "checked" : ""}/> 4K UHD</label>
+    <label><input type="checkbox" data-flag="hasBluRay" ${media.hasBluRay ? "checked" : ""}/> Blu-ray</label>
+    <label>Spine <input type="text" data-spine="1" value="${spine}" placeholder="42" /></label>
+  `;
+  const saveBtn = elements.detailPhysicalMedia.querySelector("[data-save]");
+  saveBtn.addEventListener("click", async () => {
+    if (!movie.tmdbId) {
+      showToast("TMDB id required to save physical media", true);
+      return;
+    }
+    const flags = {};
+    elements.detailPhysicalMedia.querySelectorAll("[data-flag]").forEach((input) => {
+      flags[input.dataset.flag] = input.checked;
+    });
+    const spineValue = elements.detailPhysicalMedia.querySelector("[data-spine]")?.value.trim();
+    const editions = [];
+    if (flags.hasCriterion) {
+      editions.push({
+        id: "criterion-bluray",
+        label: "criterion",
+        format: flags.has4K ? "uhd4k" : "bluRay",
+        spineNumber: spineValue || null,
+      });
+    } else if (flags.has4K) {
+      editions.push({ id: "other-uhd4k", label: "other", format: "uhd4k" });
+    }
+    saveBtn.disabled = true;
+    try {
+      const response = await fetch("/api/physical-media/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdbId: movie.tmdbId,
+          ...flags,
+          editions,
+          manualOverride: true,
+        }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || "Save failed");
+      movie.physicalMedia = data.physicalMedia;
+      showToast("Saved physical media");
+    } catch (error) {
+      showToast(error.message, true);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
 }
 
 // ---- Oscar Awards Enrichment ----

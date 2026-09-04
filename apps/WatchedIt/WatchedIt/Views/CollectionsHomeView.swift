@@ -32,6 +32,7 @@ private struct CatalogStoreCorruptionRecoveryView: View {
 }
 
 private struct CollectionsHomeContentView: View {
+    @Binding var deepLinkURL: URL?
     @StateObject private var localDB = LocalDatabaseManager.shared
     @StateObject private var viewModel = CollectionsHomeViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -149,7 +150,7 @@ private struct CollectionsHomeContentView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top) {
+            .overlay(alignment: .top) {
                 HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
                     Spacer()
                     if pendingPodcastEpisodeCount > 0 {
@@ -159,10 +160,8 @@ private struct CollectionsHomeContentView: View {
                 }
                 .padding(.horizontal, MinSpacing.lg)
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .padding(.bottom, MinSpacing.TopControls.verticalPadding)
                 .contentShape(Rectangle())
                 .allowsHitTesting(true)
-                .zIndex(100)
             }
             .safeAreaInset(edge: .bottom) {
                 dynamicBottomToolbar
@@ -186,7 +185,9 @@ private struct CollectionsHomeContentView: View {
                         onCreditPersonTapped: startPersonSearchFromDetails,
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails
+                        onRatingTapped: startRatingSearchFromDetails,
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
+                        onTheatricalTapped: startTheatricalSearchFromDetails
                     )
                 }
             ))
@@ -212,6 +213,17 @@ private struct CollectionsHomeContentView: View {
             .onChange(of: preferredServicesData) { _, _ in rebuildSnapshot() }
             .onChange(of: toolbarBehaviorRaw) { _, _ in
                 toolbarScrollState.reset()
+            }
+            .onChange(of: deepLinkURL) { _, url in
+                guard let url else { return }
+                deepLinkURL = nil
+                guard let deepLink = DeepLinkHandler.parse(url: url) else { return }
+                switch deepLink {
+                case .movie(let tmdbID):
+                    if let movie = localDB.movies.first(where: { $0.tmdbId == tmdbID }) {
+                        selectedMovie = movie
+                    }
+                }
             }
             .onChange(of: viewModel.sections.count) { _, newCount in
                 guard perfLoggingEnabled, !hasLoggedFirstContentPaint, newCount > 0 else { return }
@@ -294,6 +306,9 @@ private struct CollectionsHomeContentView: View {
     }
 
     private func handleMainPagePullToRefresh() async {
+        if let context = localDB.modelContext {
+            _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: context, force: true)
+        }
         _ = await localDB.forcePodcastEpisodeIntake(reason: "collections-home-pull-to-refresh")
         rebuildSnapshot()
     }
@@ -374,6 +389,7 @@ private struct CollectionsHomeContentView: View {
     private var customFloatingBottomToolbar: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             GlassCapsuleToolbar(spacing: customToolbarIconSpacing.points, height: customToolbarControlHeight) {
+                statusMenu
                 listMenu
                 if hasPreferredStreamingServices { streamingServiceMenu }
                 genreMenu
@@ -508,6 +524,21 @@ private struct CollectionsHomeContentView: View {
         }
     }
 
+    private var statusMenu: some View {
+        Menu {
+            ForEach(WatchFilter.allCases, id: \.self) { filter in
+                Button {
+                    applyStatusFilterFromToolbar(filter)
+                } label: {
+                    Label(filter.rawValue, systemImage: filter.systemImage)
+                }
+            }
+        } label: {
+            DesignSystemIcon(DesignSystem.Icon.status, size: DesignSystem.IconSize.md, color: toolbarSecondaryAccentColor)
+        }
+        .accessibilityLabel("Status filter")
+    }
+
     private var listMenu: some View {
         Menu {
             Button("All Lists") { applyListFilterFromToolbar(nil) }
@@ -631,6 +662,40 @@ private struct CollectionsHomeContentView: View {
         selectedMovie = nil
     }
 
+    private func startTheatricalSearchFromDetails(_ filter: TheatricalFilter) {
+        pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        filters.theatricalFilter = filter
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: nil,
+            initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
+    private func startPhysicalMediaSearchFromDetails(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        if let mediaFilter = PhysicalMediaFilter.fromSearchToken(trimmed) {
+            filters.physicalMediaFilter = mediaFilter
+        }
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: filters.physicalMediaFilter == nil ? trimmed : nil,
+            initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
     private func startRatingSearchFromDetails(_ rating: String) {
         let trimmedRating = rating.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedRating.isEmpty else { return }
@@ -669,16 +734,32 @@ private struct CollectionsHomeContentView: View {
     }
 
     private func presentScopedSearch(title: String, section: CollectionSection) {
-        let ids = MovieQueryService.movieIdentifiers(for: section)
-        guard !ids.isEmpty else { return }
-        activeSearchContext = SearchPresentationContext(
-            title: title,
-            restrictedMovieIDs: ids,
-            allowsListFilter: false,
-            initialQuery: nil,
-            initialFilters: nil,
-            focusSearchOnOpen: false
-        )
+        switch MovieQueryService.headerSearchScope(for: section) {
+        case .list(let identifier, let isRankedList):
+            var filters = MovieSearchFilters()
+            filters.selectedListIdentifier = identifier
+            if isRankedList {
+                filters.sortOption = .ranking
+            }
+            presentGlobalSearch(initialFilters: filters)
+        case .movieIDs(let ids):
+            activeSearchContext = SearchPresentationContext(
+                title: title,
+                restrictedMovieIDs: ids,
+                allowsListFilter: false,
+                initialQuery: nil,
+                initialFilters: nil,
+                focusSearchOnOpen: false
+            )
+        case nil:
+            return
+        }
+    }
+
+    private func applyStatusFilterFromToolbar(_ filter: WatchFilter) {
+        var filters = MovieSearchFilters()
+        filters.watchFilter = filter
+        presentGlobalSearch(initialFilters: filters)
     }
 
     private func applyGenreFilterFromToolbar(_ genre: String?) {
@@ -978,6 +1059,7 @@ private struct CollectionMovieCard: View {
 }
 
 struct CollectionsHomeView: View {
+    @Binding var deepLinkURL: URL?
     @StateObject private var localDB = LocalDatabaseManager.shared
 
     var body: some View {
@@ -985,7 +1067,7 @@ struct CollectionsHomeView: View {
             if localDB.catalogNeedsRestartDueToCorruption {
                 CatalogStoreCorruptionRecoveryView()
             } else {
-                CollectionsHomeContentView()
+                CollectionsHomeContentView(deepLinkURL: $deepLinkURL)
             }
         }
     }

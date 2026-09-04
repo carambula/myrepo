@@ -16,12 +16,15 @@ enum ListeningHistoryStore {
     }
 
     static func applyFromUbiquitousStore() {
-        guard let data = NSUbiquitousKeyValueStore.default.data(forKey: storageKey),
+        guard let data = CloudKeyValueWriter.data(forKey: storageKey),
               !decodeEntries(data).isEmpty else { return }
         let merged = mergedEntriesFromStores()
         guard let out = try? JSONEncoder().encode(merged) else { return }
         UserDefaults.standard.set(out, forKey: storageKey)
-        NotificationCenter.default.post(name: .listeningHistoryDidChange, object: nil)
+        // Posted on the main thread because UI observers update SwiftUI state; this method may run off-main.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .listeningHistoryDidChange, object: nil)
+        }
     }
 
     /// Call after meaningful progress, finished, or manual position changes from the player UI.
@@ -86,7 +89,7 @@ enum ListeningHistoryStore {
 
     private static func mergedEntriesFromStores() -> [ListeningHistoryEntry] {
         let local = decodeEntries(UserDefaults.standard.data(forKey: storageKey))
-        let cloud = decodeEntries(NSUbiquitousKeyValueStore.default.data(forKey: storageKey))
+        let cloud = decodeEntries(CloudKeyValueWriter.data(forKey: storageKey))
         return mergeEntryArrays(local, cloud)
     }
 
@@ -138,7 +141,7 @@ enum ListeningHistoryStore {
         let array = Array(trimmed)
         guard let data = try? JSONEncoder().encode(array) else { return }
         UserDefaults.standard.set(data, forKey: storageKey)
-        NSUbiquitousKeyValueStore.default.set(data, forKey: storageKey)
+        CloudKeyValueWriter.setData(data, forKey: storageKey)
         NotificationCenter.default.post(name: .listeningHistoryDidChange, object: nil)
     }
 }

@@ -29,6 +29,7 @@ final class MovieData {
     var creditsData: Data? // Encoded MovieCredits
     var trailerData: Data? // Encoded MovieTrailer
     var oscarAwardsData: Data? // Encoded OscarAwards
+    var physicalMediaData: Data? // Encoded PhysicalMedia
     var keywordsData: Data? // Encoded [String] - for future use
     var lastUpdated: Date
     var createdAt: Date // When movie was first added
@@ -67,6 +68,7 @@ final class MovieData {
         credits: MovieCredits? = nil,
         trailer: MovieTrailer? = nil,
         oscarAwards: OscarAwards? = nil,
+        physicalMedia: PhysicalMedia? = nil,
         keywords: [String] = [],
         lastUpdated: Date = Date(),
         createdAt: Date = Date(),
@@ -139,6 +141,15 @@ final class MovieData {
             } catch {
                 print("❌ CRITICAL: Failed to encode Oscar awards in init for '\(title)': \(error.localizedDescription)")
                 self.oscarAwardsData = nil
+            }
+        }
+
+        if let physicalMedia = physicalMedia {
+            do {
+                self.physicalMediaData = try encodePhysicalMedia(physicalMedia)
+            } catch {
+                print("❌ CRITICAL: Failed to encode physical media in init for '\(title)': \(error.localizedDescription)")
+                self.physicalMediaData = nil
             }
         }
         
@@ -291,6 +302,30 @@ final class MovieData {
             }
         }
     }
+
+    var physicalMedia: PhysicalMedia? {
+        get {
+            guard let data = physicalMediaData else { return nil }
+            do {
+                return try decodePhysicalMedia(from: data)
+            } catch {
+                print("❌ Error decoding physical media for movie '\(title)': \(error.localizedDescription)")
+                return nil
+            }
+        }
+        set {
+            guard let newValue = newValue else {
+                physicalMediaData = nil
+                return
+            }
+            do {
+                physicalMediaData = try encodePhysicalMedia(newValue)
+            } catch {
+                print("❌ CRITICAL: Failed to encode physical media for movie '\(title)': \(error.localizedDescription)")
+                physicalMediaData = nil
+            }
+        }
+    }
     
     /// Returns nil if this instance was invalidated (e.g. deleted from the store).
     /// Use this when iterating over a fetch result that may have been invalidated by catalog refresh or deletes.
@@ -342,6 +377,13 @@ final class MovieData {
         if podcastEpisode == nil {
             if let podcastContent = sourceContents?.first(where: { $0.source?.type == "podcast" && $0.podcastEpisode != nil }) {
                 podcastEpisode = podcastContent.podcastEpisode
+            } else if let datedContent = sourceContents?.first(where: { $0.source?.type == "podcast" && $0.sourceDate != nil }) {
+                podcastEpisode = PodcastEpisode(
+                    title: datedContent.sourceTitle ?? cleanedTitle,
+                    episodeId: "\(datedContent.source?.identifier ?? "source")|\(id)",
+                    publishDate: datedContent.sourceDate,
+                    description: datedContent.sourceDescription
+                )
             } else if let podcastDataSource = dataSources?.first(where: { $0.dataSource?.type == "podcast" && $0.podcastEpisode != nil }) {
                 podcastEpisode = podcastDataSource.podcastEpisode
             }
@@ -363,6 +405,8 @@ final class MovieData {
             rewatchablesDiscussion: rewatchablesDiscussion,
             trailer: trailer,
             oscarAwards: oscarAwards,
+            physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(stored: physicalMedia, tmdbId: tmdbId),
+            theatricalRun: TheatricalCatalog.shared.run(forTmdbId: tmdbId),
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
@@ -387,6 +431,7 @@ final class MovieData {
             credits: movie.credits,
             trailer: movie.trailer,
             oscarAwards: movie.oscarAwards,
+            physicalMedia: movie.physicalMedia,
             lastUpdated: movie.lastUpdated,
             cloudKitRecordID: cloudKitRecordID
         )
@@ -625,6 +670,14 @@ extension MovieData {
     nonisolated private static func decodeOscarAwards(from data: Data) throws -> OscarAwards {
         return try JSONDecoder().decode(OscarAwards.self, from: data)
     }
+
+    nonisolated private static func encodePhysicalMedia(_ media: PhysicalMedia) throws -> Data {
+        return try JSONEncoder().encode(media)
+    }
+
+    nonisolated private static func decodePhysicalMedia(from data: Data) throws -> PhysicalMedia {
+        return try JSONDecoder().decode(PhysicalMedia.self, from: data)
+    }
     
     nonisolated private static func encodePodcastEpisode(_ episode: PodcastEpisode) throws -> Data {
         return try JSONEncoder().encode(episode)
@@ -664,6 +717,14 @@ extension MovieData {
     
     private func decodeOscarAwards(from data: Data) throws -> OscarAwards {
         return try Self.decodeOscarAwards(from: data)
+    }
+
+    private func encodePhysicalMedia(_ media: PhysicalMedia) throws -> Data {
+        return try Self.encodePhysicalMedia(media)
+    }
+
+    private func decodePhysicalMedia(from data: Data) throws -> PhysicalMedia {
+        return try Self.decodePhysicalMedia(from: data)
     }
     
     private func encodePodcastEpisode(_ episode: PodcastEpisode) throws -> Data {

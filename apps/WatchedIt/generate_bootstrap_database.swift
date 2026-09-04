@@ -49,6 +49,26 @@ struct BootstrapOscarAwards: Codable {
     let rawAwardsText: String?
 }
 
+struct BootstrapPhysicalEdition: Codable {
+    let id: String?
+    let label: String
+    let format: String
+    let spineNumber: String?
+    let notes: String?
+}
+
+struct BootstrapPhysicalMedia: Codable {
+    let editions: [BootstrapPhysicalEdition]?
+    let hasCriterion: Bool?
+    let has4K: Bool?
+    let hasBluRay: Bool?
+    let manualOverride: Bool?
+}
+
+struct PhysicalMediaOverlayFile: Codable {
+    let byTmdbId: [String: BootstrapPhysicalMedia]
+}
+
 struct BootstrapMovie: Codable {
     var title: String
     let sourceIdentifier: String
@@ -69,6 +89,7 @@ struct BootstrapMovie: Codable {
     let trailer: BootstrapTrailer?
     let podcastEpisodeDescription: String?
     let oscarAwards: BootstrapOscarAwards?
+    let physicalMedia: BootstrapPhysicalMedia?
 }
 
 struct BootstrapStreamingService: Codable {
@@ -126,6 +147,7 @@ final class MovieData {
     var creditsData: Data?
     var trailerData: Data?
     var oscarAwardsData: Data?
+    var physicalMediaData: Data?
     var keywordsData: Data?
     var lastUpdated: Date
     var createdAt: Date
@@ -162,6 +184,7 @@ final class MovieData {
         credits: MovieCredits? = nil,
         trailer: MovieTrailer? = nil,
         oscarAwards: BootstrapOscarAwards? = nil,
+        physicalMedia: BootstrapPhysicalMedia? = nil,
         keywords: [String] = [],
         lastUpdated: Date = Date(),
         createdAt: Date = Date(),
@@ -202,6 +225,10 @@ final class MovieData {
 
         if let oscarAwards = oscarAwards {
             self.oscarAwardsData = try? JSONEncoder().encode(oscarAwards)
+        }
+
+        if let physicalMedia = physicalMedia {
+            self.physicalMediaData = try? JSONEncoder().encode(physicalMedia)
         }
 
         if !keywords.isEmpty {
@@ -880,6 +907,52 @@ func bestOscarAwards(from movies: [BootstrapMovie]) -> BootstrapOscarAwards? {
         .max(by: { ($0.totalWins + $0.totalNominations) < ($1.totalWins + $1.totalNominations) })
 }
 
+func bestPhysicalMedia(from movies: [BootstrapMovie]) -> BootstrapPhysicalMedia? {
+    movies.compactMap { $0.physicalMedia }.max(by: { lhs, rhs in
+        let leftScore = (lhs.hasCriterion == true ? 2 : 0) + (lhs.has4K == true ? 2 : 0) + (lhs.editions?.count ?? 0)
+        let rightScore = (rhs.hasCriterion == true ? 2 : 0) + (rhs.has4K == true ? 2 : 0) + (rhs.editions?.count ?? 0)
+        return leftScore < rightScore
+    })
+}
+
+func overlayPhysicalMedia(tmdbId: Int?, stored: BootstrapPhysicalMedia?) -> BootstrapPhysicalMedia? {
+    guard let tmdbId, let overlay = physicalMediaOverlayByTmdbId[String(tmdbId)] else {
+        return stored
+    }
+    if stored?.manualOverride == true {
+        return stored
+    }
+    return BootstrapPhysicalMedia(
+        editions: {
+            let storedEditions = stored?.editions ?? []
+            let overlayEditions = overlay.editions ?? []
+            return storedEditions.isEmpty ? overlayEditions : storedEditions + overlayEditions
+        }(),
+        hasCriterion: (stored?.hasCriterion == true) || (overlay.hasCriterion == true),
+        has4K: (stored?.has4K == true) || (overlay.has4K == true),
+        hasBluRay: (stored?.hasBluRay == true) || (overlay.hasBluRay == true),
+        manualOverride: stored?.manualOverride == true
+    )
+}
+
+var physicalMediaOverlayByTmdbId: [String: BootstrapPhysicalMedia] = [:]
+
+func loadPhysicalMediaOverlay() {
+    let urls = [
+        URL(fileURLWithPath: "WatchedIt/physical_media.json"),
+        URL(fileURLWithPath: "physical_media.json")
+    ]
+    for url in urls {
+        guard let data = try? Data(contentsOf: url),
+              let file = try? JSONDecoder().decode(PhysicalMediaOverlayFile.self, from: data) else {
+            continue
+        }
+        physicalMediaOverlayByTmdbId = file.byTmdbId
+        print("📀 Loaded physical media overlay (\(file.byTmdbId.count) titles)")
+        return
+    }
+}
+
 private func parseEpisodeDate(_ value: String?) -> Date? {
     guard let value, !value.isEmpty else { return nil }
     let formatter = DateFormatter()
@@ -920,7 +993,8 @@ private func mergeBootstrapMovie(base: BootstrapMovie, enriched: BootstrapMovie)
         credits: base.credits ?? enriched.credits,
         trailer: base.trailer ?? enriched.trailer,
         podcastEpisodeDescription: base.podcastEpisodeDescription ?? enriched.podcastEpisodeDescription,
-        oscarAwards: base.oscarAwards ?? enriched.oscarAwards
+        oscarAwards: base.oscarAwards ?? enriched.oscarAwards,
+        physicalMedia: base.physicalMedia ?? enriched.physicalMedia
     )
 }
 
@@ -1026,8 +1100,10 @@ func getKnownPodcastUrls(for identifier: String, episodeTitle: String?, movieTit
 func generateBootstrapDatabase() async throws {
     print("📦 Generating pre-populated SwiftData database...")
     
-    // Load bootstrap JSON (always use base as the source of truth)
-    let baseURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.json")
+    // Prefer a just-pulled Min Cloud catalog when present.
+    let cloudURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.cloud.json")
+    let committedURL = URL(fileURLWithPath: "WatchedIt/bootstrap_data.json")
+    let baseURL = FileManager.default.fileExists(atPath: cloudURL.path) ? cloudURL : committedURL
     let enrichedURL = URL(fileURLWithPath: "bootstrap_data_enriched.json")
     let baseExists = FileManager.default.fileExists(atPath: baseURL.path)
     let enrichedExists = FileManager.default.fileExists(atPath: enrichedURL.path)
@@ -1036,7 +1112,7 @@ func generateBootstrapDatabase() async throws {
         exit(1)
     }
     
-    print("📂 Loading bootstrap JSON from base...")
+    print("📂 Loading bootstrap JSON from \(baseURL.lastPathComponent)...")
     let baseData = try Data(contentsOf: baseURL)
     let baseBootstrapData = try JSONDecoder().decode(BootstrapData.self, from: baseData)
     
@@ -1047,6 +1123,7 @@ func generateBootstrapDatabase() async throws {
     }
     
     let bootstrapData = mergeBootstrapData(base: baseBootstrapData, enriched: enrichedBootstrapData)
+    loadPhysicalMediaOverlay()
     
     print("✅ Loaded \(bootstrapData.dataSources.count) sources and \(bootstrapData.movies.count) movies")
     
@@ -1236,6 +1313,10 @@ func generateBootstrapDatabase() async throws {
         let mergedCredits = bestCredits(from: mergeCandidates)
         let mergedTrailer = bestTrailer(from: mergeCandidates)
         let mergedOscarAwards = bestOscarAwards(from: mergeCandidates)
+        let mergedPhysicalMedia = overlayPhysicalMedia(
+            tmdbId: baseMovie.tmdbId,
+            stored: bestPhysicalMedia(from: mergeCandidates)
+        )
         let mergedYear = baseMovie.year ?? mergeCandidates.compactMap { $0.year }.first
 
         // Convert streaming services
@@ -1290,6 +1371,7 @@ func generateBootstrapDatabase() async throws {
             credits: credits,
             trailer: trailer,
             oscarAwards: mergedOscarAwards,
+            physicalMedia: mergedPhysicalMedia,
             lastUpdated: Date()
         )
         
@@ -1417,6 +1499,10 @@ func generateBootstrapDatabase() async throws {
         let mergedCredits = bestCredits(from: mergeCandidates)
         let mergedTrailer = bestTrailer(from: mergeCandidates)
         let mergedOscarAwards = bestOscarAwards(from: mergeCandidates)
+        let mergedPhysicalMedia = overlayPhysicalMedia(
+            tmdbId: baseMovie.tmdbId,
+            stored: bestPhysicalMedia(from: mergeCandidates)
+        )
         let mergedYear = baseMovie.year ?? mergeCandidates.compactMap { $0.year }.first
 
         // Convert streaming services
@@ -1471,6 +1557,7 @@ func generateBootstrapDatabase() async throws {
             credits: credits,
             trailer: trailer,
             oscarAwards: mergedOscarAwards,
+            physicalMedia: mergedPhysicalMedia,
             lastUpdated: Date()
         )
         

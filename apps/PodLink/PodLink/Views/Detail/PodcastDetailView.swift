@@ -29,6 +29,7 @@ struct PodcastDetailView: View {
 
     @State private var searchText = ""
     @State private var isSearchActive = false
+    @State private var statusFilter: EpisodeStatusFilter = .all
     @FocusState private var isSearchFieldFocused: Bool
     private let searchControlHeight: CGFloat = 56
     
@@ -273,9 +274,6 @@ struct PodcastDetailView: View {
                     onShowDetails: { episodeForTranscript = item.episode },
                     showsDownloadAffordance: false
                 )
-
-                Divider()
-                    .padding(.leading, 76)
             }
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         }
@@ -285,10 +283,11 @@ struct PodcastDetailView: View {
 
     private var filteredEpisodes: [Episode] {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return episodes }
-        return episodes.filter {
-            $0.title.localizedCaseInsensitiveContains(q)
-                || $0.description.localizedCaseInsensitiveContains(q)
+        return episodes.filter { episode in
+            guard statusFilter.matches(episode) else { return false }
+            if q.isEmpty { return true }
+            return episode.title.localizedCaseInsensitiveContains(q)
+                || episode.description.localizedCaseInsensitiveContains(q)
         }
     }
 
@@ -302,8 +301,16 @@ struct PodcastDetailView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DesignSystem.Spacing.xxl)
+            } else if filteredEpisodes.isEmpty {
+                Text(statusFilter == .all
+                     ? "No episodes yet."
+                     : "No episodes match this filter.")
+                    .font(DesignSystem.Typography.bodyMedium())
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, DesignSystem.Spacing.lg)
             } else {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: DesignSystem.Spacing.sm) {
                     ForEach(filteredEpisodes) { episode in
                         EpisodeRowView(
                             episode: episode,
@@ -316,9 +323,6 @@ struct PodcastDetailView: View {
                             },
                             showsDownloadAffordance: false
                         )
-
-                        Divider()
-                            .padding(.leading, 76)
                     }
                 }
             }
@@ -348,6 +352,8 @@ struct PodcastDetailView: View {
 
     private var episodeSearchBar: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
+            EpisodeStatusFilterButton(statusFilter: $statusFilter, size: searchControlHeight)
+
             HStack(spacing: DesignSystem.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16))
@@ -374,13 +380,14 @@ struct PodcastDetailView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.md)
             .frame(height: searchControlHeight)
-            .background(.ultraThinMaterial)
+            .background(.thinMaterial)
             .clipShape(MinAffordanceStyle.shared.capsuleShape)
             .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.capsuleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
 
             Button {
                 withAnimation(DesignSystem.Animation.standard) {
                     searchText = ""
+                    statusFilter = .all
                     isSearchActive = false
                     isSearchFieldFocused = false
                 }
@@ -389,7 +396,7 @@ struct PodcastDetailView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .frame(width: searchControlHeight, height: searchControlHeight)
-                    .background(.ultraThinMaterial)
+                    .background(.thinMaterial)
                     .clipShape(MinAffordanceStyle.shared.circleShape)
                     .overlay { if MinAffordanceStyle.shared.borderEnabled { MinAffordanceStyle.shared.circleShape.stroke(Color.white.opacity(0.28), lineWidth: 0.8) } }
             }
@@ -421,20 +428,90 @@ struct PodcastDetailView: View {
 
         guard let hint = initialDeepLinkEpisode else { return }
 
+        // Most reliable: exact audio/video URL identity (used when the sender has a real enclosure URL).
         if let url = hint.episodeURL,
            let matched = episodes.first(where: { episodeMatchesDeepLinkURL($0, targetURL: url) }) {
             selectedEpisode = matched
             return
         }
 
-        if let title = hint.episodeTitle?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-           !title.isEmpty,
-           let matched = episodes.first(where: {
-               $0.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == title
-                   || $0.title.lowercased().contains(title)
-           }) {
+        // Cross-app links (e.g. from WatchedIt) usually only carry the episode title, which can differ
+        // from the live feed by punctuation, smart quotes, casing, or whitespace. Match robustly and
+        // fall back to the show screen only when no confident match exists.
+        if let matched = bestEpisodeMatch(forTitle: hint.episodeTitle) {
             selectedEpisode = matched
         }
+    }
+
+    /// Finds the episode whose title best matches a deep-link title hint, tolerant of formatting
+    /// differences. Returns `nil` (so the caller falls back to the show screen) when no episode is a
+    /// confident match.
+    private func bestEpisodeMatch(forTitle rawTitle: String?) -> Episode? {
+        guard let rawTitle else { return nil }
+        let target = normalizedTitleForMatching(rawTitle)
+        guard !target.isEmpty else { return nil }
+
+        // 1. Exact match after normalization (handles smart quotes, casing, punctuation, whitespace).
+        if let exact = episodes.first(where: { normalizedTitleForMatching($0.title) == target }) {
+            return exact
+        }
+
+        // 2. Bidirectional containment: a short stored title inside a verbose feed title, or vice versa.
+        let contained = episodes.filter { episode in
+            let candidate = normalizedTitleForMatching(episode.title)
+            guard !candidate.isEmpty else { return false }
+            return candidate.contains(target) || target.contains(candidate)
+        }
+        if !contained.isEmpty {
+            // When several episodes contain the target, prefer the one closest in length so we do not
+            // grab an unrelated longer episode that merely happens to include the words.
+            return contained.min { lhs, rhs in
+                let lhsDelta = abs(normalizedTitleForMatching(lhs.title).count - target.count)
+                let rhsDelta = abs(normalizedTitleForMatching(rhs.title).count - target.count)
+                return lhsDelta < rhsDelta
+            }
+        }
+
+        // 3. Token-overlap (Jaccard) best match as a last resort, with a high threshold so an
+        //    uncertain match never overrides the graceful show-screen fallback.
+        let targetTokens = Set(target.split(separator: " ").map(String.init))
+        guard !targetTokens.isEmpty else { return nil }
+
+        var best: (episode: Episode, score: Double)?
+        for episode in episodes {
+            let candidateTokens = Set(normalizedTitleForMatching(episode.title).split(separator: " ").map(String.init))
+            guard !candidateTokens.isEmpty else { continue }
+            let intersection = Double(targetTokens.intersection(candidateTokens).count)
+            let union = Double(targetTokens.union(candidateTokens).count)
+            guard union > 0 else { continue }
+            let score = intersection / union
+            if score > (best?.score ?? 0) {
+                best = (episode, score)
+            }
+        }
+
+        if let best, best.score >= 0.6 {
+            return best.episode
+        }
+        return nil
+    }
+
+    /// Lowercases, strips diacritics/punctuation/quotes, and collapses whitespace so titles from
+    /// different sources compare equal when they refer to the same episode.
+    private func normalizedTitleForMatching(_ value: String) -> String {
+        let folded = value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+        var characters: [Character] = []
+        var lastWasSpace = false
+        for scalar in folded.unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                characters.append(Character(scalar))
+                lastWasSpace = false
+            } else if !lastWasSpace {
+                characters.append(" ")
+                lastWasSpace = true
+            }
+        }
+        return String(characters).trimmingCharacters(in: .whitespaces)
     }
 
     private func episodeMatchesDeepLinkURL(_ episode: Episode, targetURL: URL) -> Bool {

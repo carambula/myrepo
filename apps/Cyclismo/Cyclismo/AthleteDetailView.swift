@@ -39,7 +39,7 @@ struct AthleteDetailView: View {
                                     Text(race.name)
                                         .headlineSmall()
                                         .foregroundHeadline()
-                                    Text("\(race.startDate) • \(race.locationCity ?? "TBD")")
+                                    Text("\(race.startDate)   \(race.locationCity ?? "TBD")")
                                         .captionMedium()
                                         .foregroundColor(DesignSystem.Color.textSecondary)
                                 }

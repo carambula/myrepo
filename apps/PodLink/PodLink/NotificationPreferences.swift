@@ -104,10 +104,35 @@ struct NotificationPreferencesView: View {
         .onReceive(NotificationCenter.default.publisher(for: .followedPodcastsDidChange)) { _ in
             followedPodcasts = Podcast.loadFollowedPodcasts()
         }
-        .onChange(of: preferences.morningQueueEnabled) { _, _ in preferences.save() }
-        .onChange(of: preferences.useAppleIntelligence) { _, _ in preferences.save() }
-        .onChange(of: preferences.priorityPodcastsEnabled) { _, _ in preferences.save() }
-        .onChange(of: preferences.checkIntervalMinutes) { _, _ in preferences.save() }
+        .onChange(of: preferences.morningQueueEnabled) { _, _ in preferences.save(); syncPreferencesToCloud() }
+        .onChange(of: preferences.useAppleIntelligence) { _, _ in preferences.save(); syncPreferencesToCloud() }
+        .onChange(of: preferences.priorityPodcastsEnabled) { _, enabled in
+            preferences.save()
+            syncPreferencesToCloud()
+            if enabled {
+                Task { await EpisodeNotificationService.shared.requestAuthorizationIfNeeded() }
+            }
+        }
+        .onChange(of: preferences.checkIntervalMinutes) { _, _ in preferences.save(); syncPreferencesToCloud() }
+    }
+
+    private func syncPreferencesToCloud() {
+        Task {
+            await MinCloudClient.shared.syncFollowedWatches(Podcast.loadFollowedPodcasts())
+            guard MinCloudSettings.isSignedIn else { return }
+            try? await MinCloudClient.shared.saveNotificationPreferences([
+                "morning_queue": [
+                    "enabled": preferences.morningQueueEnabled,
+                    "time": String(format: "%02d:%02d", preferences.morningQueueTimeHour, preferences.morningQueueTimeMinute),
+                    "useAppleIntelligence": preferences.useAppleIntelligence
+                ],
+                "priority_podcasts": [
+                    "enabled": preferences.priorityPodcastsEnabled,
+                    "checkIntervalMinutes": preferences.checkIntervalMinutes,
+                    "priorityPodcastIds": preferences.priorityPodcastIDs
+                ]
+            ])
+        }
     }
 
     private func togglePriority(_ podcast: Podcast) {
@@ -117,5 +142,6 @@ struct NotificationPreferencesView: View {
             preferences.priorityPodcastIDs.append(podcast.id)
         }
         preferences.save()
+        syncPreferencesToCloud()
     }
 }

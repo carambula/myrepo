@@ -134,7 +134,7 @@ struct EpisodeRowView: View {
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                             .fill(Color(.tertiarySystemFill))
                     }
-                    .frame(width: 52, height: 52)
+                    .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
 
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {

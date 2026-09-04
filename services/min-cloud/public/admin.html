@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Min Cloud Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Min Cloud Admin</div>
+      <nav>
+        <a href="/">User site</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Central catalog and jobs</h1>
+      <p>Refresh streaming availability and podcast feeds for every user without shipping an app update.</p>
+    </section>
+
+    <div class="admin-grid">
+      <aside class="panel stack">
+        <label>Admin token<input id="adminToken" type="password" placeholder="ADMIN_TOKEN" /></label>
+        <button id="saveToken">Save token</button>
+        <button id="refreshHealth" class="secondary">Reload health</button>
+        <button data-job="mov.streaming.refresh">Refresh streaming</button>
+        <button data-job="mov.theaters.refresh">Refresh theater stays</button>
+        <button data-job="pod.feeds.refresh">Refresh podcast feeds</button>
+        <button data-job="mov.feeds.refresh">Refresh movie podcasts</button>
+        <button data-job="pod.itunes.enrich" class="secondary">Enrich iTunes metadata</button>
+        <button data-job="notifications.dispatch" class="secondary">Dispatch notifications</button>
+      </aside>
+      <main class="stack">
+        <section class="panel">
+          <h2>Health</h2>
+          <div id="health" class="meta">Sign in with the admin token to load catalog health.</div>
+        </section>
+        <section class="panel">
+          <h2>Add movie</h2>
+          <form id="movieForm" class="stack">
+            <label>TMDB id<input id="tmdbId" /></label>
+            <label>Title<input id="movieTitle" /></label>
+            <button type="submit">Upsert movie</button>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>Add podcast</h2>
+          <form id="podcastForm" class="stack">
+            <label>iTunes id<input id="itunesId" /></label>
+            <label>Feed URL<input id="feedUrl" /></label>
+            <label>Title<input id="podcastTitle" /></label>
+            <button type="submit">Upsert podcast</button>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>Recent jobs</h2>
+          <table>
+            <thead><tr><th>Job</th><th>Status</th><th>Progress</th><th>When</th></tr></thead>
+            <tbody id="jobsBody"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+    <script src="/admin.js"></script>
+  </body>
+</html>

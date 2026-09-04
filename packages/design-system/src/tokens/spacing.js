@@ -41,10 +41,30 @@ export const spacing = {
   
   // SVG logo/asset positioning (top of home screen)
   logo: {
-    marginTop: '32px',
+    marginTop: '16px',
     marginBottom: '24px',
-    marginTopMobile: '24px',
+    marginTopMobile: '16px',
     marginBottomMobile: '16px',
+  },
+
+  // Top safe-area account / search / add buttons (MinSpacing.TopControls)
+  topControls: {
+    buttonSize: '56px',
+    horizontalPadding: '8px',
+    verticalPadding: '8px',
+  },
+
+  // Scroll-pinned title-type wordmark (MinSpacing.TitleType)
+  titleType: {
+    horizontalPadding: '24px',
+    markOffsetY: '0',
+    scrollTopPadding: '16px',
+    contentTopSpacing: '24px',
+    maxWidth: '220px',
+    maxHeight: '38px',
+    blurDistance: '80px',
+    maxBlurRadius: '12px',
+    maxOpacityReduction: 0.5,
   },
   
   // Button spacing

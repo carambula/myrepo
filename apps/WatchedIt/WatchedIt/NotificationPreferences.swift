@@ -49,6 +49,24 @@ struct NotificationPreferencesView: View {
         }
         .navigationTitle("Notifications")
         .designSystemGroupedListStyle()
-        .onChange(of: preferences.newEpisodesEnabled) { _, _ in preferences.save() }
+        .onChange(of: preferences.newEpisodesEnabled) { _, _ in
+            preferences.save()
+            syncPreferencesToCloud()
+        }
+        .onChange(of: preferences.checkTimeHour) { _, _ in syncPreferencesToCloud() }
+        .onChange(of: preferences.checkTimeMinute) { _, _ in syncPreferencesToCloud() }
+    }
+
+    private func syncPreferencesToCloud() {
+        guard MinCloudSettings.isSignedIn else { return }
+        let hour = String(format: "%02d:%02d", preferences.checkTimeHour, preferences.checkTimeMinute)
+        Task {
+            try? await MinCloudClient.shared.saveNotificationPreferences([
+                "new_episodes": [
+                    "enabled": preferences.newEpisodesEnabled,
+                    "time": hour
+                ]
+            ])
+        }
     }
 }

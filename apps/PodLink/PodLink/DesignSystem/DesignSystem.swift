@@ -42,9 +42,9 @@ struct DesignSystem {
         static func headlineSmall() -> Font {
             let theme = ThemeManager.shared.currentTheme
             if let design = theme.headlineFontDesign as Font.Design? {
-                return .system(size: 17, weight: theme.headlineFontWeight, design: design)
+                return .system(size: 18, weight: theme.headlineFontWeight, design: design)
             }
-            return .system(size: 17, weight: .semibold)
+            return .system(size: 18, weight: .semibold)
         }
 
         static func bodyLarge() -> Font {
@@ -248,7 +248,7 @@ struct DesignSystem {
 
     struct Controls {
         static let controlHeight: CGFloat = 48
-        static let iconButtonSize: CGFloat = 48
+        static let iconButtonSize: CGFloat = 56
     }
 
     // MARK: - Corner Radius (values from MinAppKit)
@@ -287,6 +287,8 @@ struct DesignSystem {
         static let add = "plus"
         static let edit = "pencil"
         static let delete = "trash"
+        static let filter = "line.3.horizontal.decrease"
+        static let status = "checkmark"
     }
 }
 

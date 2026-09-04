@@ -7,14 +7,27 @@
 
 import Foundation
 
+struct ReleasePeriod: Hashable, Sendable {
+    let decade: Int
+
+    var label: String { "\(decade)s" }
+
+    static func from(year: Int) -> ReleasePeriod {
+        ReleasePeriod(decade: (year / 10) * 10)
+    }
+}
+
 struct MovieSearchFilters: Equatable {
     var watchFilter: WatchFilter = .all
     var selectedGenre: String? = nil
     var selectedMPAARating: String? = nil
     var selectedPersonName: String? = nil
     var selectedReleaseYear: Int? = nil
+    var selectedPeriod: Int? = nil
     var selectedListIdentifier: String? = nil
     var selectedStreamingService: String? = nil
+    var theatricalFilter: TheatricalFilter? = nil
+    var physicalMediaFilter: PhysicalMediaFilter? = nil
     var sortOption: SortOption = .episodeDateDesc
     var preferredStreamingServices: [String] = []
 }
@@ -39,6 +52,14 @@ enum MovieSearchEngine {
 
             if let episode = movie.podcastEpisode {
                 fields.append(episode.title)
+            }
+
+            if let media = movie.physicalMedia {
+                fields.append(contentsOf: media.searchTokens)
+            }
+
+            if let run = movie.theatricalRun {
+                fields.append(contentsOf: run.searchTokens)
             }
 
             index[movie.id] = fields.joined(separator: " ").lowercased()
@@ -85,19 +106,8 @@ enum MovieSearchEngine {
             }
         }
 
-        switch filters.watchFilter {
-        case .all:
-            break
-        case .completed:
-            filtered = filtered.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filtered = filtered.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filtered = filtered.filter { $0.isRewatched }
-        case .listened:
-            filtered = filtered.filter { $0.isListened }
-        case .saved:
-            filtered = filtered.filter { $0.isSaved }
+        if filters.watchFilter != .all {
+            filtered = filtered.filter { filters.watchFilter.matches($0) }
         }
 
         if let selectedGenre = filters.selectedGenre {
@@ -118,10 +128,25 @@ enum MovieSearchEngine {
             filtered = filtered.filter { $0.year == selectedReleaseYear }
         }
 
+        if let selectedPeriod = filters.selectedPeriod {
+            filtered = filtered.filter { movie in
+                guard let year = movie.year else { return false }
+                return ReleasePeriod.from(year: year).decade == selectedPeriod
+            }
+        }
+
+        if let physicalMediaFilter = filters.physicalMediaFilter {
+            filtered = filtered.filter { $0.physicalMedia?.matches(physicalMediaFilter) == true }
+        }
+
         if let selectedListIdentifier = filters.selectedListIdentifier {
             filtered = filtered.filter { movie in
                 sourceCache[movie.id]?.contains(selectedListIdentifier) == true
             }
+        }
+
+        if let theatricalFilter = filters.theatricalFilter {
+            filtered = filtered.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
         }
 
         if let selectedStreamingService = filters.selectedStreamingService {

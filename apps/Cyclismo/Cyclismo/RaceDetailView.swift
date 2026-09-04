@@ -24,12 +24,12 @@ struct LiquidGlassButtonStyle: ButtonStyle {
             .background {
                 if isCompact {
                     compactShape
-                        .fill(.ultraThinMaterial)
-                        .background { compactShape.fill(.ultraThinMaterial).blur(radius: 10) }
+                        .fill(.thinMaterial)
+                        .background { compactShape.fill(.thinMaterial).blur(radius: 10) }
                 } else {
                     fullShape
-                        .fill(.ultraThinMaterial)
-                        .background { fullShape.fill(.ultraThinMaterial).blur(radius: 10) }
+                        .fill(.thinMaterial)
+                        .background { fullShape.fill(.thinMaterial).blur(radius: 10) }
                 }
             }
             .overlay {
@@ -138,9 +138,6 @@ struct RaceDetailView: View {
                                         }
                                     }
                                     .padding(.vertical, DesignSystem.Spacing.xs)
-                                    if stage.id != stages.last?.id {
-                                        Divider()
-                                    }
                                 }
                             }
                         }
@@ -149,9 +146,6 @@ struct RaceDetailView: View {
                             detailSection("Podcasts") {
                                 ForEach(unattachedPodcasts) { podcast in
                                     podcastRow(podcast)
-                                    if podcast.id != unattachedPodcasts.last?.id {
-                                        Divider()
-                                    }
                                 }
                             }
                         }
@@ -160,9 +154,6 @@ struct RaceDetailView: View {
                             detailSection("Results") {
                                 ForEach(raceResults) { result in
                                     raceResultRow(result)
-                                    if result.id != raceResults.last?.id {
-                                        Divider()
-                                    }
                                 }
                             }
                         }
@@ -173,7 +164,7 @@ struct RaceDetailView: View {
                                 LabeledContent("Classification", value: classification)
                             }
                             if !race.displayColloquialCategories.isEmpty {
-                                LabeledContent("Category", value: race.displayColloquialCategories.joined(separator: " • "))
+                                LabeledContent("Category", value: race.displayColloquialCategories.joined(separator: "   "))
                             }
                             LabeledContent("Discipline", value: race.discipline)
                             LabeledContent("Format", value: race.raceType)
@@ -207,9 +198,6 @@ struct RaceDetailView: View {
                             detailSection("Streaming") {
                                 ForEach(streamers, id: \.streamer.streamerId) { item in
                                     streamingRow(streamer: item.streamer, stream: item.stream)
-                                    if item.streamer.streamerId != streamers.last?.streamer.streamerId {
-                                        Divider()
-                                    }
                                 }
                             }
                         }
@@ -780,9 +768,6 @@ struct RaceDetailView: View {
         animateButtonPress("saved")
         triggerMediumHaptic()
         persistStatus(localIsSaved, key: Self.savedKey)
-        Task {
-            await SavedRaceNotificationManager.shared.refreshSavedRaceNotifications(requestAuthorization: localIsSaved)
-        }
     }
 
     private func toggleListenedStatus() {
@@ -819,35 +804,14 @@ struct RaceDetailView: View {
     }
 
     private func loadUserState() {
-        let saved = loadSet(key: Self.savedKey)
-        let listened = loadSet(key: Self.listenedKey)
-        let watched = loadSet(key: Self.watchedKey)
-        localIsSaved = saved.contains(race.raceId)
-        localIsListened = listened.contains(race.raceId)
-        localIsWatched = watched.contains(race.raceId)
+        let status = RaceStatusStore.status(for: race.raceId)
+        localIsSaved = status.isSaved
+        localIsListened = status.isListened
+        localIsWatched = status.isWatched
     }
 
     private func persistStatus(_ isOn: Bool, key: String) {
-        var set = loadSet(key: key)
-        if isOn {
-            set.insert(race.raceId)
-        } else {
-            set.remove(race.raceId)
-        }
-        store(set, key: key)
-    }
-
-    private func loadSet(key: String) -> Set<String> {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
-        let decoded = (try? JSONDecoder().decode([String].self, from: data)) ?? []
-        return Set(decoded)
-    }
-
-    private func store(_ set: Set<String>, key: String) {
-        let list = Array(set).sorted()
-        guard let data = try? JSONEncoder().encode(list) else { return }
-        UserDefaults.standard.set(data, forKey: key)
-        ICloudSyncManager.shared.syncRaceStatusForRaceId(race.raceId)
+        RaceStatusStore.set(isOn, raceId: race.raceId, key: key)
     }
 
     private func uniqueLinks(_ links: [ActionLink]) -> [ActionLink] {
@@ -1047,10 +1011,17 @@ struct RaceDetailView: View {
         var components = URLComponents()
         components.scheme = "podmin"
         let episodeURL = link.podcastEpisodeURL?.trimmingCharacters(in: .whitespacesAndNewlines)
-        components.host = (episodeURL?.isEmpty == false) ? "episode" : "show"
+        let episodeTitle = link.podcastEpisodeTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasEpisode = (episodeURL?.isEmpty == false) || (episodeTitle?.isEmpty == false)
+        components.host = hasEpisode ? "episode" : "show"
         var items: [URLQueryItem] = [URLQueryItem(name: "feed", value: feedURL)]
         if let episodeURL, !episodeURL.isEmpty {
             items.append(URLQueryItem(name: "episode", value: episodeURL))
+        }
+        // Title fallback lets pod min resolve the episode when the feed's enclosure URL
+        // differs from ours (or no episode URL is known).
+        if let episodeTitle, !episodeTitle.isEmpty {
+            items.append(URLQueryItem(name: "title", value: episodeTitle))
         }
         components.queryItems = items
         return components.url
@@ -1117,11 +1088,10 @@ struct RaceDetailView: View {
 
     @ViewBuilder
     private func streamingRow(streamer: Streamer, stream: RaceStream) -> some View {
-        let url = (stream.streamUrl.flatMap { URL(string: $0) }) ?? streamer.websiteUrl.flatMap { URL(string: $0) }
         let regions = stream.regionCodes.isEmpty ? nil : stream.regionCodes.joined(separator: ", ")
 
-        if let url {
-            Link(destination: url) {
+        if let actionLink = streamingActionLink(streamer: streamer, stream: stream) {
+            Button(action: { openActionLink(actionLink) }) {
                 LabeledContent(streamer.name, value: regions ?? "Watch")
             }
         } else {
@@ -1197,12 +1167,12 @@ struct RaceDetailView: View {
                 RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                     .fill(.ultraThinMaterial)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: 24, height: 24)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
         } else {
             RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                 .fill(.ultraThinMaterial)
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                         .stroke(.white.opacity(0.35), lineWidth: 0.5)
@@ -1473,9 +1443,6 @@ private struct StageDetailView: View {
                     detailSection("Results") {
                         ForEach(stageResults) { result in
                             stageResultRow(result)
-                            if result.id != stageResults.last?.id {
-                                Divider()
-                            }
                         }
                     }
                 }
@@ -1491,9 +1458,6 @@ private struct StageDetailView: View {
                     detailSection("Stage podcasts") {
                         ForEach(podcasts) { podcast in
                             podcastRow(podcast)
-                            if podcast.id != podcasts.last?.id {
-                                Divider()
-                            }
                         }
                     }
                 }
@@ -1700,13 +1664,20 @@ private struct StageDetailView: View {
 
         let explicitEpisodeURL = podcast.episodeUrl?
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        let episodeTitle = podcast.title.trimmingCharacters(in: .whitespacesAndNewlines)
 
         var components = URLComponents()
         components.scheme = "podmin"
-        components.host = (explicitEpisodeURL?.isEmpty == false) ? "episode" : "show"
+        let hasEpisode = (explicitEpisodeURL?.isEmpty == false) || !episodeTitle.isEmpty
+        components.host = hasEpisode ? "episode" : "show"
         var items: [URLQueryItem] = [URLQueryItem(name: "feed", value: feedURL)]
         if let explicitEpisodeURL, !explicitEpisodeURL.isEmpty {
             items.append(URLQueryItem(name: "episode", value: explicitEpisodeURL))
+        }
+        // Title fallback lets pod min resolve the episode when the feed's enclosure URL
+        // differs from ours (or no episode URL is known).
+        if !episodeTitle.isEmpty {
+            items.append(URLQueryItem(name: "title", value: episodeTitle))
         }
         components.queryItems = items
         return components.url

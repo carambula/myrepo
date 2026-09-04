@@ -5,7 +5,35 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
-echo "📦 Enriching bootstrap_data.json with TMDB metadata..."
+CLOUD_JSON="$ROOT_DIR/WatchedIt/bootstrap_data.cloud.json"
+EXPORT_SCRIPT="$ROOT_DIR/../../services/min-cloud/scripts/export-bootstrap.mjs"
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+pull_cloud_bootstrap() {
+  if [ "${SKIP_CLOUD_BOOTSTRAP:-0}" = "1" ]; then
+    echo "☁️ Skipping Min Cloud bootstrap pull (SKIP_CLOUD_BOOTSTRAP=1)"
+    return 0
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    echo "⚠️ node not found; using the committed bootstrap_data.json"
+    return 0
+  fi
+  if [ ! -f "$EXPORT_SCRIPT" ]; then
+    echo "⚠️ export-bootstrap.mjs not found; using the committed bootstrap_data.json"
+    return 0
+  fi
+  echo "☁️ Pulling live catalog from Min Cloud..."
+  if MIN_CLOUD_URL="${MIN_CLOUD_URL:-https://min-cloud-production.up.railway.app}" \
+    BOOTSTRAP_CLOUD_PATH="$CLOUD_JSON" \
+    node "$EXPORT_SCRIPT" "$CLOUD_JSON"; then
+    return 0
+  fi
+  echo "⚠️ Min Cloud pull failed; using the committed bootstrap_data.json"
+  return 0
+}
+
+pull_cloud_bootstrap
+
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 MACOS_SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 MACOS_SWIFT_BIN="$(xcrun --sdk macosx --find swift)"
@@ -24,7 +52,13 @@ MACOS_SWIFT_ENV=(
   TOOLCHAINS="com.apple.dt.toolchain.XcodeDefault"
   PATH="$DEVELOPER_DIR/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 )
-"${MACOS_SWIFT_ENV[@]}" "$MACOS_SWIFT_BIN" -Xfrontend -plugin-path -Xfrontend "$MACOS_PLUGIN_DIR" enrich_bootstrap_data.swift
+
+if [ "${SKIP_BOOTSTRAP_ENRICH:-0}" = "1" ] || { [ -f "$CLOUD_JSON" ] && [ "${FORCE_BOOTSTRAP_ENRICH:-0}" != "1" ]; }; then
+  echo "📦 Skipping TMDB enrich; using Min Cloud metadata from bootstrap_data.cloud.json"
+else
+  echo "📦 Enriching bootstrap_data.json with TMDB metadata..."
+  "${MACOS_SWIFT_ENV[@]}" "$MACOS_SWIFT_BIN" -Xfrontend -plugin-path -Xfrontend "$MACOS_PLUGIN_DIR" enrich_bootstrap_data.swift
+fi
 
 echo "🗄️ Generating bootstrap_database.store..."
 "${MACOS_SWIFT_ENV[@]}" "$MACOS_SWIFT_BIN" -Xfrontend -plugin-path -Xfrontend "$MACOS_PLUGIN_DIR" generate_bootstrap_database.swift

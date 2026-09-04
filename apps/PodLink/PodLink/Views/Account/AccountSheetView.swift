@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct AccountSheetView: View {
@@ -17,6 +18,7 @@ struct AccountSheetView: View {
     @State private var showDownloadSettings = false
     @State private var showPerformancePreferences = false
     @State private var showNotificationPreferences = false
+    @State private var showMinCloud = false
 
     var body: some View {
         NavigationStack {
@@ -81,6 +83,18 @@ struct AccountSheetView: View {
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 
+                Section("Min Cloud") {
+                    Button {
+                        showMinCloud = true
+                    } label: {
+                        Label(
+                            MinCloudSettings.isSignedIn ? "Account   @\(MinCloudSettings.handle ?? "signed in")" : "Sign in or create an account",
+                            systemImage: "cloud"
+                        )
+                    }
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
                 Section("Accounts") {
                     Button {
                         showConnectedAccounts = true
@@ -105,6 +119,11 @@ struct AccountSheetView: View {
                     } label: {
                         Label("Notification Preferences", systemImage: "bell")
                     }
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .pod, exporter: PodcastAgentService.shared)
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 
@@ -268,6 +287,18 @@ struct AccountSheetView: View {
             .sheet(isPresented: $showNotificationPreferences) {
                 NavigationStack {
                     NotificationPreferencesView()
+                        .environment(themeManager)
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .environment(themeManager)
+                .environment(playbackService)
+                .bottomSheetPullToDismiss()
+                .sheetPullToDismissScrollBottomInset(playbackService: playbackService)
+            }
+            .sheet(isPresented: $showMinCloud) {
+                NavigationStack {
+                    MinCloudAccountView()
                         .environment(themeManager)
                 }
                 .presentationDetents([.large])

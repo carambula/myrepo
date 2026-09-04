@@ -28,9 +28,9 @@
       "marginRightMobile": 16
     },
     "logo": {
-      "marginTop": 32,
+      "marginTop": 16,
       "marginBottom": 24,
-      "marginTopMobile": 24,
+      "marginTopMobile": 16,
       "marginBottomMobile": 16
     },
     "button": {

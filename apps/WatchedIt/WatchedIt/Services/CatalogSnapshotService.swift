@@ -13,7 +13,11 @@ struct CollectionSection: Identifiable, Equatable {
     let title: String
     let subtitle: String?
     let sourceIdentifier: String?
+    let isRankedList: Bool
     let movies: [Movie]
+    /// Full set used when the section header opens search. Nil means use the
+    /// source list filter (`sourceIdentifier`) or fall back to `movies`.
+    let headerSearchMovieIDs: Set<String>?
 }
 
 struct CatalogSnapshot {
@@ -39,7 +43,7 @@ final class CatalogSnapshotService {
         let movieToSourceIdentifiers: [String: Set<String>]
         let rankBySourceIdentifier: [String: [String: Int]]
         let latestPodcastDateBySourceIdentifier: [String: [String: Date]]
-        let latestPodcastDateByMovieIdentifier: [String: Date]
+        let latestGroupKeyBySourceIdentifier: [String: [String: String]]
     }
 
     func buildSnapshot(
@@ -75,18 +79,21 @@ final class CatalogSnapshotService {
 
         let latestPodcastMovies = buildLatestPodcastMovies(
             movies: movies,
-            latestPodcastDateByMovieIdentifier: sourceIndexData.latestPodcastDateByMovieIdentifier,
+            latestPodcastDateBySourceIdentifier: sourceIndexData.latestPodcastDateBySourceIdentifier,
+            latestGroupKeyBySourceIdentifier: sourceIndexData.latestGroupKeyBySourceIdentifier,
             preferredSourceIdentifiers: preferredSet,
             movieToSourceIdentifiers: sourceIndexData.movieToSourceIdentifiers
         )
-        if !latestPodcastMovies.isEmpty {
+        if !latestPodcastMovies.carousel.isEmpty {
             sections.append(
                 CollectionSection(
                     id: "inspiration-latest-podcasts",
-                    title: "Latest podcasts",
-                    subtitle: "Recent episodes",
+                    title: "Latest",
+                    subtitle: "Recent episodes and Closet Picks",
                     sourceIdentifier: nil,
-                    movies: latestPodcastMovies
+                    isRankedList: false,
+                    movies: latestPodcastMovies.carousel,
+                    headerSearchMovieIDs: Set(latestPodcastMovies.searchIDs)
                 )
             )
         }
@@ -95,8 +102,6 @@ final class CatalogSnapshotService {
             movies
                 .filter { $0.isSaved }
                 .sorted { $0.lastUpdated > $1.lastUpdated }
-                .prefix(25)
-                .map { $0 }
         )
         if !recentlySaved.isEmpty {
             sections.append(
@@ -105,7 +110,9 @@ final class CatalogSnapshotService {
                     title: "Recently saved",
                     subtitle: "Continue where you left off",
                     sourceIdentifier: nil,
-                    movies: recentlySaved
+                    isRankedList: false,
+                    movies: Array(recentlySaved.prefix(25)),
+                    headerSearchMovieIDs: Set(recentlySaved.map(\.id))
                 )
             )
         }
@@ -114,8 +121,6 @@ final class CatalogSnapshotService {
             movies
                 .filter { isToCompleteMovie($0) }
                 .sorted { $0.lastUpdated > $1.lastUpdated }
-                .prefix(25)
-                .map { $0 }
         )
         if !toComplete.isEmpty {
             sections.append(
@@ -124,7 +129,9 @@ final class CatalogSnapshotService {
                     title: "To complete",
                     subtitle: "Half-finished picks",
                     sourceIdentifier: nil,
-                    movies: toComplete
+                    isRankedList: false,
+                    movies: Array(toComplete.prefix(25)),
+                    headerSearchMovieIDs: Set(toComplete.map(\.id))
                 )
             )
         }
@@ -144,7 +151,9 @@ final class CatalogSnapshotService {
                     title: source.name,
                     subtitle: source.isRankedList ? "Ranked list" : (source.type == "podcast" ? "Podcast collection" : nil),
                     sourceIdentifier: source.identifier,
-                    movies: Array(sectionMovies.prefix(25))
+                    isRankedList: source.isRankedList,
+                    movies: Array(sectionMovies.prefix(25)),
+                    headerSearchMovieIDs: nil
                 )
             )
         }
@@ -162,14 +171,14 @@ final class CatalogSnapshotService {
                 movieToSourceIdentifiers: [:],
                 rankBySourceIdentifier: [:],
                 latestPodcastDateBySourceIdentifier: [:],
-                latestPodcastDateByMovieIdentifier: [:]
+                latestGroupKeyBySourceIdentifier: [:]
             )
         }
 
         var movieToSourceIdentifiers: [String: Set<String>] = [:]
         var rankBySourceIdentifier: [String: [String: Int]] = [:]
         var latestPodcastDateBySourceIdentifier: [String: [String: Date]] = [:]
-        var latestPodcastDateByMovieIdentifier: [String: Date] = [:]
+        var latestGroupKeyBySourceIdentifier: [String: [String: String]] = [:]
 
         let descriptor = FetchDescriptor<MovieData>()
         let movieDataList = (try? modelContext.fetch(descriptor)) ?? []
@@ -188,15 +197,20 @@ final class CatalogSnapshotService {
                     rankBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = rank
                 }
 
-                if let date = content.podcastEpisode?.publishDate ?? content.sourceDate {
-                    let currentSourceDate = latestPodcastDateBySourceIdentifier[sourceIdentifier]?[movieIdentifier]
-                    if currentSourceDate == nil || currentSourceDate! < date {
-                        latestPodcastDateBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = date
-                    }
-                    let currentMovieDate = latestPodcastDateByMovieIdentifier[movieIdentifier]
-                    if currentMovieDate == nil || currentMovieDate! < date {
-                        latestPodcastDateByMovieIdentifier[movieIdentifier] = date
-                    }
+                if source.type == "podcast" || LatestPodcastPicker.allowsMultipleEntries(sourceIdentifier: sourceIdentifier) {
+                    recordLatestEntry(
+                        sourceIdentifier: sourceIdentifier,
+                        movieIdentifier: movieIdentifier,
+                        date: LatestPodcastPicker.entryDate(
+                            sourceIdentifier: sourceIdentifier,
+                            sourceDate: content.sourceDate,
+                            episodePublishDate: content.podcastEpisode?.publishDate,
+                            discoveredAt: content.discoveredAt
+                        ),
+                        groupKey: content.sourceUrl,
+                        dates: &latestPodcastDateBySourceIdentifier,
+                        groupKeys: &latestGroupKeyBySourceIdentifier
+                    )
                 }
             }
 
@@ -209,15 +223,22 @@ final class CatalogSnapshotService {
                     rankBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = rank
                 }
 
-                if let date = dataSource.podcastEpisode?.publishDate {
-                    let currentSourceDate = latestPodcastDateBySourceIdentifier[sourceIdentifier]?[movieIdentifier]
-                    if currentSourceDate == nil || currentSourceDate! < date {
-                        latestPodcastDateBySourceIdentifier[sourceIdentifier, default: [:]][movieIdentifier] = date
-                    }
-                    let currentMovieDate = latestPodcastDateByMovieIdentifier[movieIdentifier]
-                    if currentMovieDate == nil || currentMovieDate! < date {
-                        latestPodcastDateByMovieIdentifier[movieIdentifier] = date
-                    }
+                if source.type == "podcast" || LatestPodcastPicker.allowsMultipleEntries(sourceIdentifier: sourceIdentifier) {
+                    recordLatestEntry(
+                        sourceIdentifier: sourceIdentifier,
+                        movieIdentifier: movieIdentifier,
+                        date: LatestPodcastPicker.entryDate(
+                            sourceIdentifier: sourceIdentifier,
+                            sourceDate: nil,
+                            episodePublishDate: dataSource.podcastEpisode?.publishDate,
+                            discoveredAt: LatestPodcastPicker.allowsMultipleEntries(sourceIdentifier: sourceIdentifier)
+                                ? dataSource.lastUpdated
+                                : nil
+                        ),
+                        groupKey: dataSource.sourceUrl,
+                        dates: &latestPodcastDateBySourceIdentifier,
+                        groupKeys: &latestGroupKeyBySourceIdentifier
+                    )
                 }
             }
 
@@ -228,7 +249,7 @@ final class CatalogSnapshotService {
             movieToSourceIdentifiers: movieToSourceIdentifiers,
             rankBySourceIdentifier: rankBySourceIdentifier,
             latestPodcastDateBySourceIdentifier: latestPodcastDateBySourceIdentifier,
-            latestPodcastDateByMovieIdentifier: latestPodcastDateByMovieIdentifier
+            latestGroupKeyBySourceIdentifier: latestGroupKeyBySourceIdentifier
         )
     }
 
@@ -267,12 +288,17 @@ final class CatalogSnapshotService {
             }
         } else if source.type == "podcast" {
             let dates = latestPodcastDateBySourceIdentifier[source.identifier] ?? [:]
-            sectionMovies.sort { lhs, rhs in
-                let leftDate = dates[lhs.id] ?? Date.distantPast
-                let rightDate = dates[rhs.id] ?? Date.distantPast
-                if leftDate != rightDate { return leftDate > rightDate }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: sectionMovies.map { ($0.id, $0) })
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: sectionMovies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: dates[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title
+                    )
+                }
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         } else {
             sectionMovies.sort { lhs, rhs in
                 lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
@@ -287,24 +313,62 @@ final class CatalogSnapshotService {
 
     private func buildLatestPodcastMovies(
         movies: [Movie],
-        latestPodcastDateByMovieIdentifier: [String: Date],
+        latestPodcastDateBySourceIdentifier: [String: [String: Date]],
+        latestGroupKeyBySourceIdentifier: [String: [String: String]],
         preferredSourceIdentifiers: Set<String>,
         movieToSourceIdentifiers: [String: Set<String>]
-    ) -> [Movie] {
-        let ordered = movies
-            .filter { movie in
-                guard latestPodcastDateByMovieIdentifier[movie.id] != nil else { return false }
-                guard !preferredSourceIdentifiers.isEmpty else { return true }
-                guard let sourceIdentifiers = movieToSourceIdentifiers[movie.id] else { return false }
-                return !preferredSourceIdentifiers.intersection(sourceIdentifiers).isEmpty
+    ) -> (carousel: [Movie], searchIDs: [String]) {
+        let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+        var entries: [LatestPodcastPicker.Entry] = []
+        let groupKeys = latestGroupKeyBySourceIdentifier
+        for (sourceIdentifier, dateByMovie) in latestPodcastDateBySourceIdentifier {
+            if !preferredSourceIdentifiers.isEmpty,
+               !preferredSourceIdentifiers.contains(sourceIdentifier) {
+                continue
             }
-            .sorted { lhs, rhs in
-                let leftDate = latestPodcastDateByMovieIdentifier[lhs.id] ?? Date.distantPast
-                let rightDate = latestPodcastDateByMovieIdentifier[rhs.id] ?? Date.distantPast
-                if leftDate != rightDate { return leftDate > rightDate }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            for (movieIdentifier, date) in dateByMovie {
+                guard movieByIdentifier[movieIdentifier] != nil else { continue }
+                if !preferredSourceIdentifiers.isEmpty {
+                    guard let sourceIdentifiers = movieToSourceIdentifiers[movieIdentifier],
+                          sourceIdentifiers.contains(sourceIdentifier) else {
+                        continue
+                    }
+                }
+                entries.append(
+                    LatestPodcastPicker.Entry(
+                        movieId: movieIdentifier,
+                        date: date,
+                        sourceIdentifier: sourceIdentifier,
+                        groupKey: groupKeys[sourceIdentifier]?[movieIdentifier]
+                    )
+                )
             }
-        return Array(uniqueMoviesPreservingOrder(ordered).prefix(20))
+        }
+        let carouselIds = LatestPodcastPicker.carouselMovieIds(from: entries)
+        let searchIDs = LatestPodcastPicker.recentMovieIds(from: entries)
+        return (
+            carouselIds.compactMap { movieByIdentifier[$0] },
+            searchIDs
+        )
+    }
+
+    private func recordLatestEntry(
+        sourceIdentifier: String,
+        movieIdentifier: String,
+        date: Date?,
+        groupKey: String?,
+        dates: inout [String: [String: Date]],
+        groupKeys: inout [String: [String: String]]
+    ) {
+        guard let date else { return }
+        let currentSourceDate = dates[sourceIdentifier]?[movieIdentifier]
+        if currentSourceDate == nil || currentSourceDate! < date {
+            dates[sourceIdentifier, default: [:]][movieIdentifier] = date
+            let trimmedKey = groupKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmedKey.isEmpty {
+                groupKeys[sourceIdentifier, default: [:]][movieIdentifier] = trimmedKey
+            }
+        }
     }
 
     private func isToCompleteMovie(_ movie: Movie) -> Bool {

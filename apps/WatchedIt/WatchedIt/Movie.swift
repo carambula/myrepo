@@ -24,6 +24,8 @@ public struct Movie: Identifiable, Codable, Hashable {
     public var rewatchablesDiscussion: RewatchablesDiscussion?
     public let trailer: MovieTrailer?
     public let oscarAwards: OscarAwards?
+    public let physicalMedia: PhysicalMedia?
+    public let theatricalRun: TheatricalRun?
     public var isRewatched: Bool
     public var isListened: Bool
     public var isSaved: Bool
@@ -45,6 +47,8 @@ public struct Movie: Identifiable, Codable, Hashable {
         rewatchablesDiscussion: RewatchablesDiscussion? = nil,
         trailer: MovieTrailer? = nil,
         oscarAwards: OscarAwards? = nil,
+        physicalMedia: PhysicalMedia? = nil,
+        theatricalRun: TheatricalRun? = nil,
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
@@ -65,10 +69,18 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.rewatchablesDiscussion = rewatchablesDiscussion
         self.trailer = trailer
         self.oscarAwards = oscarAwards
+        self.physicalMedia = physicalMedia
+        self.theatricalRun = theatricalRun
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
         self.lastUpdated = lastUpdated
+    }
+
+    /// Newest-first lists use episode date when the catalog/RSS link has one,
+    /// otherwise the row's lastUpdated so admin additions are not buried.
+    public var episodeSortDate: Date {
+        podcastEpisode?.publishDate ?? lastUpdated
     }
     
     public static func == (lhs: Movie, rhs: Movie) -> Bool {
@@ -242,6 +254,12 @@ extension Movie {
            let decodedAwards = try? JSONDecoder().decode(OscarAwards.self, from: awardsData) {
             oscarAwards = decodedAwards
         }
+
+        var physicalMedia: PhysicalMedia? = nil
+        if let mediaData = record["physicalMedia"] as? Data,
+           let decodedMedia = try? JSONDecoder().decode(PhysicalMedia.self, from: mediaData) {
+            physicalMedia = decodedMedia
+        }
         
         self.init(
             id: id,
@@ -259,6 +277,7 @@ extension Movie {
             rewatchablesDiscussion: rewatchablesDiscussion,
             trailer: trailer,
             oscarAwards: oscarAwards,
+            physicalMedia: physicalMedia,
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
@@ -316,6 +335,11 @@ extension Movie {
         if let oscarAwards = oscarAwards,
            let awardsData = try? JSONEncoder().encode(oscarAwards) {
             record["oscarAwards"] = awardsData
+        }
+
+        if let physicalMedia = physicalMedia,
+           let mediaData = try? JSONEncoder().encode(physicalMedia) {
+            record["physicalMedia"] = mediaData
         }
         
         return record

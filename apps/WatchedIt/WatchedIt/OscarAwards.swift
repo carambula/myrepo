@@ -128,7 +128,7 @@ public struct OscarNomination: Codable, Hashable, Identifiable, Sendable {
 }
 
 /// Major Oscar categories we care about
-public enum OscarCategory: String, Codable, CaseIterable, Sendable {
+public enum OscarCategory: String, CaseIterable, Sendable {
     case bestPicture = "Best Picture"
     case bestDirector = "Best Director"
     case bestActor = "Best Actor"
@@ -198,5 +198,18 @@ public enum OscarCategory: String, Codable, CaseIterable, Sendable {
         case .other:
             return "star"
         }
+    }
+}
+
+extension OscarCategory: Codable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        self = OscarCategory(rawValue: raw) ?? .other
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }

@@ -33,6 +33,15 @@ actor RSSFeedService {
             return cached
         }
 
+        if provisionalAuth == nil, await MinCloudClient.shared.isReachable() {
+            if let cloudEpisodes = try? await MinCloudClient.shared.fetchFeedEpisodes(feedURL: PrivateFeedAuthStore.canonicalFeedURL(feedURL)),
+               !cloudEpisodes.isEmpty {
+                await cache.set(cacheKey, value: cloudEpisodes, ttl: 1800)
+                await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: cloudEpisodes)
+                return cloudEpisodes
+            }
+        }
+
         var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
         request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
         auth?.apply(to: &request)
@@ -44,6 +53,7 @@ actor RSSFeedService {
         let episodes = parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
 
         await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
+        await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
         return episodes
     }
 

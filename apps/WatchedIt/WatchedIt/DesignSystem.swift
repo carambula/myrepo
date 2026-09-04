@@ -371,6 +371,8 @@ enum DesignSystem {
         static let backdrop = "photo.artframe"
         static let play = "play.fill"
         static let pause = "pause.fill"
+        static let disc = "opticaldisc"
+        static let ticket = "ticket"
         
         // Status Icons
         static let checkmark = "checkmark"
@@ -763,7 +765,7 @@ enum GlassControl {
     }
 
     static let toolbarMaterial: Material = .thinMaterial
-    static let floatingMaterial: Material = .ultraThinMaterial
+    static let floatingMaterial: Material = .thinMaterial
 }
 
 /// Frosted-glass circular icon button — the primary button control throughout the app.
@@ -815,14 +817,27 @@ struct GlassCircleButton: View {
 struct GlassCapsuleToolbar<Content: View>: View {
     var spacing: CGFloat = DesignSystem.Spacing.xl
     var height: CGFloat = GlassControl.standardHeight
+    var scrolls: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         let shape = MinAffordanceStyle.shared.capsuleShape
-        HStack(spacing: spacing) {
-            content()
+        Group {
+            if scrolls {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: spacing) {
+                        content()
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                }
+            } else {
+                HStack(spacing: spacing) {
+                    content()
+                }
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+            }
         }
-        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+        .frame(maxWidth: scrolls ? .infinity : nil, alignment: .leading)
         .frame(height: height)
         .background(GlassControl.toolbarMaterial)
         .clipShape(shape)

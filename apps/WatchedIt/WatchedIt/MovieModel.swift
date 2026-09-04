@@ -27,6 +27,7 @@ final class MovieModel {
     var rewatchablesDiscussionData: Data? // Encoded RewatchablesDiscussion
     var trailerData: Data? // Encoded MovieTrailer
     var oscarAwardsData: Data? // Encoded OscarAwards
+    var physicalMediaData: Data? // Encoded PhysicalMedia
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isSaved: Bool = false
@@ -49,6 +50,7 @@ final class MovieModel {
         rewatchablesDiscussion: RewatchablesDiscussion? = nil,
         trailer: MovieTrailer? = nil,
         oscarAwards: OscarAwards? = nil,
+        physicalMedia: PhysicalMedia? = nil,
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
@@ -98,6 +100,10 @@ final class MovieModel {
         
         if let oscarAwards = oscarAwards {
             self.oscarAwardsData = try? encodeOscarAwards(oscarAwards)
+        }
+
+        if let physicalMedia = physicalMedia {
+            self.physicalMediaData = try? encodePhysicalMedia(physicalMedia)
         }
     }
     
@@ -170,6 +176,16 @@ final class MovieModel {
             oscarAwardsData = newValue != nil ? (try? encodeOscarAwards(newValue!)) : nil
         }
     }
+
+    var physicalMedia: PhysicalMedia? {
+        get {
+            guard let data = physicalMediaData else { return nil }
+            return try? decodePhysicalMedia(from: data)
+        }
+        set {
+            physicalMediaData = newValue != nil ? (try? encodePhysicalMedia(newValue!)) : nil
+        }
+    }
     
     // Encoding/decoding helpers
     // Moved to MovieDataHelper to avoid actor isolation issues
@@ -193,6 +209,7 @@ final class MovieModel {
             rewatchablesDiscussion: rewatchablesDiscussion,
             trailer: trailer,
             oscarAwards: oscarAwards,
+            physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(stored: physicalMedia, tmdbId: tmdbId),
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
@@ -217,6 +234,7 @@ final class MovieModel {
             rewatchablesDiscussion: movie.rewatchablesDiscussion,
             trailer: movie.trailer,
             oscarAwards: movie.oscarAwards,
+            physicalMedia: movie.physicalMedia,
             isRewatched: movie.isRewatched,
             isListened: movie.isListened,
             isSaved: movie.isSaved,
@@ -283,6 +301,14 @@ extension MovieModel {
     nonisolated private static func decodeOscarAwards(from data: Data) throws -> OscarAwards {
         return try JSONDecoder().decode(OscarAwards.self, from: data)
     }
+
+    nonisolated private static func encodePhysicalMedia(_ media: PhysicalMedia) throws -> Data {
+        return try JSONEncoder().encode(media)
+    }
+
+    nonisolated private static func decodePhysicalMedia(from data: Data) throws -> PhysicalMedia {
+        return try JSONDecoder().decode(PhysicalMedia.self, from: data)
+    }
     
     private func encodePodcastEpisode(_ episode: PodcastEpisode) throws -> Data {
         return try Self.encodePodcastEpisode(episode)
@@ -322,5 +348,13 @@ extension MovieModel {
     
     private func decodeOscarAwards(from data: Data) throws -> OscarAwards {
         return try Self.decodeOscarAwards(from: data)
+    }
+
+    private func encodePhysicalMedia(_ media: PhysicalMedia) throws -> Data {
+        return try Self.encodePhysicalMedia(media)
+    }
+
+    private func decodePhysicalMedia(from data: Data) throws -> PhysicalMedia {
+        return try Self.decodePhysicalMedia(from: data)
     }
 }

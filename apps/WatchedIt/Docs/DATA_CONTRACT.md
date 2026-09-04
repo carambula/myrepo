@@ -12,10 +12,11 @@ These rules protect shared state and prevent data forking between iOS and tvOS.
 - No platform-specific record types or parallel schemas.
 - User status payloads must remain identical across platforms.
 
-## 3) Catalog Is Local, User Data Is Synced
-- Catalog data is read from the bundled store only.
-- CloudKit sync applies to **user status and preferences only**.
-- No runtime catalog ingestion or network catalog sync in either app.
+## 3) Catalog Is Local First, Cloud Updates Are Additive
+- Catalog data is read from the bundled store for instant startup.
+- Min Cloud catalog sync may update streaming availability and add titles without wiping user status or local lists.
+- CloudKit sync applies to **user status and preferences only**, and only when iCloud backup is enabled.
+- Local scrape/bundle refresh remains the backup if Min Cloud is unreachable.
 
 ## 4) Deterministic IDs
 - Movie IDs must remain deterministic (`tmdb-`, `imdb-`, or `episode-`).
@@ -25,6 +26,8 @@ These rules protect shared state and prevent data forking between iOS and tvOS.
 - Schema changes are additive unless both apps ship together.
 - New fields must be optional or have defaults.
 - Migration logic is shared and shipped to both targets.
+- Catalog physical media (`PhysicalMedia` / `physicalMediaData`) is optional. Shipping data lives in bundled `physical_media.json` (keyed by TMDB id) and is merged at read time. Bootstrap JSON may also carry `physicalMedia` for admin edits. Manual overrides win over inferred Wikidata/list seeds.
+- Theatrical availability (`TheatricalRun`) is live overlay only — not stored on `MovieData`. Min Cloud persists a theater-stay snapshot for `GET /v1/mov/now-playing` (TMDB now-playing + IMAX release notes for catalog titles, plus admin pins). `ticketLinks` (AMC, Fandango, Atom movie pages) are resolved from those sites’ public sitemaps on refresh, kept for titles that stay in theaters, and overridable in admin. The client uses those URLs in Get tickets when present and falls back to search URLs. A local TMDB fallback refreshes `TheatricalCatalog` at launch if Min Cloud is unreachable. Buy-disc destinations remain client-built search URLs.
 
 ## 6) Idempotent Writes, Deterministic Conflict Rules
 - Writes must be safe to apply multiple times.

@@ -9,7 +9,7 @@ struct SearchResultsView: View {
     @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
-        LazyVStack(spacing: 0) {
+        LazyVStack(spacing: DesignSystem.Spacing.sm) {
             ForEach(results) { podcast in
                     HStack(spacing: DesignSystem.Spacing.md) {
                         Button {
@@ -21,15 +21,15 @@ struct SearchResultsView: View {
                                         .resizable()
                                         .aspectRatio(1, contentMode: .fill)
                                 } placeholder: {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                                         .fill(Color(.tertiarySystemFill))
                                         .overlay {
                                             Image(systemName: "mic.fill")
                                                 .foregroundStyle(.secondary)
                                         }
                                 }
-                                .frame(width: 64, height: 64)
-                                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                                .frame(width: 60, height: 60)
+                                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
 
                                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                                     Text(podcast.title)
@@ -77,9 +77,6 @@ struct SearchResultsView: View {
                     .padding(.leading, DesignSystem.Spacing.screenHorizontalPadding)
                     .padding(.trailing, DesignSystem.Spacing.sm)
                     .padding(.vertical, DesignSystem.Spacing.md)
-
-                    Divider()
-                        .padding(.leading, 92)
                 }
         }
     }

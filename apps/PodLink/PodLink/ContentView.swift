@@ -143,7 +143,7 @@ struct ContentView: View {
                         }
                     }
                     .toolbar(.hidden, for: .navigationBar)
-                    .safeAreaInset(edge: .top) {
+                    .overlay(alignment: .top) {
                         mainTopControls
                     }
                 }
@@ -158,19 +158,24 @@ struct ContentView: View {
         .task(id: hasCompletedOnboarding) {
             guard hasCompletedOnboarding else { return }
             // Resume state has already been hydrated synchronously in `PlaybackService.init()`,
-            // so the mini player is on screen by now. Fan out the slower work in parallel
-            // instead of blocking it behind the resume RSS refresh.
-            async let resumeRefresh: Void = playbackService.refreshResumeSessionFromFeed()
-            async let queueRebuild: Void = refreshFollowedFeedsAndRebuildQueue()
-            _ = await (resumeRefresh, queueRebuild)
-            DownloadRetentionEngine.runSweep()
+            // so the mini player is on screen with correct artwork/title/scrub the instant this
+            // view mounts. Kick the resume episode's RSS refresh off in the background so we
+            // never gate the first frame on the network, then let the deferred launch
+            // maintenance sweep handle the heavier followed-feeds rebuild.
+            Task(priority: .utility) {
+                await playbackService.refreshResumeSessionFromFeed()
+            }
+            scheduleLaunchMaintenance()
+        }
+        .onDisappear {
+            autoQueueRefreshTask?.cancel()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background {
+            if phase == .inactive || phase == .background {
                 autoQueueRefreshTask?.cancel()
                 playbackService.saveResumeSessionNow()
             } else if phase == .active {
-                DownloadRetentionEngine.runSweep()
+                scheduleDeferredRetentionSweep()
             }
         }
         .sheet(item: $rootSheet) { sheet in
@@ -217,6 +222,54 @@ struct ContentView: View {
         }
     }
 
+    private func scheduleLaunchMaintenance() {
+        autoQueueRefreshTask?.cancel()
+        let playbackService = playbackService
+        autoQueueRefreshTask = Task(priority: .background) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            while playbackService.isPlaybackStartupInProgress {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+            }
+
+            let followed = Podcast.loadFollowedPodcasts()
+            await MinCloudClient.shared.syncFollowedWatches(followed)
+            await EpisodeNotificationService.shared.presentCloudInbox()
+            let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
+                for podcast in followed {
+                    group.addTask {
+                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                        return (podcast.id, episodes)
+                    }
+                }
+                var map: [String: [Episode]] = [:]
+                for await result in group {
+                    guard let (id, episodes) = result else { continue }
+                    map[id] = episodes
+                }
+                return map
+            }
+
+            guard !Task.isCancelled else { return }
+            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
+            guard !Task.isCancelled else { return }
+            DownloadRetentionEngine.runSweep()
+        }
+    }
+
+    private func scheduleDeferredRetentionSweep() {
+        let playbackService = playbackService
+        Task(priority: .background) {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            guard !playbackService.isPlaybackStartupInProgress else { return }
+            DownloadRetentionEngine.runSweep()
+        }
+    }
+
     private var mainTopControls: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             Spacer()
@@ -245,7 +298,6 @@ struct ContentView: View {
         }
         .padding(.horizontal, MinSpacing.lg)
         .padding(.top, MinSpacing.TopControls.verticalPadding)
-        .padding(.bottom, MinSpacing.TopControls.verticalPadding)
         .contentShape(Rectangle())
         .allowsHitTesting(true)
         .zIndex(100)
@@ -338,29 +390,6 @@ struct ContentView: View {
            PrivateFeedAuthStore.canonicalFeedURL(currentPodcast.feedURL) == canonicalFeedURL {
             presentRootSheet(.podcast(resolvedPodcast))
         }
-    }
-
-    private func refreshFollowedFeedsAndRebuildQueue() async {
-        let followed = Podcast.loadFollowedPodcasts()
-        guard !followed.isEmpty else {
-            await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: [:])
-            return
-        }
-        let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
-            for podcast in followed {
-                group.addTask {
-                    guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
-                    return (podcast.id, episodes)
-                }
-            }
-            var map: [String: [Episode]] = [:]
-            for await result in group {
-                guard let (id, episodes) = result else { continue }
-                map[id] = episodes
-            }
-            return map
-        }
-        await playbackService.queueLatestUnfinishedFromFollowedPodcasts(prefetchedFeeds: feedMap)
     }
 
     private func placeholderPodcastTitle(for feedURL: URL) -> String {

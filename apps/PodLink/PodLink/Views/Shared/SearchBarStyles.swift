@@ -39,15 +39,15 @@ struct SearchBarStyleModifier: ViewModifier {
             .background {
                 switch style {
                 case .classic:
-                    s.fill(.ultraThinMaterial)
+                    s.fill(.thinMaterial)
                 case .solid:
                     s.fill(DesignSystem.Colors.surface)
                         .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
                 case .elevated:
-                    s.fill(.thickMaterial)
+                    s.fill(.thinMaterial)
                         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
                 case .glass:
-                    s.fill(.ultraThinMaterial)
+                    s.fill(.thinMaterial)
                         .overlay {
                             LinearGradient(
                                 colors: [.white.opacity(0.15), .white.opacity(0.05), .clear, .white.opacity(0.02)],

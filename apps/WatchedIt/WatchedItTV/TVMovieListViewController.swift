@@ -12,16 +12,16 @@ import WatchedItCore
 
 enum InspirationSection: Int, CaseIterable, Hashable {
     case recentlySaved
-    case latestPodcasts
-    case toComplete
-    case longestSaved
+        case latest
+        case toComplete
+        case longestSaved
 
-    var title: String {
-        switch self {
-        case .recentlySaved:
-            return "Recently saved"
-        case .latestPodcasts:
-            return "Latest podcasts"
+        var title: String {
+            switch self {
+            case .recentlySaved:
+                return "Recently saved"
+            case .latest:
+                return "Latest"
         case .toComplete:
             return "To complete"
         case .longestSaved:
@@ -64,7 +64,7 @@ final class TVMovieListViewController: UIViewController {
     private var currentSearchText: String = ""
     private var searchResultsController: TVSearchResultsViewController?
     private let inspirationLimit = 25
-    private let latestPodcastLimit = 20
+    private let latestCarouselLimit = 50
     private var hasAttemptedBootstrapRefresh = false
     private var isCommittingPendingPodcastEpisodes = false
 
@@ -253,14 +253,14 @@ final class TVMovieListViewController: UIViewController {
             .sorted { $0.lastUpdated > $1.lastUpdated }
         sections[.recentlySaved] = Array(recentlySaved.prefix(inspirationLimit))
 
-        let latestPodcasts = movies
+        let latest = movies
             .compactMap { movie -> (Movie, Date)? in
                 guard let date = movie.podcastEpisode?.publishDate else { return nil }
                 return (movie, date)
             }
             .sorted { $0.1 > $1.1 }
             .map { $0.0 }
-        sections[.latestPodcasts] = Array(latestPodcasts.prefix(latestPodcastLimit))
+        sections[.latest] = Array(latest.prefix(latestCarouselLimit))
 
         let toComplete = movies.filter { movie in
             movie.podcastEpisode != nil

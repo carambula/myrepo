@@ -17,6 +17,18 @@ const TMDB_API_KEY =
   process.env.TMDB_API_KEY || "4f6ab1dde752aedd41093bab21f383c7";
 const OMDB_API_KEY = process.env.OMDB_API_KEY || "c418f9f5";
 
+const {
+  fetchWikidataPhysicalMediaIndex,
+  seedCriterionFromSources,
+  seedCurated4K,
+  filterIndexToCatalog,
+  applyIndexToMovies,
+  overlayFromMovies,
+  overlayFromIndex,
+  physicalMediaStats,
+} = require("./physicalMedia");
+const PHYSICAL_MEDIA_PATH = path.join(PROJECT_ROOT, "WatchedIt", "physical_media.json");
+
 const PORT = process.env.PORT || 4187;
 const PODCAST_LOOKBACK_DAYS = Math.max(
   1,
@@ -828,21 +840,59 @@ function normalizeEpisodeTitle(title) {
   return (title || "").trim().toLowerCase();
 }
 
+function stripShowPrefixes(title) {
+  let cleaned = String(title || "").replace(/\s+/g, " ").trim();
+  const prefixes = [
+    /^the rewatchables\s*[:\-–—]\s*/i,
+    /^the big picture\s*[:\-–—]\s*/i,
+    /^blank check(?:\s+with griffin(?: and david)?)?\s*[:\-–—]\s*/i,
+    /^the confused breakfast\s*[:\-–—]\s*/i,
+    /^(?:miniseries|minisode|rewatch(?:ables)?)\s*[:\-–—]\s*/i
+  ];
+  for (const pattern of prefixes) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.trim();
+}
+
+function isBrunchPodcastNoiseTitle(title) {
+  const brunchTitle = /^\s*brunch\b/i;
+  return brunchTitle.test(title || "") || brunchTitle.test(stripShowPrefixes(title));
+}
+
+function isAvailabilityBlurbTitle(title) {
+  const availabilityTitle = /^\s*(?:available|released)\b/i;
+  return availabilityTitle.test(title || "") || availabilityTitle.test(stripShowPrefixes(title));
+}
+
+function isNonMovieTitle(title) {
+  return isBrunchPodcastNoiseTitle(title) || isAvailabilityBlurbTitle(title);
+}
+
 function shouldSkipPodcastNoise(sourceIdentifier, rawTitle, cleanedTitle) {
-  const normalizedRaw = normalizeEpisodeTitle(rawTitle);
   const normalizedCleaned = normalizeEpisodeTitle(cleanedTitle);
   if (!normalizedCleaned) {
     return true;
   }
+  if (isNonMovieTitle(rawTitle) || isNonMovieTitle(cleanedTitle)) {
+    return true;
+  }
 
+  const haystack = `${rawTitle} ${cleanedTitle}`;
   // Big Picture has many non-movie episodes (mailbags, drafts, news).
   // Keep this conservative to avoid skipping obvious movie episodes.
   if (sourceIdentifier === "big-picture") {
     const bigPictureNoisePattern =
       /\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b/i;
-    if (bigPictureNoisePattern.test(normalizedRaw)) {
+    if (bigPictureNoisePattern.test(haystack)) {
       return true;
     }
+  }
+  if (sourceIdentifier === "blank-check") {
+    return /\b(mailbag|patreon|miniseries announcement|housekeeping)\b/i.test(haystack);
+  }
+  if (sourceIdentifier === "confused-breakfast") {
+    return /\b(mailbag|q\s*&\s*a|q and a)\b/i.test(haystack);
   }
 
   return false;
@@ -1081,10 +1131,14 @@ function mapStreamingProviders(result, region) {
     return [];
   }
 
+  // Order buckets like WatchedIt MovieDataService.getStreamingProviders:
+  // flatrate, rent, buy, free-with-ads, ad-supported tiers.
   const providerBuckets = [
     ...(regionData.flatrate || []),
     ...(regionData.rent || []),
     ...(regionData.buy || []),
+    ...(regionData.free || []),
+    ...(regionData.ads || []),
   ];
 
   const providerMap = new Map();
@@ -1196,7 +1250,8 @@ function markDuplicates(items, bootstrapData, sourceIdentifier) {
   }));
 }
 
-async function enrichItems(items) {
+async function enrichItems(items, options = {}) {
+  const fetchStreamingProviders = options.fetchStreamingProviders !== false;
   const enriched = [];
   for (const item of items) {
     try {
@@ -1218,8 +1273,20 @@ async function enrichItems(items) {
       detailsUrl.searchParams.set("append_to_response", "credits,videos,release_dates");
       const details = await requestJson(detailsUrl.toString());
       const merged = applyTmdbData(item, details);
+      let streamingServices = Array.isArray(item.streamingServices) ? item.streamingServices : [];
+      if (fetchStreamingProviders && details.id) {
+        try {
+          streamingServices = await fetchStreamingServices(details.id, "US");
+        } catch (error) {
+          console.warn(
+            `[bootstrap] watch/providers failed TMDB=${details.id} (${details.title ?? item.title ?? "?"}): ${
+              error?.message ?? error
+            }`
+          );
+        }
+      }
       const status = determineItemStatus(merged);
-      enriched.push({ ...merged, tmdbId: details.id, status });
+      enriched.push({ ...merged, tmdbId: details.id, streamingServices, status });
     } catch {
       enriched.push({ ...item, status: "missing" });
     }
@@ -2708,6 +2775,79 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         return sendJson(res, 500, { success: false, error: error.message, title: target.title });
       }
+    }
+
+    if (pathname === "/api/physical-media/stats" && req.method === "GET") {
+      const bootstrap = await loadBootstrap();
+      return sendJson(res, 200, physicalMediaStats(bootstrap.movies || []));
+    }
+
+    if (pathname === "/api/physical-media/enrich" && req.method === "POST") {
+      const payload = await readRequestBody(req);
+      const overwriteManual = Boolean(payload?.overwriteManual);
+      const bootstrap = await loadBootstrap();
+      const movies = bootstrap.movies || [];
+      const index = await fetchWikidataPhysicalMediaIndex();
+      seedCriterionFromSources(movies, index);
+      seedCurated4K(index);
+      const catalogIndex = filterIndexToCatalog(index, movies);
+      const updatedCount = applyIndexToMovies(movies, catalogIndex, { overwriteManual });
+      if (updatedCount > 0) {
+        bootstrap.generatedDate = new Date().toISOString();
+        await saveBootstrap(bootstrap);
+      }
+      const overlay = overlayFromIndex(catalogIndex);
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify(overlay, null, 2) + "\n");
+      return sendJson(res, 200, {
+        success: true,
+        updatedCount,
+        overlayCount: Object.keys(overlay.byTmdbId).length,
+        stats: physicalMediaStats(movies),
+      });
+    }
+
+    if (pathname === "/api/physical-media/update" && req.method === "POST") {
+      const payload = await readRequestBody(req);
+      const tmdbId = Number(payload?.tmdbId);
+      if (!tmdbId) return sendJson(res, 400, { error: "tmdbId is required" });
+      const bootstrap = await loadBootstrap();
+      const movies = bootstrap.movies || [];
+      const targets = movies.filter((movie) => movie.tmdbId === tmdbId);
+      if (!targets.length) return sendJson(res, 404, { error: "Movie not found" });
+
+      const next = {
+        editions: Array.isArray(payload?.editions) ? payload.editions : (targets[0].physicalMedia?.editions || []),
+        hasCriterion: Boolean(payload?.hasCriterion),
+        has4K: Boolean(payload?.has4K),
+        hasBluRay: Boolean(payload?.hasBluRay),
+        manualOverride: payload?.manualOverride !== false,
+      };
+      for (const movie of targets) {
+        movie.physicalMedia = next;
+      }
+      bootstrap.generatedDate = new Date().toISOString();
+      await saveBootstrap(bootstrap);
+
+      const overlay = overlayFromMovies(movies);
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify(overlay, null, 2) + "\n");
+      return sendJson(res, 200, { success: true, physicalMedia: next });
+    }
+
+    if (pathname === "/api/physical-media/clear" && req.method === "POST") {
+      const bootstrap = await loadBootstrap();
+      let clearedCount = 0;
+      for (const movie of bootstrap.movies || []) {
+        if (movie.physicalMedia) {
+          delete movie.physicalMedia;
+          clearedCount += 1;
+        }
+      }
+      if (clearedCount > 0) {
+        bootstrap.generatedDate = new Date().toISOString();
+        await saveBootstrap(bootstrap);
+      }
+      await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify({ byTmdbId: {} }, null, 2) + "\n");
+      return sendJson(res, 200, { success: true, clearedCount });
     }
 
     if (pathname === "/api/oscar-awards/clear" && req.method === "POST") {

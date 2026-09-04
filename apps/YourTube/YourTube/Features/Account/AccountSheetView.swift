@@ -1,3 +1,5 @@
+import MinAppKit
+import SwiftData
 import SwiftUI
 
 struct AccountSheetView: View {
@@ -12,6 +14,7 @@ struct AccountSheetView: View {
     @AppStorage("backgroundPlaybackBehavior") private var backgroundPlaybackBehaviorRawValue = BackgroundPlaybackBehavior.continuePlaying.rawValue
     @AppStorage("playbackTimeLimit") private var playbackTimeLimitRawValue = PlaybackTimeLimit.off.rawValue
     @AppStorage("videoDetailPresentationMode") private var videoDetailPresentationModeRawValue = VideoDetailPresentationMode.fullYouTubePage.rawValue
+    @Environment(\.modelContext) private var modelContext
     @Bindable private var affordanceStyle = MinAffordanceStyle.shared
     @State private var showsThemeSelection = false
     @State private var showsNotificationPreferences = false
@@ -124,6 +127,11 @@ struct AccountSheetView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                }
+                .designSystemGroupedListRow()
+
+                Section("Agents") {
+                    AgentSettingsLink(app: .vid, exporter: VideoAgentExportAdapter(context: modelContext))
                 }
                 .designSystemGroupedListRow()
 

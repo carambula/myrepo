@@ -169,7 +169,7 @@ final class MiniPlayerOverlayManager {
         let safe = container.safeAreaLayoutGuide
         /// Restrict interactive strip to the minimum practical area so overlay touches don't
         /// block unrelated controls (e.g. top search button) outside the visible mini player.
-        let maxStripHeight: CGFloat = isMicroplayerMode ? 120 : 280
+        let maxStripHeight: CGFloat = isMicroplayerMode ? 72 : 280
 
         hostVerticalConstraints = [hostView.heightAnchor.constraint(lessThanOrEqualToConstant: maxStripHeight)]
         if isMicroplayerMode {

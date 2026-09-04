@@ -25,31 +25,29 @@ struct BottomSheetPullToDismiss: ViewModifier {
     }
 
     private var closeAffordance: some View {
-        Group {
-            if isGestureActive {
-                Image(systemName: DesignSystem.Icon.close)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(isCloseReady ? Color.white : Color.secondary)
-                    .frame(width: DesignSystem.Controls.controlHeight, height: DesignSystem.Controls.controlHeight)
-                    .background {
-                        let cs = MinAffordanceStyle.shared.circleShape
-                        if isCloseReady {
-                            cs.fill(Color.red.opacity(0.9))
-                        } else {
-                            cs.fill(.ultraThinMaterial)
-                        }
-                    }
-                    .clipShape(MinAffordanceStyle.shared.circleShape)
-                    .overlay {
-                        if MinAffordanceStyle.shared.borderEnabled {
-                            MinAffordanceStyle.shared.circleShape
-                                .stroke(Color.white.opacity(isCloseReady ? 0.35 : 0.2), lineWidth: 0.8)
-                        }
-                    }
-                    .padding(.bottom, 14)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+        Image(systemName: DesignSystem.Icon.close)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(isCloseReady ? Color.white : Color.secondary)
+            .frame(width: DesignSystem.Controls.controlHeight, height: DesignSystem.Controls.controlHeight)
+            .background {
+                let cs = MinAffordanceStyle.shared.circleShape
+                if isCloseReady {
+                    cs.fill(Color.red.opacity(0.9))
+                } else {
+                    cs.fill(.thinMaterial)
+                }
             }
-        }
+            .clipShape(MinAffordanceStyle.shared.circleShape)
+            .overlay {
+                if MinAffordanceStyle.shared.borderEnabled {
+                    MinAffordanceStyle.shared.circleShape
+                        .stroke(Color.white.opacity(isCloseReady ? 0.35 : 0.2), lineWidth: 0.8)
+                }
+            }
+            .padding(.bottom, 14)
+            .opacity(isGestureActive ? 1 : 0.001)
+            .offset(y: isGestureActive ? 0 : 20)
+            .allowsHitTesting(isGestureActive)
     }
 
     private var closeGesture: some Gesture {

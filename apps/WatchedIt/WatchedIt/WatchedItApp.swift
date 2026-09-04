@@ -7,12 +7,39 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
+#if canImport(UIKit)
+import UIKit
+#endif
+
+#if os(iOS)
+final class MinCloudAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Task {
+            let granted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+            if granted == true {
+                await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
+            }
+        }
+        return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        MinCloudSettings.pushToken = token
+        Task { await MinCloudClient.shared.registerDevice(pushToken: token) }
+    }
+}
+#endif
 
 @main
 struct WatchedItApp: App {
     let sharedModelContainer: ModelContainer = AppDataBootstrapper.makeSharedModelContainer()
     @ObservedObject private var themeManager = ThemeManager.shared
     private let perfLoggingDefaultsKey = "perf_logging_enabled"
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(MinCloudAppDelegate.self) private var appDelegate
+    #endif
 
     private var isPerfLoggingEnabled: Bool {
         #if DEBUG
@@ -40,13 +67,13 @@ struct WatchedItApp: App {
     private var rootContent: some View {
         #if os(iOS)
         NewUserExperienceOverlayContainer {
-            CollectionsHomeView()
+            CollectionsHomeView(deepLinkURL: $deepLinkURL)
         }
         .onOpenURL { url in
             deepLinkURL = url
         }
         #else
-        CollectionsHomeView()
+        CollectionsHomeView(deepLinkURL: .constant(nil))
         #endif
     }
     
@@ -116,6 +143,18 @@ struct WatchedItApp: App {
             // Phase 3: after app is fully usable, silently scan podcasts for new episodes.
             try? await Task.sleep(nanoseconds: 700_000_000)
             await localDB.performDeferredPodcastEpisodeIntakeIfNeeded(reason: "ios-startup")
+
+            if let context = localDB.modelContext {
+                _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: context)
+            }
+            await TheatricalAvailabilitySync.shared.refresh(
+                catalogTmdbIds: localDB.movies.compactMap(\.tmdbId)
+            )
+            if MinCloudSettings.isSignedIn {
+                await MinCloudLibrarySync.shared.syncOnSignIn()
+            } else {
+                await MinCloudClient.shared.registerDevice()
+            }
         }
     }
 }

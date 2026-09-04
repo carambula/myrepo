@@ -55,14 +55,34 @@ For **existing users**:
 - `bootstrap_database.store`: 5.3MB (17% smaller)
 - Contains: 2,686 movies, 11 sources, 2,686 links
 
+## Cloud-era source of truth
+
+Min Cloud Postgres is the live catalog. The files in git (`bootstrap_data.json` + `bootstrap_database.store`) are the **offline first-launch bundle**.
+
+On an iOS Xcode build, `build_bootstrap_database.sh` now:
+
+1. Pulls `GET /v1/mov/catalog` into `WatchedIt/bootstrap_data.cloud.json` (gitignored)
+2. Regenerates `bootstrap_database.store` from that pull
+3. Falls back to the committed JSON if you are offline, `node` is missing, or `SKIP_CLOUD_BOOTSTRAP=1`
+
+If SwiftData moves an old `default.store` aside (schema / persistence mismatch), the next launch copies this freshly built bundle. Existing installs can also use Settings → **Refresh Catalog from Min Cloud** without rebuilding.
+
+```bash
+# Pull only (writes bootstrap_data.cloud.json)
+MIN_CLOUD_URL=https://min-cloud-production.up.railway.app \
+  node ../../services/min-cloud/scripts/export-bootstrap.mjs
+
+# Offline / airplane build
+SKIP_CLOUD_BOOTSTRAP=1 ./build_bootstrap_database.sh
+```
+
 ## Updating the Database
 
 When you update the bootstrap data:
 
-1. Update `bootstrap_data.json` (or regenerate it)
-2. Run `swift generate_bootstrap_database.swift`
-3. Replace `bootstrap_database.store` in Xcode
-4. Build and test
+1. Edit on Min Cloud `/admin`, or update `bootstrap_data.json` offline
+2. Build in Xcode (pulls cloud + regenerates the store) or run `./build_bootstrap_database.sh`
+3. The new `bootstrap_database.store` is bundled automatically
 
 The database will automatically be included in the app bundle and used on first launch.
 

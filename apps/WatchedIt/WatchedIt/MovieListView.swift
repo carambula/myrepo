@@ -7,14 +7,56 @@
 
 import SwiftUI
 import SwiftData
+import MinAppKit
 
 enum WatchFilter: String, CaseIterable {
     case all = "All"
-    case completed = "Completed"
-    case incomplete = "Incomplete"
     case rewatched = "Rewatched"
-    case listened = "Listened"
+    case notRewatched = "Not rewatched"
     case saved = "Saved"
+    case notSaved = "Not saved"
+    case listened = "Listened"
+    case notListened = "Not listened"
+    case completed = "Complete"
+    case notComplete = "Not complete"
+    case incomplete = "Incomplete"
+
+    var systemImage: String {
+        switch self {
+        case .all: return DesignSystem.Icon.status
+        case .rewatched, .notRewatched: return DesignSystem.Icon.rewatch
+        case .saved: return DesignSystem.Icon.bookmarkFill
+        case .notSaved: return DesignSystem.Icon.bookmark
+        case .listened, .notListened: return DesignSystem.Icon.listen
+        case .completed: return DesignSystem.Icon.checkmarkCircle
+        case .notComplete, .incomplete: return DesignSystem.Icon.checkmark
+        }
+    }
+
+    func matches(_ movie: Movie) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .rewatched:
+            return movie.isRewatched
+        case .notRewatched:
+            return !movie.isRewatched
+        case .saved:
+            return movie.isSaved
+        case .notSaved:
+            return !movie.isSaved
+        case .listened:
+            return movie.isListened
+        case .notListened:
+            return !movie.isListened
+        case .completed:
+            return movie.isRewatched && movie.isListened
+        case .notComplete:
+            return !(movie.isRewatched && movie.isListened)
+        case .incomplete:
+            return movie.isRewatched != movie.isListened
+        }
+    }
 }
 
 enum SearchBarAppearance: String, CaseIterable {
@@ -302,6 +344,7 @@ struct MovieListView: View {
     @State private var selectedMPAARating: String? = nil // Filter by MPAA rating
     @State private var selectedList: DataSource? = nil // Filter by list (unified - can be external source or local list)
     @State private var selectedStreamingService: String? = nil
+    @State private var theatricalFilter: TheatricalFilter? = nil
     @State private var sortOption: SortOption = .episodeDateDesc
     @State private var showAccountSheet = false
     @State private var showSearch = false
@@ -420,7 +463,8 @@ struct MovieListView: View {
     /// Aligns with `SearchResultsContent` / `SearchResultRow`: outer `md + xs` plus row inner horizontal `sm`.
     private let inspirationLeadingPadding: CGFloat = DesignSystem.Spacing.screenHorizontalPadding
     private let inspirationPosterSpacing: CGFloat = DesignSystem.Spacing.md
-    private let latestPodcastLimit = 20
+    private let latestCarouselLimit = LatestPodcastPicker.defaultLimit
+    private let latestCarouselRowCount = 2
     private let podcastBadgeSize: CGFloat = 24
     private let podcastBadgeInset: CGFloat = 4
     private let podcastBadgePeekWidth: CGFloat = 8
@@ -438,6 +482,13 @@ struct MovieListView: View {
         posterSizePreference.dimensions(baseWidth: baseInspirationPosterWidth, baseHeight: baseInspirationPosterHeight).height
     }
 
+    private var latestCarouselGridRows: [GridItem] {
+        Array(
+            repeating: GridItem(.fixed(inspirationPosterHeight), spacing: inspirationPosterSpacing),
+            count: latestCarouselRowCount
+        )
+    }
+
     private struct PodcastFeedArtworkCacheSnapshot: Codable {
         let savedAt: Date
         let urls: [String: String]
@@ -449,7 +500,7 @@ struct MovieListView: View {
 
     private enum InspirationSection: String, CaseIterable {
         case recentlySaved
-        case latestPodcasts
+        case latest
         case toComplete
         case longestSaved
 
@@ -457,8 +508,8 @@ struct MovieListView: View {
             switch self {
             case .recentlySaved:
                 return "Recently saved"
-            case .latestPodcasts:
-                return "Latest podcasts"
+            case .latest:
+                return "Latest"
             case .toComplete:
                 return "To complete"
             case .longestSaved:
@@ -499,6 +550,7 @@ struct MovieListView: View {
             || selectedMPAARating != nil
             || selectedList != nil
             || selectedStreamingService != nil
+            || theatricalFilter != nil
     }
     
     private var shouldShowInspirationSections: Bool {
@@ -565,6 +617,11 @@ struct MovieListView: View {
         guard !hasBuiltSourceCache else { return }
         movieToSourcesCache = buildMovieSourceCacheSnapshot()
         hasBuiltSourceCache = true
+    }
+
+    private func invalidateSourceCache() {
+        hasBuiltSourceCache = false
+        movieToSourcesCache = [:]
     }
     
     /// Builds a cache snapshot without mutating view state.
@@ -678,6 +735,14 @@ struct MovieListView: View {
             }
         }
         
+        if let media = movie.physicalMedia, media.matchesSearchQuery(searchText) {
+            return true
+        }
+
+        if let run = movie.theatricalRun, run.matchesSearchQuery(searchText) {
+            return true
+        }
+
         // Oscar awards search
         if let awards = movie.oscarAwards {
             // Search for "oscar", "academy award", "win", "nomination"
@@ -825,6 +890,7 @@ struct MovieListView: View {
         hasher.combine(selectedMPAARating ?? "")
         hasher.combine(selectedList?.identifier ?? "")
         hasher.combine(selectedStreamingService ?? "")
+        hasher.combine(theatricalFilter?.rawValue ?? "")
         hasher.combine(sortOption.rawValue)
         hasher.combine(filterVersion)
         hasher.combine(localDB.movieStatusVersion)
@@ -878,19 +944,8 @@ struct MovieListView: View {
         }
         
         // Apply watch filter
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            movies = movies.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            movies = movies.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            movies = movies.filter { $0.isRewatched }
-        case .listened:
-            movies = movies.filter { $0.isListened }
-        case .saved:
-            movies = movies.filter { $0.isSaved }
+        if watchFilter != .all {
+            movies = movies.filter { watchFilter.matches($0) }
         }
         
         // Apply genre filter
@@ -936,6 +991,10 @@ struct MovieListView: View {
             }
         }
 
+        if let theatricalFilter {
+            movies = movies.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
+        }
+
         // Apply inspiration selection (overrides sort option)
         if selectedInspiration != nil {
             return applyInspirationFilter(to: movies)
@@ -961,15 +1020,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             movies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             movies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1032,6 +1091,7 @@ struct MovieListView: View {
         selectedRating: String?,
         selectedList: DataSource?,
         selectedStreaming: String?,
+        theatricalFilter: TheatricalFilter?,
         sortOption: SortOption,
         selectedInspiration: InspirationSection?,
         preferredServices: [String],
@@ -1054,19 +1114,8 @@ struct MovieListView: View {
         }
         
         // Apply watch filter
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            filteredMovies = filteredMovies.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filteredMovies = filteredMovies.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filteredMovies = filteredMovies.filter { $0.isRewatched }
-        case .listened:
-            filteredMovies = filteredMovies.filter { $0.isListened }
-        case .saved:
-            filteredMovies = filteredMovies.filter { $0.isSaved }
+        if watchFilter != .all {
+            filteredMovies = filteredMovies.filter { watchFilter.matches($0) }
         }
         
         // Apply genre filter
@@ -1108,6 +1157,10 @@ struct MovieListView: View {
                 }
             }
         }
+
+        if let theatricalFilter {
+            filteredMovies = filteredMovies.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
+        }
         
         // Apply inspiration selection (needs main actor for applyInspirationFilter)
         if selectedInspiration != nil {
@@ -1143,15 +1196,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             sortedMovies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             sortedMovies = movies.sorted { (m1, m2) in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1212,6 +1265,14 @@ struct MovieListView: View {
 
             if let episode = movie.podcastEpisode {
                 fields.append(episode.title)
+            }
+
+            if let media = movie.physicalMedia {
+                fields.append(contentsOf: media.searchTokens)
+            }
+
+            if let run = movie.theatricalRun {
+                fields.append(contentsOf: run.searchTokens)
             }
 
             if let discussion = movie.rewatchablesDiscussion {
@@ -1278,6 +1339,7 @@ struct MovieListView: View {
         selectedMPAARating: String?,
         selectedListIdentifier: String?,
         selectedStreamingService: String?,
+        theatricalFilter: TheatricalFilter?,
         sortOption: SortOption,
         preferredStreamingServices: [String],
         sourceCache: [String: Set<String>],
@@ -1324,19 +1386,8 @@ struct MovieListView: View {
             }
         }
 
-        switch watchFilter {
-        case .all:
-            break
-        case .completed:
-            filtered = filtered.filter { $0.isRewatched && $0.isListened }
-        case .incomplete:
-            filtered = filtered.filter { $0.isRewatched != $0.isListened }
-        case .rewatched:
-            filtered = filtered.filter { $0.isRewatched }
-        case .listened:
-            filtered = filtered.filter { $0.isListened }
-        case .saved:
-            filtered = filtered.filter { $0.isSaved }
+        if watchFilter != .all {
+            filtered = filtered.filter { watchFilter.matches($0) }
         }
 
         if let selectedGenre = selectedGenre {
@@ -1374,6 +1425,10 @@ struct MovieListView: View {
             }
         }
 
+        if let theatricalFilter {
+            filtered = filtered.filter { $0.theatricalRun?.matches(theatricalFilter) == true }
+        }
+
         switch sortOption {
         case .title:
             filtered = filtered.sorted { $0.title < $1.title }
@@ -1393,15 +1448,15 @@ struct MovieListView: View {
             }
         case .episodeDateAsc:
             filtered = filtered.sorted { m1, m2 in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 < d2 }
                 return m1.title < m2.title
             }
         case .episodeDateDesc:
             filtered = filtered.sorted { m1, m2 in
-                let d1 = m1.podcastEpisode?.publishDate ?? Date.distantPast
-                let d2 = m2.podcastEpisode?.publishDate ?? Date.distantPast
+                let d1 = m1.episodeSortDate
+                let d2 = m2.episodeSortDate
                 if d1 != d2 { return d1 > d2 }
                 return m1.title < m2.title
             }
@@ -1426,6 +1481,7 @@ struct MovieListView: View {
            selectedMPAARating == nil,
            selectedList == nil,
            selectedStreamingService == nil,
+           theatricalFilter == nil,
            selectedInspiration == nil,
            sortOption == .episodeDateDesc {
             searchRecomputeTask?.cancel()
@@ -1483,6 +1539,7 @@ struct MovieListView: View {
                     selectedMPAARating: selectedMPAARating,
                     selectedListIdentifier: selectedList?.identifier,
                     selectedStreamingService: selectedStreamingService,
+                    theatricalFilter: theatricalFilter,
                     sortOption: sortOption,
                     selectedInspiration: selectedInspiration,
                     activePersonSearchQuery: activePersonSearchQuery,
@@ -1537,6 +1594,7 @@ struct MovieListView: View {
                         selectedMPAARating: snapshot.selectedMPAARating,
                         selectedListIdentifier: snapshot.selectedListIdentifier,
                         selectedStreamingService: snapshot.selectedStreamingService,
+                        theatricalFilter: snapshot.theatricalFilter,
                         sortOption: snapshot.sortOption,
                         preferredStreamingServices: snapshot.preferredStreamingServices,
                         sourceCache: snapshot.sourceCache,
@@ -1620,12 +1678,25 @@ struct MovieListView: View {
         return Array(visibleMovies.prefix(inspirationLimit))
     }
 
-    private var latestPodcastMovies: [Movie] {
-        let entries = latestPodcastEntries()
-            .sorted { $0.date > $1.date }
-            .map { $0.movie }
-        let visibleMovies = inspirationVisibleMovies(from: entries)
-        return Array(visibleMovies.prefix(latestPodcastLimit))
+    private var latestMovies: [Movie] {
+        let entries = latestCarouselEntries()
+        var movieById: [String: Movie] = [:]
+        for entry in entries {
+            movieById[entry.movie.id] = entry.movie
+        }
+        let movieIds = LatestPodcastPicker.carouselMovieIds(
+            from: entries.map {
+                LatestPodcastPicker.Entry(
+                    movieId: $0.movie.id,
+                    date: $0.date,
+                    sourceIdentifier: $0.sourceIdentifier,
+                    groupKey: $0.groupKey
+                )
+            },
+            limit: latestCarouselLimit
+        )
+        let picked = movieIds.compactMap { movieById[$0] }
+        return inspirationVisibleMovies(from: picked)
     }
 
     private var toCompleteMovies: [Movie] {
@@ -1654,8 +1725,8 @@ struct MovieListView: View {
         switch selectedInspiration {
         case .recentlySaved:
             return recentlySavedMovies
-        case .latestPodcasts:
-            return latestPodcastMovies
+        case .latest:
+            return latestMovies
         case .toComplete:
             return toCompleteMovies
         case .longestSaved:
@@ -1684,7 +1755,7 @@ struct MovieListView: View {
 
         let podcastDateBySource: [String: [String: Date]] = {
             var map: [String: [String: Date]] = [:]
-            for entry in latestPodcastEntries() {
+            for entry in latestCarouselEntries() {
                 let sourceId = entry.sourceIdentifier
                 let movieId = entry.movie.id
                 if let existingDate = map[sourceId]?[movieId] {
@@ -1719,6 +1790,9 @@ struct MovieListView: View {
 
     private func prioritizeSourceMovies(_ movies: [Movie], for source: DataSource, podcastDateMap: [String: Date]) -> [Movie] {
         let baseSorted = defaultSortedMoviesForSourceUnit(movies, source: source, podcastDateMap: podcastDateMap)
+        if source.type == "podcast" {
+            return uniqueMoviesPreservingOrder(baseSorted)
+        }
         let saved = baseSorted.filter { $0.isSaved }
         let needsCompletion = baseSorted.filter { !$0.isSaved && $0.isRewatched != $0.isListened }
         let remaining = baseSorted.filter { !$0.isSaved && $0.isRewatched == $0.isListened }
@@ -1745,14 +1819,17 @@ struct MovieListView: View {
         }
 
         if source.type == "podcast" {
-            return movies.sorted { lhs, rhs in
-                let leftDate = podcastDateMap[lhs.id] ?? Date.distantPast
-                let rightDate = podcastDateMap[rhs.id] ?? Date.distantPast
-                if leftDate != rightDate {
-                    return leftDate > rightDate
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: movies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: podcastDateMap[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title
+                    )
                 }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         }
 
         return movies.sorted { lhs, rhs in
@@ -1766,12 +1843,8 @@ struct MovieListView: View {
         switch selectedInspiration {
         case .recentlySaved:
             orderedIds = uniqueIdsPreservingOrder(recentlySavedMovies.map { $0.id })
-        case .latestPodcasts:
-            orderedIds = uniqueIdsPreservingOrder(
-                latestPodcastEntries()
-                    .sorted { $0.date > $1.date }
-                    .map { $0.movie.id }
-            )
+        case .latest:
+            orderedIds = uniqueIdsPreservingOrder(latestMovies.map(\.id))
         case .toComplete:
             orderedIds = uniqueIdsPreservingOrder(
                 localDB.movies
@@ -1808,10 +1881,19 @@ struct MovieListView: View {
         return Set(enabledPodcasts.map { $0.identifier })
     }
 
-    private func latestPodcastEntries() -> [(movie: Movie, date: Date, sourceIdentifier: String)] {
-        let enabledIds = enabledPodcastSourceIds
+    private var enabledLatestSourceIds: Set<String> {
+        var ids = enabledPodcastSourceIds
+        if preferredListIdentifierSet.contains(ClosetPicksSource.identifier),
+           allDataSources.contains(where: { $0.identifier == ClosetPicksSource.identifier && $0.isEnabled }) {
+            ids.insert(ClosetPicksSource.identifier)
+        }
+        return ids
+    }
+
+    private func latestCarouselEntries() -> [(movie: Movie, date: Date, sourceIdentifier: String, groupKey: String?)] {
+        let enabledIds = enabledLatestSourceIds
         guard !enabledIds.isEmpty else { return [] }
-        var entries: [(movie: Movie, date: Date, sourceIdentifier: String)] = []
+        var entries: [(movie: Movie, date: Date, sourceIdentifier: String, groupKey: String?)] = []
 
         let descriptor = FetchDescriptor<MovieData>()
         let movieDataList = (try? modelContext.fetch(descriptor)) ?? []
@@ -1825,19 +1907,43 @@ struct MovieListView: View {
                       enabledIds.contains(source.identifier) else {
                     continue
                 }
-                let date = content.podcastEpisode?.publishDate ?? content.sourceDate
+                let date = LatestPodcastPicker.entryDate(
+                    sourceIdentifier: source.identifier,
+                    sourceDate: content.sourceDate,
+                    episodePublishDate: content.podcastEpisode?.publishDate,
+                    discoveredAt: content.discoveredAt
+                )
                 if let date {
-                    entries.append((movie: movie, date: date, sourceIdentifier: source.identifier))
+                    entries.append((
+                        movie: movie,
+                        date: date,
+                        sourceIdentifier: source.identifier,
+                        groupKey: content.sourceUrl
+                    ))
                 }
             }
 
             for dataSource in movieData.dataSources ?? [] {
                 guard let source = dataSource.dataSource,
-                      enabledIds.contains(source.identifier),
-                      let date = dataSource.podcastEpisode?.publishDate else {
-                        continue
+                      enabledIds.contains(source.identifier) else {
+                    continue
                 }
-                entries.append((movie: movie, date: date, sourceIdentifier: source.identifier))
+                let date = LatestPodcastPicker.entryDate(
+                    sourceIdentifier: source.identifier,
+                    sourceDate: nil,
+                    episodePublishDate: dataSource.podcastEpisode?.publishDate,
+                    discoveredAt: LatestPodcastPicker.allowsMultipleEntries(sourceIdentifier: source.identifier)
+                        ? dataSource.lastUpdated
+                        : nil
+                )
+                if let date {
+                    entries.append((
+                        movie: movie,
+                        date: date,
+                        sourceIdentifier: source.identifier,
+                        groupKey: dataSource.sourceUrl
+                    ))
+                }
             }
         }
 
@@ -2072,7 +2178,7 @@ struct MovieListView: View {
                             if let selectedInspiration {
                                 inspirationSectionRow(section: selectedInspiration, movies: selectedInspirationMovies, isCollapsed: true)
                             } else {
-                                inspirationSectionRow(section: .latestPodcasts, movies: latestPodcastMovies, isCollapsed: false)
+                                inspirationSectionRow(section: .latest, movies: latestMovies, isCollapsed: false)
                                 inspirationSectionRow(section: .recentlySaved, movies: recentlySavedMovies, isCollapsed: false)
                                 inspirationSectionRow(section: .toComplete, movies: toCompleteMovies, isCollapsed: false)
                                 if savedMovieCount >= 20 {
@@ -2137,7 +2243,7 @@ struct MovieListView: View {
                         if let selectedInspiration {
                             inspirationSectionRow(section: selectedInspiration, movies: selectedInspirationMovies, isCollapsed: true)
                         } else {
-                            inspirationSectionRow(section: .latestPodcasts, movies: latestPodcastMovies, isCollapsed: false)
+                            inspirationSectionRow(section: .latest, movies: latestMovies, isCollapsed: false)
                             inspirationSectionRow(section: .recentlySaved, movies: recentlySavedMovies, isCollapsed: false)
                             inspirationSectionRow(section: .toComplete, movies: toCompleteMovies, isCollapsed: false)
                             if savedMovieCount >= 20 {
@@ -2228,6 +2334,8 @@ struct MovieListView: View {
     }
 
     private func handleMainPagePullToRefresh() async {
+        _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext, force: true)
+        invalidateSourceCache()
         await localDB.forcePodcastEpisodeIntake(reason: "main-page-pull-to-refresh")
     }
 
@@ -2278,6 +2386,12 @@ struct MovieListView: View {
         if let selectedStreamingService {
             chips.append(FilterChip(label: selectedStreamingService) {
                 self.selectedStreamingService = nil
+            })
+        }
+
+        if let theatricalFilter {
+            chips.append(FilterChip(label: theatricalFilter.rawValue) {
+                self.theatricalFilter = nil
             })
         }
 
@@ -2340,20 +2454,7 @@ struct MovieListView: View {
                 }
                 
                 if !isCollapsed {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: inspirationPosterSpacing) {
-                            ForEach(movies, id: \.id) { movie in
-                                Button {
-                                    selectedMovie = movie
-                                } label: {
-                                    inspirationPoster(for: movie, section: section)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(movie.title)
-                            }
-                        }
-                        .padding(.horizontal, inspirationLeadingPadding)
-                    }
+                    inspirationCarousel(movies: movies, section: section)
                 }
             }
             .padding(.vertical, DesignSystem.Spacing.sm)
@@ -2377,6 +2478,37 @@ struct MovieListView: View {
             }
         }
         .frame(height: 28)
+    }
+
+    private func inspirationCarousel(movies: [Movie], section: InspirationSection) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            Group {
+                if section == .latest {
+                    LazyHGrid(rows: latestCarouselGridRows, spacing: inspirationPosterSpacing) {
+                        ForEach(movies, id: \.id) { movie in
+                            inspirationPosterButton(for: movie, section: section)
+                        }
+                    }
+                } else {
+                    LazyHStack(spacing: inspirationPosterSpacing) {
+                        ForEach(movies, id: \.id) { movie in
+                            inspirationPosterButton(for: movie, section: section)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, inspirationLeadingPadding)
+        }
+    }
+
+    private func inspirationPosterButton(for movie: Movie, section: InspirationSection) -> some View {
+        Button {
+            selectedMovie = movie
+        } label: {
+            inspirationPoster(for: movie, section: section)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(movie.title)
     }
 
     @ViewBuilder
@@ -2412,7 +2544,7 @@ struct MovieListView: View {
                             Button {
                                 selectedMovie = movie
                             } label: {
-                                inspirationPoster(for: movie, section: .latestPodcasts)
+                                inspirationPoster(for: movie, section: .latest)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(movie.title)
@@ -2826,7 +2958,7 @@ struct MovieListView: View {
     @ViewBuilder
     private func swipeActions(for movie: Movie) -> some View {
         let currentMovie = localDB.movies.first { $0.id == movie.id } ?? movie
-        let hasPodcastEpisode = (currentMovie.podcastEpisode ?? movie.podcastEpisode) != nil
+        let showsListenedAction = showsListenedAction(for: movie, currentMovie: currentMovie)
         // Full swipe toggles saved
         Button(action: {
             localDB.queueSavedStatusUpdate(currentMovie, isSaved: !currentMovie.isSaved)
@@ -2852,8 +2984,18 @@ struct MovieListView: View {
         }) {
             DesignSystemIcon(DesignSystem.Icon.listenCircleFill, size: DesignSystem.IconSize.md)
         }
-        .tint(hasPodcastEpisode ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
-        .disabled(!hasPodcastEpisode)
+        .tint(showsListenedAction ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
+        .disabled(!showsListenedAction)
+    }
+
+    private func showsListenedAction(for movie: Movie, currentMovie: Movie) -> Bool {
+        let hasPodcastEpisode = (currentMovie.podcastEpisode ?? movie.podcastEpisode) != nil
+        let sourceCache = hasBuiltSourceCache ? movieToSourcesCache : buildMovieSourceCacheSnapshot()
+        let isOnClosetPicks = sourceCache[movie.id]?.contains(ClosetPicksSource.identifier) == true
+        return ClosetPicksSource.showsListenedAction(
+            hasPodcastEpisode: hasPodcastEpisode,
+            isOnClosetPicks: isOnClosetPicks
+        )
     }
     
     // MARK: - Toolbar Components
@@ -2877,6 +3019,7 @@ struct MovieListView: View {
     @ToolbarContentBuilder
     private var bottomToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
+            statusMenu
             listMenu
             if hasPreferredStreamingServices {
                 streamingServiceMenu
@@ -2893,6 +3036,7 @@ struct MovieListView: View {
     #if os(iOS)
     private var customFloatingFilterGroup: some View {
         GlassCapsuleToolbar(spacing: 24, height: customToolbarControlHeight) {
+            statusMenu
             listMenu
             if hasPreferredStreamingServices {
                 streamingServiceMenu
@@ -2972,19 +3116,29 @@ struct MovieListView: View {
     
     private var statusMenu: some View {
         Menu {
-            ForEach(WatchFilter.allCases, id: \.self) { filter in
-                Button {
-                    watchFilter = filter
-                } label: {
-                    if filter == watchFilter {
-                        Label(filter.rawValue, systemImage: "checkmark")
-                    } else {
-                        Text(filter.rawValue)
-                    }
+            statusMenuContent
+        } label: {
+            DesignSystemIcon(
+                watchFilter == .all ? DesignSystem.Icon.status : watchFilter.systemImage,
+                size: DesignSystem.IconSize.md,
+                color: toolbarIconColor(isActive: watchFilter != .all)
+            )
+        }
+        .accessibilityLabel(watchFilter == .all ? "Status filter" : "Status filter, \(watchFilter.rawValue)")
+    }
+
+    @ViewBuilder
+    private var statusMenuContent: some View {
+        ForEach(WatchFilter.allCases, id: \.self) { filter in
+            Button {
+                applyStatusFilterFromToolbar(filter)
+            } label: {
+                if filter == watchFilter {
+                    Label(filter.rawValue, systemImage: DesignSystem.Icon.checkmark)
+                } else {
+                    Label(filter.rawValue, systemImage: filter.systemImage)
                 }
             }
-        } label: {
-            DesignSystemIcon(DesignSystem.Icon.status, size: DesignSystem.IconSize.md, color: toolbarIconColor(isActive: watchFilter != .all))
         }
     }
     
@@ -3245,6 +3399,16 @@ struct MovieListView: View {
         )
     }
 
+    private func applyStatusFilterFromToolbar(_ filter: WatchFilter) {
+        if collectionsOnlyMode {
+            var filters = MovieSearchFilters()
+            filters.watchFilter = filter
+            presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
+            return
+        }
+        watchFilter = filter
+    }
+
     private func applyGenreFilterFromToolbar(_ genre: String?) {
         if collectionsOnlyMode {
             var filters = MovieSearchFilters()
@@ -3281,6 +3445,55 @@ struct MovieListView: View {
         } else if list?.isRankedList == true {
             sortOption = .ranking
         }
+    }
+
+    @ViewBuilder
+    private var theatricalMenuContent: some View {
+        Button {
+            applyTheatricalFilterFromToolbar(nil)
+        } label: {
+            if theatricalFilter == nil {
+                Label("All Movies", systemImage: "checkmark")
+            } else {
+                Text("All Movies")
+            }
+        }
+        ForEach(TheatricalFilter.allCases, id: \.self) { filter in
+            Button {
+                applyTheatricalFilterFromToolbar(filter)
+            } label: {
+                if theatricalFilter == filter {
+                    Label(filter.rawValue, systemImage: "checkmark")
+                } else {
+                    Text(filter.rawValue)
+                }
+            }
+        }
+    }
+
+    private func applyTheatricalFilterFromToolbar(_ filter: TheatricalFilter?) {
+        if collectionsOnlyMode {
+            var filters = MovieSearchFilters()
+            filters.theatricalFilter = filter
+            presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
+            return
+        }
+        theatricalFilter = filter
+    }
+
+    private func startTheatricalSearchFromDetails(_ filter: TheatricalFilter) {
+        pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        filters.theatricalFilter = filter
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: nil,
+            initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
     }
 
     private func applyStreamingServiceFilterFromToolbar(_ service: String?) {
@@ -3353,6 +3566,25 @@ struct MovieListView: View {
             restrictedMovieIDs: nil,
             allowsListFilter: true,
             initialQuery: nil,
+            initialFilters: filters,
+            focusSearchOnOpen: false
+        )
+        selectedMovie = nil
+    }
+
+    private func startPhysicalMediaSearchFromDetails(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        if let mediaFilter = PhysicalMediaFilter.fromSearchToken(trimmed) {
+            filters.physicalMediaFilter = mediaFilter
+        }
+        pendingDetailSearchContext = SearchPresentationContext(
+            title: "All Movies",
+            restrictedMovieIDs: nil,
+            allowsListFilter: true,
+            initialQuery: filters.physicalMediaFilter == nil ? trimmed : nil,
             initialFilters: filters,
             focusSearchOnOpen: false
         )
@@ -3608,6 +3840,12 @@ struct MovieListView: View {
     private var searchFiltersMenu: some View {
         Menu {
             Menu {
+                statusMenuContent
+            } label: {
+                Label("Status", systemImage: DesignSystem.Icon.status)
+            }
+
+            Menu {
                 listMenuContent
             } label: {
                 Label("Lists", systemImage: DesignSystem.Icon.listRectangle)
@@ -3619,6 +3857,12 @@ struct MovieListView: View {
                 } label: {
                     Label("Streaming", systemImage: "play.square.stack.fill")
                 }
+            }
+
+            Menu {
+                theatricalMenuContent
+            } label: {
+                Label("Theaters", systemImage: DesignSystem.Icon.ticket)
             }
             
             Menu {
@@ -3691,14 +3935,14 @@ struct MovieListView: View {
         } else {
         switch searchBarAppearance {
         case .classic:
-            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(.thinMaterial)
         case .solid:
             DesignSystem.Color.cardBackground
         case .elevated:
-            Rectangle().fill(.thickMaterial)
+            Rectangle().fill(.thinMaterial)
         case .glass:
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(.thinMaterial)
                 
                 // Add subtle gradient highlight to simulate glass distortion
                 LinearGradient(
@@ -3921,7 +4165,9 @@ struct MovieListView: View {
                         onCreditPersonTapped: startPersonSearchFromDetails,
                         onYearTapped: startYearSearchFromDetails,
                         onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails
+                        onRatingTapped: startRatingSearchFromDetails,
+                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
+                        onTheatricalTapped: startTheatricalSearchFromDetails
                     )
                     .onAppear {
                         logMovieDetailPresented(movie.id)
@@ -4003,6 +4249,11 @@ struct MovieListView: View {
                 displayedMovieCount = 50 // Reset to first page
                 scheduleFilterRecompute(source: "selectedStreamingService")
             }
+            .onChange(of: theatricalFilter) { _, _ in
+                filterVersion += 1
+                displayedMovieCount = 50
+                scheduleFilterRecompute(source: "theatricalFilter")
+            }
             .onChange(of: selectedInspiration) { _, _ in
                 filterVersion += 1
                 displayedMovieCount = 50 // Reset to first page
@@ -4059,6 +4310,7 @@ struct MovieListView: View {
                 // Defer to avoid modifying state during view update
                 Task { @MainActor in
                     await Task.yield()
+                    invalidateSourceCache()
                     // If cache is empty and we just loaded movies, populate cache immediately
                     if cachedFilteredMovies.isEmpty && newCount > 0 {
                         cachedFilteredMovies = localDB.movies
@@ -4188,6 +4440,7 @@ struct MovieListView: View {
                 .onChange(of: localDB.movieStatusVersion) { _, _ in
                     // Avoid expensive full-array equality checks during typing; this scalar
                     // signal tracks status mutations and keeps search responsive.
+                    invalidateSourceCache()
                     filterVersion += 1
                     // Don't reset pagination on status updates - just invalidate cache
                     let hasSearchText = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -4627,9 +4880,23 @@ struct AccountSheetView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Min Cloud") {
+                    NavigationLink(destination: MinCloudAccountView()) {
+                        Label(MinCloudSettings.isSignedIn ? "Account   @\(MinCloudSettings.handle ?? "signed in")" : "Sign in or create an account", systemImage: "cloud")
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                    }
+                }
+                .designSystemGroupedListRow()
+
                 Section("iCloud") {
-                    Label("iCloud backup is always on", systemImage: "icloud")
-                        .foregroundStyle(DesignSystem.Color.textPrimary)
+                    Label(
+                        MinCloudSettings.iCloudBackupEnabled ? "iCloud backup is on" : "iCloud backup is off",
+                        systemImage: "icloud"
+                    )
+                    .foregroundStyle(DesignSystem.Color.textPrimary)
+                    Text("iCloud is optional. Use Min Cloud for sync across devices, or keep iCloud as a backup if you do not want a web account.")
+                        .captionMedium()
+                        .foregroundColor(DesignSystem.Color.textSecondary)
                 }
                 .designSystemGroupedListRow()
                 
@@ -4654,15 +4921,19 @@ struct AccountSheetView: View {
                 .designSystemGroupedListRow()
                 
                 Section("Catalog") {
-                    Button(action: refreshCatalogFromBundle) {
+                    Button(action: refreshCatalogFromCloud) {
                         HStack(spacing: DesignSystem.Spacing.sm) {
-                            accountActionRowLabel("Refresh Catalog from Bundle", systemImage: DesignSystem.Icon.refresh)
+                            accountActionRowLabel("Refresh Catalog from Min Cloud", systemImage: "cloud")
                             if isRefreshingCatalog {
                                 Spacer()
                                 ProgressView()
                                     .tint(DesignSystem.Color.accent)
                             }
                         }
+                    }
+                    .disabled(isRefreshingCatalog)
+                    Button(action: refreshCatalogFromBundle) {
+                        accountActionRowLabel("Refresh Catalog from Bundle", systemImage: DesignSystem.Icon.refresh)
                     }
                     .disabled(isRefreshingCatalog)
                 }
@@ -4765,6 +5036,11 @@ struct AccountSheetView: View {
                 .designSystemGroupedListRow()
                 #endif
 
+                Section("Agents") {
+                    AgentSettingsLink(app: .mov, exporter: MovieAgentService.shared)
+                }
+                .designSystemGroupedListRow()
+
                 Section("About") {
                     HStack {
                         Label("Version", systemImage: "info.circle")
@@ -4805,13 +5081,28 @@ struct AccountSheetView: View {
         .bottomSheetPullToDismiss()
     }
     
+    private func refreshCatalogFromCloud() {
+        guard !isRefreshingCatalog else { return }
+        isRefreshingCatalog = true
+        Task { @MainActor in
+            refreshAlertMessage = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: modelContext, force: true)
+            isRefreshingCatalog = false
+        }
+    }
+
     private func refreshCatalogFromBundle() {
         guard !isRefreshingCatalog else { return }
         isRefreshingCatalog = true
         Task { @MainActor in
             do {
+                let before = (try? modelContext.fetchCount(FetchDescriptor<MovieData>())) ?? localDB.movies.count
                 try await localDB.rebaseOnBootstrapDatabase(modelContext: modelContext)
-                refreshAlertMessage = "Catalog refreshed from the bundled database."
+                let after = (try? modelContext.fetchCount(FetchDescriptor<MovieData>())) ?? localDB.movies.count
+                if after > before {
+                    refreshAlertMessage = "Added \(after - before) titles from the bundled database."
+                } else {
+                    refreshAlertMessage = "Bundle already matches the local catalog (\(after) titles). Use Refresh Catalog from Min Cloud for admin additions. The bundle only updates when an Xcode cloud pull succeeds."
+                }
             } catch {
                 refreshAlertMessage = "Catalog refresh failed: \(error.localizedDescription)"
             }
@@ -5383,7 +5674,7 @@ struct SearchBarAppearanceRow: View {
                 
                 // Mini toolbar preview
                 Rectangle()
-                    .fill(.ultraThinMaterial)
+                    .fill(.thinMaterial)
                     .frame(height: 12)
             }
         }
@@ -5393,14 +5684,14 @@ struct SearchBarAppearanceRow: View {
     private var backgroundForPreview: some View {
         switch appearance {
         case .classic:
-            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(.thinMaterial)
         case .solid:
             DesignSystem.Color.cardBackground
         case .elevated:
-            Rectangle().fill(.thickMaterial)
+            Rectangle().fill(.thinMaterial)
         case .glass:
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(.thinMaterial)
                 LinearGradient(
                     colors: [
                         .white.opacity(0.15),

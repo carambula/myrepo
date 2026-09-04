@@ -35,6 +35,51 @@ public enum PhysicalLabel: String, Codable, CaseIterable, Sendable, Hashable {
     }
 }
 
+public enum PhysicalMediaFilter: String, CaseIterable, Sendable, Hashable {
+    case uhd4k = "4K"
+    case bluRay = "Blu-ray"
+    case criterion = "Criterion"
+    case arrow = "Arrow"
+    case shoutFactory = "Shout Factory"
+    case kinoLorber = "Kino Lorber"
+
+    public enum Group: String, Sendable {
+        case format = "Physical Media"
+        case partnership = "Partnerships"
+    }
+
+    public var group: Group {
+        switch self {
+        case .uhd4k, .bluRay:
+            return .format
+        case .criterion, .arrow, .shoutFactory, .kinoLorber:
+            return .partnership
+        }
+    }
+
+    public static var formats: [PhysicalMediaFilter] { [.uhd4k, .bluRay] }
+    public static var partnerships: [PhysicalMediaFilter] { [.criterion, .arrow, .shoutFactory, .kinoLorber] }
+
+    public static func fromSearchToken(_ token: String) -> PhysicalMediaFilter? {
+        switch token.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "4k", "uhd", "4k uhd":
+            return .uhd4k
+        case "bluray", "blu-ray", "blu ray":
+            return .bluRay
+        case "criterion":
+            return .criterion
+        case "arrow":
+            return .arrow
+        case "shout", "shout factory":
+            return .shoutFactory
+        case "kino", "kino lorber":
+            return .kinoLorber
+        default:
+            return nil
+        }
+    }
+}
+
 public enum PhysicalFormat: String, Codable, CaseIterable, Sendable, Hashable {
     case uhd4k
     case bluRay
@@ -135,6 +180,23 @@ public struct PhysicalMedia: Codable, Hashable, Sendable {
         if hasCriterion { badges.append("Criterion") }
         if has4K { badges.append("4K") }
         return badges
+    }
+
+    public func matches(_ filter: PhysicalMediaFilter) -> Bool {
+        switch filter {
+        case .criterion:
+            return hasCriterion || editions.contains { $0.label == .criterion }
+        case .uhd4k:
+            return has4K || editions.contains { $0.format == .uhd4k }
+        case .bluRay:
+            return hasBluRay || editions.contains { $0.format == .bluRay }
+        case .arrow:
+            return editions.contains { $0.label == .arrow }
+        case .shoutFactory:
+            return editions.contains { $0.label == .shoutFactory }
+        case .kinoLorber:
+            return editions.contains { $0.label == .kinoLorber }
+        }
     }
 
     public var searchTokens: [String] {

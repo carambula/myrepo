@@ -3576,12 +3576,16 @@ struct MovieListView: View {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         pendingPersonSearchQuery = nil
+        var filters = MovieSearchFilters()
+        if let mediaFilter = PhysicalMediaFilter.fromSearchToken(trimmed) {
+            filters.physicalMediaFilter = mediaFilter
+        }
         pendingDetailSearchContext = SearchPresentationContext(
             title: "All Movies",
             restrictedMovieIDs: nil,
             allowsListFilter: true,
-            initialQuery: trimmed,
-            initialFilters: MovieSearchFilters(),
+            initialQuery: filters.physicalMediaFilter == nil ? trimmed : nil,
+            initialFilters: filters,
             focusSearchOnOpen: false
         )
         selectedMovie = nil

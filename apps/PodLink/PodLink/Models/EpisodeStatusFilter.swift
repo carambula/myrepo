@@ -3,8 +3,8 @@ import Foundation
 /// Library / episode-list status filter used by search.
 enum EpisodeStatusFilter: String, CaseIterable, Identifiable, Hashable {
     case all = "All"
-    case rewatched = "Rewatched"
-    case notRewatched = "Not rewatched"
+    case downloaded = "Downloaded"
+    case notDownloaded = "Not downloaded"
     case saved = "Saved"
     case notSaved = "Not saved"
     case listened = "Listened"
@@ -17,8 +17,8 @@ enum EpisodeStatusFilter: String, CaseIterable, Identifiable, Hashable {
     var systemImage: String {
         switch self {
         case .all: return "checkmark"
-        case .rewatched: return "arrow.clockwise"
-        case .notRewatched: return "arrow.clockwise"
+        case .downloaded: return "arrow.down.circle.fill"
+        case .notDownloaded: return "arrow.down.circle"
         case .saved: return "bookmark.fill"
         case .notSaved: return "bookmark"
         case .listened: return "headphones"
@@ -32,10 +32,10 @@ enum EpisodeStatusFilter: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .all:
             return true
-        case .rewatched:
-            return episode.hasRelistened
-        case .notRewatched:
-            return !episode.hasRelistened
+        case .downloaded:
+            return episode.isDownloaded
+        case .notDownloaded:
+            return !episode.isDownloaded
         case .saved:
             return episode.isBookmarked
         case .notSaved:

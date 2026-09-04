@@ -11,8 +11,8 @@ struct EpisodeStatusFilterTests {
         let unlistened = episode()
         let complete = episode(isPlayed: true)
         let incomplete = episode(playbackPosition: 40, duration: 600)
-        let rewatched = episode(isPlayed: true, hasRelistened: true)
-        let notRewatched = episode(isPlayed: true, hasRelistened: false)
+        let downloaded = episode(isDownloaded: true)
+        let notDownloaded = episode(isDownloaded: false)
 
         #expect(EpisodeStatusFilter.saved.matches(saved))
         #expect(!EpisodeStatusFilter.saved.matches(unsaved))
@@ -29,13 +29,13 @@ struct EpisodeStatusFilterTests {
         #expect(EpisodeStatusFilter.notComplete.matches(incomplete))
         #expect(!EpisodeStatusFilter.notComplete.matches(complete))
 
-        #expect(EpisodeStatusFilter.rewatched.matches(rewatched))
-        #expect(!EpisodeStatusFilter.rewatched.matches(notRewatched))
-        #expect(EpisodeStatusFilter.notRewatched.matches(notRewatched))
-        #expect(!EpisodeStatusFilter.notRewatched.matches(rewatched))
+        #expect(EpisodeStatusFilter.downloaded.matches(downloaded))
+        #expect(!EpisodeStatusFilter.downloaded.matches(notDownloaded))
+        #expect(EpisodeStatusFilter.notDownloaded.matches(notDownloaded))
+        #expect(!EpisodeStatusFilter.notDownloaded.matches(downloaded))
 
         #expect(EpisodeStatusFilter.all.matches(unlistened))
-        #expect(EpisodeStatusFilter.all.matches(rewatched))
+        #expect(EpisodeStatusFilter.all.matches(downloaded))
     }
 
     @Test
@@ -76,19 +76,6 @@ struct EpisodeStatusFilterTests {
     }
 
     @Test
-    func episodeJSONOmittingRelistenStillDecodes() throws {
-        let episode = episode(isPlayed: true, isBookmarked: true)
-        let data = try JSONEncoder().encode(episode)
-        var object = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        object.removeValue(forKey: "hasRelistened")
-        let stripped = try JSONSerialization.data(withJSONObject: object)
-        let decoded = try JSONDecoder().decode(Episode.self, from: stripped)
-        #expect(decoded.id == episode.id)
-        #expect(decoded.isBookmarked)
-        #expect(!decoded.hasRelistened)
-    }
-
-    @Test
     func newOnlyExcludesOlderEpisodes() {
         let podcast = Podcast(
             id: "show-3",
@@ -114,7 +101,7 @@ struct EpisodeStatusFilterTests {
         playbackPosition: TimeInterval = 0,
         isPlayed: Bool = false,
         isBookmarked: Bool = false,
-        hasRelistened: Bool = false
+        isDownloaded: Bool = false
     ) -> Episode {
         Episode(
             id: UUID().uuidString,
@@ -127,7 +114,7 @@ struct EpisodeStatusFilterTests {
             playbackPosition: playbackPosition,
             isPlayed: isPlayed,
             isBookmarked: isBookmarked,
-            hasRelistened: hasRelistened
+            isDownloaded: isDownloaded
         )
     }
 }

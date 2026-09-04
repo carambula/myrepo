@@ -6,7 +6,7 @@ import { config } from "./config.js";
 import { query } from "./db.js";
 import { defaultMigrationsDir, runMigrations } from "./migrate.js";
 import { requireAdmin, requireCron } from "./auth.js";
-import { runNamedJob, startJobScheduler } from "./jobs.js";
+import { markInterruptedJobs, runNamedJob, startJobScheduler } from "./jobs.js";
 import platformRouter from "./routes/platform.js";
 import movRouter from "./routes/mov.js";
 import podRouter from "./routes/pod.js";
@@ -94,6 +94,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 const start = async () => {
   await runMigrations(defaultMigrationsDir());
   await ensureBootstrapAgent();
+  await markInterruptedJobs();
   app.listen(config.port, () => {
     console.log(`Min Cloud listening on ${config.port}`);
     startJobScheduler();

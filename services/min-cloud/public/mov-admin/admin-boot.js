@@ -169,8 +169,17 @@
           }
           await renderHealth();
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Job failed.";
+          if (name === REMATCH_JOB && /load failed|failed to fetch|networkerror|aborted/i.test(message)) {
+            if (status) {
+              status.dataset.watchRematch = "1";
+              status.textContent = "Browser dropped the wait — checking whether rematch is still running…";
+            }
+            await watchRematch();
+            return;
+          }
           if (status) {
-            status.textContent = error instanceof Error ? error.message : "Job failed.";
+            status.textContent = message;
           }
         }
       });

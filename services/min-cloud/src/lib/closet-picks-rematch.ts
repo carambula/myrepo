@@ -201,7 +201,7 @@ const writeMatch = async (existing: AdminMovie | undefined, film: CollapsedClose
   const details = await fetchTmdbMovieDetails(tmdbId, config.tmdbApiKey);
   const payload = detailsPayload(details, film);
   if (existing?.__movieId && existing.tmdbId && existing.tmdbId !== tmdbId) {
-    await deleteAdminRow({ ...existing, sourceIdentifier: CLOSET_PICKS_SOURCE_ID });
+    await deleteAdminRow({ ...existing, sourceIdentifier: CLOSET_PICKS_SOURCE_ID }, { bump: false });
   }
   await upsertAdminMovie(payload, existing?.tmdbId === tmdbId ? existing : null, { bump: false });
 };

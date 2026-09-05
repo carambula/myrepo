@@ -64,6 +64,9 @@ struct DownloadedEpisodesView: View {
         .onReceive(NotificationCenter.default.publisher(for: .downloadedEpisodesDidChange)) { _ in
             refreshRecords()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .episodePlaybackStateDidChange)) { note in
+            refreshRecordEpisode(id: note.object as? String)
+        }
     }
 
     private var storageHeader: String {
@@ -99,5 +102,11 @@ struct DownloadedEpisodesView: View {
 
     private func refreshRecords() {
         records = downloadManager.downloadedRecords()
+    }
+
+    private func refreshRecordEpisode(id: String?) {
+        guard let id,
+              let idx = records.firstIndex(where: { $0.episodeID == id }) else { return }
+        records[idx].episode = EpisodePlaybackStore.merge(records[idx].episode)
     }
 }

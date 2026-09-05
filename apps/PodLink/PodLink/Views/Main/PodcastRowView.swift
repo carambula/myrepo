@@ -11,7 +11,6 @@ struct PodcastRowView: View {
     var onRowTap: () -> Void = {}
 
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(PlaybackService.self) private var playbackService
 
     /// WatchedIt `CollectionMovieCard` podcast badge on collections home.
     private static let podcastInsetArtSize: CGFloat = 24
@@ -28,21 +27,17 @@ struct PodcastRowView: View {
         return formatter
     }()
 
-    private var latestMerged: Episode? {
-        latestEpisode.map { EpisodePlaybackStore.merge($0) }
-    }
-
     private var listArtSize: CGFloat {
         artEmphasis.listArtworkSideLength()
     }
 
     private var unplayed: Bool {
-        badgeMode.shouldShowBadge(for: latestMerged)
+        badgeMode.shouldShowBadge(for: latestEpisode)
     }
 
     /// Primary row artwork: latest episode art when available, else podcast art.
     private var mainThumbnailURL: URL? {
-        if let episode = latestMerged {
+        if let episode = latestEpisode {
             return episode.resolvedArtworkURL(podcast: podcast)
         }
         return podcast.displayArtworkURL
@@ -50,69 +45,11 @@ struct PodcastRowView: View {
 
     /// Show podcast art inset only when the episode has its own image (main is not duplicate podcast art).
     private var showPodcastInsetThumbnail: Bool {
-        guard let episodeArtURL = latestMerged?.artworkURL,
+        guard let episodeArtURL = latestEpisode?.artworkURL,
               let podcastArtURL = podcast.displayArtworkURL else {
             return false
         }
         return normalizedArtworkURLString(episodeArtURL) != normalizedArtworkURLString(podcastArtURL)
-    }
-
-    private var isCurrentEpisode: Bool {
-        guard let latestMerged else { return false }
-        return playbackService.state.currentEpisode?.id == latestMerged.id
-    }
-
-    private var displayDuration: TimeInterval {
-        guard let latestMerged else { return 0 }
-        if isCurrentEpisode, playbackService.state.duration > 0 {
-            return max(latestMerged.duration, playbackService.state.duration)
-        }
-        return latestMerged.duration
-    }
-
-    private var displayPosition: TimeInterval {
-        guard let latestMerged else { return 0 }
-        if isCurrentEpisode {
-            return playbackService.state.currentTime
-        }
-        return latestMerged.playbackPosition
-    }
-
-    private var rowEffectivelyFinished: Bool {
-        guard let latestMerged else { return false }
-        if latestMerged.isPlayed { return true }
-        guard displayDuration > 0 else { return false }
-        return PlaybackProgressPolicy.current.isFinished(playbackPosition: displayPosition, duration: displayDuration)
-    }
-
-    private var rowShowsPartialBar: Bool {
-        guard let latestMerged else { return false }
-        return PlaybackProgressPolicy.current.shouldShowPartialProgress(
-            isPlayed: latestMerged.isPlayed,
-            playbackPosition: displayPosition,
-            duration: displayDuration
-        )
-    }
-
-    private var rowProgressFraction: Double {
-        guard displayDuration > 0 else { return 0 }
-        return min(1, max(0, displayPosition / displayDuration))
-    }
-
-    private var playPauseIconName: String {
-        if isCurrentEpisode, playbackService.state.isPlaying {
-            return "pause.circle.fill"
-        }
-        return "play.circle.fill"
-    }
-
-    private func playPauseTapped() {
-        guard let latestMerged else { return }
-        if isCurrentEpisode {
-            playbackService.togglePlayPause()
-        } else {
-            Task { await playbackService.play(episode: latestMerged, podcast: podcast) }
-        }
     }
 
     private func normalizedArtworkURLString(_ url: URL) -> String {
@@ -172,41 +109,15 @@ struct PodcastRowView: View {
 
                 if showTitles {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                        if let episode = latestMerged {
-                            Text(episode.title)
-                                .font(DesignSystem.Typography.headlineSmall())
-                                .foregroundColor(rowEffectivelyFinished ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.textPrimary)
-                                .lineLimit(2)
+                        if let episode = latestEpisode {
+                            PodcastRowTitle(episode: episode)
 
                             HStack(spacing: DesignSystem.Spacing.xs) {
                                 Text(formatDate(episode.publishDate))
                                     .font(DesignSystem.Typography.caption())
                                     .foregroundColor(DesignSystem.Colors.textSecondary)
 
-                                if displayDuration > 0 {
-                                    Text("   ")
-                                        .font(DesignSystem.Typography.caption())
-                                        .foregroundColor(DesignSystem.Colors.textSecondary)
-                                    if rowShowsPartialBar {
-                                        HStack(spacing: 4) {
-                                            Capsule()
-                                                .fill(Color(.tertiarySystemFill))
-                                                .frame(width: 28, height: 3)
-                                                .overlay(alignment: .leading) {
-                                                    Capsule()
-                                                        .fill(themeManager.currentTheme.accentColor)
-                                                        .frame(width: max(3, 28 * rowProgressFraction), height: 3)
-                                                }
-                                            Text(episode.formattedDuration)
-                                                .font(DesignSystem.Typography.caption())
-                                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                                        }
-                                    } else {
-                                        Text(episode.formattedDuration)
-                                            .font(DesignSystem.Typography.caption())
-                                            .foregroundColor(DesignSystem.Colors.textSecondary)
-                                    }
-                                }
+                                PodcastRowDurationMeta(episode: episode)
 
                                 if episode.hasVideo {
                                     Image(systemName: "video.fill")
@@ -237,16 +148,7 @@ struct PodcastRowView: View {
                 onRowTap()
             }
 
-            Button(action: playPauseTapped) {
-                Image(systemName: playPauseIconName)
-                    .font(.system(size: 28))
-                    .foregroundColor(latestMerged == nil
-                        ? DesignSystem.Colors.textTertiary
-                        : themeManager.currentTheme.accentColor)
-            }
-            .buttonStyle(.plain)
-            .padding(.vertical, DesignSystem.Spacing.sm)
-            .disabled(latestMerged == nil)
+            PodcastRowPlayButton(podcast: podcast, latestEpisode: latestEpisode)
         }
         .padding(.vertical, DesignSystem.Spacing.sm)
         .modifier(PodcastRowListAccessibility(showTitles: showTitles, podcastTitle: podcast.title))
@@ -277,6 +179,146 @@ struct PodcastRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: Self.podcastInsetCornerRadius))
         .padding(.leading, 4)
         .padding(.bottom, 4)
+    }
+}
+
+private struct PodcastRowTitle: View {
+    let episode: Episode
+
+    @Environment(PlaybackService.self) private var playbackService
+
+    var body: some View {
+        Text(episode.title)
+            .font(DesignSystem.Typography.headlineSmall())
+            .foregroundColor(isEffectivelyFinished ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.textPrimary)
+            .lineLimit(2)
+    }
+
+    private var isCurrentEpisode: Bool {
+        playbackService.state.currentEpisode?.id == episode.id
+    }
+
+    private var displayDuration: TimeInterval {
+        if isCurrentEpisode, playbackService.state.duration > 0 {
+            return max(episode.duration, playbackService.state.duration)
+        }
+        return episode.duration
+    }
+
+    private var displayPosition: TimeInterval {
+        if isCurrentEpisode { return playbackService.state.currentTime }
+        return episode.playbackPosition
+    }
+
+    private var isEffectivelyFinished: Bool {
+        if episode.isPlayed { return true }
+        guard displayDuration > 0 else { return false }
+        return PlaybackProgressPolicy.current.isFinished(playbackPosition: displayPosition, duration: displayDuration)
+    }
+}
+
+private struct PodcastRowDurationMeta: View {
+    let episode: Episode
+
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(PlaybackService.self) private var playbackService
+
+    var body: some View {
+        if displayDuration > 0 {
+            Text("   ")
+                .font(DesignSystem.Typography.caption())
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+            if showsPartialBar {
+                HStack(spacing: 4) {
+                    Capsule()
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: 28, height: 3)
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(themeManager.currentTheme.accentColor)
+                                .frame(width: max(3, 28 * progressFraction), height: 3)
+                        }
+                    Text(episode.formattedDuration)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                }
+            } else {
+                Text(episode.formattedDuration)
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+            }
+        }
+    }
+
+    private var isCurrentEpisode: Bool {
+        playbackService.state.currentEpisode?.id == episode.id
+    }
+
+    private var displayDuration: TimeInterval {
+        if isCurrentEpisode, playbackService.state.duration > 0 {
+            return max(episode.duration, playbackService.state.duration)
+        }
+        return episode.duration
+    }
+
+    private var displayPosition: TimeInterval {
+        if isCurrentEpisode { return playbackService.state.currentTime }
+        return episode.playbackPosition
+    }
+
+    private var showsPartialBar: Bool {
+        PlaybackProgressPolicy.current.shouldShowPartialProgress(
+            isPlayed: episode.isPlayed,
+            playbackPosition: displayPosition,
+            duration: displayDuration
+        )
+    }
+
+    private var progressFraction: Double {
+        guard displayDuration > 0 else { return 0 }
+        return min(1, max(0, displayPosition / displayDuration))
+    }
+}
+
+private struct PodcastRowPlayButton: View {
+    let podcast: Podcast
+    let latestEpisode: Episode?
+
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(PlaybackService.self) private var playbackService
+
+    var body: some View {
+        Button(action: playPauseTapped) {
+            Image(systemName: playPauseIconName)
+                .font(.system(size: 28))
+                .foregroundColor(latestEpisode == nil
+                    ? DesignSystem.Colors.textTertiary
+                    : themeManager.currentTheme.accentColor)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .disabled(latestEpisode == nil)
+    }
+
+    private var isCurrentEpisode: Bool {
+        guard let latestEpisode else { return false }
+        return playbackService.state.currentEpisode?.id == latestEpisode.id
+    }
+
+    private var playPauseIconName: String {
+        if isCurrentEpisode, playbackService.state.isPlaying {
+            return "pause.circle.fill"
+        }
+        return "play.circle.fill"
+    }
+
+    private func playPauseTapped() {
+        guard let latestEpisode else { return }
+        if isCurrentEpisode {
+            playbackService.togglePlayPause()
+        } else {
+            Task { await playbackService.play(episode: latestEpisode, podcast: podcast) }
+        }
     }
 }
 

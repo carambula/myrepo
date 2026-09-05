@@ -8,6 +8,11 @@ struct PodcastGridFramesPreferenceKey: PreferenceKey {
     }
 }
 
+/// Preference updates during scroll write here without invalidating `PodcastListView`.
+private final class PodcastGridFrameCache {
+    var frames: [String: CGRect] = [:]
+}
+
 struct PodcastListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
@@ -26,6 +31,7 @@ struct PodcastListView: View {
 
     @State private var followedPodcasts: [Podcast] = []
     @State private var latestEpisodes: [String: Episode] = [:]
+    @State private var sortedListPodcasts: [Podcast] = []
     @State private var selectedLatestEpisode: LatestEpisodeSelection?
     @State private var hasAttemptedInitialLoad = false
 
@@ -40,6 +46,7 @@ struct PodcastListView: View {
     @State private var dragTouchOffset: CGSize = .zero
     @State private var latestGlobalTouchLocation: CGPoint = .zero
     @State private var gridItemFrames: [String: CGRect] = [:]
+    @State private var gridFrameCache = PodcastGridFrameCache()
     @State private var scrollViewportFrameGlobal: CGRect = .zero
     @State private var autoScrollDirection: AutoScrollDirection = .none
     @State private var autoScrollCadence: CGFloat = 0
@@ -112,29 +119,6 @@ struct PodcastListView: View {
         return 100
     }
 
-    private var sortedListPodcasts: [Podcast] {
-        let episodeMap = latestEpisodes
-        return followedPodcasts.sorted { lhs, rhs in
-            let lhsEpisode = episodeMap[lhs.id]
-            let rhsEpisode = episodeMap[rhs.id]
-
-            let lhsGroup = listSortGroup(for: lhsEpisode)
-            let rhsGroup = listSortGroup(for: rhsEpisode)
-            if lhsGroup != rhsGroup { return lhsGroup < rhsGroup }
-
-            let lhsDate = lhsEpisode?.publishDate ?? .distantPast
-            let rhsDate = rhsEpisode?.publishDate ?? .distantPast
-            if lhsDate != rhsDate { return lhsDate > rhsDate }
-
-            return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-        }
-    }
-
-    private func listSortGroup(for episode: Episode?) -> Int {
-        guard let episode else { return 2 }
-        return episode.isEffectivelyFinished ? 1 : 0
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
             ZStack {
@@ -148,15 +132,20 @@ struct PodcastListView: View {
                             initialLoadPlaceholder
                         } else if followedPodcasts.isEmpty {
                             emptyState
+                        } else if renderedLayoutMode == "grid" {
+                            gridContent
+                                .opacity(layoutFadeOpacity)
                         } else {
-                            Group {
-                                if renderedLayoutMode == "grid" {
-                                    gridContent
-                                } else {
-                                    listLayout
-                                }
+                            Color.clear
+                                .frame(height: MinSpacing.TitleType.contentTopSpacing)
+                            ForEach(sortedListPodcasts) { podcast in
+                                listRow(for: podcast)
+                                    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                                    .padding(.bottom, DesignSystem.Spacing.sm)
                             }
                             .opacity(layoutFadeOpacity)
+                            Color.clear
+                                .frame(height: scrollBottomInset)
                         }
                     }
                     .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -199,6 +188,12 @@ struct PodcastListView: View {
                 latestEpisodes[pid] = EpisodePlaybackStore.merge(ep)
             }
         }
+        .onChange(of: followedPodcasts) { _, _ in
+            rebuildSortedListPodcasts()
+        }
+        .onChange(of: latestEpisodes) { _, _ in
+            rebuildSortedListPodcasts()
+        }
         .sheet(item: $selectedLatestEpisode) { selection in
             EpisodePlayerSheet(
                 episode: selection.episode,
@@ -232,7 +227,12 @@ struct PodcastListView: View {
                     }
             }
         }
-        .onPreferenceChange(PodcastGridFramesPreferenceKey.self) { gridItemFrames = $0 }
+        .onPreferenceChange(PodcastGridFramesPreferenceKey.self) { frames in
+            gridFrameCache.frames = frames
+            if draggedPodcastID != nil {
+                gridItemFrames = frames
+            }
+        }
         .padding(.horizontal, gridHorizontalPadding)
         .padding(.top, MinSpacing.TitleType.contentTopSpacing)
         .padding(.bottom, scrollBottomInset)
@@ -286,6 +286,9 @@ struct PodcastListView: View {
 
     private func beginGridDragIfNeeded(for podcast: Podcast) {
         guard draggedPodcastID == nil else { return }
+        if gridItemFrames.isEmpty {
+            gridItemFrames = gridFrameCache.frames
+        }
         draggedPodcastID = podcast.id
         lastReorderTargetID = nil
         lastReorderAt = .distantPast
@@ -496,32 +499,25 @@ struct PodcastListView: View {
 
     // MARK: - List Layout
 
-    private var listLayout: some View {
-        LazyVStack(spacing: DesignSystem.Spacing.sm) {
-            ForEach(sortedListPodcasts) { podcast in
-                PodcastRowView(
-                    podcast: podcast,
-                    latestEpisode: latestEpisodes[podcast.id],
-                    showTitles: showPodcastTitlesOnMain,
-                    artEmphasis: mainScreenArtEmphasis,
-                    badgeMode: badgeMode,
-                    tapStyle: currentTapStyle,
-                    onRowTap: {
-                        if let latest = latestEpisodes[podcast.id] {
-                            selectedLatestEpisode = LatestEpisodeSelection(
-                                episode: latest,
-                                podcast: podcast
-                            )
-                        } else {
-                            rootSheet = .podcast(podcast)
-                        }
-                    }
-                )
+    private func listRow(for podcast: Podcast) -> some View {
+        PodcastRowView(
+            podcast: podcast,
+            latestEpisode: latestEpisodes[podcast.id],
+            showTitles: showPodcastTitlesOnMain,
+            artEmphasis: mainScreenArtEmphasis,
+            badgeMode: badgeMode,
+            tapStyle: currentTapStyle,
+            onRowTap: {
+                if let latest = latestEpisodes[podcast.id] {
+                    selectedLatestEpisode = LatestEpisodeSelection(
+                        episode: latest,
+                        podcast: podcast
+                    )
+                } else {
+                    rootSheet = .podcast(podcast)
+                }
             }
-        }
-        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-        .padding(.top, MinSpacing.TitleType.contentTopSpacing)
-        .padding(.bottom, scrollBottomInset)
+        )
     }
 
     // MARK: - Initial load
@@ -631,9 +627,14 @@ struct PodcastListView: View {
 
     // MARK: - Data Loading
 
+    private func rebuildSortedListPodcasts() {
+        sortedListPodcasts = PodcastListSorter.sort(followedPodcasts, latestEpisodes: latestEpisodes)
+    }
+
     private func loadPodcasts() async {
         defer { hasAttemptedInitialLoad = true }
         followedPodcasts = Podcast.loadFollowedPodcasts()
+        rebuildSortedListPodcasts()
     }
 
     private func savePodcastOrder() {
@@ -648,6 +649,7 @@ struct PodcastListView: View {
     private func loadLatestEpisodes() async {
         guard !followedPodcasts.isEmpty else {
             latestEpisodes = [:]
+            rebuildSortedListPodcasts()
             return
         }
         let podcasts = followedPodcasts

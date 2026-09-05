@@ -73,7 +73,7 @@ struct SearchScreenView: View {
     private let searchControlHeight: CGFloat = 56
 
     struct LibraryEpisodeSearchResult: Identifiable {
-        let episode: Episode
+        var episode: Episode
         let podcast: Podcast
 
         var id: String { episode.id }
@@ -224,6 +224,12 @@ struct SearchScreenView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .interestKeywordsDidChange)) { _ in
             scheduleSuggestedKeywordRefresh(reason: .keywordsChange)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .episodePlaybackStateDidChange)) { note in
+            refreshLibraryEpisodeResult(id: note.object as? String)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .episodeDownloadStateDidChange)) { note in
+            refreshLibraryEpisodeResult(id: note.object as? String)
         }
         .onChange(of: searchText) { _, newValue in
             searchTask?.cancel()
@@ -549,6 +555,12 @@ struct SearchScreenView: View {
 
     private func refreshFollowedIds() {
         followedIds = Set(Podcast.loadFollowedPodcasts().map(\.id))
+    }
+
+    private func refreshLibraryEpisodeResult(id: String?) {
+        guard let id,
+              let idx = libraryEpisodeResults.firstIndex(where: { $0.id == id }) else { return }
+        libraryEpisodeResults[idx].episode = EpisodePlaybackStore.merge(libraryEpisodeResults[idx].episode)
     }
 
     private func loadSuggestedInterestKeywords() {

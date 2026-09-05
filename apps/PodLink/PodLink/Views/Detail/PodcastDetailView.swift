@@ -39,7 +39,7 @@ struct PodcastDetailView: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             ScrollView {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     GeometryReader { geometry in
                         showArtHero(width: geometry.size.width)
                     }
@@ -49,6 +49,7 @@ struct PodcastDetailView: View {
                             .frame(height: 0)
                             .scrollOffset($scrollOffset)
                     }
+                    .padding(.bottom, DesignSystem.Spacing.lg)
 
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Text(podcast.title)
@@ -64,6 +65,7 @@ struct PodcastDetailView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                    .padding(.bottom, DesignSystem.Spacing.lg)
 
                     if !podcast.description.isEmpty {
                         Button {
@@ -78,24 +80,63 @@ struct PodcastDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                        .padding(.bottom, DesignSystem.Spacing.lg)
                     }
 
                     actionBar
+                        .padding(.bottom, DesignSystem.Spacing.lg)
 
                     catalogContinuationSection
 
-                    episodeList
+                    episodeListHeader
+                        .padding(.bottom, DesignSystem.Spacing.sm)
+
+                    if isLoading {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, DesignSystem.Spacing.xxl)
+                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                            .padding(.bottom, DesignSystem.Spacing.sm)
+                    } else if filteredEpisodes.isEmpty {
+                        Text(statusFilter == .all
+                             ? "No episodes yet."
+                             : "No episodes match this filter.")
+                            .font(DesignSystem.Typography.bodyMedium())
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, DesignSystem.Spacing.lg)
+                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                    } else {
+                        ForEach(filteredEpisodes) { episode in
+                            EpisodeRowView(
+                                episode: episode,
+                                podcast: podcast,
+                                onTap: {
+                                    selectedEpisode = episode
+                                },
+                                onShowDetails: {
+                                    episodeForTranscript = episode
+                                },
+                                showsDownloadAffordance: false
+                            )
+                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                            .padding(.bottom, DesignSystem.Spacing.sm)
+                        }
+                    }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .background(
+                            GeometryReader { sentinel in
+                                Color.clear.preference(
+                                    key: BottomDetectionPreferenceKey.self,
+                                    value: sentinel.frame(in: .named("scroll")).maxY
+                                )
+                            }
+                        )
                 }
                 .font(DesignSystem.Typography.bodyMedium())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    GeometryReader { scrollGeometry in
-                        Color.clear.preference(
-                            key: BottomDetectionPreferenceKey.self,
-                            value: scrollGeometry.frame(in: .named("scroll")).maxY
-                        )
-                    }
-                )
             }
             .coordinateSpace(name: "scroll")
             .onPreferenceChange(BottomDetectionPreferenceKey.self) { maxY in
@@ -249,14 +290,13 @@ struct PodcastDetailView: View {
         guard let idx = episodes.firstIndex(where: { $0.id == refEpisodeID }) else { return nil }
         guard idx >= 10 else { return nil }
 
-        let ref = EpisodePlaybackStore.merge(episodes[idx])
+        let ref = episodes[idx]
 
         if !ref.isEffectivelyFinished {
             return CatalogContinuation(title: "Resume", episode: ref)
         }
         guard idx > 0 else { return nil }
-        let next = EpisodePlaybackStore.merge(episodes[idx - 1])
-        return CatalogContinuation(title: "Up next", episode: next)
+        return CatalogContinuation(title: "Up next", episode: episodes[idx - 1])
     }
 
     @ViewBuilder
@@ -276,58 +316,21 @@ struct PodcastDetailView: View {
                 )
             }
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+            .padding(.bottom, DesignSystem.Spacing.lg)
         }
     }
 
     // MARK: - Episode List
 
     private var filteredEpisodes: [Episode] {
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return episodes.filter { episode in
-            guard statusFilter.matches(episode) else { return false }
-            if q.isEmpty { return true }
-            return episode.title.localizedCaseInsensitiveContains(q)
-                || episode.description.localizedCaseInsensitiveContains(q)
-        }
+        EpisodeListFilter.apply(episodes, searchText: searchText, statusFilter: statusFilter)
     }
 
-    private var episodeList: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-            Text("Episodes")
-                .font(DesignSystem.Typography.headlineMedium())
-                .foregroundColor(DesignSystem.Colors.headlineColor)
-
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, DesignSystem.Spacing.xxl)
-            } else if filteredEpisodes.isEmpty {
-                Text(statusFilter == .all
-                     ? "No episodes yet."
-                     : "No episodes match this filter.")
-                    .font(DesignSystem.Typography.bodyMedium())
-                    .foregroundColor(DesignSystem.Colors.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, DesignSystem.Spacing.lg)
-            } else {
-                LazyVStack(spacing: DesignSystem.Spacing.sm) {
-                    ForEach(filteredEpisodes) { episode in
-                        EpisodeRowView(
-                            episode: episode,
-                            podcast: podcast,
-                            onTap: {
-                                selectedEpisode = episode
-                            },
-                            onShowDetails: {
-                                episodeForTranscript = episode
-                            },
-                            showsDownloadAffordance: false
-                        )
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+    private var episodeListHeader: some View {
+        Text("Episodes")
+            .font(DesignSystem.Typography.headlineMedium())
+            .foregroundColor(DesignSystem.Colors.headlineColor)
+            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
     }
 
     // MARK: - Episode Search

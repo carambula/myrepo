@@ -20,7 +20,11 @@ Monorepo for the min apps suite and their shared design system.
 | `@min-apps/design-system` | `packages/design-system` | Shared tokens, themes, components, layouts, and utilities |
 | `@min-apps/design-studio` | `packages/design-studio` | Web tool for browsing tokens, previewing themes, and managing the design system |
 | `@min-apps/agent-kit` | `packages/agent-kit` | MCP / HTTP agent gateway, scoped tokens, and undo journal |
-| **Min Cloud** | `services/min-cloud` | Railway web service for mov min + pod min (catalog, notifications, accounts, admin) |
+| **Min Cloud** | `services/min-cloud` | Railway web service for mov min + pod min (catalog, notifications, accounts, admin) and the shared ideas/feedback loop for all min apps |
+
+## Feedback / ideas
+
+Bugs and ideas from **Account → Ideas & bugs** (all min apps) go through Min Cloud → redacted GitHub issues → Cursor triage/build. Setup, secrets, and Cursor automations: [docs/FEEDBACK.md](docs/FEEDBACK.md).
 
 ## Getting Started
 

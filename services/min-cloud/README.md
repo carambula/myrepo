@@ -16,6 +16,7 @@ iCloud stays available as an optional backup. People who do not want a web accou
 | Cloud admin | `/admin` — edit movies/podcasts and run jobs without shipping a binary |
 | User web + social | `/` — accounts, browse, follow, activity |
 | Optional iCloud | Apps treat Min Cloud as primary when signed in; iCloud is a backup toggle |
+| Ideas & bugs (all min apps) | `POST /v1/feedback` → redacted GitHub issue → Cursor triage/build. See repo `docs/FEEDBACK.md`. |
 
 ## Local development
 

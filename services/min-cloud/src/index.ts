@@ -13,7 +13,9 @@ import podRouter from "./routes/pod.js";
 import adminRouter from "./routes/admin.js";
 import adminLocalRouter from "./routes/admin-local.js";
 import agentRouter from "./routes/agent.js";
+import feedbackRouter from "./routes/feedback.js";
 import { ensureBootstrapAgent } from "./lib/agent.js";
+import { dripBuilds, sweepStale } from "./lib/feedback.js";
 
 const app = express();
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +39,7 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use(agentRouter);
+app.use(feedbackRouter);
 app.use("/v1", platformRouter);
 app.use("/v1/mov", movRouter);
 app.use("/v1/pod", podRouter);
@@ -98,6 +101,13 @@ const start = async () => {
   app.listen(config.port, () => {
     console.log(`Min Cloud listening on ${config.port}`);
     startJobScheduler();
+    // Feedback: retry untriaged rows every few hours; drip one Build every 3 minutes.
+    setInterval(() => {
+      void sweepStale().catch((error) => console.error("feedback sweep failed", error));
+    }, 3 * 60 * 60 * 1000);
+    setInterval(() => {
+      void dripBuilds().catch((error) => console.error("feedback drip failed", error));
+    }, 3 * 60 * 1000);
   });
 };
 

@@ -127,6 +127,11 @@ struct AccountSheetView: View {
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 
+                Section("Ideas") {
+                    IdeasSettingsLink(app: .pod)
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
                 Section("About") {
                     HStack {
                         Label("Version", systemImage: "info.circle")

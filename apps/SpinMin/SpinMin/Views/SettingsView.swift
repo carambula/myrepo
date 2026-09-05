@@ -123,7 +123,15 @@ struct SettingsView: View {
                 } footer: {
                     Text("Import rides from Strava or connect an agent with read or write access. Agent writes stay undoable for 7 days.")
                 }
-                
+
+                Section {
+                    IdeasSettingsLink(app: .spin)
+                } header: {
+                    Text("Ideas")
+                } footer: {
+                    Text("Send a bug or an idea. Status shows here as it moves through review and shipping.")
+                }
+
                 Section {
                     Toggle("Ride prep reminders", isOn: $notifyRidePrep)
                     Toggle("Battery charge reminders", isOn: $notifyBattery)

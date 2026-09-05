@@ -1,0 +1,108 @@
+name: Relay feedback comments
+
+# Cursor's GitHub App cannot read issues, so label/comment automations never
+# start a build. This Action forwards maintainer replies to Min Cloud:
+# issue comments approve / iterate; PR conversation comments start a fix
+# agent on the existing branch (Feedback-Id in the PR body).
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  relay:
+    if: github.event.issue.state == 'open'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Relay comment to Min Cloud
+        env:
+          MIN_CLOUD_PUBLIC_URL: ${{ secrets.MIN_CLOUD_PUBLIC_URL }}
+          FEEDBACK_CRON_TOKEN: ${{ secrets.FEEDBACK_CRON_TOKEN }}
+          COMMENT: ${{ github.event.comment.body }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_API_URL: ${{ github.event.issue.pull_request.url }}
+          PR_HTML_URL: ${{ github.event.issue.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MIN_CLOUD_PUBLIC_URL:-}" ] || [ -z "${FEEDBACK_CRON_TOKEN:-}" ]; then
+            echo "MIN_CLOUD_PUBLIC_URL or FEEDBACK_CRON_TOKEN unset; skip"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import json, os, urllib.error, urllib.request
+          comment = (os.environ.get("COMMENT") or "").lower()
+          own_markers = (
+              "min cloud opened this from in-app feedback",
+              "cadence opened this from in-app feedback",
+              "cursor is drafting options",
+              "options are ready",
+              "building **",
+              "queued behind another build",
+              "starting the queued build",
+              "build webhook failed",
+              "cursor rejected the build webhook",
+              "cloud agents api failed",
+              "shipped in min cloud",
+              "shipped in cadence",
+              "revising the options from your note",
+              "starting a fix on the pr",
+          )
+          if any(marker in comment for marker in own_markers):
+              print("own comment; skip")
+              raise SystemExit(0)
+          pr_url = (os.environ.get("PR_HTML_URL") or "").strip()
+          pr_branch = ""
+          pr_api = (os.environ.get("PR_API_URL") or "").strip()
+          token = (os.environ.get("GH_TOKEN") or "").strip()
+          if pr_api and token:
+              req = urllib.request.Request(
+                  pr_api,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Accept": "application/vnd.github+json",
+                      "User-Agent": "MinCloud-feedback-comment/1.0",
+                  },
+                  method="GET",
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      pr = json.loads(resp.read().decode())
+                  pr_branch = ((pr.get("head") or {}).get("ref") or "").strip()
+                  pr_url = pr_url or (pr.get("html_url") or "")
+              except urllib.error.HTTPError as exc:
+                  print(f"pr lookup {exc.code}; continue without branch")
+          base = os.environ["MIN_CLOUD_PUBLIC_URL"].rstrip("/")
+          payload = {
+              "issue_number": int(os.environ["ISSUE_NUMBER"]),
+              "issue_body": os.environ.get("ISSUE_BODY") or "",
+              "comment": os.environ.get("COMMENT") or "",
+          }
+          if pr_url:
+              payload["pr_url"] = pr_url
+          if pr_branch:
+              payload["pr_branch"] = pr_branch
+          req = urllib.request.Request(
+              f"{base}/internal/feedback/github-comment",
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "X-Cron-Token": os.environ["FEEDBACK_CRON_TOKEN"],
+                  "User-Agent": "MinCloud-feedback-comment/1.0",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=20) as resp:
+                  print(resp.read().decode()[:500])
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode()[:500]
+              if exc.code == 404:
+                  print(f"not a Min Cloud feedback issue: {body}")
+              else:
+                  raise SystemExit(f"Min Cloud {exc.code}: {body}")
+          PY

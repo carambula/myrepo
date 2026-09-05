@@ -2134,6 +2134,11 @@ private struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
 
+                Section("Ideas") {
+                    IdeasSettingsLink(app: .cyc)
+                }
+                .designSystemGroupedListRow()
+
                 Section("About") {
                     HStack {
                         Label("Version", systemImage: "info.circle")

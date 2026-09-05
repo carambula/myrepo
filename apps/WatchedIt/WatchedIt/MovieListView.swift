@@ -5037,6 +5037,11 @@ struct AccountSheetView: View {
                 }
                 .designSystemGroupedListRow()
 
+                Section("Ideas") {
+                    IdeasSettingsLink(app: .mov)
+                }
+                .designSystemGroupedListRow()
+
                 Section("About") {
                     HStack {
                         Label("Version", systemImage: "info.circle")

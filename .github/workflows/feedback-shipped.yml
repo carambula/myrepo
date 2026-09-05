@@ -1,0 +1,34 @@
+name: Mark feedback shipped
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  shipped:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Min Cloud
+        env:
+          MIN_CLOUD_PUBLIC_URL: ${{ secrets.MIN_CLOUD_PUBLIC_URL }}
+          FEEDBACK_CRON_TOKEN: ${{ secrets.FEEDBACK_CRON_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MIN_CLOUD_PUBLIC_URL:-}" ] || [ -z "${FEEDBACK_CRON_TOKEN:-}" ]; then
+            echo "MIN_CLOUD_PUBLIC_URL or FEEDBACK_CRON_TOKEN unset; skip"
+            exit 0
+          fi
+          ID=$(printf '%s\n' "$PR_BODY" | sed -n 's/.*Feedback-Id:[[:space:]]*\([0-9a-fA-F-]\{36\}\).*/\1/p' | head -n 1)
+          if [ -z "$ID" ]; then
+            echo "No Feedback-Id in PR body; skip"
+            exit 0
+          fi
+          BASE="${MIN_CLOUD_PUBLIC_URL%/}"
+          curl -fsS -X POST "$BASE/internal/feedback/$ID/shipped" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Token: $FEEDBACK_CRON_TOKEN" \
+            -d "{\"pr_url\": $(python3 -c 'import json,os; print(json.dumps(os.environ["PR_URL"]))')}"
+          echo "Marked $ID shipped"

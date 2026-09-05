@@ -15,8 +15,12 @@ import {
   scoreTmdbMatch,
   shouldSkipPodcastNoise,
   decidePodcastEpisodeIngest,
+  episodeTitleNamesMovie,
+  extractQuotedMovieTitles,
   isBrunchPodcastNoiseTitle,
-  isAvailabilityBlurbTitle
+  isAvailabilityBlurbTitle,
+  isCatalogReadyToShip,
+  pickConfidentTmdbMatch
 } from "../src/lib/title-match.ts";
 
 describe("title cleaning and matching", () => {
@@ -167,7 +171,17 @@ describe("title cleaning and matching", () => {
     );
     assert.equal(determineItemStatus({ tmdbId: 275, year: null, posterPath: null, overview: null, genres: [] }), "light");
     assert.equal(shouldSkipPodcastNoise("big-picture", "Oscars Mailbag 2026", "Oscars Mailbag 2026"), true);
-    assert.equal(shouldSkipPodcastNoise("big-picture", "Heat", "Heat"), false);
+    assert.equal(shouldSkipPodcastNoise("big-picture", "Heat", "Heat"), true);
+    assert.equal(
+      shouldSkipPodcastNoise("big-picture", "‘Sinners’ Is for the Sickos, the Cinephiles and You, with Ryan Coogler!", "Sinners"),
+      false
+    );
+    assert.equal(shouldSkipPodcastNoise("big-picture", "The Flops Movie Draft", "The Flops Movie Draft"), true);
+    assert.equal(shouldSkipPodcastNoise("big-picture", "Eli Roth!", "Eli Roth!"), true);
+    assert.equal(
+      shouldSkipPodcastNoise("big-picture", "Movie Swap: 'Aliens' vs. 'Four Weddings and a Funeral'", "Aliens"),
+      true
+    );
   });
 
   it("skips Confused Breakfast BRUNCH bonuses and keeps Thursday reviews", () => {
@@ -252,7 +266,8 @@ describe("title cleaning and matching", () => {
         sourceIdentifier: "confused-breakfast",
         existingTitles: existing,
         preparedTitle: "The Shawshank Redemption",
-        match: { id: 278 }
+        match: { id: 278 },
+        posterPath: "/shawshank.jpg"
       }),
       { action: "upsert" }
     );
@@ -265,6 +280,46 @@ describe("title cleaning and matching", () => {
         match: { id: 1 }
       }),
       { action: "skip", reason: "noise" }
+    );
+    assert.deepEqual(
+      decidePodcastEpisodeIngest({
+        sourceTitle: "‘Sinners’ Is for the Sickos",
+        sourceIdentifier: "big-picture",
+        existingTitles: existing,
+        preparedTitle: "Sinners",
+        match: { id: 1233413 },
+        posterPath: null
+      }),
+      { action: "skip", reason: "data-poor" }
+    );
+  });
+
+  it("requires a TMDB id and poster before a movie can ship", () => {
+    assert.equal(isCatalogReadyToShip({ tmdbId: 679, posterPath: "/aliens.jpg" }), true);
+    assert.equal(isCatalogReadyToShip({ tmdbId: null, posterPath: "/aliens.jpg" }), false);
+    assert.equal(isCatalogReadyToShip({ tmdbId: 679, posterPath: "" }), false);
+    assert.equal(isCatalogReadyToShip({ tmdbId: 679, posterPath: null }), false);
+  });
+
+  it("only attaches a podcast when the episode names that movie", () => {
+    assert.equal(
+      episodeTitleNamesMovie("‘Sinners’ Is for the Sickos, the Cinephiles and You, with Ryan Coogler!", "Sinners"),
+      true
+    );
+    assert.equal(episodeTitleNamesMovie("‘Aliens’ With Bill Simmons and Chris Ryan", "Aliens"), true);
+    assert.equal(episodeTitleNamesMovie("", "Aliens"), false);
+    assert.equal(extractQuotedMovieTitles("Interview With ‘20th Century Women’ Director Mike Mills").includes("20th Century Women"), true);
+    assert.equal(
+      pickConfidentTmdbMatch("The Flops Movie Draft", [
+        { id: 11, title: "Star Wars", release_date: "1977-05-25", poster_path: "/x.jpg", popularity: 80 }
+      ]),
+      null
+    );
+    assert.equal(
+      pickConfidentTmdbMatch("Sinners", [
+        { id: 1233413, title: "Sinners", release_date: "2025-04-18", poster_path: "/s.jpg" }
+      ])?.id,
+      1233413
     );
   });
 

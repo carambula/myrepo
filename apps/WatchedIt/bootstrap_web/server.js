@@ -883,8 +883,11 @@ function shouldSkipPodcastNoise(sourceIdentifier, rawTitle, cleanedTitle) {
   // Keep this conservative to avoid skipping obvious movie episodes.
   if (sourceIdentifier === "big-picture") {
     const bigPictureNoisePattern =
-      /\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b/i;
+      /\b(mailbag|voicemailbag|draft|re-?draft|auction|box office|top\s*\d+|rankings?|hall of fame|interview|preview|q\s*&\s*a|questions|state of|awards? race|oscars?|emmys?|golden globes?|tv corner|trailer talk|news round(?:up)?|hot take|power rankings|movie swap|career arc|exit survey|advice hour|ask (?:sean|us) anything|physical media|alternative oscars|big picks|dumpuary|focus group|mega-?mailbag|mission accomplished)\b/i;
     if (bigPictureNoisePattern.test(haystack)) {
+      return true;
+    }
+    if (!/[“"‘'][^”"’']{2,80}[”"’']/.test(rawTitle)) {
       return true;
     }
   }

@@ -159,21 +159,46 @@ const looksLikeGuestList = (after: string) => {
   return parts.length === 1 && looksLikePersonName(parts[0]);
 };
 
+export const extractQuotedMovieTitles = (title: string) => {
+  const text = stripShowAffixes(String(title || ""));
+  const found: string[] = [];
+  const pattern = /[“"‘']([^”"’']{2,80})[”"’']/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text))) {
+    const quoted = match[1].replace(/[.,;:]+$/, "").trim();
+    if (quoted.length >= 2 && !found.includes(quoted)) {
+      found.push(quoted);
+    }
+  }
+  return found;
+};
+
 const extractQuotedTitle = (title: string) => {
+  const quoted = extractQuotedMovieTitles(title);
+  if (quoted[0]) {
+    return quoted[0];
+  }
   const trimmed = String(title || "").trim();
   const wrapped = trimmed.match(/^[“"‘'](.+)[”"’'](?:\s+(?:with|feat\.?|featuring|—|-)\b|$)/i);
   if (wrapped?.[1] && wrapped[1].length >= 2) {
     return wrapped[1].trim();
   }
-  const embedded = trimmed.match(/[“"]([^”"]{2,80})[”"]/);
-  if (embedded?.[1]) {
-    return embedded[1].trim();
-  }
-  const curly = trimmed.match(/[‘']([^’']{2,80})[’']/);
-  if (curly?.[1] && !/^[a-z]/.test(curly[1])) {
-    return curly[1].trim();
-  }
   return null;
+};
+
+/** Big Picture headlines are editorial; only quoted titles are a real film. */
+export const podcastRequiresQuotedTitle = (sourceIdentifier: string) => sourceIdentifier === "big-picture";
+
+export const episodeTitleNamesMovie = (episodeTitle: string, movieTitle: string) => {
+  const foldedMovie = foldTitle(movieTitle);
+  if (!foldedMovie) {
+    return false;
+  }
+  const quotes = extractQuotedMovieTitles(episodeTitle).map((value) => foldTitle(value)).filter(Boolean);
+  if (quotes.some((quoted) => quoted === foldedMovie || quoted.startsWith(`${foldedMovie} `) || foldedMovie.startsWith(`${quoted} `))) {
+    return true;
+  }
+  return foldTitle(stripShowAffixes(episodeTitle)) === foldedMovie;
 };
 
 export const cleanPodcastTitle = (title: string) => {
@@ -496,6 +521,53 @@ export const determineItemStatus = (item: {
   return hasCore ? "enriched" : "light";
 };
 
+/** App catalog only ships movies with a TMDB id and a poster. */
+export const isCatalogReadyToShip = (item: { tmdbId?: unknown; posterPath?: unknown }) => {
+  const tmdb = item.tmdbId;
+  const hasTmdb = tmdb != null && tmdb !== "" && Number.isFinite(Number(tmdb)) && Number(tmdb) > 0;
+  const poster = typeof item.posterPath === "string" ? item.posterPath.trim() : "";
+  return hasTmdb && poster.length > 0;
+};
+
+const titlesAlign = (query: string, movie: TmdbSearchHit) => {
+  const foldedQuery = foldTitle(query);
+  const foldedTitle = foldTitle(movie.title);
+  const foldedOriginal = foldTitle(movie.original_title || "");
+  if (!foldedQuery || !foldedTitle) {
+    return false;
+  }
+  if (foldedQuery === foldedTitle || foldedQuery === foldedOriginal) {
+    return true;
+  }
+  const containsAsWords = (haystack: string, needle: string) =>
+    Boolean(needle) && (haystack === needle || haystack.startsWith(`${needle} `) || haystack.endsWith(` ${needle}`) || haystack.includes(` ${needle} `));
+  // Headline may include the film name; do not accept a short query that is only a prefix of a longer title.
+  return containsAsWords(foldedQuery, foldedTitle) || containsAsWords(foldedQuery, foldedOriginal);
+};
+
+export const MIN_PODCAST_MATCH_SCORE = 50;
+
+export const pickConfidentTmdbMatch = (
+  query: string,
+  results: TmdbSearchHit[],
+  yearOrHints?: number | null | MatchHints
+) => {
+  if (!results.length) {
+    return null;
+  }
+  const ranked = [...results].sort(
+    (left, right) => scoreTmdbMatch(query, right, yearOrHints) - scoreTmdbMatch(query, left, yearOrHints)
+  );
+  const best = ranked[0];
+  if (scoreTmdbMatch(query, best, yearOrHints) < MIN_PODCAST_MATCH_SCORE || !titlesAlign(query, best)) {
+    return null;
+  }
+  return best;
+};
+
+const BIG_PICTURE_NOISE =
+  /\b(mailbag|voicemailbag|draft|re-?draft|auction|box office|top\s*\d+|rankings?|hall of fame|interview|preview|q\s*&\s*a|questions|state of|awards? race|oscars?|emmys?|golden globes?|tv corner|trailer talk|news round(?:up)?|hot take|power rankings|movie swap|career arc|exit survey|advice hour|ask (?:sean|us) anything|physical media|alternative oscars|big picks|dumpuary|focus group|mega-?mailbag|mission accomplished)\b/i;
+
 export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: string, cleanedTitle: string) => {
   if (!normalizeEpisodeTitle(cleanedTitle)) {
     return true;
@@ -505,9 +577,12 @@ export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: strin
   }
   const haystack = `${rawTitle} ${cleanedTitle}`;
   if (sourceIdentifier === "big-picture") {
-    return /\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b/i.test(
-      haystack
-    );
+    if (BIG_PICTURE_NOISE.test(haystack)) {
+      return true;
+    }
+    if (podcastRequiresQuotedTitle(sourceIdentifier) && extractQuotedMovieTitles(rawTitle).length === 0) {
+      return true;
+    }
   }
   if (sourceIdentifier === "blank-check") {
     return /\b(mailbag|patreon|miniseries announcement|housekeeping)\b/i.test(haystack);
@@ -519,16 +594,17 @@ export const shouldSkipPodcastNoise = (sourceIdentifier: string, rawTitle: strin
 };
 
 export type PodcastIngestDecision =
-  | { action: "skip"; reason: "duplicate" | "noise" | "unmatched" }
+  | { action: "skip"; reason: "duplicate" | "noise" | "unmatched" | "data-poor" }
   | { action: "upsert" };
 
-/** Decide whether auto ingest should commit a catalog row. Unmatched must not insert stubs. */
+/** Decide whether auto ingest should commit a catalog row. Unmatched / data-poor must not insert stubs. */
 export const decidePodcastEpisodeIngest = (input: {
   sourceTitle: string;
   sourceIdentifier: string;
   existingTitles: Set<string>;
   preparedTitle: string;
   match?: { id: number } | null;
+  posterPath?: string | null;
 }): PodcastIngestDecision => {
   if (input.existingTitles.has(input.sourceTitle)) {
     return { action: "skip", reason: "duplicate" };
@@ -538,6 +614,13 @@ export const decidePodcastEpisodeIngest = (input: {
   }
   if (input.match === null) {
     return { action: "skip", reason: "unmatched" };
+  }
+  if (
+    input.match &&
+    input.posterPath !== undefined &&
+    !isCatalogReadyToShip({ tmdbId: input.match.id, posterPath: input.posterPath })
+  ) {
+    return { action: "skip", reason: "data-poor" };
   }
   return { action: "upsert" };
 };

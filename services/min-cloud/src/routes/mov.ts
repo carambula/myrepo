@@ -6,6 +6,8 @@ import { isFreshStreamingCache, persistStreamingProviders } from "../lib/streami
 import { config } from "../config.js";
 import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
 
+const SHIPPABLE_MOVIE_SQL = `m.tmdb_id IS NOT NULL AND NULLIF(BTRIM(m.poster_path), '') IS NOT NULL`;
+
 const router = Router();
 
 const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
@@ -29,8 +31,10 @@ const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
 
 router.get("/meta", async (_req, res) => {
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
-  const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies`);
-  const unmatched = await query(`SELECT COUNT(*)::int AS count FROM mov_movies WHERE tmdb_id IS NULL`);
+  const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies WHERE ${SHIPPABLE_MOVIE_SQL}`);
+  const unmatched = await query(
+    `SELECT COUNT(*)::int AS count FROM mov_movies WHERE ${SHIPPABLE_MOVIE_SQL} AND tmdb_id IS NULL`
+  );
   const physicalMedia = await query(
     `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`
   );
@@ -52,10 +56,11 @@ router.get("/catalog", async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 400, 1000);
   const offset = Math.max(Number(req.query.offset) || 0, 0);
   const params: Array<string | number> = [limit, offset];
-  let where = "";
+  const shippable = SHIPPABLE_MOVIE_SQL;
+  let where = `WHERE ${shippable}`;
   if (since) {
     params.push(since);
-    where = `WHERE m.last_updated > $${params.length} OR s.refreshed_at > $${params.length}`;
+    where = `WHERE ${shippable} AND (m.last_updated > $${params.length} OR s.refreshed_at > $${params.length})`;
   }
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
   const totalResult = await query(
@@ -64,9 +69,9 @@ router.get("/catalog", async (req, res) => {
     SELECT COUNT(*)::int AS count
     FROM mov_movies m
     LEFT JOIN mov_streaming s ON s.movie_id = m.id AND s.region = $2
-    WHERE m.last_updated > $1 OR s.refreshed_at > $1
+    WHERE ${shippable} AND (m.last_updated > $1 OR s.refreshed_at > $1)
     `
-      : `SELECT COUNT(*)::int AS count FROM mov_movies m`,
+      : `SELECT COUNT(*)::int AS count FROM mov_movies m WHERE ${shippable}`,
     since ? [since, config.tmdbRegion] : []
   );
   const movies = await query(

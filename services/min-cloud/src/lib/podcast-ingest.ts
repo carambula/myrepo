@@ -7,9 +7,11 @@ import {
   determineItemStatus,
   isNonMovieTitle,
   matchNeedsCreditCheck,
-  pickBestTmdbMatch,
+  episodeTitleNamesMovie,
+  pickConfidentTmdbMatch,
   prepareMovieQuery,
   scoreTmdbMatch,
+  shouldSkipPodcastNoise,
   type EpisodeMovieHints,
   type MatchHints,
   type TmdbCreditsHint,
@@ -83,7 +85,7 @@ export const resolveTmdbMatch = async (prepared: EpisodeMovieHints) => {
     }
     hints.creditsById = creditsById;
   }
-  return pickBestTmdbMatch(prepared.query, results, hints);
+  return pickConfidentTmdbMatch(prepared.query, results, hints);
 };
 
 export const matchScore = (prepared: EpisodeMovieHints, movie: TmdbSearchHit) =>
@@ -129,6 +131,21 @@ export const ingestPodcastEpisode = async (input: {
     return { added: false, skipped: true, reason: decided.reason };
   }
   const details = await fetchTmdbMovieDetails(match.id, config.tmdbApiKey);
+  const posterPath = (details.poster_path as string) || null;
+  const ready = decidePodcastEpisodeIngest({
+    sourceTitle: input.sourceTitle,
+    sourceIdentifier: input.sourceIdentifier,
+    existingTitles: input.existingTitles,
+    preparedTitle: prepared.title,
+    match,
+    posterPath
+  });
+  if (ready.action === "skip") {
+    return { added: false, skipped: true, reason: ready.reason };
+  }
+  if (!episodeTitleNamesMovie(input.sourceTitle, String(details.title || prepared.title))) {
+    return { added: false, skipped: true, reason: "unmatched" as const };
+  }
   const releaseDate = details.release_date ? String(details.release_date) : "";
   const credits = details.credits as { cast?: Array<Record<string, unknown>>; crew?: Array<Record<string, unknown>> } | undefined;
   const director = credits?.crew?.find((member) => member.job === "Director");
@@ -147,7 +164,7 @@ export const ingestPodcastEpisode = async (input: {
       sourceTitle: input.sourceTitle,
       episodeDate: input.episodeDate ?? null,
       overview: (details.overview as string) || input.description || null,
-      posterPath: (details.poster_path as string) || null,
+      posterPath,
       backdropPath: (details.backdrop_path as string) || null,
       genres: Array.isArray(details.genres) ? (details.genres as Array<{ name: string }>).map((genre) => genre.name) : [],
       credits: director || cast.length ? { director: director?.name ?? null, cast } : null,
@@ -163,7 +180,7 @@ export const ingestPodcastEpisode = async (input: {
     reason: determineItemStatus({
       tmdbId: Number(details.id),
       year: releaseDate ? Number(releaseDate.slice(0, 4)) : null,
-      posterPath: (details.poster_path as string) || null,
+      posterPath,
       overview: (details.overview as string) || null,
       genres: Array.isArray(details.genres) ? details.genres : []
     }) as "enriched" | "light",
@@ -184,10 +201,51 @@ const updateSourceMovieCount = async (sourceId: string) => {
   );
 };
 
+const purgeUnverifiedBigPictureLinks = async () => {
+  const links = await query(
+    `
+    SELECT ms.movie_id, ms.source_id, ms.source_title, m.title
+    FROM mov_movie_sources ms
+    JOIN mov_movies m ON m.id = ms.movie_id
+    WHERE ms.source_id = 'big-picture'
+    `
+  );
+  const sourceIds = new Set<string>();
+  const movieIds = new Set<string>();
+  let purgedLinks = 0;
+  for (const row of links.rows) {
+    const sourceTitle = String(row.source_title || "").trim();
+    const title = String(row.title || "");
+    const keep =
+      Boolean(sourceTitle) &&
+      !shouldSkipPodcastNoise("big-picture", sourceTitle, sourceTitle) &&
+      episodeTitleNamesMovie(sourceTitle, title);
+    if (keep) {
+      continue;
+    }
+    await query(`DELETE FROM mov_movie_sources WHERE movie_id = $1 AND source_id = $2`, [row.movie_id, row.source_id]);
+    purgedLinks += 1;
+    sourceIds.add(String(row.source_id));
+    movieIds.add(String(row.movie_id));
+  }
+  let purgedMovies = 0;
+  for (const movieId of movieIds) {
+    const remaining = await query(`SELECT 1 FROM mov_movie_sources WHERE movie_id = $1 LIMIT 1`, [movieId]);
+    if (!remaining.rowCount) {
+      await query(`DELETE FROM mov_movies WHERE id = $1`, [movieId]);
+      purgedMovies += 1;
+    }
+  }
+  for (const sourceId of sourceIds) {
+    await updateSourceMovieCount(sourceId);
+  }
+  return { purgedLinks, purgedMovies };
+};
+
 /**
- * Remove catalog leftovers that are not movies: Confused Breakfast BRUNCH stubs
- * and Criterion-style "Available …" / "Released …" availability badges.
- * Does not delete matched movies that only mention those words in overview.
+ * Remove catalog leftovers that are not movies: Confused Breakfast BRUNCH stubs,
+ * Criterion-style "Available …" / "Released …" badges, and Big Picture episodes
+ * that never named the film they were attached to.
  */
 export const purgePodcastNoiseMovies = async () => {
   const candidates = await query(
@@ -249,6 +307,10 @@ export const purgePodcastNoiseMovies = async () => {
   for (const sourceId of sourceIds) {
     await updateSourceMovieCount(sourceId);
   }
+
+  const bigPicture = await purgeUnverifiedBigPictureLinks();
+  purgedLinks += bigPicture.purgedLinks;
+  purgedMovies += bigPicture.purgedMovies;
 
   if (purgedLinks > 0 || purgedMovies > 0) {
     await bumpWatchedIt();

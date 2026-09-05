@@ -61,7 +61,14 @@ struct WatchedItTests {
     @Test func podcastIntakeSkipsBigPictureNoise() async throws {
         let service = PodcastEpisodeIntakeService.shared
         #expect(service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Oscars Mailbag 2026", cleanedTitle: "Oscars Mailbag 2026"))
-        #expect(!service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Heat", cleanedTitle: "Heat"))
+        #expect(service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Heat", cleanedTitle: "Heat"))
+        #expect(service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "Eli Roth!", cleanedTitle: "Eli Roth!"))
+        #expect(service.shouldSkipPodcastNoise(sourceIdentifier: "big-picture", rawTitle: "The Flops Movie Draft", cleanedTitle: "The Flops Movie Draft"))
+        #expect(!service.shouldSkipPodcastNoise(
+            sourceIdentifier: "big-picture",
+            rawTitle: "‘Sinners’ Is for the Sickos, the Cinephiles and You, with Ryan Coogler!",
+            cleanedTitle: "Sinners"
+        ))
     }
 
     @Test func podcastIntakeSkipsConfusedBreakfastBrunchAndBlankCheckNoise() async throws {

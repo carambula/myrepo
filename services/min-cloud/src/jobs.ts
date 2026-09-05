@@ -658,6 +658,9 @@ export const startJobScheduler = () => {
   setTimeout(() => {
     void runNamedJob("pod.feeds.refresh");
   }, 15_000);
+  setTimeout(() => {
+    void runNamedJob("mov.feeds.refresh");
+  }, 20_000);
   setInterval(() => {
     void runNamedJob("pod.feeds.refresh");
   }, 30 * 60 * 1000);

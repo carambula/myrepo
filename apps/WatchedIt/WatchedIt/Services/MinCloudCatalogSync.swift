@@ -33,11 +33,12 @@ final class MinCloudCatalogSync {
             }
 
             let remoteHasMore = (remoteCount ?? 0) > localCount
-            let needsFullPull = force || !hasSyncedBefore || remoteHasMore
+            let revisionChanged = meta.map { $0.revision != MinCloudSettings.lastCatalogRevision } ?? true
+            let needsFullPull = force || !hasSyncedBefore || remoteHasMore || revisionChanged
             let catalog = try await MinCloudClient.shared.fetchMovieCatalog(
                 updatedSince: needsFullPull ? nil : MinCloudSettings.lastCatalogSyncedAt
             )
-            let result = apply(catalog, modelContext: modelContext)
+            let result = apply(catalog, modelContext: modelContext, reconcile: needsFullPull)
             let catalogCount = catalog.total ?? meta?.movieCount ?? catalog.movies.count
             MinCloudSettings.lastCatalogRevision = catalog.revision
             MinCloudSettings.lastCatalogSyncedAt = catalog.generatedAt ?? ISO8601DateFormatter().string(from: Date())
@@ -73,7 +74,7 @@ final class MinCloudCatalogSync {
     }
 
     @discardableResult
-    func apply(_ catalog: MinCloudMovieCatalog, modelContext: ModelContext) -> CatalogApplyResult {
+    func apply(_ catalog: MinCloudMovieCatalog, modelContext: ModelContext, reconcile: Bool = false) -> CatalogApplyResult {
         let existing = (try? modelContext.fetch(FetchDescriptor<MovieData>())) ?? []
         var byId: [String: MovieData] = [:]
         var byTmdb: [Int: MovieData] = [:]
@@ -117,6 +118,10 @@ final class MinCloudCatalogSync {
 
         var result = CatalogApplyResult()
         for remote in catalog.movies {
+            let poster = remote.posterPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard remote.tmdbId != nil, !poster.isEmpty else {
+                continue
+            }
             let movie = byId[remote.id] ?? remote.tmdbId.flatMap { byTmdb[$0] }
             let providers = (remote.streamingServices ?? []).compactMap { provider -> StreamingService? in
                 let name = provider.name ?? provider.providerName
@@ -210,8 +215,70 @@ final class MinCloudCatalogSync {
             }
         }
 
+        if reconcile {
+            reconcileSources(catalog, contentByKey: &contentByKey, contentKeys: &contentKeys, modelContext: modelContext)
+            pruneDataPoorMovies(existing: existing, modelContext: modelContext)
+        }
+
         try? modelContext.save()
         return result
+    }
+
+    private func movieHasUserFlags(_ movie: MovieData) -> Bool {
+        if let user = movie.userData {
+            if user.isSaved || user.isRewatched || user.isListened || user.isWatched { return true }
+            if user.userRating != nil { return true }
+            if let notes = user.userNotes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        }
+        if let states = movie.states {
+            return states.contains { $0.isSaved || $0.isRewatched || $0.isListened }
+        }
+        return false
+    }
+
+    private func pruneDataPoorMovies(existing: [MovieData], modelContext: ModelContext) {
+        for movie in existing {
+            let poster = movie.posterPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let dataPoor = movie.tmdbId == nil || poster.isEmpty
+            guard dataPoor, !movieHasUserFlags(movie) else { continue }
+            modelContext.delete(movie)
+        }
+    }
+
+    private func reconcileSources(
+        _ catalog: MinCloudMovieCatalog,
+        contentByKey: inout [String: SourceContent],
+        contentKeys: inout Set<String>,
+        modelContext: ModelContext
+    ) {
+        var allowed = Set<String>()
+        var remoteMovieIds = Set<String>()
+        var remoteTmdbIds = Set<Int>()
+        for remote in catalog.movies {
+            remoteMovieIds.insert(remote.id)
+            if let tmdbId = remote.tmdbId {
+                remoteTmdbIds.insert(tmdbId)
+            }
+            for link in remote.sources ?? [] {
+                guard let identifier = link.identifier else { continue }
+                allowed.insert("\(remote.id)|\(identifier)")
+                if let tmdbId = remote.tmdbId {
+                    allowed.insert("tmdb-\(tmdbId)|\(identifier)")
+                }
+            }
+        }
+        for (key, content) in contentByKey {
+            guard let movie = content.movie, let sourceId = content.source?.identifier else { continue }
+            let onRemote = remoteMovieIds.contains(movie.id) || (movie.tmdbId.map { remoteTmdbIds.contains($0) } ?? false)
+            guard onRemote else { continue }
+            let tmdbKey = movie.tmdbId.map { "tmdb-\($0)|\(sourceId)" }
+            if allowed.contains("\(movie.id)|\(sourceId)") || (tmdbKey != nil && allowed.contains(tmdbKey!)) {
+                continue
+            }
+            guard content.source?.type == "podcast" else { continue }
+            modelContext.delete(content)
+            contentKeys.remove(key)
+        }
     }
 
     private func applyPhysicalMedia(_ remote: PhysicalMedia?, to movie: MovieData) {

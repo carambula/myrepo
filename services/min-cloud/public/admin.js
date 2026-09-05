@@ -30,7 +30,8 @@ const renderHealth = (data) => {
     `${data.staleStreaming} stale streaming rows`,
     `${data.podcasts} podcasts`,
     `${data.episodes} episodes`,
-    `${data.users} users`
+    `${data.users} users`,
+    `${data.feedback || 0} ideas and bugs`
   ].join("   ");
   document.getElementById("jobsBody").innerHTML = (data.jobs || [])
     .map(

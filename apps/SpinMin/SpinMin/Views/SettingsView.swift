@@ -118,10 +118,22 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    NavigationLink {
+                        FeedbackBoardView(app: .spin)
+                    } label: {
+                        HStack {
+                            Image(systemName: "lightbulb")
+                                .foregroundAccent()
+                            Text("Ideas & Bugs")
+                            Spacer()
+                            Text("Vote and report")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } header: {
                     Text("Connections")
                 } footer: {
-                    Text("Import rides from Strava or connect an agent with read or write access. Agent writes stay undoable for 7 days.")
+                    Text("Import rides from Strava, share ideas and bugs, or connect an agent with read or write access. Agent writes stay undoable for 7 days.")
                 }
                 
                 Section {

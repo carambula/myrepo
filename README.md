@@ -108,6 +108,8 @@ See the design system [README](./packages/design-system/README.md) for full docu
 
 Every min app is agent-ready. An agent can connect with **read** and/or **write** scopes, see your library (movies watched or saved, podcasts listened to, timers, and so on), and make changes that stay undoable for 7 days.
 
+Every min app also has **Account → Ideas & Bugs** (SpinMin: **Settings → Ideas & Bugs**). People can vote on existing notes or add an idea or bug. Min Cloud hosts the board at `/feedback`; admins triage at `/admin/feedback`.
+
 1. In any app: **Account → Agents → Create connection** (or `node packages/agent-kit/src/cli.js init`).
 2. Copy the token into your agent’s MCP config. See [`packages/agent-kit/README.md`](./packages/agent-kit/README.md).
 3. Call tools such as `list_movies`, `set_movie_saved`, `list_listening_history`, `follow_podcast`, `create_timer`, or `start_timer`.

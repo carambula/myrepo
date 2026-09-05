@@ -231,3 +231,58 @@ th, td {
 @media (max-width: 767px) {
   .admin-grid { grid-template-columns: 1fr; }
 }
+
+.feedback-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: end;
+  margin-bottom: var(--space-xl);
+}
+
+.feedback-toolbar label {
+  margin-bottom: 0;
+  min-width: 140px;
+}
+
+.feedback-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.feedback-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.vote-button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.vote-button.is-voted {
+  background: var(--accent);
+  color: white;
+}
+
+.feedback-item h3 {
+  margin: 0 0 var(--space-xs);
+  font-size: 18px;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12px;
+}

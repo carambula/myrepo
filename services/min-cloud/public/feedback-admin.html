@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Feedback Admin — Min Cloud</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Min Cloud Admin</div>
+      <nav>
+        <a href="/admin">Catalog</a>
+        <a href="/admin/jobs">Jobs</a>
+        <a href="/admin/feedback" class="is-active">Ideas & Bugs</a>
+        <a href="/feedback">Public board</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Triage ideas and bugs</h1>
+      <p class="lede">Change status, hide noise, and keep the public board honest.</p>
+    </section>
+
+    <div class="feedback-toolbar">
+      <label>Admin token<input id="adminToken" type="password" placeholder="ADMIN_TOKEN" /></label>
+      <button id="saveToken" type="button">Save token</button>
+      <label>App
+        <select id="appFilter">
+          <option value="all">All apps</option>
+          <option value="mov">mov min</option>
+          <option value="pod">pod min</option>
+          <option value="vid">vid min</option>
+          <option value="cyc">cyc min</option>
+          <option value="spin">spin min</option>
+          <option value="fit">fit min</option>
+        </select>
+      </label>
+      <label>Kind
+        <select id="kindFilter">
+          <option value="all">Ideas and bugs</option>
+          <option value="idea">Ideas</option>
+          <option value="bug">Bugs</option>
+        </select>
+      </label>
+      <label>Status
+        <select id="statusFilter">
+          <option value="all">Any status</option>
+          <option value="open">Open</option>
+          <option value="planned">Planned</option>
+          <option value="in_progress">In progress</option>
+          <option value="shipped">Shipped</option>
+          <option value="closed">Closed</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </label>
+    </div>
+
+    <section class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Votes</th>
+            <th>App</th>
+            <th>Kind</th>
+            <th>Title</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+    <div id="toast" class="toast hidden"></div>
+    <script src="/feedback-admin.js"></script>
+  </body>
+</html>

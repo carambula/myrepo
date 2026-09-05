@@ -13,6 +13,7 @@ import podRouter from "./routes/pod.js";
 import adminRouter from "./routes/admin.js";
 import adminLocalRouter from "./routes/admin-local.js";
 import agentRouter from "./routes/agent.js";
+import feedbackRouter from "./routes/feedback.js";
 import { ensureBootstrapAgent } from "./lib/agent.js";
 
 const app = express();
@@ -38,6 +39,7 @@ app.get("/health", async (_req, res) => {
 
 app.use(agentRouter);
 app.use("/v1", platformRouter);
+app.use("/v1", feedbackRouter);
 app.use("/v1/mov", movRouter);
 app.use("/v1/pod", podRouter);
 app.use("/v1/admin", requireAdmin, adminRouter);
@@ -80,6 +82,14 @@ app.get("/admin", (_req, res) => {
 
 app.get("/admin/jobs", (_req, res) => {
   res.sendFile(path.join(publicDir, "admin.html"));
+});
+
+app.get("/admin/feedback", (_req, res) => {
+  res.sendFile(path.join(publicDir, "feedback-admin.html"));
+});
+
+app.get("/feedback", (_req, res) => {
+  res.sendFile(path.join(publicDir, "feedback.html"));
 });
 
 app.get("/app", (_req, res) => {

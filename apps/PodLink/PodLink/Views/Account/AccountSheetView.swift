@@ -122,6 +122,11 @@ struct AccountSheetView: View {
                 }
                 .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 
+                Section("Feedback") {
+                    FeedbackSettingsLink(app: .pod)
+                }
+                .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
                 Section("Agents") {
                     AgentSettingsLink(app: .pod, exporter: PodcastAgentService.shared)
                 }

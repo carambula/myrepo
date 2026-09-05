@@ -1,6 +1,6 @@
 # Feedback and idea loop (all min apps)
 
-People send bugs and ideas from **Account → Ideas & bugs** (or Settings → Ideas on spin min). There is no lightbulb on every page — only this Ideas section.
+People send bugs and ideas from **Account → Ideas & bugs** (or Settings → Ideas on spin min), or by **shaking the phone** side-to-side (~two quick back-and-forths). There is no lightbulb on every page — only this Ideas section plus rage shake.
 
 Min Cloud stores the full report, opens a **redacted** GitHub issue on `carambula/myrepo` (no name or email), and pings Cursor so an agent can propose options. You approve or iterate on the issue. When the PR merges, Min Cloud marks the idea shipped and closes the issue.
 
@@ -21,8 +21,8 @@ This is the same loop as Cadence (`CyclingData/docs/FEEDBACK.md`), adapted for t
 | Piece | Where |
 |---|---|
 | API + DB + GitHub/Cursor logic | `services/min-cloud` (`src/lib/feedback.ts`, `src/routes/feedback.ts`, migration `008_feedback.sql`) |
-| Shared iOS UI | MinAppKit → **Ideas & bugs** (`IdeasSettingsLink`) |
-| Wired in apps | Account / Settings on mov, pod, vid, cyc, spin, fit |
+| Shared iOS UI | MinAppKit → **Ideas & bugs** (`IdeasSettingsLink`) + rage shake (`.ideasRageShake(app:)`) |
+| Wired in apps | Account / Settings on mov, pod, vid, cyc, spin, fit; shake opens Ideas from each app root |
 | GitHub Actions | `.github/workflows/feedback-comment.yml`, `feedback-shipped.yml` |
 
 You still need to configure **secrets**, **GitHub labels**, and **Cursor automations** (below). Until those are set, submissions still save in the database; GitHub/Cursor steps are skipped or retried later.
@@ -275,8 +275,8 @@ Send the token as `X-Cron-Token`, `X-Agent-Token`, or `Authorization: Bearer …
 
 ## App UI notes
 
-- Entry point is **only** Account / More / Settings → **Ideas & bugs** (shared `IdeasSettingsLink` in MinAppKit).
-- No per-page lightbulb (by design, for now).
+- Entry point is **Account / More / Settings → Ideas & bugs**, or **rage shake** (quick side-to-side phone shake, ~two back-and-forths) via `.ideasRageShake(app:)`.
+- No per-page lightbulb (by design). Shake opens the same Ideas list sheet as the Account entry.
 - mov / pod: if the user is signed into Min Cloud, the report is tied to their account; otherwise a local `device_id` is used.
 - Other apps: always use a local `device_id` (still rate-limited).
 - Client default base URL: `https://min-cloud-production.up.railway.app` (overridable via UserDefaults `mincloud.baseURL`, same as mov/pod).

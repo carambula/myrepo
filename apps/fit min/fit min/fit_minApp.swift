@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import MinAppKit
 
 @main
 struct fit_minApp: App {
@@ -58,6 +59,7 @@ struct fit_minApp: App {
                 .environment(themeManager)
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : .light)
                 .themeBackground()
+                .ideasRageShake(app: .fit)
                 .task {
                     TimerSoundService.shared.prewarm()
                     themeManager.syncFromCloud()

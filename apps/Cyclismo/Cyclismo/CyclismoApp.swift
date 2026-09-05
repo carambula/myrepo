@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MinAppKit
 
 @main
 struct CyclismoApp: App {
@@ -29,6 +30,7 @@ struct CyclismoApp: App {
             ContentView(deepLinkURL: $deepLinkURL)
                 .environmentObject(themeManager)
                 .themeBackground()
+                .ideasRageShake(app: .cyc)
                 .onOpenURL { url in
                     deepLinkURL = url
                 }

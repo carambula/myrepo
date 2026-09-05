@@ -18,7 +18,10 @@ let package = Package(
     targets: [
         .target(
             name: "MinAppKit",
-            path: "Sources/MinAppKit"
+            path: "Sources/MinAppKit",
+            linkerSettings: [
+                .linkedFramework("CoreMotion", .when(platforms: [.iOS]))
+            ]
         )
     ]
 )

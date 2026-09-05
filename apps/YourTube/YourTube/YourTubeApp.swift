@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import MinAppKit
 
 @main
 struct YourTubeApp: App {
@@ -77,6 +78,7 @@ struct YourTubeApp: App {
                 syncStore: syncStore,
                 deepLinkVideoID: $deepLinkVideoID
             )
+            .ideasRageShake(app: .vid)
             .onOpenURL { url in
                 deepLinkVideoID = DeepLinkHandler.videoID(from: url)
             }

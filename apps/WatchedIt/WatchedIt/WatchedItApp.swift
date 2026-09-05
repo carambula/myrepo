@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import MinAppKit
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -72,6 +73,7 @@ struct WatchedItApp: App {
         .onOpenURL { url in
             deepLinkURL = url
         }
+        .ideasRageShake(app: .mov)
         #else
         CollectionsHomeView(deepLinkURL: .constant(nil))
         #endif

@@ -9,11 +9,9 @@ enum EpisodePlaybackStore {
     private static func positionKey(_ id: String) -> String { "position_\(id)" }
     private static func playedKey(_ id: String) -> String { "played_\(id)" }
     private static func bookmarkKey(_ id: String) -> String { "bookmark_\(id)" }
-    private static func relistenedKey(_ id: String) -> String { "relistened_\(id)" }
     private static func cloudPositionKey(_ id: String) -> String { "position_\(stableID(id))" }
     private static func cloudPlayedKey(_ id: String) -> String { "played_\(stableID(id))" }
     private static func cloudBookmarkKey(_ id: String) -> String { "bookmark_\(stableID(id))" }
-    private static func cloudRelistenedKey(_ id: String) -> String { "relistened_\(stableID(id))" }
 
     private static func stableID(_ id: String) -> String {
         let digest = SHA256.hash(data: Data(id.utf8))
@@ -88,15 +86,6 @@ enum EpisodePlaybackStore {
             e.isBookmarked = cloudBookmarked
         }
 
-        if ud.object(forKey: relistenedKey(episode.id)) != nil {
-            e.hasRelistened = ud.bool(forKey: relistenedKey(episode.id))
-        } else if let cloudRelistened = cloudBool(
-            forKey: cloudRelistenedKey(episode.id),
-            legacyKey: relistenedKey(episode.id)
-        ) {
-            e.hasRelistened = cloudRelistened
-        }
-
         let policy = PlaybackProgressPolicy.current
         let dur = e.duration
         if dur > 0, !e.isPlayed, policy.isFinished(playbackPosition: e.playbackPosition, duration: dur) {
@@ -161,14 +150,6 @@ enum EpisodePlaybackStore {
     static func persistBookmark(_ bookmarked: Bool, episodeID: String, notify: Bool = true) {
         UserDefaults.standard.set(bookmarked, forKey: bookmarkKey(episodeID))
         CloudKeyValueWriter.setBool(bookmarked, forKey: cloudBookmarkKey(episodeID))
-        if notify {
-            NotificationCenter.default.post(name: .episodePlaybackStateDidChange, object: episodeID)
-        }
-    }
-
-    static func persistRelistened(_ relistened: Bool, episodeID: String, notify: Bool = true) {
-        UserDefaults.standard.set(relistened, forKey: relistenedKey(episodeID))
-        CloudKeyValueWriter.setBool(relistened, forKey: cloudRelistenedKey(episodeID))
         if notify {
             NotificationCenter.default.post(name: .episodePlaybackStateDidChange, object: episodeID)
         }

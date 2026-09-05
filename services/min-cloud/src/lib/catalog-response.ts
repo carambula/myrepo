@@ -20,8 +20,13 @@ export const catalogPageMeta = (total: number, offset: number, returned: number,
   truncated: offset + returned < total
 });
 
-export const catalogMovieStats = (movies: Array<{ tmdbId?: unknown }>) => ({
-  unmatchedCount: movies.filter((movie) => movie.tmdbId == null || movie.tmdbId === "").length
+import { isCatalogReadyToShip } from "./title-match.js";
+
+export { isCatalogReadyToShip };
+
+export const catalogMovieStats = (movies: Array<{ tmdbId?: unknown; posterPath?: unknown }>) => ({
+  unmatchedCount: movies.filter((movie) => movie.tmdbId == null || movie.tmdbId === "").length,
+  unshippableCount: movies.filter((movie) => !isCatalogReadyToShip(movie)).length
 });
 
 export const shouldFetchNextCatalogPage = (input: {

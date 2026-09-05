@@ -137,7 +137,10 @@ describe("catalog response helpers", () => {
   });
 
   it("counts unmatched movies and emits no-store headers", () => {
-    assert.equal(catalogMovieStats([{ tmdbId: 1 }, { tmdbId: null }, {}]).unmatchedCount, 2);
+    assert.deepEqual(catalogMovieStats([{ tmdbId: 1, posterPath: "/a.jpg" }, { tmdbId: null }, {}]), {
+      unmatchedCount: 2,
+      unshippableCount: 2
+    });
     const headers = catalogCacheHeaders(184, 1865);
     assert.equal(headers["Cache-Control"], "no-store, no-cache, must-revalidate");
     assert.equal(headers["X-Catalog-Revision"], "184");

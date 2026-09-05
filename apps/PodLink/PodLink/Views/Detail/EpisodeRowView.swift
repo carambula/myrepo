@@ -8,96 +8,6 @@ struct EpisodeRowView: View {
     var showsDownloadAffordance = true
 
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(PlaybackService.self) private var playbackService
-    @Environment(DownloadManager.self) private var downloadManager
-    @Environment(NetworkStatusService.self) private var networkStatusService
-    @State private var playbackMergeTick = 0
-
-    private var ep: Episode {
-        _ = playbackMergeTick
-        return EpisodePlaybackStore.merge(episode)
-    }
-
-    private var isCurrentEpisode: Bool {
-        playbackService.state.currentEpisode?.id == episode.id
-    }
-
-    private var displayDuration: TimeInterval {
-        if isCurrentEpisode, playbackService.state.duration > 0 {
-            return max(ep.duration, playbackService.state.duration)
-        }
-        return ep.duration
-    }
-
-    private var displayPosition: TimeInterval {
-        if isCurrentEpisode { return playbackService.state.currentTime }
-        return ep.playbackPosition
-    }
-
-    private var rowEffectivelyFinished: Bool {
-        if ep.isPlayed { return true }
-        guard displayDuration > 0 else { return false }
-        return PlaybackProgressPolicy.current.isFinished(playbackPosition: displayPosition, duration: displayDuration)
-    }
-
-    private var rowShowsPartialBar: Bool {
-        PlaybackProgressPolicy.current.shouldShowPartialProgress(
-            isPlayed: ep.isPlayed,
-            playbackPosition: displayPosition,
-            duration: displayDuration
-        )
-    }
-
-    private var rowProgressFraction: Double {
-        guard displayDuration > 0 else { return 0 }
-        return min(1, max(0, displayPosition / displayDuration))
-    }
-
-    private var playPauseIconName: String {
-        if isCurrentEpisode, playbackService.state.isPlaying {
-            "pause.circle.fill"
-        } else if rowShowsPartialBar {
-            "play.circle.fill"
-        } else {
-            "play.circle"
-        }
-    }
-
-    private func playPauseTapped() {
-        if shouldRestrictNetworkOnlyEpisodeActions { return }
-        if isCurrentEpisode {
-            playbackService.togglePlayPause()
-        } else {
-            Task { await playbackService.play(episode: ep, podcast: podcast) }
-        }
-    }
-
-    private var downloadState: DownloadManager.State {
-        if ep.isDownloaded {
-            return .downloaded
-        }
-        return downloadManager.state(for: ep)
-    }
-
-    private var canUseEpisodeWhileOffline: Bool {
-        ep.isDownloaded || downloadState == .downloaded
-    }
-
-    private var shouldRestrictNetworkOnlyEpisodeActions: Bool {
-        !networkStatusService.isOnline && !canUseEpisodeWhileOffline
-    }
-
-    private func downloadTapped() {
-        if shouldRestrictNetworkOnlyEpisodeActions { return }
-        switch downloadState {
-        case .downloaded:
-            downloadManager.deleteDownload(for: ep)
-        case .downloading:
-            downloadManager.deleteDownload(for: ep)
-        case .notDownloaded, .failed:
-            downloadManager.startDownload(for: ep, podcast: podcast)
-        }
-    }
 
     var body: some View {
         Group {
@@ -108,14 +18,14 @@ struct EpisodeRowView: View {
                             onShowDetails()
                         }
                         if showsDownloadAffordance {
-                            downloadContextMenuButton
+                            EpisodeRowDownloadMenu(episode: episode, podcast: podcast)
                         }
                     }
             } else {
                 rowContent
                     .contextMenu {
                         if showsDownloadAffordance {
-                            downloadContextMenuButton
+                            EpisodeRowDownloadMenu(episode: episode, podcast: podcast)
                         }
                     }
             }
@@ -126,7 +36,7 @@ struct EpisodeRowView: View {
         HStack(spacing: DesignSystem.Spacing.md) {
             Button(action: onTap) {
                 HStack(spacing: DesignSystem.Spacing.md) {
-                    AsyncCachedImage(url: ep.artworkURL ?? podcast.displayArtworkURL) { image in
+                    AsyncCachedImage(url: episode.artworkURL ?? podcast.displayArtworkURL) { image in
                         image
                             .resizable()
                             .aspectRatio(1, contentMode: .fill)
@@ -138,41 +48,16 @@ struct EpisodeRowView: View {
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
 
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                        Text(ep.title)
-                            .font(DesignSystem.Typography.headlineSmall())
-                            .foregroundColor(rowEffectivelyFinished ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.headlineColor)
-                            .lineLimit(2)
+                        EpisodeRowTitle(episode: episode)
 
                         HStack(spacing: DesignSystem.Spacing.sm) {
-                            Text(ep.publishDate, style: .date)
+                            Text(episode.publishDate, style: .date)
                                 .font(DesignSystem.Typography.captionMedium())
                                 .foregroundColor(DesignSystem.Colors.textSecondary)
 
-                            if ep.duration > 0 {
-                                Text("   ")
-                                    .foregroundColor(DesignSystem.Colors.textSecondary)
-                                if rowShowsPartialBar {
-                                    HStack(spacing: 4) {
-                                        Capsule()
-                                            .fill(Color(.tertiarySystemFill))
-                                            .frame(width: 28, height: 3)
-                                            .overlay(alignment: .leading) {
-                                                Capsule()
-                                                    .fill(themeManager.currentTheme.accentColor)
-                                                    .frame(width: max(3, 28 * rowProgressFraction), height: 3)
-                                            }
-                                        Text(ep.formattedDuration)
-                                            .font(DesignSystem.Typography.captionMedium())
-                                            .foregroundColor(DesignSystem.Colors.textSecondary)
-                                    }
-                                } else {
-                                    Text(ep.formattedDuration)
-                                        .font(DesignSystem.Typography.captionMedium())
-                                        .foregroundColor(DesignSystem.Colors.textSecondary)
-                                }
-                            }
+                            EpisodeRowDurationMeta(episode: episode)
 
-                            if ep.hasVideo {
+                            if episode.hasVideo {
                                 Image(systemName: "video.fill")
                                     .font(.system(size: 9))
                                     .foregroundColor(themeManager.currentTheme.accentColor)
@@ -187,87 +72,244 @@ struct EpisodeRowView: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: playPauseTapped) {
-                Image(systemName: playPauseIconName)
-                    .font(.system(size: 28))
-                    .foregroundColor(shouldRestrictNetworkOnlyEpisodeActions
-                        ? DesignSystem.Colors.textTertiary
-                        : themeManager.currentTheme.accentColor)
-            }
-            .buttonStyle(.plain)
-            .padding(.vertical, DesignSystem.Spacing.sm)
-            .disabled(shouldRestrictNetworkOnlyEpisodeActions)
-            .accessibilityHint(shouldRestrictNetworkOnlyEpisodeActions ? "Unavailable offline until downloaded" : "")
+            EpisodeRowPlayButton(episode: episode, podcast: podcast)
 
             if showsDownloadAffordance {
-                Button(action: downloadTapped) {
-                    Group {
-                        switch downloadState {
-                        case .downloaded:
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(themeManager.currentTheme.accentColor)
-                        case .downloading:
-                            ProgressView()
-                                .tint(themeManager.currentTheme.accentColor)
-                        case .failed:
-                            Image(systemName: "exclamationmark.arrow.circlepath")
-                                .foregroundColor(.orange)
-                        case .notDownloaded:
-                            Image(systemName: "arrow.down.circle.fill")
-                                .foregroundColor(shouldRestrictNetworkOnlyEpisodeActions
-                                    ? DesignSystem.Colors.textTertiary
-                                    : themeManager.currentTheme.accentColor)
-                        }
-                    }
-                    .font(.system(size: 28))
-                    .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, DesignSystem.Spacing.sm)
-                .disabled(shouldRestrictNetworkOnlyEpisodeActions)
-                .accessibilityLabel(downloadAccessibilityLabel)
-                .accessibilityHint(shouldRestrictNetworkOnlyEpisodeActions ? "Unavailable offline" : "")
+                EpisodeRowDownloadButton(episode: episode, podcast: podcast)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .episodePlaybackStateDidChange)) { output in
-            guard (output.object as? String) == episode.id else { return }
-            playbackMergeTick += 1
+    }
+}
+
+// MARK: - Playback-isolated chrome
+
+/// Title color follows live progress only for the current episode so artwork/layout stay still.
+private struct EpisodeRowTitle: View {
+    let episode: Episode
+
+    @Environment(PlaybackService.self) private var playbackService
+
+    var body: some View {
+        Text(episode.title)
+            .font(DesignSystem.Typography.headlineSmall())
+            .foregroundColor(isEffectivelyFinished ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.headlineColor)
+            .lineLimit(2)
+    }
+
+    private var isEffectivelyFinished: Bool {
+        if episode.isPlayed { return true }
+        let duration = displayDuration
+        guard duration > 0 else { return false }
+        return PlaybackProgressPolicy.current.isFinished(playbackPosition: displayPosition, duration: duration)
+    }
+
+    private var isCurrentEpisode: Bool {
+        playbackService.state.currentEpisode?.id == episode.id
+    }
+
+    private var displayDuration: TimeInterval {
+        if isCurrentEpisode, playbackService.state.duration > 0 {
+            return max(episode.duration, playbackService.state.duration)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .episodeDownloadStateDidChange)) { output in
-            guard (output.object as? String) == episode.id else { return }
-            playbackMergeTick += 1
+        return episode.duration
+    }
+
+    private var displayPosition: TimeInterval {
+        if isCurrentEpisode { return playbackService.state.currentTime }
+        return episode.playbackPosition
+    }
+}
+
+private struct EpisodeRowDurationMeta: View {
+    let episode: Episode
+
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(PlaybackService.self) private var playbackService
+
+    var body: some View {
+        if episode.duration > 0 {
+            Text("   ")
+                .foregroundColor(DesignSystem.Colors.textSecondary)
+            if showsPartialBar {
+                HStack(spacing: 4) {
+                    Capsule()
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: 28, height: 3)
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(themeManager.currentTheme.accentColor)
+                                .frame(width: max(3, 28 * progressFraction), height: 3)
+                        }
+                    Text(episode.formattedDuration)
+                        .font(DesignSystem.Typography.captionMedium())
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
+                }
+            } else {
+                Text(episode.formattedDuration)
+                    .font(DesignSystem.Typography.captionMedium())
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+            }
         }
     }
 
-    @ViewBuilder
-    private var downloadContextMenuButton: some View {
+    private var isCurrentEpisode: Bool {
+        playbackService.state.currentEpisode?.id == episode.id
+    }
+
+    private var displayDuration: TimeInterval {
+        if isCurrentEpisode, playbackService.state.duration > 0 {
+            return max(episode.duration, playbackService.state.duration)
+        }
+        return episode.duration
+    }
+
+    private var displayPosition: TimeInterval {
+        if isCurrentEpisode { return playbackService.state.currentTime }
+        return episode.playbackPosition
+    }
+
+    private var showsPartialBar: Bool {
+        PlaybackProgressPolicy.current.shouldShowPartialProgress(
+            isPlayed: episode.isPlayed,
+            playbackPosition: displayPosition,
+            duration: displayDuration
+        )
+    }
+
+    private var progressFraction: Double {
+        guard displayDuration > 0 else { return 0 }
+        return min(1, max(0, displayPosition / displayDuration))
+    }
+}
+
+private struct EpisodeRowPlayButton: View {
+    let episode: Episode
+    let podcast: Podcast
+
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(PlaybackService.self) private var playbackService
+    @Environment(NetworkStatusService.self) private var networkStatusService
+
+    var body: some View {
+        Button(action: playPauseTapped) {
+            Image(systemName: playPauseIconName)
+                .font(.system(size: 28))
+                .foregroundColor(shouldRestrictNetworkOnlyEpisodeActions
+                    ? DesignSystem.Colors.textTertiary
+                    : themeManager.currentTheme.accentColor)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .disabled(shouldRestrictNetworkOnlyEpisodeActions)
+        .accessibilityHint(shouldRestrictNetworkOnlyEpisodeActions ? "Unavailable offline until downloaded" : "")
+    }
+
+    private var isCurrentEpisode: Bool {
+        playbackService.state.currentEpisode?.id == episode.id
+    }
+
+    private var displayDuration: TimeInterval {
+        if isCurrentEpisode, playbackService.state.duration > 0 {
+            return max(episode.duration, playbackService.state.duration)
+        }
+        return episode.duration
+    }
+
+    private var displayPosition: TimeInterval {
+        if isCurrentEpisode { return playbackService.state.currentTime }
+        return episode.playbackPosition
+    }
+
+    private var showsPartialBar: Bool {
+        PlaybackProgressPolicy.current.shouldShowPartialProgress(
+            isPlayed: episode.isPlayed,
+            playbackPosition: displayPosition,
+            duration: displayDuration
+        )
+    }
+
+    private var playPauseIconName: String {
+        if isCurrentEpisode, playbackService.state.isPlaying {
+            "pause.circle.fill"
+        } else if showsPartialBar {
+            "play.circle.fill"
+        } else {
+            "play.circle"
+        }
+    }
+
+    private var shouldRestrictNetworkOnlyEpisodeActions: Bool {
+        !networkStatusService.isOnline && !episode.isDownloaded
+    }
+
+    private func playPauseTapped() {
+        if shouldRestrictNetworkOnlyEpisodeActions { return }
+        if isCurrentEpisode {
+            playbackService.togglePlayPause()
+        } else {
+            Task { await playbackService.play(episode: episode, podcast: podcast) }
+        }
+    }
+}
+
+private struct EpisodeRowDownloadButton: View {
+    let episode: Episode
+    let podcast: Podcast
+
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(DownloadManager.self) private var downloadManager
+    @Environment(NetworkStatusService.self) private var networkStatusService
+
+    var body: some View {
+        Button(action: downloadTapped) {
+            Group {
+                switch downloadState {
+                case .downloaded:
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(themeManager.currentTheme.accentColor)
+                case .downloading:
+                    ProgressView()
+                        .tint(themeManager.currentTheme.accentColor)
+                case .failed:
+                    Image(systemName: "exclamationmark.arrow.circlepath")
+                        .foregroundColor(.orange)
+                case .notDownloaded:
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundColor(shouldRestrictNetworkOnlyEpisodeActions
+                            ? DesignSystem.Colors.textTertiary
+                            : themeManager.currentTheme.accentColor)
+                }
+            }
+            .font(.system(size: 28))
+            .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .disabled(shouldRestrictNetworkOnlyEpisodeActions)
+        .accessibilityLabel(downloadAccessibilityLabel)
+        .accessibilityHint(shouldRestrictNetworkOnlyEpisodeActions ? "Unavailable offline" : "")
+    }
+
+    private var downloadState: DownloadManager.State {
+        if episode.isDownloaded {
+            return .downloaded
+        }
+        return downloadManager.state(for: episode)
+    }
+
+    private var shouldRestrictNetworkOnlyEpisodeActions: Bool {
+        !networkStatusService.isOnline && !episode.isDownloaded && downloadState != .downloaded
+    }
+
+    private func downloadTapped() {
+        if shouldRestrictNetworkOnlyEpisodeActions { return }
         switch downloadState {
         case .downloaded:
-            Button("Remove download", role: .destructive) {
-                downloadManager.deleteDownload(for: ep)
-            }
+            downloadManager.deleteDownload(for: episode)
         case .downloading:
-            Button("Cancel download", role: .destructive) {
-                downloadManager.deleteDownload(for: ep)
-            }
-        case .failed:
-            if shouldRestrictNetworkOnlyEpisodeActions {
-                Button("Retry download") {}
-                    .disabled(true)
-            } else {
-                Button("Retry download") {
-                    downloadManager.startDownload(for: ep, podcast: podcast)
-                }
-            }
-        case .notDownloaded:
-            if shouldRestrictNetworkOnlyEpisodeActions {
-                Button("Download for offline") {}
-                    .disabled(true)
-            } else {
-                Button("Download for offline") {
-                    downloadManager.startDownload(for: ep, podcast: podcast)
-                }
-            }
+            downloadManager.deleteDownload(for: episode)
+        case .notDownloaded, .failed:
+            downloadManager.startDownload(for: episode, podcast: podcast)
         }
     }
 
@@ -285,3 +327,52 @@ struct EpisodeRowView: View {
     }
 }
 
+private struct EpisodeRowDownloadMenu: View {
+    let episode: Episode
+    let podcast: Podcast
+
+    @Environment(DownloadManager.self) private var downloadManager
+    @Environment(NetworkStatusService.self) private var networkStatusService
+
+    var body: some View {
+        switch downloadState {
+        case .downloaded:
+            Button("Remove download", role: .destructive) {
+                downloadManager.deleteDownload(for: episode)
+            }
+        case .downloading:
+            Button("Cancel download", role: .destructive) {
+                downloadManager.deleteDownload(for: episode)
+            }
+        case .failed:
+            if shouldRestrictNetworkOnlyEpisodeActions {
+                Button("Retry download") {}
+                    .disabled(true)
+            } else {
+                Button("Retry download") {
+                    downloadManager.startDownload(for: episode, podcast: podcast)
+                }
+            }
+        case .notDownloaded:
+            if shouldRestrictNetworkOnlyEpisodeActions {
+                Button("Download for offline") {}
+                    .disabled(true)
+            } else {
+                Button("Download for offline") {
+                    downloadManager.startDownload(for: episode, podcast: podcast)
+                }
+            }
+        }
+    }
+
+    private var downloadState: DownloadManager.State {
+        if episode.isDownloaded {
+            return .downloaded
+        }
+        return downloadManager.state(for: episode)
+    }
+
+    private var shouldRestrictNetworkOnlyEpisodeActions: Bool {
+        !networkStatusService.isOnline && !episode.isDownloaded && downloadState != .downloaded
+    }
+}

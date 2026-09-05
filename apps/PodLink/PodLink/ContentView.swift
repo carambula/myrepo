@@ -157,7 +157,14 @@ struct ContentView: View {
         }
         .task(id: hasCompletedOnboarding) {
             guard hasCompletedOnboarding else { return }
-            await playbackService.restoreResumeSessionIfNeeded()
+            // Resume state has already been hydrated synchronously in `PlaybackService.init()`,
+            // so the mini player is on screen with correct artwork/title/scrub the instant this
+            // view mounts. Kick the resume episode's RSS refresh off in the background so we
+            // never gate the first frame on the network, then let the deferred launch
+            // maintenance sweep handle the heavier followed-feeds rebuild.
+            Task(priority: .utility) {
+                await playbackService.refreshResumeSessionFromFeed()
+            }
             scheduleLaunchMaintenance()
         }
         .onDisappear {

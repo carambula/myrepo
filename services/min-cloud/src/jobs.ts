@@ -11,6 +11,7 @@ import { lookupItunesPodcast } from "./lib/itunes.js";
 import { fetchText } from "./lib/http.js";
 import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
+import { persistStreamingProviders } from "./lib/streaming-cache.js";
 import { bumpWatchedIt } from "./lib/admin-catalog.js";
 import { resolveNowPlaying } from "./lib/theater-stays.js";
 import { ingestPodcastEpisode, purgePodcastNoiseMovies } from "./lib/podcast-ingest.js";
@@ -170,16 +171,7 @@ export const refreshStreamingCatalog = async (limit = 200) => {
           config.tmdbApiKey,
           config.tmdbRegion
         );
-        await query(
-          `
-          INSERT INTO mov_streaming (movie_id, region, providers, refreshed_at)
-          VALUES ($1, $2, $3::jsonb, NOW())
-          ON CONFLICT (movie_id, region) DO UPDATE SET
-            providers = EXCLUDED.providers,
-            refreshed_at = NOW()
-          `,
-          [row.id, config.tmdbRegion, JSON.stringify(providers)]
-        );
+        await persistStreamingProviders(String(row.id), providers);
         updated += 1;
       } catch {
         failed += 1;
@@ -666,6 +658,9 @@ export const startJobScheduler = () => {
   setTimeout(() => {
     void runNamedJob("pod.feeds.refresh");
   }, 15_000);
+  setTimeout(() => {
+    void runNamedJob("mov.feeds.refresh");
+  }, 20_000);
   setInterval(() => {
     void runNamedJob("pod.feeds.refresh");
   }, 30 * 60 * 1000);

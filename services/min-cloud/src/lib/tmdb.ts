@@ -19,6 +19,8 @@ type TmdbWatchProviders = {
       flatrate?: Array<{ provider_id: number; provider_name: string; logo_path?: string; display_priority?: number }>;
       ads?: Array<{ provider_id: number; provider_name: string; logo_path?: string; display_priority?: number }>;
       free?: Array<{ provider_id: number; provider_name: string; logo_path?: string; display_priority?: number }>;
+      rent?: Array<{ provider_id: number; provider_name: string; logo_path?: string; display_priority?: number }>;
+      buy?: Array<{ provider_id: number; provider_name: string; logo_path?: string; display_priority?: number }>;
     }
   >;
 };
@@ -41,7 +43,13 @@ export const mapStreamingProviders = (data: TmdbWatchProviders, region: string):
   if (!regional) {
     return [];
   }
-  const buckets = [...(regional.flatrate ?? []), ...(regional.ads ?? []), ...(regional.free ?? [])];
+  const buckets = [
+    ...(regional.flatrate ?? []),
+    ...(regional.ads ?? []),
+    ...(regional.free ?? []),
+    ...(regional.rent ?? []),
+    ...(regional.buy ?? [])
+  ];
   const providerMap = new Map<number, StreamingProvider>();
   for (const provider of buckets) {
     if (providerMap.has(provider.provider_id)) {

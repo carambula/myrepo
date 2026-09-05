@@ -7,15 +7,27 @@
 
 import Foundation
 
+struct ReleasePeriod: Hashable, Sendable {
+    let decade: Int
+
+    var label: String { "\(decade)s" }
+
+    static func from(year: Int) -> ReleasePeriod {
+        ReleasePeriod(decade: (year / 10) * 10)
+    }
+}
+
 struct MovieSearchFilters: Equatable {
     var watchFilter: WatchFilter = .all
     var selectedGenre: String? = nil
     var selectedMPAARating: String? = nil
     var selectedPersonName: String? = nil
     var selectedReleaseYear: Int? = nil
+    var selectedPeriod: Int? = nil
     var selectedListIdentifier: String? = nil
     var selectedStreamingService: String? = nil
     var theatricalFilter: TheatricalFilter? = nil
+    var physicalMediaFilter: PhysicalMediaFilter? = nil
     var sortOption: SortOption = .episodeDateDesc
     var preferredStreamingServices: [String] = []
 }
@@ -114,6 +126,17 @@ enum MovieSearchEngine {
 
         if let selectedReleaseYear = filters.selectedReleaseYear {
             filtered = filtered.filter { $0.year == selectedReleaseYear }
+        }
+
+        if let selectedPeriod = filters.selectedPeriod {
+            filtered = filtered.filter { movie in
+                guard let year = movie.year else { return false }
+                return ReleasePeriod.from(year: year).decade == selectedPeriod
+            }
+        }
+
+        if let physicalMediaFilter = filters.physicalMediaFilter {
+            filtered = filtered.filter { $0.physicalMedia?.matches(physicalMediaFilter) == true }
         }
 
         if let selectedListIdentifier = filters.selectedListIdentifier {

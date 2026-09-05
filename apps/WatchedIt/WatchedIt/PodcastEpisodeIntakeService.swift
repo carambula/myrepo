@@ -152,7 +152,28 @@ public final class PodcastEpisodeIntakeService {
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private func extractQuotedMovieTitles(_ title: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: #"[“\"‘']([^”\"’']{2,80})[”\"’']"#) else {
+            return []
+        }
+        let range = NSRange(title.startIndex..<title.endIndex, in: title)
+        var found: [String] = []
+        for match in regex.matches(in: title, range: range) where match.numberOfRanges > 1 {
+            guard let capture = Range(match.range(at: 1), in: title) else { continue }
+            let quoted = String(title[capture])
+                .replacingOccurrences(of: #"[.,;:]+$"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if quoted.count >= 2, !found.contains(quoted) {
+                found.append(quoted)
+            }
+        }
+        return found
+    }
+
     private func extractQuotedMovieTitle(_ title: String) -> String? {
+        if let first = extractQuotedMovieTitles(title).first {
+            return first
+        }
         let pattern = #"^[“\"‘'](.+)[”\"’'](?:\s+(?:with|feat\.?|featuring|—|-)\b|$)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
               let match = regex.firstMatch(in: title, range: NSRange(title.startIndex..<title.endIndex, in: title)),
@@ -302,8 +323,11 @@ public final class PodcastEpisodeIntakeService {
 
         let haystack = "\(rawTitle) \(cleanedTitle)"
         if sourceIdentifier == "big-picture" {
-            let pattern = #"\b(mailbag|draft|auction|box office|top\s*\d+|rankings|hall of fame|interview|preview|q&a|questions|state of|awards? race|oscars?|emmys?|tv corner|trailer talk|news round(up)?|hot take|power rankings)\b"#
+            let pattern = #"\b(mailbag|voicemailbag|draft|re-?draft|auction|box office|top\s*\d+|rankings?|hall of fame|interview|preview|q\s*&\s*a|questions|state of|awards? race|oscars?|emmys?|golden globes?|tv corner|trailer talk|news round(?:up)?|hot take|power rankings|movie swap|career arc|exit survey|advice hour|ask (?:sean|us) anything|physical media|alternative oscars|big picks|dumpuary|focus group|mega-?mailbag|mission accomplished)\b"#
             if haystack.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
+                return true
+            }
+            if extractQuotedMovieTitles(rawTitle).isEmpty {
                 return true
             }
         }
@@ -660,7 +684,9 @@ public final class PodcastEpisodeIntakeService {
             preferredYear: searchInput.year,
             expectedPersonNames: expectedPersonNames
         ),
-              let tmdbDetails = try? await movieService.getMovieDetails(tmdbId: match.id) else {
+              let tmdbDetails = try? await movieService.getMovieDetails(tmdbId: match.id),
+              let posterPath = tmdbDetails.posterPath?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !posterPath.isEmpty else {
             print("❌ Failed to find TMDB match for '\(cleanedTitle)' (year: \(searchInput.year?.description ?? "none"))")
             return nil
         }

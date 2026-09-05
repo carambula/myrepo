@@ -13,15 +13,35 @@ describe("mapStreamingProviders", () => {
               { provider_id: 1899, provider_name: "HBO Max", logo_path: "/hbo.jpg", display_priority: 2 },
               { provider_id: 1899, provider_name: "HBO Max", logo_path: "/hbo.jpg", display_priority: 2 }
             ],
-            ads: [{ provider_id: 337, provider_name: "Disney Plus", logo_path: "/d.jpg", display_priority: 1 }]
+            ads: [{ provider_id: 337, provider_name: "Disney Plus", logo_path: "/d.jpg", display_priority: 1 }],
+            rent: [{ provider_id: 10, provider_name: "Amazon Video", logo_path: "/a.jpg", display_priority: 6 }]
           }
         }
       },
       "US"
     );
-    assert.equal(providers.length, 2);
+    assert.equal(providers.length, 3);
     assert.equal(providers[0].name, "Disney Plus");
     assert.equal(providers[1].id, "1899");
+    assert.equal(providers[2].name, "Amazon Video");
+  });
+
+  it("keeps subscription providers when rent/buy buckets are also present", () => {
+    const providers = mapStreamingProviders(
+      {
+        results: {
+          US: {
+            flatrate: [
+              { provider_id: 8, provider_name: "Netflix", logo_path: "/n.jpg", display_priority: 0 }
+            ],
+            rent: [{ provider_id: 10, provider_name: "Amazon Video", logo_path: "/a.jpg", display_priority: 6 }]
+          }
+        }
+      },
+      "US"
+    );
+    assert.equal(providers[0].name, "Netflix");
+    assert.equal(providers.some((provider) => provider.name === "Amazon Video"), true);
   });
 });
 

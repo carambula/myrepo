@@ -107,10 +107,6 @@ final class TVMovieDetailViewController: UIViewController {
             contentStack.addArrangedSubview(creditsSection)
         }
 
-        if let physicalMediaSection = makePhysicalMediaSection() {
-            contentStack.addArrangedSubview(physicalMediaSection)
-        }
-
         if let theatersSection = makeTheatersSection() {
             contentStack.addArrangedSubview(theatersSection)
         }
@@ -292,9 +288,9 @@ final class TVMovieDetailViewController: UIViewController {
             actions.append(UIAction(title: "YouTube Trailer", attributes: [.disabled]) { _ in })
         }
 
-        let preferred = preferredStreamingServicesForMenu()
-        if !preferred.isEmpty {
-            actions.append(contentsOf: preferred.map { service in
+        let streamers = streamingServicesForMenu()
+        if !streamers.isEmpty {
+            actions.append(contentsOf: streamers.map { service in
                 UIAction(title: normalizedName(service.name)) { [weak self] _ in
                     self?.openStreamingService(service)
                 }
@@ -340,6 +336,19 @@ final class TVMovieDetailViewController: UIViewController {
         }
 
         return UIMenu(title: "", children: actions)
+    }
+
+    private func streamingServicesForMenu() -> [StreamingService] {
+        let preferred = preferredStreamingServicesForMenu()
+        if !preferred.isEmpty {
+            return preferred
+        }
+        var seen = Set<String>()
+        return movie.streamingServices.filter { service in
+            let key = normalizedCaseKey(service.name)
+            guard !key.isEmpty, seen.insert(key).inserted else { return false }
+            return true
+        }
     }
 
     private func preferredStreamingServicesForMenu() -> [StreamingService] {
@@ -499,19 +508,6 @@ final class TVMovieDetailViewController: UIViewController {
 
         guard !rows.isEmpty else { return nil }
         return makeSection(title: "Credits", rows: rows)
-    }
-
-    private func makePhysicalMediaSection() -> UIStackView? {
-        guard let media = movie.physicalMedia, media.hasDisplayableAvailability else { return nil }
-        var rows: [UIView] = []
-        if media.editions.isEmpty {
-            rows.append(makeFocusableBodyLabel(media.badgeLabels.joined(separator: "   ")))
-        } else {
-            for edition in media.editions {
-                rows.append(makeFocusableBodyLabel(edition.displayLine))
-            }
-        }
-        return makeSection(title: "Physical Media", rows: rows)
     }
 
     private func makeTheatersSection() -> UIStackView? {

@@ -826,6 +826,11 @@ struct MovieDetailView: View {
         return Array(items.prefix(3))
     }
 
+    private var hasCriterionSourceBadge: Bool {
+        uniqueMovieSourceContentSnapshots.contains { ClosetPicksSource.showsPosterBadge(for: $0.sourceIdentifier) }
+            || legacySources.contains { ClosetPicksSource.showsPosterBadge(for: $0.sourceIdentifier) }
+    }
+
     private func podcastFeedURL(for item: PodcastMenuItem) -> String? {
         let identifier = item.dataSourceIdentifier?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -845,6 +850,14 @@ struct MovieDetailView: View {
     @ViewBuilder
     private var ratingAndYearRow: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
+            if hasCriterionSourceBadge {
+                Image(ClosetPicksSource.badgeAssetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: ratingBadgeHeight, height: ratingBadgeHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                    .accessibilityLabel("Criterion")
+            }
             if let mpaaRating = displayMovie.mpaaRating {
                 let podcastItems = podcastItemsForRatingRow
                 HStack(spacing: DesignSystem.Spacing.md) {
@@ -1984,6 +1997,8 @@ struct SourceContentCardView: View {
             HStack(alignment: sourceContent.podcastEpisode != nil || sourceContent.sourceTitle != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if sourceContent.sourceType.lowercased() == "podcast" {
                     podcastArtworkView
+                } else if ClosetPicksSource.showsPosterBadge(for: sourceContent.sourceIdentifier) {
+                    criterionArtworkView
                 } else {
                     listLeadingIconView
                 }
@@ -2041,6 +2056,15 @@ struct SourceContentCardView: View {
             .frame(width: 40, height: 40)
     }
 
+    private var criterionArtworkView: some View {
+        Image(ClosetPicksSource.badgeAssetName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
+            .accessibilityLabel("Criterion")
+    }
+
     private var listLeadingIconView: some View {
         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
             .fill(.ultraThinMaterial)
@@ -2079,6 +2103,8 @@ struct LegacySourceCardView: View {
             HStack(alignment: legacySource.podcastEpisode != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if legacySource.podcastEpisode != nil {
                     podcastArtworkView
+                } else if ClosetPicksSource.showsPosterBadge(for: legacySource.sourceIdentifier) {
+                    criterionArtworkView
                 } else {
                     listLeadingIconView
                 }
@@ -2139,6 +2165,15 @@ struct LegacySourceCardView: View {
     private var podcastArtworkView: some View {
         PodcastSourceArtworkView(feedURLString: podcastFeedURLString)
             .frame(width: 40, height: 40)
+    }
+
+    private var criterionArtworkView: some View {
+        Image(ClosetPicksSource.badgeAssetName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
+            .accessibilityLabel("Criterion")
     }
 
     private var listLeadingIconView: some View {

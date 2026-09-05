@@ -31,9 +31,9 @@ const mapMovie = (row: Record<string, unknown>, providers: unknown[] = []) => ({
 
 router.get("/meta", async (_req, res) => {
   const revision = await query(`SELECT revision, generated_at FROM catalog_revisions WHERE app = 'watchedit'`);
-  const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies WHERE ${SHIPPABLE_MOVIE_SQL}`);
+  const movies = await query(`SELECT COUNT(*)::int AS count FROM mov_movies m WHERE ${SHIPPABLE_MOVIE_SQL}`);
   const unmatched = await query(
-    `SELECT COUNT(*)::int AS count FROM mov_movies WHERE ${SHIPPABLE_MOVIE_SQL} AND tmdb_id IS NULL`
+    `SELECT COUNT(*)::int AS count FROM mov_movies m WHERE ${SHIPPABLE_MOVIE_SQL} AND m.tmdb_id IS NULL`
   );
   const physicalMedia = await query(
     `SELECT COUNT(*)::int AS count FROM mov_movies WHERE physical_media IS NOT NULL`

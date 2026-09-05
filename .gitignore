@@ -34,7 +34,7 @@ xcuserdata/
 
 # Swift Package Manager
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-Packages/
+# Do not ignore monorepo `packages/` (case-insensitive FS would match `Packages/`).
 Package.pins
 Package.resolved
 

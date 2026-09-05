@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import MinAppKit
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -90,6 +91,7 @@ struct PodLinkApp: App {
                 .environment(downloadManager)
                 .environment(networkStatusService)
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : nil)
+                .ideasRageShake(app: .pod)
                 .background(
                     MiniPlayerOverlaySceneAnchor(
                         themeManager: themeManager,

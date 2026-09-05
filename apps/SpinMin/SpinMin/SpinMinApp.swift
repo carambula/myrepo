@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import MinAppKit
 
 @main
 struct SpinMinApp: App {
@@ -85,6 +86,7 @@ struct SpinMinApp: App {
             ContentView()
                 .environment(themeManager)
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : nil)
+                .ideasRageShake(app: .spin)
                 .onAppear {
                     // Seed product database on first launch
                     ProductDatabaseSeeder.seedDatabaseIfNeeded(context: sharedModelContainer.mainContext)

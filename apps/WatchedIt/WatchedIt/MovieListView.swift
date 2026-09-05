@@ -2608,23 +2608,13 @@ struct MovieListView: View {
     private func podcastSourceIdentifiers(for movie: Movie) -> [String] {
         let sourceCache = hasBuiltSourceCache ? movieToSourcesCache : buildMovieSourceCacheSnapshot()
         guard let sourceIds = sourceCache[movie.id], !sourceIds.isEmpty else { return [] }
-
-        let podcastIds = sourceIds.filter { enabledPodcastSourceIds.contains($0) }
-        guard !podcastIds.isEmpty else { return [] }
-
         let sourceNameById = Dictionary(uniqueKeysWithValues: allDataSources.map { ($0.identifier, $0.name) })
-        let orderedPreferred = preferredListIdentifiers.filter { podcastIds.contains($0) }
-        let preferredSet = Set(orderedPreferred)
-
-        let remaining = podcastIds
-            .filter { !preferredSet.contains($0) }
-            .sorted { lhs, rhs in
-                let lhsName = sourceNameById[lhs] ?? lhs
-                let rhsName = sourceNameById[rhs] ?? rhs
-                return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
-            }
-
-        return orderedPreferred + remaining
+        return SourceBadgeOrdering.identifiers(
+            sourceIds: sourceIds,
+            enabledPodcastIds: enabledPodcastSourceIds,
+            preferredOrder: preferredListIdentifiers,
+            sourceNames: sourceNameById
+        )
     }
 
     private func podcastArtworkBadgeStack(for sourceIdentifiers: [String]) -> some View {
@@ -2645,7 +2635,11 @@ struct MovieListView: View {
         let artworkURL = podcastFeedArtworkURLs[trimmedId]
 
         return Group {
-            if let artworkURL {
+            if ClosetPicksSource.showsPosterBadge(for: sourceIdentifier) {
+                Image(ClosetPicksSource.badgeAssetName)
+                    .resizable()
+                    .scaledToFill()
+            } else if let artworkURL {
                 PodcastArtworkBadgeImageView(url: artworkURL)
             } else {
                 podcastArtworkGlassPlaceholder()

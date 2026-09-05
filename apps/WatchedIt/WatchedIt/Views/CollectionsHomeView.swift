@@ -795,13 +795,11 @@ private struct CollectionsHomeContentView: View {
     }
 
     private func podcastSourceIdentifiers(for movie: Movie) -> [String] {
-        let sourceIDs = viewModel.movieToSourceIdentifiers[movie.id] ?? []
-        let podcastIDs = sourceIDs.filter { enabledPodcastSourceIds.contains($0) }
-        guard !podcastIDs.isEmpty else { return [] }
-        let orderedPreferred = preferredListIdentifiers.filter { podcastIDs.contains($0) }
-        let preferredSet = Set(orderedPreferred)
-        let remaining = podcastIDs.filter { !preferredSet.contains($0) }.sorted()
-        return orderedPreferred + remaining
+        SourceBadgeOrdering.identifiers(
+            sourceIds: Set(viewModel.movieToSourceIdentifiers[movie.id] ?? []),
+            enabledPodcastIds: enabledPodcastSourceIds,
+            preferredOrder: preferredListIdentifiers
+        )
     }
 
     private struct PodcastFeedArtworkCacheSnapshot: Codable {
@@ -1028,7 +1026,11 @@ private struct CollectionMovieCard: View {
             HStack(spacing: -16) {
                 ForEach(Array(uniqueIDs.prefix(4)), id: \.self) { sourceID in
                     Group {
-                        if let artworkURL = artworkURLForSourceID(sourceID) {
+                        if ClosetPicksSource.showsPosterBadge(for: sourceID) {
+                            Image(ClosetPicksSource.badgeAssetName)
+                                .resizable()
+                                .scaledToFill()
+                        } else if let artworkURL = artworkURLForSourceID(sourceID) {
                             CachedAsyncImage(url: artworkURL) { image in
                                 image.resizable().scaledToFill()
                             } placeholder: {

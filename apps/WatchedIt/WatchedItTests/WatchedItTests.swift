@@ -646,6 +646,21 @@ struct WatchedItTests {
         #expect(ClosetPicksSource.menuTitle(sourceTitle: nil, sourceName: nil) == "Criterion Closet Picks")
     }
 
+    @Test func criterionMoviesGetAPosterBadgeAlongsidePodcastCovers() {
+        #expect(ClosetPicksSource.showsPosterBadge(for: ClosetPicksSource.identifier))
+        #expect(ClosetPicksSource.showsPosterBadge(for: "criterion"))
+        #expect(ClosetPicksSource.showsPosterBadge(for: "  Criterion-Closet-Picks  "))
+        #expect(!ClosetPicksSource.showsPosterBadge(for: "rewatchables"))
+
+        let badges = SourceBadgeOrdering.identifiers(
+            sourceIds: ["rewatchables", ClosetPicksSource.identifier, "criterion", "afi"],
+            enabledPodcastIds: ["rewatchables"],
+            preferredOrder: ["rewatchables", ClosetPicksSource.identifier]
+        )
+        #expect(badges == ["rewatchables", ClosetPicksSource.identifier])
+        #expect(badges.filter { ClosetPicksSource.showsPosterBadge(for: $0) }.count == 1)
+    }
+
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,

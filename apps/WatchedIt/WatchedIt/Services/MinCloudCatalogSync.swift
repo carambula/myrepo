@@ -362,14 +362,16 @@ final class MinCloudCatalogSync {
         let title = link.episode?.title ?? link.sourceTitle ?? movieTitle
         let date = fallbackDate ?? Self.parseCatalogDate(link.episode?.publishDate)
         let description = link.episode?.description
-        guard date != nil || !(link.sourceTitle ?? "").isEmpty || description != nil else {
+        let youtubeUrl = link.episode?.youtubeUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard date != nil || !(link.sourceTitle ?? "").isEmpty || description != nil || !(youtubeUrl ?? "").isEmpty else {
             return nil
         }
         return PodcastEpisode(
             title: title,
             episodeId: link.episode?.episodeId ?? "\(link.identifier ?? "source")|\(movieTitle)",
             publishDate: date,
-            description: description
+            description: description,
+            youtubeUrl: (youtubeUrl?.isEmpty == false) ? youtubeUrl : nil
         )
     }
 

@@ -75,6 +75,9 @@ export const closetPicksProgressLabel = (job: JobProgressRow, now = Date.now()) 
   if (phase === "fetching-film-pages") {
     return `Fetching film pages ${ratio(stats, "filmPageDone", "filmPageTotal")}${elapsedSuffix}`;
   }
+  if (phase === "loading-youtube") {
+    return `Matching Closet Picks YouTube episodes${elapsedSuffix}`;
+  }
   if (phase === "loading-wikidata") {
     return `Loading Wikidata Criterion index${elapsedSuffix}`;
   }
@@ -95,7 +98,7 @@ const genericStatsLabel = (stats: Record<string, unknown>) =>
     .join("   ");
 
 export const jobProgressLabel = (job: JobProgressRow, now = Date.now()) => {
-  if (job.name === "mov.closet.rematch") {
+  if (job.name === "mov.closet.rematch" || job.name === "mov.closet.youtube") {
     return closetPicksProgressLabel(job, now);
   }
   const stats = statsOf(job);

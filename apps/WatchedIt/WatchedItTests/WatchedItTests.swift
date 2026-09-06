@@ -632,6 +632,30 @@ struct WatchedItTests {
         #expect(ClosetPicksSource.destinationURL(sourceUrl: nil, episodeId: nil) == ClosetPicksSource.indexURL)
     }
 
+    @Test func closetPicksDestinationPrefersYouTubeEpisode() {
+        let youtubeURL = "https://www.youtube.com/watch?v=Sc6UrpZR3Z4"
+        let criterionURL = "https://www.criterion.com/shop/collection/1002-jason-sudeikis-s-closet-picks"
+        #expect(ClosetPicksSource.youtubeVideoID(from: youtubeURL) == "Sc6UrpZR3Z4")
+        #expect(
+            ClosetPicksSource.destinationURL(
+                sourceUrl: criterionURL,
+                episodeId: nil,
+                youtubeUrl: youtubeURL
+            ).absoluteString == youtubeURL
+        )
+        #expect(
+            ClosetPicksSource.openURLs(
+                sourceUrl: criterionURL,
+                episodeId: nil,
+                youtubeUrl: youtubeURL
+            ).map(\.absoluteString) == [
+                "vidmin://watch?v=Sc6UrpZR3Z4",
+                "youtube://www.youtube.com/watch?v=Sc6UrpZR3Z4",
+                youtubeURL
+            ]
+        )
+    }
+
     @Test func closetPicksMenuTitleUsesEpisodeName() {
         #expect(
             ClosetPicksSource.menuTitle(

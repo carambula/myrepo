@@ -13,6 +13,7 @@ export type ClosetPicksEpisode = {
   episodeTitle: string;
   episodeUrl: string;
   date: string | null;
+  youtubeUrl?: string | null;
 };
 
 export type ClosetPicksFilm = {
@@ -34,6 +35,7 @@ export type CollapsedClosetPick = {
   filmUrl: string | null;
   director: string | null;
   year: number | null;
+  youtubeUrl?: string | null;
 };
 
 const decode = (value: string) =>
@@ -345,6 +347,7 @@ export const collapseClosetPicks = (
       filmUrl: string | null;
       director: string | null;
       year: number | null;
+      youtubeUrl: string | null;
       firstIndex: number;
     }
   >();
@@ -367,6 +370,7 @@ export const collapseClosetPicks = (
           filmUrl: film.filmUrl ?? null,
           director: film.director ?? null,
           year: film.year ?? null,
+          youtubeUrl: visit.episode.youtubeUrl ?? null,
           firstIndex: visitIndex
         });
         continue;
@@ -382,6 +386,9 @@ export const collapseClosetPicks = (
       }
       if (!existing.year && film.year) {
         existing.year = film.year;
+      }
+      if (!existing.youtubeUrl && visit.episode.youtubeUrl) {
+        existing.youtubeUrl = visit.episode.youtubeUrl;
       }
     }
   });
@@ -408,7 +415,8 @@ export const collapseClosetPicks = (
       episodeUrl: row.episodeUrl,
       filmUrl: row.filmUrl,
       director: row.director,
-      year: row.year
+      year: row.year,
+      youtubeUrl: row.youtubeUrl
     }));
 };
 
@@ -425,7 +433,8 @@ export const toClosetPicksCatalogItem = (
   filmUrl: film.filmUrl,
   director: film.director,
   year: film.year,
-  podcastEpisodeDescription: film.description
+  podcastEpisodeDescription: film.description,
+  youtubeUrl: film.youtubeUrl ?? null
 });
 
 export const CLOSET_PICKS_FETCH_HEADERS = {

@@ -13,6 +13,7 @@
     "seed": "tsx src/seed.ts",
     "import-bootstrap": "node scripts/import-bootstrap.mjs",
     "ingest-closet-picks": "tsx scripts/ingest-closet-picks.ts",
+    "attach-closet-picks-youtube": "tsx scripts/attach-closet-picks-youtube.ts",
     "rematch-closet-picks": "tsx scripts/rematch-closet-picks.ts",
     "import-podcasts": "node scripts/import-podcasts.mjs",
     "test": "tsx --test test/*.test.ts",

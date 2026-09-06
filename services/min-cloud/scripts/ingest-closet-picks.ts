@@ -19,6 +19,7 @@ import {
   toClosetPicksCatalogItem,
   type ClosetPicksEpisode
 } from "../src/lib/closet-picks-scrape.ts";
+import { attachClosetPicksYouTube, fetchClosetPicksYouTubeVideos } from "../src/lib/closet-picks-youtube.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../../..");
@@ -154,6 +155,7 @@ const mergeBootstrap = async (
       sourceTitle: item.sourceTitle,
       episodeDate: item.episodeDate,
       sourceUrl: item.sourceUrl,
+      youtubeUrl: item.youtubeUrl ?? null,
       podcastEpisodeDescription: item.podcastEpisodeDescription,
       tmdbId: existing.tmdbId ?? null,
       year: item.year ?? existing.year ?? null,
@@ -215,12 +217,21 @@ const main = async () => {
   });
 
   const collapsed = collapseClosetPicks(visits);
+  let withYouTube = collapsed;
+  try {
+    const videos = await fetchClosetPicksYouTubeVideos();
+    withYouTube = attachClosetPicksYouTube(collapsed, videos);
+    const linked = withYouTube.filter((film) => film.youtubeUrl).length;
+    console.log(`Matched ${linked}/${withYouTube.length} films to Closet Picks YouTube episodes`);
+  } catch (error) {
+    console.warn(`YouTube playlist attach failed (${error instanceof Error ? error.message : error})`);
+  }
   const snapshot = {
     generatedDate: new Date().toISOString(),
     origin,
     waybackSnapshot: origin === "wayback" ? waybackSnapshot : null,
     episodeCount: visits.length,
-    movies: collapsed.map((film) => toClosetPicksCatalogItem(film))
+    movies: withYouTube.map((film) => toClosetPicksCatalogItem(film))
   };
   await fs.mkdir(path.dirname(snapshotPath), { recursive: true });
   await fs.writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);

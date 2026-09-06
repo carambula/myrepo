@@ -25,7 +25,53 @@ enum ClosetPicksSource {
         hasPodcastEpisode || isOnClosetPicks
     }
 
-    static func destinationURL(sourceUrl: String?, episodeId: String?) -> URL {
+    static func youtubeVideoID(from raw: String?) -> String? {
+        let value = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !value.isEmpty else { return nil }
+        let videoIDCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        if value.count == 11, value.unicodeScalars.allSatisfy({ videoIDCharacters.contains($0) }) {
+            return value
+        }
+        guard let url = URL(string: value) else { return nil }
+        let host = url.host?.lowercased() ?? ""
+        if host == "youtu.be" {
+            let id = url.pathComponents.dropFirst().first ?? ""
+            return id.count == 11 ? id : nil
+        }
+        if host.contains("youtube.com") {
+            if let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "v" })?
+                .value,
+               id.count == 11 {
+                return id
+            }
+            for prefix in ["/embed/", "/shorts/", "/live/", "/v/"] {
+                if url.path.hasPrefix(prefix) {
+                    let id = String(url.path.dropFirst(prefix.count)).split(separator: "/").first.map(String.init) ?? ""
+                    return id.count == 11 ? id : nil
+                }
+            }
+        }
+        return nil
+    }
+
+    static func vidMinURL(videoID: String) -> URL? {
+        URL(string: "vidmin://watch?v=\(videoID)")
+    }
+
+    static func youtubeAppURL(videoID: String) -> URL? {
+        URL(string: "youtube://www.youtube.com/watch?v=\(videoID)")
+    }
+
+    static func youtubeWebURL(videoID: String) -> URL? {
+        URL(string: "https://www.youtube.com/watch?v=\(videoID)")
+    }
+
+    static func destinationURL(sourceUrl: String?, episodeId: String?, youtubeUrl: String? = nil) -> URL {
+        if let videoID = youtubeVideoID(from: youtubeUrl), let url = youtubeWebURL(videoID: videoID) {
+            return url
+        }
         if let sourceUrl, let url = httpURL(from: sourceUrl) {
             return url
         }
@@ -33,6 +79,14 @@ enum ClosetPicksSource {
             return url
         }
         return indexURL
+    }
+
+    static func openURLs(sourceUrl: String?, episodeId: String?, youtubeUrl: String? = nil) -> [URL] {
+        if let videoID = youtubeVideoID(from: youtubeUrl) {
+            return [vidMinURL(videoID: videoID), youtubeAppURL(videoID: videoID), youtubeWebURL(videoID: videoID)]
+                .compactMap { $0 }
+        }
+        return [destinationURL(sourceUrl: sourceUrl, episodeId: episodeId)]
     }
 
     static func menuTitle(sourceTitle: String?, sourceName: String?) -> String {

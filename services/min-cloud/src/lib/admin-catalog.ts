@@ -27,6 +27,7 @@ export type AdminMovie = {
   physicalMedia: unknown;
   podcastEpisodeDescription: string | null;
   sourceUrl?: string | null;
+  youtubeUrl?: string | null;
 };
 
 export type AdminSource = {
@@ -94,7 +95,9 @@ export const loadAdminMovies = async (): Promise<AdminMovie[]> => {
       trailer: row.trailer ?? null,
       oscarAwards: row.oscar_awards ?? null,
       physicalMedia: row.physical_media ?? null,
-      podcastEpisodeDescription: episode?.description ? String(episode.description) : null
+      podcastEpisodeDescription: episode?.description ? String(episode.description) : null,
+      sourceUrl: episode?.episodeId ? String(episode.episodeId) : null,
+      youtubeUrl: episode?.youtubeUrl ? String(episode.youtubeUrl) : null
     };
   });
 };
@@ -223,14 +226,19 @@ export const upsertAdminMovie = async (
           return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
         })(),
         JSON.stringify(
-          payload.podcastEpisodeDescription || payload.sourceTitle || payload.sourceUrl || payload.filmUrl
+          payload.podcastEpisodeDescription ||
+            payload.sourceTitle ||
+            payload.sourceUrl ||
+            payload.filmUrl ||
+            payload.youtubeUrl
             ? {
                 title: payload.sourceTitle ?? null,
                 description: payload.podcastEpisodeDescription ?? null,
                 publishDate: payload.episodeDate ?? null,
                 episodeId: payload.sourceUrl ?? null,
                 filmUrl: payload.filmUrl ?? null,
-                director: payload.director ?? null
+                director: payload.director ?? null,
+                youtubeUrl: payload.youtubeUrl ?? previous?.youtubeUrl ?? null
               }
             : null
         )

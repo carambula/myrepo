@@ -13,15 +13,22 @@ import {
 } from "./closet-picks-scrape.js";
 import { closetPicksMatchLooksWrong, prepareClosetPicksQuery } from "./closet-picks-match.js";
 import { loadCriterionTmdbIndex, pickCriterionTmdbId, type CriterionTmdbHit } from "./closet-picks-wikidata.js";
+import {
+  attachClosetPicksYouTube,
+  fetchClosetPicksYouTubeVideos,
+  matchClosetPicksYouTubeVideo
+} from "./closet-picks-youtube.js";
 import { resolveTmdbMatch } from "./podcast-ingest.js";
 import { fetchTmdbMovieDetails } from "./tmdb.js";
 import { config } from "../config.js";
+import { query } from "../db.js";
 
 export type ClosetPicksRematchProgress = {
   phase:
     | "fetching-index"
     | "scraping-episodes"
     | "fetching-film-pages"
+    | "loading-youtube"
     | "loading-wikidata"
     | "matching"
     | "done";
@@ -91,6 +98,7 @@ const detailsPayload = (details: Record<string, unknown>, film: CollapsedClosetP
     filmUrl: film.filmUrl,
     director: film.director,
     episodeDate: film.episodeDate,
+    youtubeUrl: film.youtubeUrl ?? null,
     overview: (details.overview as string) || null,
     posterPath: (details.poster_path as string) || null,
     backdropPath: (details.backdrop_path as string) || null,
@@ -141,6 +149,19 @@ const scrapeClosetPicksFilms = async (options: ClosetPicksRematchOptions) => {
     }
   });
   return collapseClosetPicks(visits);
+};
+
+const attachYouTubeToFilms = async (
+  films: CollapsedClosetPick[],
+  options: Pick<ClosetPicksRematchOptions, "onProgress">
+) => {
+  await reportProgress(options.onProgress, { phase: "loading-youtube", scanned: films.length });
+  try {
+    const videos = await fetchClosetPicksYouTubeVideos();
+    return attachClosetPicksYouTube(films, videos);
+  } catch {
+    return films;
+  }
 };
 
 const fillFilmPageMetadata = async (
@@ -207,7 +228,8 @@ const writeMatch = async (existing: AdminMovie | undefined, film: CollapsedClose
 };
 
 export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}) => {
-  const films = await scrapeClosetPicksFilms(options);
+  let films = await scrapeClosetPicksFilms(options);
+  films = await attachYouTubeToFilms(films, options);
   if (options.fetchFilmPages !== false) {
     await fillFilmPageMetadata(films, options);
   }
@@ -263,7 +285,10 @@ export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}
         status: "missing"
       });
     } else {
-      const alreadyCorrect = existing?.tmdbId === tmdbId && !closetPicksMatchLooksWrong(existing, film);
+      const alreadyCorrect =
+        existing?.tmdbId === tmdbId &&
+        !closetPicksMatchLooksWrong(existing, film) &&
+        (!film.youtubeUrl || existing.youtubeUrl === film.youtubeUrl);
       const status = !existing ? "added" : existing.tmdbId === tmdbId ? (alreadyCorrect ? "unchanged" : "matched") : "corrected";
       if (status === "added") {
         added += 1;
@@ -327,5 +352,43 @@ export const rematchClosetPicks = async (options: ClosetPicksRematchOptions = {}
     added,
     missing,
     items
+  };
+};
+
+export const attachClosetPicksYouTubeToCatalog = async () => {
+  const videos = await fetchClosetPicksYouTubeVideos();
+  const movies = (await loadAdminMovies()).filter((movie) => movie.sourceIdentifier === CLOSET_PICKS_SOURCE_ID);
+  let matched = 0;
+  let updated = 0;
+  for (const movie of movies) {
+    const video = matchClosetPicksYouTubeVideo(
+      { sourceTitle: movie.sourceTitle, sourceUrl: movie.sourceUrl },
+      videos
+    );
+    if (!video) {
+      continue;
+    }
+    matched += 1;
+    if (movie.youtubeUrl === video.watchUrl || !movie.__movieId) {
+      continue;
+    }
+    await query(
+      `
+      UPDATE mov_movie_sources
+      SET episode = COALESCE(episode, '{}'::jsonb) || $3::jsonb
+      WHERE movie_id = $1 AND source_id = $2
+      `,
+      [movie.__movieId, CLOSET_PICKS_SOURCE_ID, JSON.stringify({ youtubeUrl: video.watchUrl })]
+    );
+    updated += 1;
+  }
+  if (updated) {
+    await bumpWatchedIt();
+  }
+  return {
+    videos: videos.length,
+    scanned: movies.length,
+    matched,
+    updated
   };
 };

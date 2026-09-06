@@ -38,6 +38,7 @@ export type ImportMovie = {
   podcastEpisode?: unknown;
   podcastEpisodeDescription?: string | null;
   sourceUrl?: string | null;
+  youtubeUrl?: string | null;
   physicalMedia?: unknown;
 };
 
@@ -45,14 +46,15 @@ export const episodeFromImportMovie = (movie: ImportMovie) => {
   if (movie.podcastEpisode) {
     return movie.podcastEpisode;
   }
-  if (!movie.podcastEpisodeDescription) {
+  if (!movie.podcastEpisodeDescription && !movie.sourceUrl && !movie.youtubeUrl) {
     return null;
   }
   return {
     title: movie.sourceTitle ?? movie.title ?? null,
-    description: movie.podcastEpisodeDescription,
+    description: movie.podcastEpisodeDescription ?? null,
     publishDate: movie.episodeDate ?? null,
-    episodeId: movie.sourceUrl ?? null
+    episodeId: movie.sourceUrl ?? null,
+    youtubeUrl: movie.youtubeUrl ?? null
   };
 };
 

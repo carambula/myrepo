@@ -44,6 +44,13 @@ describe("closet picks rematch progress", () => {
       ),
       "Matching TMDB 210/699   4 corrected   12 missing (12m 5s)"
     );
+    assert.equal(
+      closetPicksProgressLabel(
+        { status: "running", started_at: started, stats: { phase: "loading-youtube" } },
+        now
+      ),
+      "Matching Closet Picks YouTube episodes (12m 5s)"
+    );
   });
 
   it("summarizes a finished rematch", () => {

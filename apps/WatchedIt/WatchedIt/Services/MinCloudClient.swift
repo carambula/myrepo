@@ -68,6 +68,7 @@ struct MinCloudMovieCatalog: Decodable {
                 let episodeId: String?
                 let description: String?
                 let publishDate: String?
+                let youtubeUrl: String?
             }
 
             let identifier: String?

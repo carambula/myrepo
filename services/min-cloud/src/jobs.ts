@@ -15,7 +15,7 @@ import { persistStreamingProviders } from "./lib/streaming-cache.js";
 import { bumpWatchedIt } from "./lib/admin-catalog.js";
 import { resolveNowPlaying } from "./lib/theater-stays.js";
 import { ingestPodcastEpisode, purgePodcastNoiseMovies } from "./lib/podcast-ingest.js";
-import { rematchClosetPicks } from "./lib/closet-picks-rematch.js";
+import { attachClosetPicksYouTubeToCatalog, rematchClosetPicks } from "./lib/closet-picks-rematch.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
 type JobReport = (stats: JobStats) => Promise<void>;
@@ -621,6 +621,20 @@ export const rematchClosetPicksCatalog = async () => {
   });
 };
 
+export const attachClosetPicksYouTubeCatalog = async () => {
+  return startBackgroundJob("mov.closet.youtube", async (report) => {
+    await report({ phase: "loading-youtube" });
+    const result = await attachClosetPicksYouTubeToCatalog();
+    return {
+      phase: "done",
+      videos: result.videos,
+      scanned: result.scanned,
+      matched: result.matched,
+      updated: result.updated
+    };
+  });
+};
+
 export const runNamedJob = async (name: string) => {
   switch (name) {
     case "mov.streaming.refresh":
@@ -637,6 +651,8 @@ export const runNamedJob = async (name: string) => {
       return enrichDefaultPodcasts();
     case "mov.closet.rematch":
       return rematchClosetPicksCatalog();
+    case "mov.closet.youtube":
+      return attachClosetPicksYouTubeCatalog();
     case "all":
       return {
         streaming: await refreshStreamingCatalog(),

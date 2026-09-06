@@ -33,6 +33,7 @@ extension BootstrapDataService {
         var trailer: BootstrapTrailer?
         var podcastEpisodeDescription: String?
         var sourceUrl: String?
+        var youtubeUrl: String?
         var physicalMedia: PhysicalMedia?
     }
     
@@ -487,7 +488,8 @@ class BootstrapDataService {
                         applePodcastsUrl: appleUrl,
                         spotifyUrl: spotifyUrl,
                         overcastUrl: nil,
-                        pocketCastsUrl: nil
+                        pocketCastsUrl: nil,
+                        youtubeUrl: bootstrapMovie.youtubeUrl
                     )
                 }
                 

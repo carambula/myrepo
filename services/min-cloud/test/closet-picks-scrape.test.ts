@@ -106,7 +106,8 @@ describe("closet-picks scrape", () => {
           guestName: "Matthew McConaughey",
           episodeTitle: "Matthew McConaughey’s Closet Picks",
           episodeUrl: "https://www.criterion.com/closet-picks/matthew-mcconaughey",
-          date: "2026-02-01"
+          date: "2026-02-01",
+          youtubeUrl: "https://www.youtube.com/watch?v=abcABCdef12"
         },
         films: [
           { title: "8½", filmUrl: "https://www.criterion.com/films/8-12", director: "Federico Fellini", year: 1963 },
@@ -142,5 +143,6 @@ describe("closet-picks scrape", () => {
     assert.equal(item.director, "Francis Ford Coppola");
     assert.equal(item.year, 1983);
     assert.equal(item.filmUrl, "https://www.criterion.com/films/28993-rumble-fish");
+    assert.equal(item.youtubeUrl, "https://www.youtube.com/watch?v=abcABCdef12");
   });
 });

@@ -556,6 +556,7 @@ struct MovieDetailView: View {
         let id: String
         let title: String
         let url: URL
+        let openURLs: [URL]
     }
 
     private var closetPicksSourceContents: [SourceContentSnapshot] {
@@ -590,7 +591,12 @@ struct MovieDetailView: View {
             items.append(ClosetPicksMenuItem(
                 id: "closet-\(content.id)",
                 title: ClosetPicksSource.menuTitle(sourceTitle: content.sourceTitle, sourceName: content.sourceName),
-                url: url
+                url: url,
+                openURLs: ClosetPicksSource.openURLs(
+                    sourceUrl: content.sourceUrl,
+                    episodeId: content.podcastEpisode?.episodeId,
+                    youtubeUrl: content.podcastEpisode?.youtubeUrl
+                )
             ))
         }
 
@@ -605,7 +611,12 @@ struct MovieDetailView: View {
                 items.append(ClosetPicksMenuItem(
                     id: "closet-legacy-\(legacy.sourceIdentifier)-\(url.absoluteString)",
                     title: ClosetPicksSource.menuTitle(sourceTitle: legacy.sourceTitle, sourceName: legacy.sourceName),
-                    url: url
+                    url: url,
+                    openURLs: ClosetPicksSource.openURLs(
+                        sourceUrl: legacy.sourceUrl,
+                        episodeId: legacy.podcastEpisode?.episodeId,
+                        youtubeUrl: legacy.podcastEpisode?.youtubeUrl
+                    )
                 ))
             }
         }
@@ -615,7 +626,28 @@ struct MovieDetailView: View {
     }
 
     private func openClosetPicksMenuItem(_ item: ClosetPicksMenuItem) {
-        openExternalURL(item.url)
+        openClosetPicksURLs(item.openURLs.isEmpty ? [item.url] : item.openURLs)
+    }
+
+    private func openClosetPicksURLs(_ urls: [URL]) {
+        for url in urls {
+            if url.scheme?.hasPrefix("http") == true {
+                openExternalURL(url)
+                return
+            }
+            #if os(tvOS)
+            openExternalURL(url)
+            return
+            #else
+            if UIApplication.shared.canOpenURL(url) {
+                openExternalURL(url)
+                return
+            }
+            #endif
+        }
+        if let fallback = urls.last {
+            openExternalURL(fallback)
+        }
     }
 
     private func openExternalURL(_ url: URL) {
@@ -633,7 +665,11 @@ struct MovieDetailView: View {
         sourceName: String
     ) -> URL? {
         if identifier == ClosetPicksSource.identifier {
-            return ClosetPicksSource.destinationURL(sourceUrl: sourceUrl, episodeId: episode?.episodeId)
+            return ClosetPicksSource.destinationURL(
+                sourceUrl: sourceUrl,
+                episodeId: episode?.episodeId,
+                youtubeUrl: episode?.youtubeUrl
+            )
         }
         return episode.flatMap { episode in
             preferredPodcastLink(
@@ -1183,7 +1219,12 @@ struct MovieDetailView: View {
                                     Divider()
                                     ForEach(closetPicksMenuItems) { item in
                                         Button(action: { openClosetPicksMenuItem(item) }) {
-                                            Label(item.title, systemImage: DesignSystem.Icon.link)
+                                            Label(
+                                                item.title,
+                                                systemImage: item.openURLs.contains(where: { $0.scheme == "vidmin" || $0.host?.contains("youtube") == true })
+                                                    ? "play.rectangle.fill"
+                                                    : DesignSystem.Icon.link
+                                            )
                                         }
                                     }
                                 }
@@ -1443,7 +1484,18 @@ struct MovieDetailView: View {
                                             sourceUrl: sourceContent.sourceUrl,
                                             episode: sourceContent.podcastEpisode,
                                             sourceName: sourceContent.sourceName
-                                        )
+                                        ),
+                                        onOpen: sourceContent.sourceIdentifier == ClosetPicksSource.identifier
+                                            ? {
+                                                openClosetPicksURLs(
+                                                    ClosetPicksSource.openURLs(
+                                                        sourceUrl: sourceContent.sourceUrl,
+                                                        episodeId: sourceContent.podcastEpisode?.episodeId,
+                                                        youtubeUrl: sourceContent.podcastEpisode?.youtubeUrl
+                                                    )
+                                                )
+                                            }
+                                            : nil
                                     )
                                 }
                             } else {
@@ -1467,7 +1519,18 @@ struct MovieDetailView: View {
                                             sourceUrl: legacySource.sourceUrl,
                                             episode: legacySource.podcastEpisode,
                                             sourceName: legacySource.sourceName
-                                        )
+                                        ),
+                                        onOpen: legacySource.sourceIdentifier == ClosetPicksSource.identifier
+                                            ? {
+                                                openClosetPicksURLs(
+                                                    ClosetPicksSource.openURLs(
+                                                        sourceUrl: legacySource.sourceUrl,
+                                                        episodeId: legacySource.podcastEpisode?.episodeId,
+                                                        youtubeUrl: legacySource.podcastEpisode?.youtubeUrl
+                                                    )
+                                                )
+                                            }
+                                            : nil
                                     )
                                 }
                             }
@@ -1978,10 +2041,16 @@ struct SourceContentCardView: View {
     let sourceContent: MovieDetailView.SourceContentSnapshot
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
+    var onOpen: (() -> Void)? = nil
     
     var body: some View {
         Group {
-            if let podcastDestinationURL {
+            if let onOpen {
+                Button(action: onOpen) {
+                    content
+                }
+                .buttonStyle(.plain)
+            } else if let podcastDestinationURL {
                 Link(destination: podcastDestinationURL) {
                     content
                 }
@@ -2084,10 +2153,16 @@ struct LegacySourceCardView: View {
     let movieTitle: String?
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
+    var onOpen: (() -> Void)? = nil
     
     var body: some View {
         Group {
-            if legacySource.podcastEpisode != nil, let podcastDestinationURL {
+            if let onOpen {
+                Button(action: onOpen) {
+                    content
+                }
+                .buttonStyle(.plain)
+            } else if legacySource.podcastEpisode != nil, let podcastDestinationURL {
                 Link(destination: podcastDestinationURL) {
                     content
                 }

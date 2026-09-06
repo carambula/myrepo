@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Floating dismiss button that appears when the user scrolls past a threshold.
-/// Tapping dismisses the current view. Automatically dismisses when scrolled to the bottom.
+/// Tapping dismisses the current view. Near-bottom only expands the button.
 ///
 /// Used in all 4 min apps for detail/show views.
 ///
@@ -72,10 +72,5 @@ public struct ScrollDismissButton: View {
         .scaleEffect(isVisible ? 1.0 : 0.8)
         .animation(MinAnimation.standard, value: isVisible)
         .animation(MinAnimation.quick, value: buttonSize)
-        .onChange(of: isNearBottom) { _, nearBottom in
-            if nearBottom {
-                dismiss()
-            }
-        }
     }
 }

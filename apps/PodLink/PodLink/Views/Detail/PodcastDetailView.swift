@@ -34,6 +34,8 @@ struct PodcastDetailView: View {
     private let searchControlHeight: CGFloat = 56
     
     @State private var scrollOffset: CGFloat = 0
+    @State private var scrollViewportHeight: CGFloat = 0
+    @State private var sentinelMinY: CGFloat = 0
     @State private var isNearBottom = false
 
     var body: some View {
@@ -130,7 +132,7 @@ struct PodcastDetailView: View {
                             GeometryReader { sentinel in
                                 Color.clear.preference(
                                     key: BottomDetectionPreferenceKey.self,
-                                    value: sentinel.frame(in: .named("scroll")).maxY
+                                    value: sentinel.frame(in: .named("scroll")).minY
                                 )
                             }
                         )
@@ -139,8 +141,22 @@ struct PodcastDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .coordinateSpace(name: "scroll")
-            .onPreferenceChange(BottomDetectionPreferenceKey.self) { maxY in
-                detectBottomProximity(maxY: maxY)
+            .background {
+                GeometryReader { viewport in
+                    Color.clear
+                        .onAppear { scrollViewportHeight = viewport.size.height }
+                        .onChange(of: viewport.size.height) { _, height in
+                            scrollViewportHeight = height
+                            updateBottomProximity()
+                        }
+                }
+            }
+            .onPreferenceChange(BottomDetectionPreferenceKey.self) { minY in
+                sentinelMinY = minY
+                updateBottomProximity()
+            }
+            .onChange(of: scrollOffset) { _, _ in
+                updateBottomProximity()
             }
 
             ZStack(alignment: .bottomTrailing) {
@@ -563,9 +579,11 @@ struct PodcastDetailView: View {
     
     // MARK: - Bottom Detection
     
-    private func detectBottomProximity(maxY: CGFloat) {
-        // Consider "near bottom" if within 50px of the bottom of the visible area
-        let threshold: CGFloat = 50
-        isNearBottom = maxY < threshold
+    private func updateBottomProximity() {
+        isNearBottom = ScrollBottomProximity.isNearBottom(
+            sentinelMinY: sentinelMinY,
+            viewportHeight: scrollViewportHeight,
+            scrollOffset: scrollOffset
+        )
     }
 }

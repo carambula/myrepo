@@ -231,7 +231,7 @@ private class RSSParser: NSObject, XMLParserDelegate {
 
         if isInItem {
             switch elementName {
-            case "title": itemTitle = text
+            case "title": itemTitle = text.rssDecodedPlainText
             case "description", "content:encoded":
                 if text.count > itemDescription.count { itemDescription = text }
             case "pubDate": itemPubDate = text
@@ -253,9 +253,9 @@ private class RSSParser: NSObject, XMLParserDelegate {
             }
         } else if isInChannel {
             switch elementName {
-            case "title": channelTitle = text
+            case "title": channelTitle = text.rssDecodedPlainText
             case "description": channelDescription = text
-            case "itunes:author": channelAuthor = text
+            case "itunes:author": channelAuthor = text.rssDecodedPlainText
             case "language": channelLanguage = text
             case "itunes:explicit": channelExplicit = (text == "yes" || text == "true")
             case "link": channelWebsite = text

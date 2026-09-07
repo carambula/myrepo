@@ -114,9 +114,7 @@ final class MovieSearchSession: ObservableObject {
             Set(pool.compactMap(\.year).map { ReleasePeriod.from(year: $0).decade })
         ).sorted(by: >)
 
-        availablePhysicalMediaFilters = PhysicalMediaFilter.allCases.filter { filter in
-            pool.contains { $0.physicalMedia?.matches(filter) == true }
-        }
+        availablePhysicalMediaFilters = PhysicalMediaFilter.available(in: pool)
     }
 
     private func initialScopedMovies() -> [Movie] {

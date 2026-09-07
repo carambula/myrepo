@@ -531,6 +531,33 @@ struct WatchedItTests {
         #expect(PhysicalMediaFilter.criterion.group == .partnership)
     }
 
+    @Test func watchLocationFiltersShareTheStreamingMenu() {
+        var filters = MovieSearchFilters()
+        #expect(!filters.hasWatchLocationFilter)
+
+        filters.selectedStreamingService = "Netflix"
+        #expect(filters.hasWatchLocationFilter)
+
+        filters.clearWatchLocationFilters()
+        #expect(filters.selectedStreamingService == nil)
+        #expect(!filters.hasWatchLocationFilter)
+
+        filters.theatricalFilter = .inTheaters
+        filters.physicalMediaFilter = .criterion
+        #expect(filters.hasWatchLocationFilter)
+
+        filters.clearWatchLocationFilters()
+        #expect(filters.theatricalFilter == nil)
+        #expect(filters.physicalMediaFilter == nil)
+        #expect(!filters.hasWatchLocationFilter)
+
+        let movies = [
+            Movie(title: "Jaws", year: 1975),
+            Movie(title: "Seven Samurai", year: 1954, physicalMedia: PhysicalMedia(hasCriterion: true, has4K: true))
+        ]
+        #expect(PhysicalMediaFilter.available(in: movies) == [.uhd4k, .criterion])
+    }
+
     @Test func searchEngineFiltersByPeriodAndPhysicalMedia() {
         let seventies = Movie(title: "Jaws", year: 1975)
         let nineties = Movie(

@@ -380,7 +380,9 @@ private struct CollectionsHomeContentView: View {
 
     private var customToolbarControlHeight: CGFloat { GlassControl.standardHeight }
 
-    private var hasPreferredStreamingServices: Bool { !preferredStreamingServices.isEmpty }
+    private var availablePhysicalMediaFilters: [PhysicalMediaFilter] {
+        PhysicalMediaFilter.available(in: localDB.movies)
+    }
 
     private var allGenres: [String] {
         Array(Set(localDB.movies.flatMap(\.genres))).sorted()
@@ -391,7 +393,7 @@ private struct CollectionsHomeContentView: View {
             GlassCapsuleToolbar(spacing: customToolbarIconSpacing.points, height: customToolbarControlHeight) {
                 statusMenu
                 listMenu
-                if hasPreferredStreamingServices { streamingServiceMenu }
+                streamingServiceMenu
                 genreMenu
                 ratingMenu
             }
@@ -555,16 +557,27 @@ private struct CollectionsHomeContentView: View {
 
     private var streamingServiceMenu: some View {
         Menu {
-            Button("All Services") { applyStreamingServiceFilterFromToolbar(nil) }
-            Divider()
-            ForEach(preferredStreamingServices, id: \.self) { service in
-                Button(service) { applyStreamingServiceFilterFromToolbar(service) }
-            }
-            Divider()
-            Button("My Services") { applyStreamingServiceFilterFromToolbar("My Services") }
+            WatchLocationFilterMenuContent(
+                preferredStreamingServices: preferredStreamingServices,
+                availablePhysicalMediaFilters: availablePhysicalMediaFilters,
+                selectedStreamingService: nil,
+                theatricalFilter: nil,
+                physicalMediaFilter: nil,
+                onClear: { applyStreamingServiceFilterFromToolbar(nil) },
+                onSelectStreamingService: { service in
+                    applyStreamingServiceFilterFromToolbar(service)
+                },
+                onSelectTheatrical: { filter in
+                    applyTheatricalFilterFromToolbar(filter)
+                },
+                onSelectPhysicalMedia: { filter in
+                    applyPhysicalMediaFilterFromToolbar(filter)
+                }
+            )
         } label: {
             DesignSystemIcon("play.square.stack.fill", size: DesignSystem.IconSize.md, color: toolbarSecondaryAccentColor)
         }
+        .accessibilityLabel("Streaming")
     }
 
     private var genreMenu: some View {
@@ -784,6 +797,18 @@ private struct CollectionsHomeContentView: View {
     private func applyStreamingServiceFilterFromToolbar(_ service: String?) {
         var filters = MovieSearchFilters()
         filters.selectedStreamingService = service
+        presentGlobalSearch(initialFilters: filters)
+    }
+
+    private func applyTheatricalFilterFromToolbar(_ filter: TheatricalFilter) {
+        var filters = MovieSearchFilters()
+        filters.theatricalFilter = filter
+        presentGlobalSearch(initialFilters: filters)
+    }
+
+    private func applyPhysicalMediaFilterFromToolbar(_ filter: PhysicalMediaFilter) {
+        var filters = MovieSearchFilters()
+        filters.physicalMediaFilter = filter
         presentGlobalSearch(initialFilters: filters)
     }
 

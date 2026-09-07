@@ -83,24 +83,10 @@ struct SearchFilterMenus: View {
                 Label("Lists", systemImage: DesignSystem.Icon.listRectangle)
             }
         }
-        if showsStreamingMenu {
-            Menu {
-                streamingMenuContent
-            } label: {
-                Label("Streaming", systemImage: "play.square.stack.fill")
-            }
-        }
         Menu {
-            theatricalMenuContent
+            watchLocationMenuContent
         } label: {
-            Label("Theaters", systemImage: DesignSystem.Icon.ticket)
-        }
-        if !availablePhysicalMediaFilters.isEmpty {
-            Menu {
-                physicalMediaMenuContent
-            } label: {
-                Label("Discs", systemImage: DesignSystem.Icon.disc)
-            }
+            Label("Streaming", systemImage: "play.square.stack.fill")
         }
         if !availablePeriods.isEmpty {
             Menu {
@@ -139,30 +125,12 @@ struct SearchFilterMenus: View {
                 .accessibilityLabel("Lists")
             }
 
-            if showsStreamingMenu {
-                Menu {
-                    streamingMenuContent
-                } label: {
-                    lifestyleIcon("play.square.stack.fill", isActive: filters.selectedStreamingService != nil)
-                }
-                .accessibilityLabel("Streaming")
-            }
-
             Menu {
-                theatricalMenuContent
+                watchLocationMenuContent
             } label: {
-                lifestyleIcon(DesignSystem.Icon.ticket, isActive: filters.theatricalFilter != nil)
+                lifestyleIcon("play.square.stack.fill", isActive: filters.hasWatchLocationFilter)
             }
-            .accessibilityLabel("Theaters")
-
-            if !availablePhysicalMediaFilters.isEmpty {
-                Menu {
-                    physicalMediaMenuContent
-                } label: {
-                    lifestyleIcon(DesignSystem.Icon.disc, isActive: filters.physicalMediaFilter != nil)
-                }
-                .accessibilityLabel("Discs")
-            }
+            .accessibilityLabel("Streaming")
 
             if !availablePeriods.isEmpty {
                 Menu {
@@ -189,10 +157,6 @@ struct SearchFilterMenus: View {
         }
     }
 
-    private var showsStreamingMenu: Bool {
-        !availableStreamingServices.isEmpty || !preferredStreamingServices.isEmpty
-    }
-
     private func lifestyleIcon(_ systemName: String, isActive: Bool) -> some View {
         DesignSystemIcon(
             systemName,
@@ -209,9 +173,7 @@ struct SearchFilterMenus: View {
         filters.watchFilter != .all
             || filters.selectedGenre != nil
             || filters.selectedMPAARating != nil
-            || filters.selectedStreamingService != nil
-            || filters.theatricalFilter != nil
-            || filters.physicalMediaFilter != nil
+            || filters.hasWatchLocationFilter
             || filters.selectedPeriod != nil
             || (allowsListFilter && filters.selectedListIdentifier != nil)
     }
@@ -326,17 +288,79 @@ struct SearchFilterMenus: View {
     }
 
     @ViewBuilder
-    private var streamingMenuContent: some View {
-        Button("All Services") {
-            updateFilters { $0.selectedStreamingService = nil }
+    private var watchLocationMenuContent: some View {
+        WatchLocationFilterMenuContent(
+            preferredStreamingServices: preferredStreamingServices,
+            availablePhysicalMediaFilters: availablePhysicalMediaFilters,
+            selectedStreamingService: filters.selectedStreamingService,
+            theatricalFilter: filters.theatricalFilter,
+            physicalMediaFilter: filters.physicalMediaFilter,
+            onClear: {
+                updateFilters { $0.clearWatchLocationFilters() }
+            },
+            onSelectStreamingService: { service in
+                updateFilters { $0.selectedStreamingService = service }
+            },
+            onSelectTheatrical: { filter in
+                updateFilters { $0.theatricalFilter = filter }
+            },
+            onSelectPhysicalMedia: { filter in
+                updateFilters { $0.physicalMediaFilter = filter }
+            }
+        )
+    }
+
+    @ViewBuilder
+    var periodMenuContent: some View {
+        Button("All Periods") {
+            updateFilters { $0.selectedPeriod = nil }
+        }
+        ForEach(availablePeriods, id: \.self) { decade in
+            Button {
+                updateFilters {
+                    $0.selectedPeriod = decade
+                    $0.selectedReleaseYear = nil
+                }
+            } label: {
+                let label = ReleasePeriod(decade: decade).label
+                if filters.selectedPeriod == decade {
+                    Label(label, systemImage: "checkmark")
+                } else {
+                    Text(label)
+                }
+            }
+        }
+    }
+
+    private func updateFilters(_ mutate: (inout MovieSearchFilters) -> Void) {
+        var updated = filters
+        mutate(&updated)
+        filters = updated
+    }
+}
+
+struct WatchLocationFilterMenuContent: View {
+    let preferredStreamingServices: [String]
+    let availablePhysicalMediaFilters: [PhysicalMediaFilter]
+    let selectedStreamingService: String?
+    let theatricalFilter: TheatricalFilter?
+    let physicalMediaFilter: PhysicalMediaFilter?
+    let onClear: () -> Void
+    let onSelectStreamingService: (String) -> Void
+    let onSelectTheatrical: (TheatricalFilter) -> Void
+    let onSelectPhysicalMedia: (PhysicalMediaFilter) -> Void
+
+    var body: some View {
+        Button("All") {
+            onClear()
         }
         if !preferredStreamingServices.isEmpty {
             Divider()
             ForEach(preferredStreamingServices, id: \.self) { service in
                 Button {
-                    updateFilters { $0.selectedStreamingService = service }
+                    onSelectStreamingService(service)
                 } label: {
-                    if filters.selectedStreamingService == service {
+                    if selectedStreamingService == service {
                         Label(service, systemImage: "checkmark")
                     } else {
                         Text(service)
@@ -345,21 +369,27 @@ struct SearchFilterMenus: View {
             }
             Divider()
             Button {
-                updateFilters { $0.selectedStreamingService = "My Services" }
+                onSelectStreamingService("My Services")
             } label: {
-                if filters.selectedStreamingService == "My Services" {
+                if selectedStreamingService == "My Services" {
                     Label("My Services", systemImage: "checkmark")
                 } else {
                     Text("My Services")
                 }
             }
         }
-    }
-
-    @ViewBuilder
-    var physicalMediaMenuContent: some View {
-        Button("All Discs") {
-            updateFilters { $0.physicalMediaFilter = nil }
+        Section("Theaters") {
+            ForEach(TheatricalFilter.allCases, id: \.self) { filter in
+                Button {
+                    onSelectTheatrical(filter)
+                } label: {
+                    if theatricalFilter == filter {
+                        Label(filter.rawValue, systemImage: "checkmark")
+                    } else {
+                        Text(filter.rawValue)
+                    }
+                }
+            }
         }
         if !availableFormats.isEmpty {
             Section("Physical Media") {
@@ -388,59 +418,13 @@ struct SearchFilterMenus: View {
     @ViewBuilder
     private func physicalMediaFilterButton(_ filter: PhysicalMediaFilter) -> some View {
         Button {
-            updateFilters { $0.physicalMediaFilter = filter }
+            onSelectPhysicalMedia(filter)
         } label: {
-            if filters.physicalMediaFilter == filter {
+            if physicalMediaFilter == filter {
                 Label(filter.rawValue, systemImage: "checkmark")
             } else {
                 Text(filter.rawValue)
             }
         }
-    }
-
-    @ViewBuilder
-    var periodMenuContent: some View {
-        Button("All Periods") {
-            updateFilters { $0.selectedPeriod = nil }
-        }
-        ForEach(availablePeriods, id: \.self) { decade in
-            Button {
-                updateFilters {
-                    $0.selectedPeriod = decade
-                    $0.selectedReleaseYear = nil
-                }
-            } label: {
-                let label = ReleasePeriod(decade: decade).label
-                if filters.selectedPeriod == decade {
-                    Label(label, systemImage: "checkmark")
-                } else {
-                    Text(label)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var theatricalMenuContent: some View {
-        Button("All Movies") {
-            updateFilters { $0.theatricalFilter = nil }
-        }
-        ForEach(TheatricalFilter.allCases, id: \.self) { filter in
-            Button {
-                updateFilters { $0.theatricalFilter = filter }
-            } label: {
-                if filters.theatricalFilter == filter {
-                    Label(filter.rawValue, systemImage: "checkmark")
-                } else {
-                    Text(filter.rawValue)
-                }
-            }
-        }
-    }
-
-    private func updateFilters(_ mutate: (inout MovieSearchFilters) -> Void) {
-        var updated = filters
-        mutate(&updated)
-        filters = updated
     }
 }

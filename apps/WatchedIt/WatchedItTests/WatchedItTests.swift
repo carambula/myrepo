@@ -768,6 +768,31 @@ struct WatchedItTests {
         let attributed = ClosetPicksSource.attributionText(guests)
         #expect(String(attributed.characters) == "Agnes Varda   also Jeremy O. Harris, Desiree Akhavan")
         #expect(guests.allSatisfy { $0.url != nil })
+
+        #expect(ClosetPicksSource.watchAndShopURL(from: ClosetPicksSource.indexURL.absoluteString) == nil)
+        #expect(
+            ClosetPicksSource.preferredPermalink(
+                sourceUrl: ClosetPicksSource.indexURL.absoluteString,
+                episodeId: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks"
+            ) == "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks"
+        )
+
+        var indexURLs: [String: String] = [:]
+        ClosetPicksSource.addGuestURLs(
+            to: &indexURLs,
+            sourceTitle: "Agnes Varda’s Closet Picks",
+            sourceUrl: ClosetPicksSource.indexURL.absoluteString,
+            episode: nil
+        )
+        #expect(indexURLs.isEmpty)
+
+        let ignoredIndex = ClosetPicksSource.guestAttributions(
+            guests: nil,
+            description: "Agnes Varda",
+            sourceTitle: "Agnes Varda’s Closet Picks",
+            permalink: ClosetPicksSource.indexURL.absoluteString
+        )
+        #expect(ignoredIndex[0].url == nil)
     }
 
     @Test func closetPicksMenuTitleUsesEpisodeName() {

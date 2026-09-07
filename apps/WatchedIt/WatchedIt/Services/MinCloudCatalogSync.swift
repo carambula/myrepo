@@ -325,7 +325,12 @@ final class MinCloudCatalogSync {
                 if let rank = link.rank {
                     existing.rank = rank
                 }
-                if existing.sourceUrl == nil || existing.sourceUrl?.isEmpty == true {
+                if ClosetPicksSource.normalizedIdentifier(identifier) == ClosetPicksSource.identifier {
+                    if ClosetPicksSource.watchAndShopURL(from: existing.sourceUrl) == nil,
+                       let next = Self.sourceUrl(from: link) {
+                        existing.sourceUrl = next
+                    }
+                } else if existing.sourceUrl == nil || existing.sourceUrl?.isEmpty == true {
                     existing.sourceUrl = Self.sourceUrl(from: link)
                 }
                 continue

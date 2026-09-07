@@ -11,7 +11,7 @@ enum ShowNotesMediaLinkExtractor {
                 type: ref.likelyType,
                 title: ref.text,
                 subtitle: ref.year.map { "\($0)" },
-                imageURL: nil,
+                imageURL: YouTubeLinkMedia.thumbnailURL(from: url),
                 destinationURL: url,
                 appSchemeURL: nil,
                 confidence: ref.confidence,

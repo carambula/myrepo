@@ -22,6 +22,7 @@ actor RSSFeedService {
         await cache.remove(metaCacheKey(feedURL: feedURL, authTag: "none"))
         if let seg = await PrivateFeedAuthStore.shared.cacheKeySegment(for: feedURL) {
             await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: seg))
+            await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)")
             await cache.remove(metaCacheKey(feedURL: feedURL, authTag: seg))
         }
     }

@@ -46,7 +46,6 @@ struct EpisodeDetailView: View {
 
                 header
                 playControls
-                mediaLinksSection
                 showNotesSection
                 chaptersSection
                 EpisodeTranscriptDetailSection(
@@ -238,62 +237,32 @@ struct EpisodeDetailView: View {
         downloadManager.startDownload(for: mergedEpisode, podcast: podcast)
     }
 
-    // MARK: - Media Links
-
-    private var mediaLinksSection: some View {
-        Group {
-            if !mediaLinks.isEmpty || isLoadingLinks {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-                    Text("Connected Media")
-                        .font(DesignSystem.Typography.headlineMedium())
-                        .foregroundColor(DesignSystem.Colors.headlineColor)
-                        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-
-                    if isLoadingLinks {
-                        HStack {
-                            ProgressView()
-                            Text("Analyzing episode...")
-                                .font(DesignSystem.Typography.captionMedium())
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DesignSystem.Spacing.lg)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: DesignSystem.Spacing.md) {
-                                ForEach(mediaLinks) { link in
-                                    MediaLinkCardView(link: link)
-                                }
-                            }
-                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                        }
-                    }
-                }
-                .padding(.vertical, DesignSystem.Spacing.md)
-            }
-        }
-    }
-
     // MARK: - Show Notes
 
     private var showNotesSection: some View {
-        Group {
-            if !mergedEpisode.description.isEmpty {
+        let hasNotes = !mergedEpisode.description.isEmpty
+        let hasCards = !mediaLinks.isEmpty || isLoadingLinks
+        return Group {
+            if hasNotes || hasCards {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                     Text("Show Notes")
                         .font(DesignSystem.Typography.headlineMedium())
                         .foregroundColor(DesignSystem.Colors.headlineColor)
 
-                    Button {
-                        withAnimation { showFullNotes.toggle() }
-                    } label: {
-                        Text(mergedEpisode.description.strippingHTML)
-                            .font(DesignSystem.Typography.bodyMedium())
-                            .foregroundColor(DesignSystem.Colors.textSecondary)
-                            .lineLimit(showFullNotes ? nil : 6)
-                            .multilineTextAlignment(.leading)
+                    if hasNotes {
+                        Button {
+                            withAnimation { showFullNotes.toggle() }
+                        } label: {
+                            Text(mergedEpisode.description.strippingHTML)
+                                .font(DesignSystem.Typography.bodyMedium())
+                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                                .lineLimit(showFullNotes ? nil : 6)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+
+                    EpisodeShowNotesMediaCards(links: mediaLinks, isLoading: isLoadingLinks)
                 }
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
                 .padding(.vertical, DesignSystem.Spacing.md)

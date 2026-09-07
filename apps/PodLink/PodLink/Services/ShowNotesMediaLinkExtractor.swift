@@ -59,16 +59,20 @@ enum ShowNotesMediaLinkExtractor {
     }
 
     static func canonicalURLKey(_ url: URL) -> String {
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.scheme = components?.scheme?.lowercased()
-        components?.host = components?.host?.lowercased()
-        components?.fragment = nil
-        if var path = components?.path, path.count > 1, path.hasSuffix("/") {
-            path.removeLast()
-            components?.path = path
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString.lowercased()
         }
-        let raw = components?.string ?? url.absoluteString
-        var key = raw.lowercased()
+        let scheme = components.scheme?.lowercased()
+        let host = components.host?.lowercased()
+        var path = components.path
+        components.scheme = scheme
+        components.host = host
+        components.fragment = nil
+        if path.count > 1, path.hasSuffix("/") {
+            path.removeLast()
+            components.path = path
+        }
+        var key = (components.string ?? url.absoluteString).lowercased()
         if key.hasSuffix("/"), !key.contains("?"), key.count > 8 {
             key.removeLast()
         }

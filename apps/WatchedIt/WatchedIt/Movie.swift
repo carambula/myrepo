@@ -30,6 +30,9 @@ public struct Movie: Identifiable, Codable, Hashable {
     public var isListened: Bool
     public var isSaved: Bool
     public let lastUpdated: Date
+    /// Guest names, source titles, and full episode/source descriptions for keyword search.
+    /// Not persisted on Movie JSON/CloudKit; filled when mapping from catalog source rows.
+    public var sourceSearchText: String = ""
     
     public init(
         id: String = UUID().uuidString,
@@ -52,7 +55,8 @@ public struct Movie: Identifiable, Codable, Hashable {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        sourceSearchText: String = ""
     ) {
         self.id = id
         self.title = title
@@ -75,6 +79,14 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.isListened = isListened
         self.isSaved = isSaved
         self.lastUpdated = lastUpdated
+        self.sourceSearchText = sourceSearchText
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, year, tmdbId, posterPath, backdropPath, overview
+        case mpaaRating, genres, streamingServices, podcastEpisode, credits
+        case rewatchablesDiscussion, trailer, oscarAwards, physicalMedia, theatricalRun
+        case isRewatched, isListened, isSaved, lastUpdated
     }
 
     /// Newest-first lists use episode date when the catalog/RSS link has one,

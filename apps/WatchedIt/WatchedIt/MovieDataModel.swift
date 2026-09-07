@@ -410,8 +410,27 @@ final class MovieData {
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
-            lastUpdated: lastUpdated
+            lastUpdated: lastUpdated,
+            sourceSearchText: collectedSourceSearchText()
         )
+    }
+
+    private func collectedSourceSearchText() -> String {
+        var pieces: [String?] = []
+        for content in sourceContents ?? [] {
+            pieces.append(content.sourceTitle)
+            pieces.append(content.sourceDescription)
+            pieces.append(content.podcastEpisode?.title)
+            pieces.append(content.podcastEpisode?.description)
+            pieces.append(content.source?.name)
+        }
+        for dataSource in dataSources ?? [] {
+            pieces.append(dataSource.sourceTitle)
+            pieces.append(dataSource.podcastEpisode?.title)
+            pieces.append(dataSource.podcastEpisode?.description)
+            pieces.append(dataSource.dataSource?.name)
+        }
+        return MovieSourceSearchText.join(pieces)
     }
     
     static func fromMovie(_ movie: Movie, cloudKitRecordID: String? = nil) -> MovieData {

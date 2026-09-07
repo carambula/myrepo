@@ -52,6 +52,12 @@ enum MovieSearchEngine {
 
             if let episode = movie.podcastEpisode {
                 fields.append(episode.title)
+                if let description = episode.description, !description.isEmpty {
+                    fields.append(description)
+                }
+            }
+            if !movie.sourceSearchText.isEmpty {
+                fields.append(movie.sourceSearchText)
             }
 
             if let media = movie.physicalMedia {
@@ -100,6 +106,13 @@ enum MovieSearchEngine {
                     return true
                 }
                 if let year = movie.year, String(year).contains(trimmedQuery) {
+                    return true
+                }
+                if movie.sourceSearchText.lowercased().contains(normalizedQuery) {
+                    return true
+                }
+                if let description = movie.podcastEpisode?.description?.lowercased(),
+                   description.contains(normalizedQuery) {
                     return true
                 }
                 return false

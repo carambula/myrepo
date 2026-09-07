@@ -23,11 +23,16 @@ export type ClosetPicksFilm = {
   year: number | null;
 };
 
+export type ClosetPicksGuest = {
+  name: string;
+  url: string;
+};
+
 export type CollapsedClosetPick = {
   title: string;
   rank: number;
   pickCount: number;
-  guests: string[];
+  guests: ClosetPicksGuest[];
   sourceTitle: string;
   description: string;
   episodeDate: string | null;
@@ -99,6 +104,133 @@ export const formatClosetPicksDescription = (guests: string[]) => {
     return names[0];
   }
   return `${names[0]}   also ${names.slice(1).join(", ")}`;
+};
+
+export const normalizeClosetPicksGuest = (name: string) =>
+  decode(name)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+export const parseClosetPicksDescriptionGuests = (description: string) => {
+  const trimmed = String(description || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#039;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&quot;/g, '"')
+    .replace(/\u00a0/g, " ")
+    .trim();
+  if (!trimmed) {
+    return [];
+  }
+  const parts = trimmed.split(/\s{3}also\s+/);
+  if (parts.length === 1) {
+    return [decode(trimmed)];
+  }
+  const rest = parts
+    .slice(1)
+    .join("   also ")
+    .split(/,\s+/)
+    .map((name) => decode(name))
+    .filter(Boolean);
+  return [decode(parts[0]), ...rest].filter(Boolean);
+};
+
+export const closetPicksGuestUrlIndex = (
+  rows: Array<{ sourceTitle?: string | null; sourceUrl?: string | null; guests?: ClosetPicksGuest[] | null }>
+) => {
+  const index = new Map<string, string>();
+  const add = (name: string | null | undefined, url: string | null | undefined) => {
+    const key = normalizeClosetPicksGuest(name || "");
+    const href = String(url || "").trim();
+    if (!key || !href) {
+      return;
+    }
+    if (!index.has(key)) {
+      index.set(key, href);
+    }
+  };
+  for (const row of rows) {
+    for (const guest of row.guests ?? []) {
+      add(guest.name, guest.url);
+    }
+    add(guestNameFromEpisodeTitle(String(row.sourceTitle || "")), row.sourceUrl);
+  }
+  return index;
+};
+
+export const guestsWithClosetPicksUrls = (
+  names: string[],
+  index: Map<string, string>,
+  fallbackUrl?: string | null
+): ClosetPicksGuest[] =>
+  names
+    .map((name, indexPosition) => ({
+      name,
+      url:
+        index.get(normalizeClosetPicksGuest(name)) ||
+        (indexPosition === 0 ? String(fallbackUrl || "") : "")
+    }))
+    .filter((guest) => guest.name && guest.url);
+
+export const attachClosetPicksGuestLinks = <T extends Record<string, unknown>>(
+  rows: T[],
+  indexRows: Array<Record<string, unknown>> = rows
+): T[] => {
+  const closet = indexRows.filter(
+    (row) => String(row.source_id || row.sourceIdentifier || "") === CLOSET_PICKS_SOURCE_ID
+  );
+  const index = closetPicksGuestUrlIndex(
+    closet.map((row) => {
+      const episode = row.episode && typeof row.episode === "object" ? (row.episode as Record<string, unknown>) : {};
+      return {
+        sourceTitle: String(row.source_title || row.sourceTitle || episode.title || ""),
+        sourceUrl: String(episode.episodeId || row.sourceUrl || ""),
+        guests: Array.isArray(episode.guests)
+          ? (episode.guests as ClosetPicksGuest[])
+          : Array.isArray(row.guests)
+            ? (row.guests as ClosetPicksGuest[])
+            : []
+      };
+    })
+  );
+  return rows.map((row) => {
+    if (String(row.source_id || row.sourceIdentifier || "") !== CLOSET_PICKS_SOURCE_ID) {
+      return row;
+    }
+    const episode =
+      row.episode && typeof row.episode === "object" ? { ...(row.episode as Record<string, unknown>) } : {};
+    const existing = Array.isArray(episode.guests)
+      ? (episode.guests as ClosetPicksGuest[])
+      : Array.isArray(row.guests)
+        ? (row.guests as ClosetPicksGuest[])
+        : [];
+    const names = existing.length
+      ? existing.map((guest) => guest.name)
+      : parseClosetPicksDescriptionGuests(String(episode.description || row.podcastEpisodeDescription || ""));
+    if (!names.length) {
+      const fromTitle = guestNameFromEpisodeTitle(String(row.source_title || row.sourceTitle || episode.title || ""));
+      if (fromTitle) {
+        names.push(fromTitle);
+      }
+    }
+    const guests = guestsWithClosetPicksUrls(
+      names,
+      index,
+      String(episode.episodeId || row.sourceUrl || "")
+    );
+    if (!guests.length) {
+      return row;
+    }
+    if (row.episode && typeof row.episode === "object") {
+      return { ...row, episode: { ...episode, guests }, guests };
+    }
+    return { ...row, guests };
+  });
 };
 
 export const normalizeClosetPicksTitle = (title: string) =>
@@ -340,7 +472,7 @@ export const collapseClosetPicks = (
     string,
     {
       title: string;
-      guests: string[];
+      guests: ClosetPicksGuest[];
       sourceTitle: string;
       episodeUrl: string;
       episodeDate: string | null;
@@ -363,7 +495,7 @@ export const collapseClosetPicks = (
       if (!existing) {
         byTitle.set(key, {
           title: film.title,
-          guests: guest ? [guest] : [],
+          guests: guest ? [{ name: guest, url: visit.episode.episodeUrl }] : [],
           sourceTitle: visit.episode.episodeTitle,
           episodeUrl: visit.episode.episodeUrl,
           episodeDate: visit.episode.date,
@@ -375,8 +507,8 @@ export const collapseClosetPicks = (
         });
         continue;
       }
-      if (guest && !existing.guests.includes(guest)) {
-        existing.guests.push(guest);
+      if (guest && !existing.guests.some((row) => normalizeClosetPicksGuest(row.name) === normalizeClosetPicksGuest(guest))) {
+        existing.guests.push({ name: guest, url: visit.episode.episodeUrl });
       }
       if (!existing.filmUrl && film.filmUrl) {
         existing.filmUrl = film.filmUrl;
@@ -410,7 +542,7 @@ export const collapseClosetPicks = (
       pickCount: row.guests.length,
       guests: row.guests,
       sourceTitle: row.sourceTitle,
-      description: formatClosetPicksDescription(row.guests),
+      description: formatClosetPicksDescription(row.guests.map((guest) => guest.name)),
       episodeDate: row.episodeDate,
       episodeUrl: row.episodeUrl,
       filmUrl: row.filmUrl,
@@ -434,7 +566,8 @@ export const toClosetPicksCatalogItem = (
   director: film.director,
   year: film.year,
   podcastEpisodeDescription: film.description,
-  youtubeUrl: film.youtubeUrl ?? null
+  youtubeUrl: film.youtubeUrl ?? null,
+  guests: film.guests
 });
 
 export const CLOSET_PICKS_FETCH_HEADERS = {

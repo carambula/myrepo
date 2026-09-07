@@ -39,14 +39,33 @@ export type ImportMovie = {
   podcastEpisodeDescription?: string | null;
   sourceUrl?: string | null;
   youtubeUrl?: string | null;
+  guests?: Array<{ name?: string | null; url?: string | null }> | null;
   physicalMedia?: unknown;
 };
 
+const guestsFromImportMovie = (movie: ImportMovie) => {
+  if (!Array.isArray(movie.guests)) {
+    return undefined;
+  }
+  const guests = movie.guests
+    .map((guest) => ({
+      name: String(guest?.name || "").trim(),
+      url: String(guest?.url || "").trim()
+    }))
+    .filter((guest) => guest.name && guest.url);
+  return guests.length ? guests : undefined;
+};
+
 export const episodeFromImportMovie = (movie: ImportMovie) => {
-  if (movie.podcastEpisode) {
+  const guests = guestsFromImportMovie(movie);
+  if (movie.podcastEpisode && typeof movie.podcastEpisode === "object") {
+    const episode = movie.podcastEpisode as Record<string, unknown>;
+    if (guests && !Array.isArray(episode.guests)) {
+      return { ...episode, guests };
+    }
     return movie.podcastEpisode;
   }
-  if (!movie.podcastEpisodeDescription && !movie.sourceUrl && !movie.youtubeUrl) {
+  if (!movie.podcastEpisodeDescription && !movie.sourceUrl && !movie.youtubeUrl && !guests) {
     return null;
   }
   return {
@@ -54,7 +73,8 @@ export const episodeFromImportMovie = (movie: ImportMovie) => {
     description: movie.podcastEpisodeDescription ?? null,
     publishDate: movie.episodeDate ?? null,
     episodeId: movie.sourceUrl ?? null,
-    youtubeUrl: movie.youtubeUrl ?? null
+    youtubeUrl: movie.youtubeUrl ?? null,
+    ...(guests ? { guests } : {})
   };
 };
 

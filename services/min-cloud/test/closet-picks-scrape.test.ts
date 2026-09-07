@@ -4,9 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import {
+  attachClosetPicksGuestLinks,
   collapseClosetPicks,
   formatClosetPicksDescription,
   guestNameFromEpisodeTitle,
+  parseClosetPicksDescriptionGuests,
   isClosetPicksIndexUrl,
   isClosetPicksUrl,
   parseClosetPicksEpisode,
@@ -43,6 +45,10 @@ describe("closet-picks scrape", () => {
     assert.equal(
       formatClosetPicksDescription(["Matthew McConaughey", "Christopher Nolan", "Adam Scott"]),
       "Matthew McConaughey   also Christopher Nolan, Adam Scott"
+    );
+    assert.deepEqual(
+      parseClosetPicksDescriptionGuests("Agnes Varda   also Jeremy O. Harris, Desiree Akhavan"),
+      ["Agnes Varda", "Jeremy O. Harris", "Desiree Akhavan"]
     );
   });
 
@@ -133,6 +139,16 @@ describe("closet-picks scrape", () => {
     assert.equal(collapsed[0].pickCount, 2);
     assert.equal(collapsed[0].sourceTitle, "Matthew McConaughey’s Closet Picks");
     assert.equal(collapsed[0].description, "Matthew McConaughey   also Francis Ford Coppola");
+    assert.deepEqual(collapsed[0].guests, [
+      {
+        name: "Matthew McConaughey",
+        url: "https://www.criterion.com/closet-picks/matthew-mcconaughey"
+      },
+      {
+        name: "Francis Ford Coppola",
+        url: "https://www.criterion.com/shop/collection/763-francis-ford-coppola-s-closet-picks"
+      }
+    ]);
     assert.equal(collapsed[1].pickCount, 1);
     assert.equal(collapsed[2].pickCount, 1);
 
@@ -144,5 +160,91 @@ describe("closet-picks scrape", () => {
     assert.equal(item.year, 1983);
     assert.equal(item.filmUrl, "https://www.criterion.com/films/28993-rumble-fish");
     assert.equal(item.youtubeUrl, "https://www.youtube.com/watch?v=abcABCdef12");
+    assert.deepEqual(item.guests, collapsed[0].guests);
+  });
+
+  it("hydrates guest Watch & Shop permalinks from other Closet Picks rows", () => {
+    const [tinyFurniture] = attachClosetPicksGuestLinks(
+      [
+        {
+          sourceIdentifier: "criterion-closet-picks",
+          sourceTitle: "Agnes Varda’s Closet Picks",
+          sourceUrl: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks",
+          episode: {
+            title: "Agnes Varda’s Closet Picks",
+            description: "Agnes Varda   also Jeremy O. Harris, Desiree Akhavan",
+            episodeId: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks"
+          }
+        }
+      ],
+      [
+        {
+          sourceIdentifier: "criterion-closet-picks",
+          sourceTitle: "Agnes Varda’s Closet Picks",
+          sourceUrl: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks"
+        },
+        {
+          sourceIdentifier: "criterion-closet-picks",
+          sourceTitle: "Jeremy O. Harris’s Closet Picks",
+          sourceUrl: "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks"
+        },
+        {
+          sourceIdentifier: "criterion-closet-picks",
+          sourceTitle: "Desiree Akhavan’s Closet Picks",
+          sourceUrl: "https://www.criterion.com/shop/collection/435-desiree-akhavan-s-closet-picks"
+        }
+      ]
+    );
+    assert.deepEqual((tinyFurniture.episode as { guests: unknown }).guests, [
+      {
+        name: "Agnes Varda",
+        url: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks"
+      },
+      {
+        name: "Jeremy O. Harris",
+        url: "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks"
+      },
+      {
+        name: "Desiree Akhavan",
+        url: "https://www.criterion.com/shop/collection/435-desiree-akhavan-s-closet-picks"
+      }
+    ]);
+  });
+
+  it("reads guest names from snapshot description fields without collapsing also-separators", () => {
+    const [row] = attachClosetPicksGuestLinks([
+      {
+        sourceIdentifier: "criterion-closet-picks",
+        sourceTitle: "Amelia Dimoldenberg’s Closet Picks",
+        sourceUrl: "https://www.criterion.com/shop/collection/734-amelia-dimoldenberg-s-closet-picks",
+        podcastEpisodeDescription: "Amelia Dimoldenberg   also Jeremy O. Harris, Chelsea Peretti"
+      },
+      {
+        sourceIdentifier: "criterion-closet-picks",
+        sourceTitle: "Jeremy O. Harris’s Closet Picks",
+        sourceUrl: "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks",
+        podcastEpisodeDescription: "Jeremy O. Harris"
+      },
+      {
+        sourceIdentifier: "criterion-closet-picks",
+        sourceTitle: "Chelsea Peretti’s Closet Picks",
+        sourceUrl: "https://www.criterion.com/shop/collection/636-chelsea-peretti-s-closet-picks",
+        podcastEpisodeDescription: "Chelsea Peretti"
+      }
+    ]);
+    assert.deepEqual(row.guests, [
+      {
+        name: "Amelia Dimoldenberg",
+        url: "https://www.criterion.com/shop/collection/734-amelia-dimoldenberg-s-closet-picks"
+      },
+      {
+        name: "Jeremy O. Harris",
+        url: "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks"
+      },
+      {
+        name: "Chelsea Peretti",
+        url: "https://www.criterion.com/shop/collection/636-chelsea-peretti-s-closet-picks"
+      }
+    ]);
   });
 });

@@ -120,4 +120,11 @@ struct ShowNotesMediaLinkExtractorTests {
         #expect(destinations.contains(where: { $0.contains("v=one") }))
         #expect(destinations.contains(where: { $0.contains("v=two") }))
     }
+
+    @Test
+    func canonicalURLKeyLowercasesHostAndDropsTrailingSlash() {
+        let mixed = URL(string: "HTTPS://WWW.Example.COM/Path/")!
+        let plain = URL(string: "https://www.example.com/Path")!
+        #expect(ShowNotesMediaLinkExtractor.canonicalURLKey(mixed) == ShowNotesMediaLinkExtractor.canonicalURLKey(plain))
+    }
 }

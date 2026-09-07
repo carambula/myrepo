@@ -213,6 +213,55 @@ struct WatchedItTests {
         #expect(haystack.contains("4k"))
     }
 
+    @Test func searchIndexIncludesClosetGuestAndPodcastDescription() {
+        let movie = Movie(
+            title: "Safe",
+            year: 1995,
+            podcastEpisode: PodcastEpisode(
+                title: "Safe With Bill Simmons",
+                episodeId: "ep-safe",
+                description: "Full notes about Todd Haynes and Julianne Moore."
+            ),
+            sourceSearchText: "Yo La Tengo's Closet Picks   Yo La Tengo"
+        )
+        let index = MovieSearchEngine.buildIndex(from: [movie])
+        let haystack = index[movie.id] ?? ""
+        #expect(haystack.contains("yo la tengo"))
+        #expect(haystack.contains("todd haynes"))
+        #expect(haystack.contains("julianne moore"))
+
+        let guestHits = MovieSearchEngine.filterMovies(
+            movies: [movie],
+            query: "Yo La Tengo",
+            filters: MovieSearchFilters(),
+            movieSearchIndex: index,
+            sourceCache: [:],
+            restrictedMovieIDs: nil
+        )
+        #expect(guestHits.map(\.id) == [movie.id])
+
+        let notesHits = MovieSearchEngine.filterMovies(
+            movies: [movie],
+            query: "Todd Haynes",
+            filters: MovieSearchFilters(),
+            movieSearchIndex: index,
+            sourceCache: [:],
+            restrictedMovieIDs: nil
+        )
+        #expect(notesHits.map(\.id) == [movie.id])
+    }
+
+    @Test func sourceSearchTextJoinsUniquePieces() {
+        let joined = MovieSourceSearchText.join([
+            "Yo La Tengo's Closet Picks",
+            "  Yo La Tengo  ",
+            "Yo La Tengo's Closet Picks",
+            nil,
+            ""
+        ])
+        #expect(joined == "Yo La Tengo's Closet Picks Yo La Tengo")
+    }
+
     @Test func latestCarouselDateUsesClosetDiscoveryFallback() {
         let discovered = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(

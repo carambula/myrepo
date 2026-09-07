@@ -307,6 +307,9 @@ final class MinCloudCatalogSync {
                 if existing.sourceTitle == nil || existing.sourceTitle?.isEmpty == true {
                     existing.sourceTitle = link.sourceTitle
                 }
+                if existing.sourceDescription == nil || existing.sourceDescription?.isEmpty == true {
+                    existing.sourceDescription = link.episode?.description
+                }
                 if let episodeDate {
                     if let current = existing.sourceDate {
                         existing.sourceDate = max(current, episodeDate)

@@ -938,6 +938,13 @@ struct MovieListView: View {
                     if let year = movie.year, String(year).contains(trimmedSearch) {
                         return true
                     }
+                    if movie.sourceSearchText.lowercased().contains(normalizedSearch) {
+                        return true
+                    }
+                    if let description = movie.podcastEpisode?.description?.lowercased(),
+                       description.contains(normalizedSearch) {
+                        return true
+                    }
                     return false
                 }
             }
@@ -1263,8 +1270,15 @@ struct MovieListView: View {
                 fields.append(contentsOf: credits.cast.map(\.name))
             }
 
+            if let overview = movie.overview { fields.append(overview) }
             if let episode = movie.podcastEpisode {
                 fields.append(episode.title)
+                if let description = episode.description, !description.isEmpty {
+                    fields.append(description)
+                }
+            }
+            if !movie.sourceSearchText.isEmpty {
+                fields.append(movie.sourceSearchText)
             }
 
             if let media = movie.physicalMedia {
@@ -1380,6 +1394,13 @@ struct MovieListView: View {
                     return true
                 }
                 if let year = movie.year, String(year).contains(trimmedSearch) {
+                    return true
+                }
+                if movie.sourceSearchText.lowercased().contains(normalizedSearch) {
+                    return true
+                }
+                if let description = movie.podcastEpisode?.description?.lowercased(),
+                   description.contains(normalizedSearch) {
                     return true
                 }
                 return false

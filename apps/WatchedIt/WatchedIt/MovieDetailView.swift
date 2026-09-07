@@ -55,6 +55,7 @@ struct MovieDetailView: View {
     @State private var sourceContentSnapshot: [SourceContentSnapshot] = []
     @State private var podcastFeedURLSnapshot: [String: String] = [:]
     @State private var hasLoadedSourceSnapshots = false
+    @State private var closetPicksGuestURLs: [String: String] = [:]
     @State private var liveStreamingServices: [StreamingService] = []
     
     // Get current movie state from database
@@ -456,9 +457,36 @@ struct MovieDetailView: View {
             podcastFeeds[identifier] = feedURL
         }
 
+        var guestURLs: [String: String] = [:]
+        let closetId = ClosetPicksSource.identifier
+        let movieHasClosetPicks =
+            contentRows.contains { $0.source?.identifier == closetId }
+            || legacyRows.contains { $0.dataSource?.identifier == closetId }
+        if movieHasClosetPicks {
+            let closetContents = (try? modelContext.fetch(FetchDescriptor<SourceContent>())) ?? []
+            for content in closetContents where content.source?.identifier == closetId {
+                ClosetPicksSource.addGuestURLs(
+                    to: &guestURLs,
+                    sourceTitle: content.sourceTitle,
+                    sourceUrl: content.sourceUrl,
+                    episode: content.podcastEpisode
+                )
+            }
+            let closetLegacy = (try? modelContext.fetch(FetchDescriptor<MovieDataSource>())) ?? []
+            for dataSource in closetLegacy where dataSource.dataSource?.identifier == closetId {
+                ClosetPicksSource.addGuestURLs(
+                    to: &guestURLs,
+                    sourceTitle: dataSource.sourceTitle,
+                    sourceUrl: dataSource.sourceUrl,
+                    episode: dataSource.podcastEpisode
+                )
+            }
+        }
+
         legacySourcesSnapshot = legacy
         sourceContentSnapshot = sourceContents
         podcastFeedURLSnapshot = podcastFeeds
+        closetPicksGuestURLs = guestURLs
         hasLoadedSourceSnapshots = true
     }
 
@@ -1485,6 +1513,7 @@ struct MovieDetailView: View {
                                             episode: sourceContent.podcastEpisode,
                                             sourceName: sourceContent.sourceName
                                         ),
+                                        closetPicksGuestURLs: closetPicksGuestURLs,
                                         onOpen: sourceContent.sourceIdentifier == ClosetPicksSource.identifier
                                             ? {
                                                 openClosetPicksURLs(
@@ -1520,6 +1549,7 @@ struct MovieDetailView: View {
                                             episode: legacySource.podcastEpisode,
                                             sourceName: legacySource.sourceName
                                         ),
+                                        closetPicksGuestURLs: closetPicksGuestURLs,
                                         onOpen: legacySource.sourceIdentifier == ClosetPicksSource.identifier
                                             ? {
                                                 openClosetPicksURLs(
@@ -2041,29 +2071,54 @@ struct SourceContentCardView: View {
     let sourceContent: MovieDetailView.SourceContentSnapshot
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
+    var closetPicksGuestURLs: [String: String] = [:]
     var onOpen: (() -> Void)? = nil
+
+    private var closetPicksGuests: [ClosetPicksGuestAttribution] {
+        guard ClosetPicksSource.normalizedIdentifier(sourceContent.sourceIdentifier) == ClosetPicksSource.identifier else { return [] }
+        return ClosetPicksSource.guestAttributions(
+            guests: sourceContent.podcastEpisode?.guests,
+            description: sourceContent.podcastEpisode?.description,
+            sourceTitle: sourceContent.sourceTitle,
+            permalink: sourceContent.sourceUrl ?? sourceContent.podcastEpisode?.episodeId,
+            knownURLs: closetPicksGuestURLs
+        )
+    }
     
     var body: some View {
-        Group {
-            if let onOpen {
-                Button(action: onOpen) {
-                    content
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Group {
+                if let onOpen {
+                    Button(action: onOpen) {
+                        header
+                    }
+                    .buttonStyle(.plain)
+                } else if let podcastDestinationURL {
+                    Link(destination: podcastDestinationURL) {
+                        header
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    header
                 }
-                .buttonStyle(.plain)
-            } else if let podcastDestinationURL {
-                Link(destination: podcastDestinationURL) {
-                    content
-                }
-                .buttonStyle(.plain)
-            } else {
-                content
+            }
+            if !closetPicksGuests.isEmpty {
+                Text(ClosetPicksSource.attributionText(closetPicksGuests))
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .tint(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
+            } else if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
+                Text(description)
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
             }
         }
     }
 
-    private var content: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            HStack(alignment: sourceContent.podcastEpisode != nil || sourceContent.sourceTitle != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
+    private var header: some View {
+        HStack(alignment: sourceContent.podcastEpisode != nil || sourceContent.sourceTitle != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if sourceContent.sourceType.lowercased() == "podcast" {
                     podcastArtworkView
                 } else if ClosetPicksSource.showsPosterBadge(for: sourceContent.sourceIdentifier) {
@@ -2109,14 +2164,6 @@ struct SourceContentCardView: View {
                     }
                 }
             }
-
-            if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
-                Text(description)
-                    .captionMedium()
-                    .foregroundColor(DesignSystem.Color.textSecondary)
-                    .lineLimit(4)
-            }
-        }
     }
 
     @ViewBuilder
@@ -2153,29 +2200,61 @@ struct LegacySourceCardView: View {
     let movieTitle: String?
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
+    var closetPicksGuestURLs: [String: String] = [:]
     var onOpen: (() -> Void)? = nil
+
+    private var closetPicksGuests: [ClosetPicksGuestAttribution] {
+        guard ClosetPicksSource.normalizedIdentifier(legacySource.sourceIdentifier) == ClosetPicksSource.identifier else { return [] }
+        return ClosetPicksSource.guestAttributions(
+            guests: legacySource.podcastEpisode?.guests,
+            description: legacySource.podcastEpisode?.description,
+            sourceTitle: legacySource.sourceTitle,
+            permalink: legacySource.sourceUrl ?? legacySource.podcastEpisode?.episodeId,
+            knownURLs: closetPicksGuestURLs
+        )
+    }
     
     var body: some View {
-        Group {
-            if let onOpen {
-                Button(action: onOpen) {
-                    content
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Group {
+                if let onOpen {
+                    Button(action: onOpen) {
+                        header
+                    }
+                    .buttonStyle(.plain)
+                } else if legacySource.podcastEpisode != nil, let podcastDestinationURL {
+                    Link(destination: podcastDestinationURL) {
+                        header
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    header
                 }
-                .buttonStyle(.plain)
-            } else if legacySource.podcastEpisode != nil, let podcastDestinationURL {
-                Link(destination: podcastDestinationURL) {
-                    content
-                }
-                .buttonStyle(.plain)
+            }
+            if !closetPicksGuests.isEmpty {
+                Text(ClosetPicksSource.attributionText(closetPicksGuests))
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .tint(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
+            } else if let description = legacySource.podcastEpisode?.description, !description.isEmpty {
+                Text(description)
+                    .captionMedium()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .lineLimit(4)
+            }
+        }
+        .task {
+            if let rank = legacySource.rank {
+                print("🔢 [Rank] Movie '\(movieTitle ?? "unknown")' has rank \(rank) in source '\(legacySource.sourceName)'")
             } else {
-                content
+                print("⚠️ [Rank] Movie '\(movieTitle ?? "unknown")' has NO rank in source '\(legacySource.sourceName)'")
             }
         }
     }
 
-    private var content: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            HStack(alignment: legacySource.podcastEpisode != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
+    private var header: some View {
+        HStack(alignment: legacySource.podcastEpisode != nil ? .top : .center, spacing: DesignSystem.Spacing.md) {
                 if legacySource.podcastEpisode != nil {
                     podcastArtworkView
                 } else if ClosetPicksSource.showsPosterBadge(for: legacySource.sourceIdentifier) {
@@ -2214,26 +2293,6 @@ struct LegacySourceCardView: View {
                     }
                 }
             }
-            
-            // Show episode title or source title
-            if let episode = legacySource.podcastEpisode {
-                // Episode description if available
-                if let description = episode.description, !description.isEmpty {
-                    Text(description)
-                        .captionMedium()
-                        .foregroundColor(DesignSystem.Color.textSecondary)
-                        .lineLimit(4)
-                }
-            }
-        }
-        .task {
-            // Auto-update source if we detect it has ranks but isn't marked as ranked
-            if let rank = legacySource.rank {
-                print("🔢 [Rank] Movie '\(movieTitle ?? "unknown")' has rank \(rank) in source '\(legacySource.sourceName)'")
-            } else {
-                print("⚠️ [Rank] Movie '\(movieTitle ?? "unknown")' has NO rank in source '\(legacySource.sourceName)'")
-            }
-        }
     }
 
     @ViewBuilder

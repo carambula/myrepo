@@ -4,6 +4,7 @@ import { fetchStreamingServices } from "../lib/tmdb.js";
 import { resolveNowPlaying } from "../lib/theater-stays.js";
 import { isFreshStreamingCache, persistStreamingProviders } from "../lib/streaming-cache.js";
 import { config } from "../config.js";
+import { CLOSET_PICKS_SOURCE_ID, attachClosetPicksGuestLinks } from "../lib/closet-picks-scrape.js";
 import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
 
 const SHIPPABLE_MOVIE_SQL = `m.tmdb_id IS NOT NULL AND NULLIF(BTRIM(m.poster_path), '') IS NOT NULL`;
@@ -90,9 +91,9 @@ router.get("/catalog", async (req, res) => {
     `SELECT movie_id, source_id, rank, source_title, episode_date, episode FROM mov_movie_sources`
   );
   const linksByMovie = new Map<string, unknown[]>();
-  for (const link of links.rows) {
+  for (const link of attachClosetPicksGuestLinks(links.rows as Array<Record<string, unknown>>)) {
     const list = linksByMovie.get(String(link.movie_id)) ?? [];
-    list.push(mapCatalogSourceLink(link as Record<string, unknown>));
+    list.push(mapCatalogSourceLink(link));
     linksByMovie.set(String(link.movie_id), list);
   }
   const mapped = movies.rows.map((row) => ({
@@ -131,10 +132,20 @@ router.get("/movies/:id", async (req, res) => {
     `SELECT source_id, rank, source_title, episode_date, episode FROM mov_movie_sources WHERE movie_id = $1`,
     [result.rows[0].id]
   );
+  const hasClosetPicks = links.rows.some((link) => String(link.source_id) === CLOSET_PICKS_SOURCE_ID);
+  const closetIndex = hasClosetPicks
+    ? await query(
+        `SELECT source_id, source_title, episode FROM mov_movie_sources WHERE source_id = $1`,
+        [CLOSET_PICKS_SOURCE_ID]
+      )
+    : { rows: [] };
   res.json({
     movie: {
       ...mapMovie(result.rows[0], result.rows[0].providers ?? []),
-      sources: links.rows.map((link) => mapCatalogSourceLink(link as Record<string, unknown>))
+      sources: attachClosetPicksGuestLinks(
+        links.rows as Array<Record<string, unknown>>,
+        closetIndex.rows as Array<Record<string, unknown>>
+      ).map((link) => mapCatalogSourceLink(link))
     }
   });
 });

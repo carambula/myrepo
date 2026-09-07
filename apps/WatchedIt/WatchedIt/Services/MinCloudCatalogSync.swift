@@ -319,11 +319,8 @@ final class MinCloudCatalogSync {
                 }
                 if existing.podcastEpisode == nil {
                     existing.podcastEpisode = episode
-                } else if let episode, let incomingDate = episode.publishDate {
-                    let current = existing.podcastEpisode?.publishDate
-                    if current == nil || incomingDate > current! {
-                        existing.podcastEpisode = episode
-                    }
+                } else if let episode {
+                    existing.podcastEpisode = Self.mergingPodcastEpisode(existing.podcastEpisode, with: episode)
                 }
                 if let rank = link.rank {
                     existing.rank = rank
@@ -366,7 +363,13 @@ final class MinCloudCatalogSync {
         let date = fallbackDate ?? Self.parseCatalogDate(link.episode?.publishDate)
         let description = link.episode?.description
         let youtubeUrl = link.episode?.youtubeUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard date != nil || !(link.sourceTitle ?? "").isEmpty || description != nil || !(youtubeUrl ?? "").isEmpty else {
+        let guests = (link.episode?.guests ?? []).compactMap { guest -> ClosetPicksGuest? in
+            let name = guest.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let url = guest.url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !name.isEmpty, !url.isEmpty else { return nil }
+            return ClosetPicksGuest(name: name, url: url)
+        }
+        guard date != nil || !(link.sourceTitle ?? "").isEmpty || description != nil || !(youtubeUrl ?? "").isEmpty || !guests.isEmpty else {
             return nil
         }
         return PodcastEpisode(
@@ -374,8 +377,50 @@ final class MinCloudCatalogSync {
             episodeId: link.episode?.episodeId ?? "\(link.identifier ?? "source")|\(movieTitle)",
             publishDate: date,
             description: description,
-            youtubeUrl: (youtubeUrl?.isEmpty == false) ? youtubeUrl : nil
+            youtubeUrl: (youtubeUrl?.isEmpty == false) ? youtubeUrl : nil,
+            guests: guests.isEmpty ? nil : guests
         )
+    }
+
+    private static func mergingPodcastEpisode(_ existing: PodcastEpisode?, with incoming: PodcastEpisode) -> PodcastEpisode {
+        guard let existing else { return incoming }
+        let incomingDate = incoming.publishDate
+        let currentDate = existing.publishDate
+        let shouldReplace = incomingDate.map { date in
+            currentDate == nil || date > currentDate!
+        } ?? false
+        if shouldReplace {
+            if incoming.guests?.isEmpty != false, let guests = existing.guests, !guests.isEmpty {
+                return PodcastEpisode(
+                    title: incoming.title,
+                    episodeId: incoming.episodeId,
+                    publishDate: incoming.publishDate,
+                    description: incoming.description ?? existing.description,
+                    applePodcastsUrl: incoming.applePodcastsUrl ?? existing.applePodcastsUrl,
+                    spotifyUrl: incoming.spotifyUrl ?? existing.spotifyUrl,
+                    overcastUrl: incoming.overcastUrl ?? existing.overcastUrl,
+                    pocketCastsUrl: incoming.pocketCastsUrl ?? existing.pocketCastsUrl,
+                    youtubeUrl: incoming.youtubeUrl ?? existing.youtubeUrl,
+                    guests: guests
+                )
+            }
+            return incoming
+        }
+        if existing.guests?.isEmpty != false, let guests = incoming.guests, !guests.isEmpty {
+            return PodcastEpisode(
+                title: existing.title,
+                episodeId: existing.episodeId,
+                publishDate: existing.publishDate,
+                description: existing.description ?? incoming.description,
+                applePodcastsUrl: existing.applePodcastsUrl ?? incoming.applePodcastsUrl,
+                spotifyUrl: existing.spotifyUrl ?? incoming.spotifyUrl,
+                overcastUrl: existing.overcastUrl ?? incoming.overcastUrl,
+                pocketCastsUrl: existing.pocketCastsUrl ?? incoming.pocketCastsUrl,
+                youtubeUrl: existing.youtubeUrl ?? incoming.youtubeUrl,
+                guests: guests
+            )
+        }
+        return existing
     }
 
     static func parseCatalogDate(_ raw: String?) -> Date? {

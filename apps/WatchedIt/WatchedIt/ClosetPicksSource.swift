@@ -5,6 +5,21 @@
 
 import Foundation
 
+public struct ClosetPicksGuest: Codable, Hashable, Sendable {
+    public let name: String
+    public let url: String
+
+    public init(name: String, url: String) {
+        self.name = name
+        self.url = url
+    }
+}
+
+struct ClosetPicksGuestAttribution: Equatable {
+    let name: String
+    let url: URL?
+}
+
 enum ClosetPicksSource {
     static let identifier = "criterion-closet-picks"
     static let indexURL = URL(string: "https://www.criterion.com/closet-picks")!
@@ -94,6 +109,132 @@ enum ClosetPicksSource {
         if !title.isEmpty { return title }
         let name = sourceName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return name.isEmpty ? "Criterion Closet Picks" : name
+    }
+
+    static func watchAndShopURL(from raw: String?) -> URL? {
+        guard let raw else { return nil }
+        return httpURL(from: raw)
+    }
+
+    static func guestNameFromEpisodeTitle(_ title: String) -> String {
+        title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(
+                of: #"[’']s\s+closet\s+picks\s*$"#,
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            .replacingOccurrences(
+                of: #"\s+closet\s+picks\s*$"#,
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func parseDescriptionGuests(_ description: String) -> [String] {
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let parts = trimmed.components(separatedBy: "   also ")
+        guard parts.count > 1 else { return [trimmed] }
+        let rest = parts.dropFirst()
+            .joined(separator: "   also ")
+            .components(separatedBy: ", ")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let first = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+        return ([first] + rest).filter { !$0.isEmpty }
+    }
+
+    static func normalizedGuestName(_ name: String) -> String {
+        name
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"[^a-z0-9 ]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func addGuestURLs(
+        to index: inout [String: String],
+        sourceTitle: String?,
+        sourceUrl: String?,
+        episode: PodcastEpisode?
+    ) {
+        let add = { (name: String?, url: String?) in
+            let key = normalizedGuestName(name ?? "")
+            let href = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !key.isEmpty, !href.isEmpty, index[key] == nil else { return }
+            index[key] = href
+        }
+        for guest in episode?.guests ?? [] {
+            add(guest.name, guest.url)
+        }
+        add(guestNameFromEpisodeTitle(sourceTitle ?? episode?.title ?? ""), sourceUrl ?? episode?.episodeId)
+    }
+
+    static func formatGuestLine(_ names: [String]) -> String {
+        let cleaned = names.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !cleaned.isEmpty else { return "" }
+        if cleaned.count == 1 { return cleaned[0] }
+        return "\(cleaned[0])   also \(cleaned.dropFirst().joined(separator: ", "))"
+    }
+
+    static func guestAttributions(
+        guests: [ClosetPicksGuest]?,
+        description: String?,
+        sourceTitle: String?,
+        permalink: String?,
+        knownURLs: [String: String] = [:]
+    ) -> [ClosetPicksGuestAttribution] {
+        let fromGuests = (guests ?? []).map(\.name).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let fromDescription = parseDescriptionGuests(description ?? "")
+        var names = fromDescription.count >= fromGuests.count && !fromDescription.isEmpty ? fromDescription : fromGuests
+        if names.isEmpty {
+            let fromTitle = guestNameFromEpisodeTitle(sourceTitle ?? "")
+            if !fromTitle.isEmpty {
+                names = [fromTitle]
+            }
+        }
+        var index = knownURLs
+        for guest in guests ?? [] {
+            let key = normalizedGuestName(guest.name)
+            let href = guest.url.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !key.isEmpty, !href.isEmpty, index[key] == nil {
+                index[key] = href
+            }
+        }
+        if let permalink, let first = names.first {
+            let key = normalizedGuestName(first)
+            if !key.isEmpty, index[key] == nil {
+                index[key] = permalink
+            }
+        }
+        return names.map { name in
+            ClosetPicksGuestAttribution(
+                name: name,
+                url: watchAndShopURL(from: index[normalizedGuestName(name)])
+            )
+        }
+    }
+
+    static func attributionText(_ guests: [ClosetPicksGuestAttribution]) -> AttributedString {
+        var attributed = AttributedString()
+        for (index, guest) in guests.enumerated() {
+            if index == 1 {
+                attributed += AttributedString("   also ")
+            } else if index > 1 {
+                attributed += AttributedString(", ")
+            }
+            var name = AttributedString(guest.name)
+            if let url = guest.url {
+                name.link = url
+                name.underlineStyle = .single
+            }
+            attributed += name
+        }
+        return attributed
     }
 
     private static func httpURL(from raw: String) -> URL? {

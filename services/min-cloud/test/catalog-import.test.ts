@@ -22,14 +22,34 @@ describe("catalogMovieId", () => {
       episodeDate: "2026-02-01",
       sourceUrl: "https://www.criterion.com/closet-picks/matthew-mcconaughey",
       youtubeUrl: "https://www.youtube.com/watch?v=abcABCdef12",
-      podcastEpisodeDescription: "Matthew McConaughey   also Christopher Nolan"
+      podcastEpisodeDescription: "Matthew McConaughey   also Christopher Nolan",
+      guests: [
+        {
+          name: "Matthew McConaughey",
+          url: "https://www.criterion.com/closet-picks/matthew-mcconaughey"
+        },
+        {
+          name: "Christopher Nolan",
+          url: "https://www.criterion.com/shop/collection/400-christopher-nolan-s-closet-picks"
+        }
+      ]
     });
     assert.deepEqual(episode, {
       title: "Matthew McConaughey’s Closet Picks",
       description: "Matthew McConaughey   also Christopher Nolan",
       publishDate: "2026-02-01",
       episodeId: "https://www.criterion.com/closet-picks/matthew-mcconaughey",
-      youtubeUrl: "https://www.youtube.com/watch?v=abcABCdef12"
+      youtubeUrl: "https://www.youtube.com/watch?v=abcABCdef12",
+      guests: [
+        {
+          name: "Matthew McConaughey",
+          url: "https://www.criterion.com/closet-picks/matthew-mcconaughey"
+        },
+        {
+          name: "Christopher Nolan",
+          url: "https://www.criterion.com/shop/collection/400-christopher-nolan-s-closet-picks"
+        }
+      ]
     });
   });
 });

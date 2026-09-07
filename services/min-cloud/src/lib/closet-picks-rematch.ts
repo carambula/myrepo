@@ -104,7 +104,8 @@ const detailsPayload = (details: Record<string, unknown>, film: CollapsedClosetP
     backdropPath: (details.backdrop_path as string) || null,
     genres: Array.isArray(details.genres) ? (details.genres as Array<{ name: string }>).map((genre) => genre.name) : [],
     credits: director || cast.length ? { director: director?.name ?? null, cast } : null,
-    podcastEpisodeDescription: film.description
+    podcastEpisodeDescription: film.description,
+    guests: film.guests
   };
 };
 

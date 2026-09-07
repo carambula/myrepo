@@ -138,6 +138,7 @@ public struct PodcastEpisode: Codable, Hashable, Sendable {
     public let overcastUrl: String?
     public let pocketCastsUrl: String?
     public let youtubeUrl: String?
+    public let guests: [ClosetPicksGuest]?
     
     public init(
         title: String,
@@ -148,7 +149,8 @@ public struct PodcastEpisode: Codable, Hashable, Sendable {
         spotifyUrl: String? = nil,
         overcastUrl: String? = nil,
         pocketCastsUrl: String? = nil,
-        youtubeUrl: String? = nil
+        youtubeUrl: String? = nil,
+        guests: [ClosetPicksGuest]? = nil
     ) {
         self.title = title
         self.episodeId = episodeId
@@ -159,6 +161,7 @@ public struct PodcastEpisode: Codable, Hashable, Sendable {
         self.overcastUrl = overcastUrl
         self.pocketCastsUrl = pocketCastsUrl
         self.youtubeUrl = youtubeUrl
+        self.guests = guests
     }
 }
 

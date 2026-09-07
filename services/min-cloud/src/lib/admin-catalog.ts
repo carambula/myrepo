@@ -28,6 +28,7 @@ export type AdminMovie = {
   podcastEpisodeDescription: string | null;
   sourceUrl?: string | null;
   youtubeUrl?: string | null;
+  guests?: Array<{ name: string; url: string }> | null;
 };
 
 export type AdminSource = {
@@ -97,7 +98,8 @@ export const loadAdminMovies = async (): Promise<AdminMovie[]> => {
       physicalMedia: row.physical_media ?? null,
       podcastEpisodeDescription: episode?.description ? String(episode.description) : null,
       sourceUrl: episode?.episodeId ? String(episode.episodeId) : null,
-      youtubeUrl: episode?.youtubeUrl ? String(episode.youtubeUrl) : null
+      youtubeUrl: episode?.youtubeUrl ? String(episode.youtubeUrl) : null,
+      guests: Array.isArray(episode?.guests) ? (episode.guests as Array<{ name: string; url: string }>) : null
     };
   });
 };
@@ -226,21 +228,31 @@ export const upsertAdminMovie = async (
           return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
         })(),
         JSON.stringify(
-          payload.podcastEpisodeDescription ||
-            payload.sourceTitle ||
-            payload.sourceUrl ||
-            payload.filmUrl ||
-            payload.youtubeUrl
-            ? {
-                title: payload.sourceTitle ?? null,
-                description: payload.podcastEpisodeDescription ?? null,
-                publishDate: payload.episodeDate ?? null,
-                episodeId: payload.sourceUrl ?? null,
-                filmUrl: payload.filmUrl ?? null,
-                director: payload.director ?? null,
-                youtubeUrl: payload.youtubeUrl ?? previous?.youtubeUrl ?? null
-              }
-            : null
+          (() => {
+            const guests = Array.isArray(payload.guests) ? payload.guests : previous?.guests;
+            if (
+              !(
+                payload.podcastEpisodeDescription ||
+                payload.sourceTitle ||
+                payload.sourceUrl ||
+                payload.filmUrl ||
+                payload.youtubeUrl ||
+                guests
+              )
+            ) {
+              return null;
+            }
+            return {
+              title: payload.sourceTitle ?? null,
+              description: payload.podcastEpisodeDescription ?? null,
+              publishDate: payload.episodeDate ?? null,
+              episodeId: payload.sourceUrl ?? null,
+              filmUrl: payload.filmUrl ?? null,
+              director: payload.director ?? null,
+              youtubeUrl: payload.youtubeUrl ?? previous?.youtubeUrl ?? null,
+              ...(guests ? { guests } : {})
+            };
+          })()
         )
       ]
     );

@@ -157,6 +157,7 @@ const mergeBootstrap = async (
       sourceUrl: item.sourceUrl,
       youtubeUrl: item.youtubeUrl ?? null,
       podcastEpisodeDescription: item.podcastEpisodeDescription,
+      guests: item.guests,
       tmdbId: existing.tmdbId ?? null,
       year: item.year ?? existing.year ?? null,
       director: item.director ?? null,

@@ -64,11 +64,17 @@ struct MinCloudMovieCatalog: Decodable {
 
         struct SourceLink: Decodable {
             struct EpisodeStub: Decodable {
+                struct GuestStub: Decodable {
+                    let name: String?
+                    let url: String?
+                }
+
                 let title: String?
                 let episodeId: String?
                 let description: String?
                 let publishDate: String?
                 let youtubeUrl: String?
+                let guests: [GuestStub]?
             }
 
             let identifier: String?

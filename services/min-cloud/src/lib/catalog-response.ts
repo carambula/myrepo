@@ -1,3 +1,5 @@
+import { attachClosetPicksGuestLinks } from "./closet-picks-scrape.js";
+
 export const mapCatalogSourceLink = (link: Record<string, unknown>) => ({
   identifier: link.source_id ?? link.identifier ?? null,
   rank: link.rank ?? null,
@@ -5,6 +7,11 @@ export const mapCatalogSourceLink = (link: Record<string, unknown>) => ({
   episodeDate: link.episode_date ?? link.episodeDate ?? null,
   episode: link.episode ?? null
 });
+
+export const mapCatalogSourceLinks = (
+  links: Array<Record<string, unknown>>,
+  indexLinks: Array<Record<string, unknown>> = links
+) => attachClosetPicksGuestLinks(links, indexLinks).map((link) => mapCatalogSourceLink(link));
 
 export const catalogCacheHeaders = (revision: number, total: number) => ({
   "Cache-Control": "no-store, no-cache, must-revalidate",

@@ -7,14 +7,14 @@ actor MediaLinkingService {
     private let youtubeService = YouTubeService.shared
 
     func extractMediaLinks(from episode: Episode) async -> [MediaLink] {
-        let cacheKey = "media_links_\(episode.id)"
+        let cacheKey = "media_links_v2_\(episode.id)"
         if let cached: [MediaLink] = await cache.get(cacheKey, as: [MediaLink].self) {
             return cached
         }
 
         var allReferences: [RawMediaReference] = []
 
-        // Step 1: Parse show notes for explicit links
+        // Step 1: Parse show notes for every URL (hrefs, markdown, and bare links)
         let showNoteLinks = parseShowNotes(episode.description)
         allReferences.append(contentsOf: showNoteLinks)
 
@@ -53,30 +53,7 @@ actor MediaLinkingService {
     // MARK: - Show Notes Parser
 
     private func parseShowNotes(_ html: String) -> [RawMediaReference] {
-        var refs: [RawMediaReference] = []
-
-        let linkPattern = #"<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>"#
-        guard let regex = try? NSRegularExpression(pattern: linkPattern, options: .caseInsensitive) else {
-            return refs
-        }
-
-        let range = NSRange(html.startIndex..<html.endIndex, in: html)
-        let matches = regex.matches(in: html, range: range)
-
-        for match in matches {
-            guard let urlRange = Range(match.range(at: 1), in: html),
-                  let textRange = Range(match.range(at: 2), in: html) else { continue }
-
-            let urlString = String(html[urlRange])
-            let anchorText = String(html[textRange]).strippingHTML
-
-            guard let url = URL(string: urlString) else { continue }
-
-            let ref = classifyURL(url, anchorText: anchorText)
-            if let ref { refs.append(ref) }
-        }
-
-        return refs
+        ShowNotesMediaLinkExtractor.references(from: html)
     }
 
     // MARK: - Title Parser
@@ -140,39 +117,6 @@ actor MediaLinkingService {
         return refs
     }
 
-    // MARK: - URL Classification
-
-    private func classifyURL(_ url: URL, anchorText: String) -> RawMediaReference? {
-        let host = url.host?.lowercased() ?? ""
-
-        if host.contains("youtube.com") || host.contains("youtu.be") {
-            return RawMediaReference(text: anchorText, likelyType: .youtubeVideo, url: url, year: nil, confidence: 0.95)
-        }
-        if host.contains("apps.apple.com") || host.contains("itunes.apple.com") {
-            return RawMediaReference(text: anchorText, likelyType: .app, url: url, year: nil, confidence: 0.95)
-        }
-        if host.contains("imdb.com") || host.contains("themoviedb.org") {
-            return RawMediaReference(text: anchorText, likelyType: .movie, url: url, year: nil, confidence: 0.95)
-        }
-        if host.contains("spotify.com") || host.contains("music.apple.com") {
-            return RawMediaReference(text: anchorText, likelyType: .song, url: url, year: nil, confidence: 0.9)
-        }
-        if host.contains("netflix.com") || host.contains("hulu.com") ||
-           host.contains("disneyplus.com") || host.contains("hbomax.com") ||
-           host.contains("peacocktv.com") || host.contains("max.com") {
-            return RawMediaReference(text: anchorText, likelyType: .tvShow, url: url, year: nil, confidence: 0.9)
-        }
-        if host.contains("amazon.com") && url.path.contains("/dp/") {
-            return RawMediaReference(text: anchorText, likelyType: .product, url: url, year: nil, confidence: 0.85)
-        }
-
-        if !anchorText.isEmpty && anchorText.count > 2 {
-            return RawMediaReference(text: anchorText, likelyType: .website, url: url, year: nil, confidence: 0.5)
-        }
-
-        return nil
-    }
-
     // MARK: - Resolution
 
     private func resolve(_ ref: RawMediaReference) async -> MediaLink? {
@@ -229,13 +173,12 @@ actor MediaLinkingService {
     // MARK: - Deduplication
 
     private func deduplicate(_ links: [MediaLink]) -> [MediaLink] {
-        var seen = Set<String>()
+        var seenURLs = Set<String>()
         var result: [MediaLink] = []
 
         for link in links.sorted(by: { $0.confidence > $1.confidence }) {
-            let key = link.title.lowercased().trimmingCharacters(in: .whitespaces)
-            if !seen.contains(key) {
-                seen.insert(key)
+            let urlKey = ShowNotesMediaLinkExtractor.canonicalURLKey(link.destinationURL)
+            if seenURLs.insert(urlKey).inserted {
                 result.append(link)
             }
         }

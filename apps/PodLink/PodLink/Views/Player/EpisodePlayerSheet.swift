@@ -297,7 +297,6 @@ struct EpisodePlayerSheet: View {
 
     @ViewBuilder
     private var episodeBelowChrome: some View {
-        mediaLinksSection
         showNotesSection
         chaptersSection
         transcriptSection
@@ -405,40 +404,6 @@ struct EpisodePlayerSheet: View {
         }
     }
 
-    // MARK: - Media Links
-
-    private var mediaLinksSection: some View {
-        Group {
-            if !mediaLinks.isEmpty || isLoadingLinks {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-                    Text("Connected Media")
-                        .font(DesignSystem.Typography.headlineMedium())
-                        .foregroundColor(DesignSystem.Colors.headlineColor)
-
-                    if isLoadingLinks {
-                        HStack {
-                            ProgressView()
-                            Text("Analyzing episode...")
-                                .font(DesignSystem.Typography.bodySmall())
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DesignSystem.Spacing.lg)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(alignment: .top, spacing: DesignSystem.Spacing.md) {
-                                ForEach(mediaLinks) { link in
-                                    MediaLinkCardView(link: link)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.top, DesignSystem.Spacing.md)
-            }
-        }
-    }
-
     // MARK: - Show Notes
 
     private var showNotesExpansionControl: Bool {
@@ -446,8 +411,10 @@ struct EpisodePlayerSheet: View {
     }
 
     private var showNotesSection: some View {
-        Group {
-            if !mergedEpisode.description.isEmpty {
+        let hasNotes = !mergedEpisode.description.isEmpty
+        let hasCards = !mediaLinks.isEmpty || isLoadingLinks
+        return Group {
+            if hasNotes || hasCards {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                     HStack(alignment: .center, spacing: DesignSystem.Spacing.sm) {
                         Text("Show Notes")
@@ -459,23 +426,27 @@ struct EpisodePlayerSheet: View {
                         }
                     }
 
-                    Text(showNotesAttributed)
-                        .lineLimit(showFullNotes ? nil : 8)
-                        .multilineTextAlignment(.leading)
-                        .textSelection(.enabled)
-                        .tint(themeManager.currentTheme.accentColor)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if hasNotes {
+                        Text(showNotesAttributed)
+                            .lineLimit(showFullNotes ? nil : 8)
+                            .multilineTextAlignment(.leading)
+                            .textSelection(.enabled)
+                            .tint(themeManager.currentTheme.accentColor)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if showNotesExpansionControl {
-                        Button {
-                            withAnimation(DesignSystem.Animation.quick) { showFullNotes.toggle() }
-                        } label: {
-                            Text(showFullNotes ? "Show less" : "Show more")
-                                .font(DesignSystem.Typography.caption())
-                                .foregroundColor(DesignSystem.Colors.accent)
+                        if showNotesExpansionControl {
+                            Button {
+                                withAnimation(DesignSystem.Animation.quick) { showFullNotes.toggle() }
+                            } label: {
+                                Text(showFullNotes ? "Show less" : "Show more")
+                                    .font(DesignSystem.Typography.caption())
+                                    .foregroundColor(DesignSystem.Colors.accent)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+
+                    EpisodeShowNotesMediaCards(links: mediaLinks, isLoading: isLoadingLinks)
                 }
                 .padding(.vertical, DesignSystem.Spacing.md)
             }

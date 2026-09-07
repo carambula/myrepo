@@ -521,7 +521,7 @@ class BootstrapDataService {
                     dataSource: source,
                     podcastEpisode: podcastEpisode,
                     rewatchablesDiscussion: nil,
-                    sourceUrl: source.url,
+                    sourceUrl: bootstrapMovie.sourceUrl ?? source.url,
                     sourceTitle: episodeTitle,
                     rank: rank,
                     lastUpdated: Date()

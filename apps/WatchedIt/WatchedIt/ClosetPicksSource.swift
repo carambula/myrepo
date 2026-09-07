@@ -112,9 +112,30 @@ enum ClosetPicksSource {
         return name.isEmpty ? "Criterion Closet Picks" : name
     }
 
+    static func isIndexURL(_ url: URL) -> Bool {
+        guard url.host?.lowercased().contains("criterion.com") == true else { return false }
+        let path = url.path.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return path == "closet-picks"
+    }
+
     static func watchAndShopURL(from raw: String?) -> URL? {
-        guard let raw else { return nil }
-        return httpURL(from: raw)
+        guard let url = httpURL(from: raw ?? "") else { return nil }
+        if isIndexURL(url) {
+            return nil
+        }
+        let path = url.path.lowercased()
+        if path.range(of: #"/shop/collection/\d+-[^/]*closet-picks/?$"#, options: .regularExpression) != nil {
+            return url
+        }
+        if path.hasPrefix("/closet-picks/"), path != "/closet-picks", path != "/closet-picks/" {
+            return url
+        }
+        return nil
+    }
+
+    static func preferredPermalink(sourceUrl: String?, episodeId: String?) -> String? {
+        watchAndShopURL(from: episodeId)?.absoluteString
+            ?? watchAndShopURL(from: sourceUrl)?.absoluteString
     }
 
     static func guestNameFromEpisodeTitle(_ title: String) -> String {
@@ -175,8 +196,7 @@ enum ClosetPicksSource {
 
     private static func addGuestURL(_ name: String?, _ url: String?, to index: inout [String: String]) {
         let key = normalizedGuestName(name ?? "")
-        let href = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !key.isEmpty, !href.isEmpty, index[key] == nil else { return }
+        guard !key.isEmpty, let href = watchAndShopURL(from: url)?.absoluteString, index[key] == nil else { return }
         index[key] = href
     }
 
@@ -205,17 +225,10 @@ enum ClosetPicksSource {
         }
         var index = knownURLs
         for guest in guests ?? [] {
-            let key = normalizedGuestName(guest.name)
-            let href = guest.url.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !key.isEmpty, !href.isEmpty, index[key] == nil {
-                index[key] = href
-            }
+            addGuestURL(guest.name, guest.url, to: &index)
         }
-        if let permalink, let first = names.first {
-            let key = normalizedGuestName(first)
-            if !key.isEmpty, index[key] == nil {
-                index[key] = permalink
-            }
+        if let first = names.first {
+            addGuestURL(first, permalink, to: &index)
         }
         return names.map { name in
             ClosetPicksGuestAttribution(

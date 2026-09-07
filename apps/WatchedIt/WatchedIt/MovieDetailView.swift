@@ -1514,6 +1514,7 @@ struct MovieDetailView: View {
                                             sourceName: sourceContent.sourceName
                                         ),
                                         closetPicksGuestURLs: closetPicksGuestURLs,
+                                        onOpenGuest: { openExternalURL($0) },
                                         onOpen: sourceContent.sourceIdentifier == ClosetPicksSource.identifier
                                             ? {
                                                 openClosetPicksURLs(
@@ -1550,6 +1551,7 @@ struct MovieDetailView: View {
                                             sourceName: legacySource.sourceName
                                         ),
                                         closetPicksGuestURLs: closetPicksGuestURLs,
+                                        onOpenGuest: { openExternalURL($0) },
                                         onOpen: legacySource.sourceIdentifier == ClosetPicksSource.identifier
                                             ? {
                                                 openClosetPicksURLs(
@@ -2066,12 +2068,81 @@ private struct PodcastSourceArtworkView: View {
     }
 }
 
+private struct ClosetPicksGuestLinkLine: View {
+    let guests: [ClosetPicksGuestAttribution]
+    var onOpenGuest: ((URL) -> Void)? = nil
+
+    var body: some View {
+        ClosetPicksGuestFlow {
+            ForEach(Array(guests.enumerated()), id: \.offset) { index, guest in
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    if index == 1 {
+                        Text("   also ")
+                    } else if index > 1 {
+                        Text(", ")
+                    }
+                    if let url = guest.url {
+                        Button {
+                            onOpenGuest?(url)
+                        } label: {
+                            Text(guest.name)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
+                        .allowsHitTesting(true)
+                    } else {
+                        Text(guest.name)
+                    }
+                }
+            }
+        }
+        .captionMedium()
+        .foregroundColor(DesignSystem.Color.textSecondary)
+    }
+}
+
+private struct ClosetPicksGuestFlow: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        layout(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let frames = layout(proposal: proposal, subviews: subviews).frames
+        for (subview, frame) in zip(subviews, frames) {
+            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, frames: [CGRect]) {
+        let maxWidth = proposal.width ?? .infinity
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var width: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if maxWidth.isFinite, x > 0, x + size.width > maxWidth {
+                x = 0
+                y += rowHeight
+                rowHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+            width = max(width, x)
+        }
+        return (CGSize(width: maxWidth.isFinite ? maxWidth : width, height: y + rowHeight), frames)
+    }
+}
+
 /// View for displaying source content using new SourceContent schema
 struct SourceContentCardView: View {
     let sourceContent: MovieDetailView.SourceContentSnapshot
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
     var closetPicksGuestURLs: [String: String] = [:]
+    var onOpenGuest: ((URL) -> Void)? = nil
     var onOpen: (() -> Void)? = nil
 
     private var closetPicksGuests: [ClosetPicksGuestAttribution] {
@@ -2080,7 +2151,10 @@ struct SourceContentCardView: View {
             guests: sourceContent.podcastEpisode?.guests,
             description: sourceContent.podcastEpisode?.description,
             sourceTitle: sourceContent.sourceTitle,
-            permalink: sourceContent.sourceUrl ?? sourceContent.podcastEpisode?.episodeId,
+            permalink: ClosetPicksSource.preferredPermalink(
+                sourceUrl: sourceContent.sourceUrl,
+                episodeId: sourceContent.podcastEpisode?.episodeId
+            ),
             knownURLs: closetPicksGuestURLs
         )
     }
@@ -2093,21 +2167,19 @@ struct SourceContentCardView: View {
                         header
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 } else if let podcastDestinationURL {
                     Link(destination: podcastDestinationURL) {
                         header
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 } else {
                     header
                 }
             }
             if !closetPicksGuests.isEmpty {
-                Text(ClosetPicksSource.attributionText(closetPicksGuests))
-                    .captionMedium()
-                    .foregroundColor(DesignSystem.Color.textSecondary)
-                    .tint(DesignSystem.Color.textSecondary)
-                    .lineLimit(4)
+                ClosetPicksGuestLinkLine(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
                     .captionMedium()
@@ -2201,6 +2273,7 @@ struct LegacySourceCardView: View {
     let podcastFeedURLString: String?
     let podcastDestinationURL: URL?
     var closetPicksGuestURLs: [String: String] = [:]
+    var onOpenGuest: ((URL) -> Void)? = nil
     var onOpen: (() -> Void)? = nil
 
     private var closetPicksGuests: [ClosetPicksGuestAttribution] {
@@ -2209,7 +2282,10 @@ struct LegacySourceCardView: View {
             guests: legacySource.podcastEpisode?.guests,
             description: legacySource.podcastEpisode?.description,
             sourceTitle: legacySource.sourceTitle,
-            permalink: legacySource.sourceUrl ?? legacySource.podcastEpisode?.episodeId,
+            permalink: ClosetPicksSource.preferredPermalink(
+                sourceUrl: legacySource.sourceUrl,
+                episodeId: legacySource.podcastEpisode?.episodeId
+            ),
             knownURLs: closetPicksGuestURLs
         )
     }
@@ -2222,21 +2298,19 @@ struct LegacySourceCardView: View {
                         header
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 } else if legacySource.podcastEpisode != nil, let podcastDestinationURL {
                     Link(destination: podcastDestinationURL) {
                         header
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 } else {
                     header
                 }
             }
             if !closetPicksGuests.isEmpty {
-                Text(ClosetPicksSource.attributionText(closetPicksGuests))
-                    .captionMedium()
-                    .foregroundColor(DesignSystem.Color.textSecondary)
-                    .tint(DesignSystem.Color.textSecondary)
-                    .lineLimit(4)
+                ClosetPicksGuestLinkLine(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = legacySource.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
                     .captionMedium()

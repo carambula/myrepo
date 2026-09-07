@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 public struct ClosetPicksGuest: Codable, Hashable, Sendable {
     public let name: String
@@ -230,7 +231,7 @@ enum ClosetPicksSource {
             var name = AttributedString(guest.name)
             if let url = guest.url {
                 name.link = url
-                name.inlinePresentationIntent = .underlined
+                name.underlineStyle = .single
             }
             attributed += name
         }

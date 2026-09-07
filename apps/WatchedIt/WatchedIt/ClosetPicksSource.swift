@@ -163,16 +163,21 @@ enum ClosetPicksSource {
         sourceUrl: String?,
         episode: PodcastEpisode?
     ) {
-        let add = { (name: String?, url: String?) in
-            let key = normalizedGuestName(name ?? "")
-            let href = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard !key.isEmpty, !href.isEmpty, index[key] == nil else { return }
-            index[key] = href
-        }
         for guest in episode?.guests ?? [] {
-            add(guest.name, guest.url)
+            addGuestURL(guest.name, guest.url, to: &index)
         }
-        add(guestNameFromEpisodeTitle(sourceTitle ?? episode?.title ?? ""), sourceUrl ?? episode?.episodeId)
+        addGuestURL(
+            guestNameFromEpisodeTitle(sourceTitle ?? episode?.title ?? ""),
+            sourceUrl ?? episode?.episodeId,
+            to: &index
+        )
+    }
+
+    private static func addGuestURL(_ name: String?, _ url: String?, to index: inout [String: String]) {
+        let key = normalizedGuestName(name ?? "")
+        let href = url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !key.isEmpty, !href.isEmpty, index[key] == nil else { return }
+        index[key] = href
     }
 
     static func formatGuestLine(_ names: [String]) -> String {

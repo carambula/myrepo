@@ -18,6 +18,7 @@ actor RSSFeedService {
         await cache.remove("feed_episodes_\(u)")
         await cache.remove("feed_meta_\(u)")
         await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: "none"))
+        await cache.remove("feed_episodes_\(feedURL.absoluteString)_none")
         await cache.remove(metaCacheKey(feedURL: feedURL, authTag: "none"))
         if let seg = await PrivateFeedAuthStore.shared.cacheKeySegment(for: feedURL) {
             await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: seg))
@@ -104,7 +105,7 @@ actor RSSFeedService {
     }
 
     private func episodeCacheKey(feedURL: URL, authTag: String) -> String {
-        "feed_episodes_\(feedURL.absoluteString)_\(authTag)"
+        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_dates2"
     }
 
     private func metaCacheKey(feedURL: URL, authTag: String) -> String {
@@ -225,6 +226,12 @@ private class RSSParser: NSObject, XMLParserDelegate {
         currentText += string
     }
 
+    func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+        if let string = String(data: CDATABlock, encoding: .utf8) {
+            currentText += string
+        }
+    }
+
     func parser(_ parser: XMLParser, didEndElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?) {
         let text = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -234,7 +241,8 @@ private class RSSParser: NSObject, XMLParserDelegate {
             case "title": itemTitle = text
             case "description", "content:encoded":
                 if text.count > itemDescription.count { itemDescription = text }
-            case "pubDate": itemPubDate = text
+            case "pubDate", "published", "dc:date", "itunes:pubDate":
+                if itemPubDate.isEmpty || text.count > itemPubDate.count { itemPubDate = text }
             case "itunes:duration": itemDuration = text
             case "guid": itemGUID = text
             case "itunes:episode": itemEpisodeNumber = Int(text)
@@ -309,7 +317,7 @@ private class RSSParser: NSObject, XMLParserDelegate {
             podcastID: podcastID,
             title: itemTitle,
             description: itemDescription,
-            publishDate: parseDate(itemPubDate) ?? Date(),
+            publishDate: PodcastDateParser.parse(itemPubDate) ?? .distantPast,
             duration: parseDuration(itemDuration),
             audioURL: audioURL,
             videoURL: itemVideoURL.flatMap { URL(string: $0) },
@@ -318,24 +326,6 @@ private class RSSParser: NSObject, XMLParserDelegate {
             seasonNumber: itemSeasonNumber,
             transcriptURL: itemTranscriptURL.flatMap { URL(string: $0) }
         )
-    }
-
-    private func parseDate(_ string: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        let formats = [
-            "EEE, dd MMM yyyy HH:mm:ss Z",
-            "EEE, dd MMM yyyy HH:mm:ss zzz",
-            "yyyy-MM-dd'T'HH:mm:ssZ",
-            "yyyy-MM-dd"
-        ]
-        for format in formats {
-            formatter.dateFormat = format
-            if let date = formatter.date(from: string) {
-                return date
-            }
-        }
-        return nil
     }
 
     private func parseDuration(_ string: String) -> TimeInterval {

@@ -124,7 +124,7 @@ actor MinCloudClient {
         let decoded = try JSONDecoder().decode(MinCloudFeedResponse.self, from: data)
         return decoded.episodes.compactMap { episode in
             guard let audio = episode.audioUrl.flatMap(URL.init(string:)) else { return nil }
-            let published = episode.publishDate.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+            let published = PodcastDateParser.parse(episode.publishDate) ?? .distantPast
             return Episode(
                 id: episode.guid ?? episode.id ?? UUID().uuidString,
                 podcastID: feedURL.absoluteString,

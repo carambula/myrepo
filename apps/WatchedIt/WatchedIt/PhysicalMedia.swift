@@ -60,6 +60,12 @@ public enum PhysicalMediaFilter: String, CaseIterable, Sendable, Hashable {
     public static var formats: [PhysicalMediaFilter] { [.uhd4k, .bluRay] }
     public static var partnerships: [PhysicalMediaFilter] { [.criterion, .arrow, .shoutFactory, .kinoLorber] }
 
+    public static func available(in movies: [Movie]) -> [PhysicalMediaFilter] {
+        allCases.filter { filter in
+            movies.contains { $0.physicalMedia?.matches(filter) == true }
+        }
+    }
+
     public static func fromSearchToken(_ token: String) -> PhysicalMediaFilter? {
         switch token.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "4k", "uhd", "4k uhd":

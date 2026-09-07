@@ -30,6 +30,16 @@ struct MovieSearchFilters: Equatable {
     var physicalMediaFilter: PhysicalMediaFilter? = nil
     var sortOption: SortOption = .episodeDateDesc
     var preferredStreamingServices: [String] = []
+
+    var hasWatchLocationFilter: Bool {
+        selectedStreamingService != nil || theatricalFilter != nil || physicalMediaFilter != nil
+    }
+
+    mutating func clearWatchLocationFilters() {
+        selectedStreamingService = nil
+        theatricalFilter = nil
+        physicalMediaFilter = nil
+    }
 }
 
 enum MovieSearchEngine {

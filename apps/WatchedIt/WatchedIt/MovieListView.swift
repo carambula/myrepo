@@ -540,8 +540,8 @@ struct MovieListView: View {
         Set(preferredListIdentifiers)
     }
     
-    private var hasPreferredStreamingServices: Bool {
-        !preferredStreamingServices.isEmpty
+    private var availablePhysicalMediaFilters: [PhysicalMediaFilter] {
+        PhysicalMediaFilter.available(in: localDB.movies)
     }
     
     private var hasActiveFilters: Bool {
@@ -3015,9 +3015,7 @@ struct MovieListView: View {
         ToolbarItemGroup(placement: .bottomBar) {
             statusMenu
             listMenu
-            if hasPreferredStreamingServices {
-                streamingServiceMenu
-            }
+            streamingServiceMenu
             genreMenu
             ratingMenu
             Spacer()
@@ -3032,9 +3030,7 @@ struct MovieListView: View {
         GlassCapsuleToolbar(spacing: 24, height: customToolbarControlHeight) {
             statusMenu
             listMenu
-            if hasPreferredStreamingServices {
-                streamingServiceMenu
-            }
+            streamingServiceMenu
             genreMenu
             ratingMenu
         }
@@ -3311,52 +3307,35 @@ struct MovieListView: View {
             DesignSystemIcon(
                 "play.square.stack.fill",
                 size: DesignSystem.IconSize.md,
-                color: toolbarIconColor(isActive: selectedStreamingService != nil)
+                color: toolbarIconColor(isActive: selectedStreamingService != nil || theatricalFilter != nil)
             )
         }
+        .accessibilityLabel("Streaming")
     }
     
     @ViewBuilder
     private var streamingServiceMenuContent: some View {
-        Button {
-            applyStreamingServiceFilterFromToolbar(nil)
-        } label: {
-            if selectedStreamingService == nil {
-                Label("All Services", systemImage: DesignSystem.Icon.checkmark)
-            } else {
-                Text("All Services")
+        WatchLocationFilterMenuContent(
+            preferredStreamingServices: preferredStreamingServices,
+            availablePhysicalMediaFilters: availablePhysicalMediaFilters,
+            selectedStreamingService: selectedStreamingService,
+            theatricalFilter: theatricalFilter,
+            physicalMediaFilter: nil,
+            onClear: {
+                applyWatchLocationClearFromToolbar()
+            },
+            onSelectStreamingService: { service in
+                applyStreamingServiceFilterFromToolbar(service)
+            },
+            onSelectTheatrical: { filter in
+                applyTheatricalFilterFromToolbar(filter)
+            },
+            onSelectPhysicalMedia: { filter in
+                applyPhysicalMediaFilterFromToolbar(filter)
             }
-        }
-        
-        if hasPreferredStreamingServices {
-            Divider()
-            
-            ForEach(preferredStreamingServices, id: \.self) { service in
-                Button {
-                    applyStreamingServiceFilterFromToolbar(service)
-                } label: {
-                    if selectedStreamingService == service {
-                        Label(service, systemImage: DesignSystem.Icon.checkmark)
-                    } else {
-                        Text(service)
-                    }
-                }
-            }
-            
-            Divider()
-            
-            Button {
-                applyStreamingServiceFilterFromToolbar(myServicesFilterLabel)
-            } label: {
-                if selectedStreamingService == myServicesFilterLabel {
-                    Label("My Services", systemImage: DesignSystem.Icon.checkmark)
-                } else {
-                    Text("My Services")
-                }
-            }
-        }
+        )
     }
-    
+
     private var searchButton: some View {
         Button(action: {
             presentGlobalSearch(focusSearchOnOpen: true)
@@ -3441,28 +3420,19 @@ struct MovieListView: View {
         }
     }
 
-    @ViewBuilder
-    private var theatricalMenuContent: some View {
-        Button {
-            applyTheatricalFilterFromToolbar(nil)
-        } label: {
-            if theatricalFilter == nil {
-                Label("All Movies", systemImage: "checkmark")
-            } else {
-                Text("All Movies")
-            }
+    private func applyWatchLocationClearFromToolbar() {
+        if collectionsOnlyMode {
+            presentGlobalSearch(focusSearchOnOpen: false)
+            return
         }
-        ForEach(TheatricalFilter.allCases, id: \.self) { filter in
-            Button {
-                applyTheatricalFilterFromToolbar(filter)
-            } label: {
-                if theatricalFilter == filter {
-                    Label(filter.rawValue, systemImage: "checkmark")
-                } else {
-                    Text(filter.rawValue)
-                }
-            }
-        }
+        selectedStreamingService = nil
+        theatricalFilter = nil
+    }
+
+    private func applyPhysicalMediaFilterFromToolbar(_ filter: PhysicalMediaFilter) {
+        var filters = MovieSearchFilters()
+        filters.physicalMediaFilter = filter
+        presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
     }
 
     private func applyTheatricalFilterFromToolbar(_ filter: TheatricalFilter?) {
@@ -3844,19 +3814,11 @@ struct MovieListView: View {
             } label: {
                 Label("Lists", systemImage: DesignSystem.Icon.listRectangle)
             }
-            
-            if hasPreferredStreamingServices {
-                Menu {
-                    streamingServiceMenuContent
-                } label: {
-                    Label("Streaming", systemImage: "play.square.stack.fill")
-                }
-            }
 
             Menu {
-                theatricalMenuContent
+                streamingServiceMenuContent
             } label: {
-                Label("Theaters", systemImage: DesignSystem.Icon.ticket)
+                Label("Streaming", systemImage: "play.square.stack.fill")
             }
             
             Menu {

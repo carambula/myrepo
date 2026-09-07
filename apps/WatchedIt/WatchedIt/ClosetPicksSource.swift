@@ -230,7 +230,7 @@ enum ClosetPicksSource {
             var name = AttributedString(guest.name)
             if let url = guest.url {
                 name.link = url
-                name.underlineStyle = .single
+                name.inlinePresentationIntent = .underlined
             }
             attributed += name
         }

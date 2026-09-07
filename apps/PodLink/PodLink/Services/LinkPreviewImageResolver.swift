@@ -33,7 +33,9 @@ actor LinkPreviewImageResolver {
         let badge = Self.faviconURL(for: pageURL)
         let resolved: LinkCardPreview
 
-        if let youtubeThumb = YouTubeLinkMedia.thumbnailURL(from: pageURL) {
+        if Self.usesBrandTileOnly(brand) {
+            resolved = .empty(brand: brand, badgeURL: badge)
+        } else if let youtubeThumb = YouTubeLinkMedia.thumbnailURL(from: pageURL) {
             resolved = LinkCardPreview(photographURL: youtubeThumb, badgeURL: badge, brand: brand ?? .youtube)
         } else {
             async let oembed = fetchOEmbedThumbnail(from: pageURL, brand: brand)
@@ -49,6 +51,12 @@ actor LinkPreviewImageResolver {
 
         cache[key] = resolved
         return resolved
+    }
+
+    /// Instagram preview images are usually the app glyph or a blocked asset.
+    /// Use the brand tile only — one icon on one surface, like TikTok.
+    static func usesBrandTileOnly(_ brand: LinkServiceBrand?) -> Bool {
+        brand == .instagram
     }
 
     static func looksLikeIconURL(_ url: URL) -> Bool {

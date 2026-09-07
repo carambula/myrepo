@@ -80,4 +80,12 @@ struct LinkCardPreviewTests {
         #expect(LinkServiceBrand.spotify.oembedURL(for: spotify)?.absoluteString.contains("spotify.com/oembed") == true)
         #expect(LinkServiceBrand.instagram.oembedURL(for: URL(string: "https://www.instagram.com/p/abc/")!) == nil)
     }
+
+    @Test
+    func instagramUsesBrandTileInsteadOfRemotePhotograph() {
+        #expect(LinkPreviewImageResolver.usesBrandTileOnly(.instagram))
+        #expect(!LinkPreviewImageResolver.usesBrandTileOnly(.tiktok))
+        #expect(!LinkPreviewImageResolver.usesBrandTileOnly(.youtube))
+        #expect(!LinkPreviewImageResolver.usesBrandTileOnly(nil))
+    }
 }

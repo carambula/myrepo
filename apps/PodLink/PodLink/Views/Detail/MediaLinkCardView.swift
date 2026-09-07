@@ -69,7 +69,7 @@ struct MediaLinkCardView: View {
         ZStack(alignment: .bottomTrailing) {
             artwork
 
-            if photographURL != nil {
+            if photographURL != nil, brand != .instagram {
                 serviceBadge
                     .padding(DesignSystem.Spacing.xs)
             }

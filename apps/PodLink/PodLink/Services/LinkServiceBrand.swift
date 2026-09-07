@@ -170,12 +170,10 @@ struct LinkServiceBrandMark: View {
                 .offset(x: side * 0.03)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .instagram:
-            ZStack {
-                instagramBackground
-                Image(systemName: "camera.fill")
-                    .font(.system(size: side * 0.42, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
+            Image(systemName: "camera.fill")
+                .font(.system(size: side * 0.46, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .tiktok:
             tiktokMark(side: side)
         case .spotify:
@@ -189,18 +187,6 @@ struct LinkServiceBrandMark: View {
                 .foregroundStyle(ink)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-
-    private var instagramBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.97, green: 0.69, blue: 0.19),
-                Color(red: 0.88, green: 0.19, blue: 0.42),
-                Color(red: 0.58, green: 0.21, blue: 0.86)
-            ],
-            startPoint: .bottomLeading,
-            endPoint: .topTrailing
-        )
     }
 
     private func tiktokMark(side: CGFloat) -> some View {

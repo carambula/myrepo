@@ -739,29 +739,14 @@ struct WatchedItTests {
                 == ["Agnes Varda", "Jeremy O. Harris", "Desiree Akhavan"]
         )
 
-        var knownURLs: [String: String] = [:]
-        ClosetPicksSource.addGuestURLs(
-            to: &knownURLs,
-            sourceTitle: "Jeremy O. Harris’s Closet Picks",
-            sourceUrl: "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks",
-            episode: nil
-        )
-        ClosetPicksSource.addGuestURLs(
-            to: &knownURLs,
-            sourceTitle: "Desiree Akhavan’s Closet Picks",
-            sourceUrl: "https://www.criterion.com/shop/collection/435-desiree-akhavan-s-closet-picks",
-            episode: nil
-        )
-
         let guests = ClosetPicksSource.guestAttributions(
             guests: nil,
             description: "Agnes Varda   also Jeremy O. Harris, Desiree Akhavan",
             sourceTitle: "Agnes Varda’s Closet Picks",
-            permalink: "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks",
-            knownURLs: knownURLs
+            permalink: nil
         )
         #expect(ClosetPicksSource.formatGuestLine(guests.map(\.name)) == "Agnes Varda   also Jeremy O. Harris, Desiree Akhavan")
-        #expect(guests[0].url?.absoluteString == "https://www.criterion.com/shop/collection/200-agnes-varda-s-closet-picks")
+        #expect(guests[0].url?.absoluteString == "https://www.criterion.com/shop/collection/472-agnes-varda-s-closet-picks")
         #expect(guests[1].url?.absoluteString == "https://www.criterion.com/shop/collection/661-jeremy-o-harris-s-closet-picks")
         #expect(guests[2].url?.absoluteString == "https://www.criterion.com/shop/collection/435-desiree-akhavan-s-closet-picks")
 

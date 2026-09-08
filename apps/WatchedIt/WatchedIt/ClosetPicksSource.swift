@@ -189,7 +189,7 @@ enum ClosetPicksSource {
         }
         addGuestURL(
             guestNameFromEpisodeTitle(sourceTitle ?? episode?.title ?? ""),
-            sourceUrl ?? episode?.episodeId,
+            preferredPermalink(sourceUrl: sourceUrl, episodeId: episode?.episodeId),
             to: &index
         )
     }
@@ -223,9 +223,17 @@ enum ClosetPicksSource {
                 names = [fromTitle]
             }
         }
-        var index = knownURLs
+        var index = ClosetPicksGuestURLCatalog.urls
+        for (key, url) in knownURLs {
+            index[key] = url
+        }
         for guest in guests ?? [] {
-            addGuestURL(guest.name, guest.url, to: &index)
+            if let href = watchAndShopURL(from: guest.url)?.absoluteString {
+                let key = normalizedGuestName(guest.name)
+                if !key.isEmpty {
+                    index[key] = href
+                }
+            }
         }
         if let first = names.first {
             addGuestURL(first, permalink, to: &index)

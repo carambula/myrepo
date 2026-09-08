@@ -464,7 +464,11 @@ struct MovieDetailView: View {
             || legacyRows.contains { $0.dataSource?.identifier == closetId }
         if movieHasClosetPicks {
             let closetContents = (try? modelContext.fetch(FetchDescriptor<SourceContent>())) ?? []
-            for content in closetContents where content.source?.identifier == closetId {
+            for content in closetContents {
+                let isCloset = ClosetPicksSource.normalizedIdentifier(content.source?.identifier ?? "") == closetId
+                    || (content.sourceTitle ?? content.podcastEpisode?.title ?? "")
+                        .localizedCaseInsensitiveContains("closet picks")
+                guard isCloset else { continue }
                 ClosetPicksSource.addGuestURLs(
                     to: &guestURLs,
                     sourceTitle: content.sourceTitle,
@@ -473,7 +477,11 @@ struct MovieDetailView: View {
                 )
             }
             let closetLegacy = (try? modelContext.fetch(FetchDescriptor<MovieDataSource>())) ?? []
-            for dataSource in closetLegacy where dataSource.dataSource?.identifier == closetId {
+            for dataSource in closetLegacy {
+                let isCloset = ClosetPicksSource.normalizedIdentifier(dataSource.dataSource?.identifier ?? "") == closetId
+                    || (dataSource.sourceTitle ?? dataSource.podcastEpisode?.title ?? "")
+                        .localizedCaseInsensitiveContains("closet picks")
+                guard isCloset else { continue }
                 ClosetPicksSource.addGuestURLs(
                     to: &guestURLs,
                     sourceTitle: dataSource.sourceTitle,

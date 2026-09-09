@@ -248,43 +248,12 @@ struct MovieDetailView: View {
         !playMenuStreamingServices.isEmpty || hasPhysicalPurchaseOptions || hasTheatricalTicketOptions
     }
 
-    private var hiddenStreamingKeys: Set<String> {
-        Set(
-            StreamingPreferences.decode(from: hiddenServicesData).map {
-                StreamingServiceAssets.normalizedName($0).lowercased()
-            }
-        )
-    }
-
     private var playMenuStreamingServices: [StreamingService] {
-        let hidden = hiddenStreamingKeys
-        let available = uniqueStreamingServices.filter { service in
-            let key = StreamingServiceAssets.normalizedName(service.name).lowercased()
-            return !hidden.contains(key)
-        }
-        let preferred = preferredStreamingServices.filter { service in
-            let key = StreamingServiceAssets.normalizedName(service.name).lowercased()
-            return !hidden.contains(key)
-        }
-        if !preferred.isEmpty {
-            return preferred
-        }
-        return available
-    }
-
-    private var preferredStreamingServices: [StreamingService] {
-        let preferredIndex = preferredServiceIndex
-        guard !preferredIndex.isEmpty else { return [] }
-        return uniqueStreamingServices
-            .filter { service in
-                let key = StreamingServiceAssets.normalizedName(service.name).lowercased()
-                return preferredIndex[key] != nil
-            }
-            .sorted { lhs, rhs in
-                let lhsKey = StreamingServiceAssets.normalizedName(lhs.name).lowercased()
-                let rhsKey = StreamingServiceAssets.normalizedName(rhs.name).lowercased()
-                return (preferredIndex[lhsKey] ?? Int.max) < (preferredIndex[rhsKey] ?? Int.max)
-            }
+        PlayMenuStreamingFilter.services(
+            available: uniqueStreamingServices,
+            preferredNames: preferredServiceNames,
+            hiddenNames: StreamingPreferences.decode(from: hiddenServicesData)
+        )
     }
 
     private struct PodcastMenuItem: Identifiable {
@@ -1842,6 +1811,10 @@ enum StreamingServiceAssets {
             return "Prime Video"
         case "hbo max", "max", "hbo max amazon channel", "max amazon channel", "hbo max roku premium channel", "max roku premium channel":
             return "HBO Max"
+        case "netflix", "netflix standard with ads":
+            return "Netflix"
+        case "the criterion channel", "criterion channel":
+            return "Criterion Channel"
         default:
             return trimmed
         }

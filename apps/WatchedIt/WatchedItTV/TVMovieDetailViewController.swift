@@ -339,38 +339,11 @@ final class TVMovieDetailViewController: UIViewController {
     }
 
     private func streamingServicesForMenu() -> [StreamingService] {
-        let preferred = preferredStreamingServicesForMenu()
-        if !preferred.isEmpty {
-            return preferred
-        }
-        var seen = Set<String>()
-        return movie.streamingServices.filter { service in
-            let key = normalizedCaseKey(service.name)
-            guard !key.isEmpty, seen.insert(key).inserted else { return false }
-            return true
-        }
-    }
-
-    private func preferredStreamingServicesForMenu() -> [StreamingService] {
-        let preferredNames = StreamingPreferences.decode(from: StreamingPreferences.preferredServicesData())
-        guard !preferredNames.isEmpty else { return [] }
-
-        var bestByKey: [String: StreamingService] = [:]
-        for service in movie.streamingServices {
-            let key = normalizedCaseKey(service.name)
-            if bestByKey[key] == nil {
-                bestByKey[key] = service
-            }
-        }
-
-        var ordered: [StreamingService] = []
-        for preferred in preferredNames {
-            let key = normalizedCaseKey(preferred)
-            if let match = bestByKey[key] {
-                ordered.append(match)
-            }
-        }
-        return ordered
+        PlayMenuStreamingFilter.services(
+            available: movie.streamingServices,
+            preferredNames: StreamingPreferences.decode(from: StreamingPreferences.preferredServicesData()),
+            hiddenNames: StreamingPreferences.decode(from: StreamingPreferences.hiddenServicesData())
+        )
     }
 
     private func openTrailer() {
@@ -437,10 +410,6 @@ final class TVMovieDetailViewController: UIViewController {
         default:
             return trimmed
         }
-    }
-
-    private func normalizedCaseKey(_ value: String) -> String {
-        normalizedName(value).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     private func makeMetadataRow() -> UIStackView? {

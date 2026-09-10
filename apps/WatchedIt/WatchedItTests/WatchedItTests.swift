@@ -809,6 +809,48 @@ struct WatchedItTests {
         #expect(badges.filter { ClosetPicksSource.showsPosterBadge(for: $0) }.count == 1)
     }
 
+    @Test func playMenuKeepsPreferredStreamersOnCriterionTitles() {
+        let available = [
+            StreamingService(id: "8", name: "Netflix"),
+            StreamingService(id: "1899", name: "Max"),
+            StreamingService(id: "258", name: "The Criterion Channel"),
+            StreamingService(id: "2", name: "Apple TV"),
+            StreamingService(id: "10", name: "Amazon Video")
+        ]
+        let criterionOnly = [
+            StreamingService(id: "258", name: "The Criterion Channel"),
+            StreamingService(id: "2", name: "Apple TV"),
+            StreamingService(id: "10", name: "Amazon Video"),
+            StreamingService(id: "192", name: "YouTube")
+        ]
+
+        #expect(StreamingServiceAssets.normalizedName("The Criterion Channel") == "Criterion Channel")
+
+        let preferredHits = PlayMenuStreamingFilter.services(
+            available: available,
+            preferredNames: ["Netflix", "HBO Max"]
+        )
+        #expect(preferredHits.map(\.name) == ["Netflix", "Max"])
+
+        let criterionWithoutPreferred = PlayMenuStreamingFilter.services(
+            available: criterionOnly,
+            preferredNames: ["Netflix", "HBO Max"]
+        )
+        #expect(criterionWithoutPreferred.isEmpty)
+
+        let criterionPreferred = PlayMenuStreamingFilter.services(
+            available: criterionOnly,
+            preferredNames: ["Criterion Channel", "Netflix"]
+        )
+        #expect(criterionPreferred.map(\.name) == ["The Criterion Channel"])
+
+        let noPreferences = PlayMenuStreamingFilter.services(
+            available: criterionOnly,
+            preferredNames: []
+        )
+        #expect(noPreferences.map(\.id) == criterionOnly.map(\.id))
+    }
+
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,

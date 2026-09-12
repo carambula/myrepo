@@ -1432,30 +1432,6 @@ struct MovieDetailView: View {
                             }
                         }
                     }
-                    
-                    if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
-                            Text("In Theaters")
-                                .labelMedium()
-                                .fontWeight(.semibold)
-                                .foregroundColor(DesignSystem.Color.textSecondary)
-
-                            Text(run.badgeLabels.joined(separator: "   "))
-                                .bodySmall()
-                                .foregroundColor(DesignSystem.Color.textPrimary)
-
-                            if TheatricalTicketLinkBuilder.hasOptions(for: run) {
-                                Button(action: presentTheatricalTicketSheet) {
-                                    Text("Get tickets")
-                                        .labelMedium()
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(DesignSystem.Color.textPrimary)
-                                }
-                                .buttonStyle(CreditTapButtonStyle())
-                                .accessibilityLabel("Get tickets")
-                            }
-                        }
-                    }
 
                     // Streaming Services
 

@@ -273,6 +273,33 @@ async function loadDesignSystemTokens() {
 
 // ---- RSS Feed Parsing ----
 
+/** Decode XML/HTML character references in RSS text nodes (regex parser does not resolve entities). */
+function decodeXmlEntities(raw) {
+  if (!raw) return "";
+  let s = String(raw);
+  s = s.replace(/&#(\d+);/g, (match, n) => {
+    const code = Number.parseInt(n, 10);
+    return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  });
+  s = s.replace(/&#x([0-9a-fA-F]+);/g, (match, h) => {
+    const code = Number.parseInt(h, 16);
+    return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  });
+  const named = [
+    ["&quot;", '"'],
+    ["&apos;", "'"],
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&nbsp;", " "],
+    ["&amp;", "&"],
+  ];
+  for (const [ent, ch] of named) {
+    s = s.split(ent).join(ch);
+  }
+  return s;
+}
+
+
 function parseRssItems(xml) {
   const items = [];
   const itemBlocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
@@ -284,7 +311,7 @@ function parseRssItems(xml) {
 
   for (const block of itemBlocks) {
     const titleMatch = block.match(titleRe);
-    const rawTitle = (titleMatch?.[1] || titleMatch?.[2] || "").trim();
+    const rawTitle = decodeXmlEntities((titleMatch?.[1] || titleMatch?.[2] || "").trim());
     if (!rawTitle) continue;
     const dateMatch = block.match(pubDateRe);
     const descMatch = block.match(descRe);
@@ -293,7 +320,7 @@ function parseRssItems(xml) {
     items.push({
       title: rawTitle,
       pubDate: (dateMatch?.[1] || "").trim(),
-      description: (descMatch?.[1] || descMatch?.[2] || "").trim().slice(0, 500),
+      description: decodeXmlEntities((descMatch?.[1] || descMatch?.[2] || "").trim()).slice(0, 500),
       audioUrl: encMatch?.[1] || null,
       duration: (durMatch?.[1] || "").trim() || null,
     });
@@ -306,8 +333,8 @@ function parseFeedMeta(xml) {
   const descMatch = xml.match(/<channel[\s\S]*?<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>|<channel[\s\S]*?<description>([\s\S]*?)<\/description>/i);
   const artMatch = xml.match(/<itunes:image\s+href="([^"]+)"/i) || xml.match(/<image>[\s\S]*?<url>([\s\S]*?)<\/url>/i);
   return {
-    title: (titleMatch?.[1] || titleMatch?.[2] || "").trim(),
-    description: (descMatch?.[1] || descMatch?.[2] || "").trim().slice(0, 500),
+    title: decodeXmlEntities((titleMatch?.[1] || titleMatch?.[2] || "").trim()),
+    description: decodeXmlEntities((descMatch?.[1] || descMatch?.[2] || "").trim()).slice(0, 500),
     artworkUrl: (artMatch?.[1] || "").trim() || null,
   };
 }

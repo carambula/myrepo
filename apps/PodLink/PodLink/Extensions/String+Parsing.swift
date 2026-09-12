@@ -85,4 +85,11 @@ extension String {
         }
         return stripped
     }
+
+    /// RSS/Atom fields such as `<title>` often contain HTML character references (`&#39;`, `&#8217;`, `&amp;`, …).
+    /// Some feeds double-encode (`&amp;#39;`), which survives XML parsing as the literal `&#39;`.
+    /// Decodes entities and strips stray tags without treating the whole string as HTML markup (see `strippingHTML`).
+    var rssDecodedPlainText: String {
+        strippingHTMLTags.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }

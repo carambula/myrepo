@@ -1,3 +1,6 @@
+# Used by `railway up` from this directory, or when the service Root Directory
+# is /services/min-cloud. GitHub auto-deploy from the repo root uses the
+# repository-root Dockerfile / railway.toml instead.
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

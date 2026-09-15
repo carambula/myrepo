@@ -40,7 +40,13 @@ Set `ADMIN_TOKEN` and paste it into the admin page. Set `TMDB_API_KEY` to refres
 
 ## Railway
 
-1. Create a Railway project from `services/min-cloud`.
+GitHub auto-deploy builds from the **repository root**. A root `Dockerfile` / `railway.toml` copy `services/min-cloud` into the image. Do not point Railpack at the monorepo `package.json` (it has no `start` script).
+
+CLI deploys from this directory still work: `railway up -c -s min-cloud`.
+
+Optional: set the service **Root Directory** to `/services/min-cloud` so Railway uses this folder’s Dockerfile instead.
+
+1. Create a Railway project from this repo (or from `services/min-cloud`).
 2. Add a Postgres plugin. Railway injects `DATABASE_URL`.
 3. Set `ADMIN_TOKEN`, `SESSION_SECRET`, `CRON_SECRET`, and `PUBLIC_URL`.
 4. Optionally set `TMDB_API_KEY`, `ADMIN_EMAILS`, and APNs/VAPID keys later.

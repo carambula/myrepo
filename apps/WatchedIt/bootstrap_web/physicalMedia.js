@@ -262,9 +262,20 @@ function seedCurated4K(byTmdbId) {
   return byTmdbId;
 }
 
+function isCriterionSourceIdentifier(identifier) {
+  const value = String(identifier || "").trim();
+  return value === "criterion" || value === "criterion-closet-picks";
+}
+
+function criterionSourcePhysicalMedia() {
+  const media = emptyMedia();
+  addEdition(media, { label: "criterion", format: "bluRay" });
+  return reconcile(media);
+}
+
 function seedCriterionFromSources(movies, byTmdbId) {
   for (const movie of movies || []) {
-    if ((movie.sourceIdentifier !== "criterion" && movie.sourceIdentifier !== "criterion-closet-picks") || !movie.tmdbId) continue;
+    if (!isCriterionSourceIdentifier(movie.sourceIdentifier) || !movie.tmdbId) continue;
     const existing = byTmdbId.get(String(movie.tmdbId)) || emptyMedia();
     existing.hasCriterion = true;
     const hasCriterionEdition = (existing.editions || []).some((edition) => edition.label === "criterion");
@@ -274,6 +285,120 @@ function seedCriterionFromSources(movies, byTmdbId) {
     byTmdbId.set(String(movie.tmdbId), reconcile(existing));
   }
   return byTmdbId;
+}
+
+function applyCriterionSourcePhysicalMedia(movies) {
+  let updated = 0;
+  for (const movie of movies || []) {
+    if (!isCriterionSourceIdentifier(movie.sourceIdentifier)) continue;
+    const merged = mergePhysicalMedia(movie.physicalMedia, criterionSourcePhysicalMedia());
+    if (!merged) continue;
+    if (JSON.stringify(merged) !== JSON.stringify(movie.physicalMedia || null)) {
+      movie.physicalMedia = merged;
+      updated += 1;
+    }
+  }
+  return updated;
+}
+
+function normalizeShopTitle(title) {
+  return String(title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function parseHdReportCriterion4K(html) {
+  const titles = [];
+  const seen = new Set();
+  const headings = String(html || "").match(/<h[23][^>]*>[\s\S]*?<\/h[23]>/gi) || [];
+  const boxsets = {
+    "the wes anderson archive": [
+      ["Bottle Rocket", 1996],
+      ["Rushmore", 1998],
+      ["The Royal Tenenbaums", 2001],
+      ["The Life Aquatic with Steve Zissou", 2004],
+      ["The Darjeeling Limited", 2007],
+      ["Fantastic Mr. Fox", 2009],
+      ["Moonrise Kingdom", 2012],
+      ["The Grand Budapest Hotel", 2014],
+      ["Isle of Dogs", 2018],
+      ["The French Dispatch", 2021],
+    ],
+  };
+  const push = (title, year) => {
+    const key = `${normalizeShopTitle(title)}|${year || ""}`;
+    if (!title || seen.has(key)) return;
+    seen.add(key);
+    titles.push({ title, year: year || null, format: "uhd4k" });
+  };
+  for (const heading of headings) {
+    const text = heading
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&#8217;|&rsquo;/gi, "'")
+      .replace(/&#8211;|&ndash;/gi, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text || /^(the criterion collection|related|latest|more|share)\b/i.test(text)) continue;
+    const box = boxsets[normalizeShopTitle(text)];
+    if (box) {
+      for (const [title, year] of box) push(title, year);
+      continue;
+    }
+    const match = text.match(/^(.+?)\s*\(((?:19|20)\d{2})\)\s*$/);
+    if (!match) continue;
+    push(match[1].replace(/\s*-\s*director['']?s cut\s*$/i, "").trim(), Number(match[2]));
+  }
+  return titles;
+}
+
+function seedCriterion4KFromTitles(titles, movies, byTmdbId) {
+  const catalog = new Map();
+  for (const movie of movies || []) {
+    if (!movie.tmdbId || !movie.title) continue;
+    const key = normalizeShopTitle(movie.title);
+    if (movie.year != null) catalog.set(`${key}|${movie.year}`, movie.tmdbId);
+    if (!catalog.has(key)) catalog.set(key, movie.tmdbId);
+  }
+  for (const item of titles || []) {
+    const key = normalizeShopTitle(item.title);
+    const tmdbId = catalog.get(`${key}|${item.year || ""}`) || catalog.get(key);
+    if (!tmdbId) continue;
+    const existing = byTmdbId.get(String(tmdbId)) || emptyMedia();
+    existing.hasCriterion = true;
+    existing.has4K = true;
+    addEdition(existing, { label: "criterion", format: "uhd4k" });
+    byTmdbId.set(String(tmdbId), reconcile(existing));
+  }
+  return byTmdbId;
+}
+
+async function fetchHdReportCriterion4K() {
+  const html = await new Promise((resolve, reject) => {
+    https
+      .get(
+        "https://hd-report.com/list-of-4k-blu-ray-discs-from-the-criterion-collection/",
+        {
+          headers: {
+            "User-Agent": "WatchedIt/1.0 (physical media catalog enricher)",
+            Accept: "text/html",
+          },
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 400) {
+              return reject(new Error(`HD Report HTTP ${res.statusCode}`));
+            }
+            resolve(data);
+          });
+        }
+      )
+      .on("error", reject);
+  });
+  return parseHdReportCriterion4K(html);
 }
 
 function applyIndexToMovies(movies, byTmdbId, { overwriteManual = false } = {}) {
@@ -349,7 +474,11 @@ module.exports = {
   mergePhysicalMedia,
   fetchWikidataPhysicalMediaIndex,
   seedCriterionFromSources,
+  applyCriterionSourcePhysicalMedia,
   seedCurated4K,
+  parseHdReportCriterion4K,
+  seedCriterion4KFromTitles,
+  fetchHdReportCriterion4K,
   filterIndexToCatalog,
   applyIndexToMovies,
   overlayFromMovies,

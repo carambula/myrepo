@@ -6,8 +6,10 @@ const path = require("path");
 const {
   fetchWikidataPhysicalMediaIndex,
   seedCriterionFromSources,
+  applyCriterionSourcePhysicalMedia,
   seedCurated4K,
-  filterIndexToCatalog,
+  fetchHdReportCriterion4K,
+  seedCriterion4KFromTitles,
   applyIndexToMovies,
   overlayFromIndex,
   physicalMediaStats,
@@ -29,24 +31,31 @@ async function main() {
   } catch (error) {
     console.warn(`Wikidata lookup failed (${error.message}); seeding from Criterion list source only.`);
   }
+  try {
+    const fourK = await fetchHdReportCriterion4K();
+    seedCriterion4KFromTitles(fourK, movies, index);
+    console.log(`Seeded ${fourK.length} Criterion 4K titles from HD Report`);
+  } catch (error) {
+    console.warn(`Criterion 4K list lookup failed (${error.message}).`);
+  }
   seedCriterionFromSources(movies, index);
   seedCurated4K(index);
-  const catalogIndex = filterIndexToCatalog(index, movies);
-  console.log(`Inferred physical media for ${index.size} Wikidata titles, ${catalogIndex.size} in catalog`);
+  applyCriterionSourcePhysicalMedia(movies);
+  console.log(`Inferred physical media for ${index.size} titles`);
 
-  const overlay = overlayFromIndex(catalogIndex);
+  const overlay = overlayFromIndex(index);
   await fs.writeFile(overlayPath, JSON.stringify(overlay, null, 2) + "\n");
   console.log(`Wrote overlay with ${Object.keys(overlay.byTmdbId).length} titles to ${overlayPath}`);
 
   if (process.argv.includes("--update-bootstrap")) {
-    const updated = applyIndexToMovies(movies, catalogIndex);
+    const updated = applyIndexToMovies(movies, index);
     bootstrap.generatedDate = new Date().toISOString();
     await fs.writeFile(bootstrapPath, JSON.stringify(bootstrap, null, 2) + "\n");
     console.log(`Updated physicalMedia on ${updated} bootstrap rows`);
     console.log(JSON.stringify(physicalMediaStats(movies), null, 2));
   } else {
     const seededMovies = movies.map((movie) => {
-      const inferred = catalogIndex.get(String(movie.tmdbId));
+      const inferred = movie.tmdbId != null ? index.get(String(movie.tmdbId)) : movie.physicalMedia;
       return inferred ? { ...movie, physicalMedia: inferred } : movie;
     });
     console.log(JSON.stringify(physicalMediaStats(seededMovies), null, 2));

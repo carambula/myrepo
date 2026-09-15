@@ -405,7 +405,11 @@ final class MovieData {
             rewatchablesDiscussion: rewatchablesDiscussion,
             trailer: trailer,
             oscarAwards: oscarAwards,
-            physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(stored: physicalMedia, tmdbId: tmdbId),
+            physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(
+                stored: physicalMedia,
+                tmdbId: tmdbId,
+                sourceIdentifiers: collectedSourceIdentifiers()
+            ),
             theatricalRun: TheatricalCatalog.shared.run(forTmdbId: tmdbId),
             isRewatched: isRewatched,
             isListened: isListened,
@@ -413,6 +417,21 @@ final class MovieData {
             lastUpdated: lastUpdated,
             sourceSearchText: collectedSourceSearchText()
         )
+    }
+
+    private func collectedSourceIdentifiers() -> [String] {
+        var identifiers: [String] = []
+        for content in sourceContents ?? [] {
+            if let identifier = content.source?.identifier {
+                identifiers.append(identifier)
+            }
+        }
+        for dataSource in dataSources ?? [] {
+            if let identifier = dataSource.dataSource?.identifier {
+                identifiers.append(identifier)
+            }
+        }
+        return identifiers
     }
 
     private func collectedSourceSearchText() -> String {

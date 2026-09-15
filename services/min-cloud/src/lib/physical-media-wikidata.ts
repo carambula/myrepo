@@ -1,4 +1,10 @@
-import { fetchJson, sleep } from "./http.js";
+import { fetchJson, fetchText, sleep } from "./http.js";
+import { loadCriterionTmdbIndex } from "./closet-picks-wikidata.js";
+import {
+  parseHdReportCriterion4K,
+  seedCriterionCatalogTitles,
+  type CriterionShopTitle
+} from "./physical-media-criterion.js";
 import {
   addPhysicalEdition,
   emptyPhysicalMedia,
@@ -136,4 +142,31 @@ export const fetchWikidataPhysicalMediaIndex = async () => {
     formats: formats.results?.bindings ?? [],
     publishers: publishers.results?.bindings ?? []
   });
+};
+
+const HD_REPORT_4K_URL = "https://hd-report.com/list-of-4k-blu-ray-discs-from-the-criterion-collection/";
+
+export const fetchHdReportCriterion4K = async () => {
+  const html = await fetchText(
+    HD_REPORT_4K_URL,
+    {
+      "User-Agent": "MinCloud/0.1 (physical media catalog enricher)",
+      Accept: "text/html"
+    },
+    { timeoutMs: 30000 }
+  );
+  return parseHdReportCriterion4K(html);
+};
+
+export const enrichPhysicalMediaIndex = async (fallbackTitles: CriterionShopTitle[] = []) => {
+  const index = await fetchWikidataPhysicalMediaIndex();
+  const hits = await loadCriterionTmdbIndex();
+  try {
+    seedCriterionCatalogTitles(await fetchHdReportCriterion4K(), hits, index);
+  } catch {
+    if (fallbackTitles.length) {
+      seedCriterionCatalogTitles(fallbackTitles, hits, index);
+    }
+  }
+  return { index, hits };
 };

@@ -6,6 +6,9 @@ const {
   mergePhysicalMedia,
   isEmptyMedia,
   applyIndexToMovies,
+  applyCriterionSourcePhysicalMedia,
+  parseHdReportCriterion4K,
+  seedCriterion4KFromTitles,
   seedCriterionFromSources,
 } = require("./physicalMedia");
 
@@ -39,5 +42,20 @@ assert.ok(updated >= 2);
 assert.strictEqual(movies[0].physicalMedia.hasCriterion, true);
 assert.strictEqual(movies[1].physicalMedia.hasCriterion, true);
 assert.strictEqual(movies[2].physicalMedia.has4K, true);
+
+const untitled = [{ title: "Dekalog", sourceIdentifier: "criterion-closet-picks", tmdbId: null }];
+assert.strictEqual(applyCriterionSourcePhysicalMedia(untitled), 1);
+assert.strictEqual(untitled[0].physicalMedia.hasCriterion, true);
+
+const fourK = parseHdReportCriterion4K(`
+  <h3>Citizen Kane (1941)</h3>
+  <h3>The Wes Anderson Archive</h3>
+`);
+assert.ok(fourK.some((item) => item.title === "Citizen Kane"));
+assert.ok(fourK.some((item) => item.title === "Rushmore"));
+const catalog = [{ title: "Citizen Kane", year: 1941, tmdbId: 15 }];
+const fourKIndex = seedCriterion4KFromTitles(fourK, catalog, new Map());
+assert.strictEqual(fourKIndex.get("15").has4K, true);
+assert.strictEqual(fourKIndex.get("15").hasCriterion, true);
 
 console.log("physicalMedia tests passed");

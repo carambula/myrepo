@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { isAvailabilityBlurbTitle } from "./title-match.js";
+import { criterionSourcePhysicalMedia } from "./physical-media.js";
 
 export const CLOSET_PICKS_SOURCE_ID = "criterion-closet-picks";
 export const CLOSET_PICKS_SOURCE_NAME = "Criterion Closet Picks";
@@ -567,7 +568,8 @@ export const toClosetPicksCatalogItem = (
   year: film.year,
   podcastEpisodeDescription: film.description,
   youtubeUrl: film.youtubeUrl ?? null,
-  guests: film.guests
+  guests: film.guests,
+  physicalMedia: criterionSourcePhysicalMedia()
 });
 
 export const CLOSET_PICKS_FETCH_HEADERS = {

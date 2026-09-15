@@ -24,14 +24,14 @@ import {
 } from "../lib/title-match.js";
 import { applyPhysicalMediaOverlay } from "../lib/catalog-import.js";
 import {
-  filterIndexToCatalog,
+  criterionSourcePhysicalMedia,
   normalizePhysicalMedia,
   overlayFromIndex,
   physicalMediaStats,
   seedCriterionFromSources,
   seedCurated4K
 } from "../lib/physical-media.js";
-import { fetchWikidataPhysicalMediaIndex } from "../lib/physical-media-wikidata.js";
+import { enrichPhysicalMediaIndex } from "../lib/physical-media-wikidata.js";
 import {
   fetchOmdbAwards,
   fetchOmdbAwardsByTitle,
@@ -512,11 +512,10 @@ router.post("/physical-media/enrich", async (req, res) => {
     await takeSnapshot(req, { trigger: "before-physical-enrich" });
   }
   const movies = await loadAdminMovies();
-  const index = await fetchWikidataPhysicalMediaIndex();
+  const { index } = await enrichPhysicalMediaIndex();
   seedCriterionFromSources(movies, index);
   seedCurated4K(index);
-  const catalogIndex = filterIndexToCatalog(index, movies);
-  const overlay = overlayFromIndex(catalogIndex);
+  const overlay = overlayFromIndex(index);
   const updatedCount = dryRun ? 0 : await applyPhysicalMediaOverlay(overlay.byTmdbId, { overwriteManual });
   if (updatedCount > 0) {
     await bumpWatchedIt();
@@ -1023,7 +1022,7 @@ router.post("/ingest/enrich", async (req, res) => {
           credits: null,
           trailer: null,
           oscarAwards: null,
-          physicalMedia: null,
+          physicalMedia: isClosetPicksSource(item.sourceIdentifier) ? criterionSourcePhysicalMedia() : null,
           podcastEpisodeDescription: item.podcastEpisodeDescription ?? null
         },
         details

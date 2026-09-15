@@ -284,17 +284,43 @@ public final class PhysicalMediaCatalog: @unchecked Sendable {
         return byTmdbId[tmdbId]
     }
 
-    public func resolvedMedia(stored: PhysicalMedia?, tmdbId: Int?) -> PhysicalMedia? {
+    public static func inferredFromSourceIdentifiers(_ identifiers: [String]) -> PhysicalMedia? {
+        let isCriterion = identifiers.contains { ClosetPicksSource.showsPosterBadge(for: $0) }
+        guard isCriterion else { return nil }
+        return PhysicalMedia(
+            editions: [PhysicalEdition(label: .criterion, format: .bluRay)],
+            hasCriterion: true,
+            hasBluRay: true
+        )
+    }
+
+    public func resolvedMedia(
+        stored: PhysicalMedia?,
+        tmdbId: Int?,
+        sourceIdentifiers: [String] = []
+    ) -> PhysicalMedia? {
         let overlay = media(forTmdbId: tmdbId)
-        switch (stored, overlay) {
+        let fromSource = Self.inferredFromSourceIdentifiers(sourceIdentifiers)
+        let inferred: PhysicalMedia?
+        switch (overlay, fromSource) {
+        case (nil, nil):
+            inferred = nil
+        case (let overlay?, nil):
+            inferred = overlay
+        case (nil, let fromSource?):
+            inferred = fromSource
+        case (let overlay?, let fromSource?):
+            inferred = overlay.merging(inferred: fromSource)
+        }
+        switch (stored, inferred) {
         case (nil, nil):
             return nil
         case (let stored?, nil):
             return stored.isEmpty ? nil : stored
-        case (nil, let overlay?):
-            return overlay.isEmpty ? nil : overlay
-        case (let stored?, let overlay?):
-            let merged = stored.merging(inferred: overlay)
+        case (nil, let inferred?):
+            return inferred.isEmpty ? nil : inferred
+        case (let stored?, let inferred?):
+            let merged = stored.merging(inferred: inferred)
             return merged.isEmpty ? nil : merged
         }
     }

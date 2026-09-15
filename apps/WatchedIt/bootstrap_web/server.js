@@ -20,8 +20,10 @@ const OMDB_API_KEY = process.env.OMDB_API_KEY || "c418f9f5";
 const {
   fetchWikidataPhysicalMediaIndex,
   seedCriterionFromSources,
+  applyCriterionSourcePhysicalMedia,
   seedCurated4K,
-  filterIndexToCatalog,
+  fetchHdReportCriterion4K,
+  seedCriterion4KFromTitles,
   applyIndexToMovies,
   overlayFromMovies,
   overlayFromIndex,
@@ -2791,15 +2793,20 @@ const server = http.createServer(async (req, res) => {
       const bootstrap = await loadBootstrap();
       const movies = bootstrap.movies || [];
       const index = await fetchWikidataPhysicalMediaIndex();
+      try {
+        seedCriterion4KFromTitles(await fetchHdReportCriterion4K(), movies, index);
+      } catch (error) {
+        console.warn(`Criterion 4K list lookup failed (${error.message}).`);
+      }
       seedCriterionFromSources(movies, index);
       seedCurated4K(index);
-      const catalogIndex = filterIndexToCatalog(index, movies);
-      const updatedCount = applyIndexToMovies(movies, catalogIndex, { overwriteManual });
+      applyCriterionSourcePhysicalMedia(movies);
+      const updatedCount = applyIndexToMovies(movies, index, { overwriteManual });
       if (updatedCount > 0) {
         bootstrap.generatedDate = new Date().toISOString();
         await saveBootstrap(bootstrap);
       }
-      const overlay = overlayFromIndex(catalogIndex);
+      const overlay = overlayFromIndex(index);
       await fs.writeFile(PHYSICAL_MEDIA_PATH, JSON.stringify(overlay, null, 2) + "\n");
       return sendJson(res, 200, {
         success: true,

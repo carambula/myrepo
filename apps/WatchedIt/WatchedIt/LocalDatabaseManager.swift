@@ -2700,7 +2700,8 @@ public class LocalDatabaseManager: ObservableObject {
                     oscarAwards: bootstrapMovie.oscarAwards,
                     physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(
                         stored: bootstrapMovie.physicalMedia,
-                        tmdbId: bootstrapMovie.tmdbId
+                        tmdbId: bootstrapMovie.tmdbId,
+                        sourceIdentifiers: [bootstrapMovie.sourceIdentifier]
                     ),
                     keywords: bootstrapMovie.keywords,
                     lastUpdated: Date(),

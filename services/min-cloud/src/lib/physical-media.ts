@@ -229,12 +229,22 @@ export const seedCurated4K = (byTmdbId: Map<string, PhysicalMedia>) => {
   return byTmdbId;
 };
 
+export const isCriterionSourceIdentifier = (identifier?: string | null) => {
+  const value = String(identifier || "").trim();
+  return value === "criterion" || value === "criterion-closet-picks";
+};
+
+export const criterionSourcePhysicalMedia = (): PhysicalMedia =>
+  reconcilePhysicalMedia(
+    addPhysicalEdition(emptyPhysicalMedia(), { label: "criterion", format: "bluRay" })
+  );
+
 export const seedCriterionFromSources = (
   movies: Array<{ sourceIdentifier?: string | null; tmdbId?: number | null }>,
   byTmdbId: Map<string, PhysicalMedia>
 ) => {
   for (const movie of movies) {
-    if ((movie.sourceIdentifier !== "criterion" && movie.sourceIdentifier !== "criterion-closet-picks") || !movie.tmdbId) {
+    if (!isCriterionSourceIdentifier(movie.sourceIdentifier) || !movie.tmdbId) {
       continue;
     }
     const existing = byTmdbId.get(String(movie.tmdbId)) || emptyPhysicalMedia();
@@ -245,6 +255,30 @@ export const seedCriterionFromSources = (
     byTmdbId.set(String(movie.tmdbId), reconcilePhysicalMedia(existing));
   }
   return byTmdbId;
+};
+
+export const applyCriterionSourcePhysicalMedia = (
+  movies: Array<{
+    sourceIdentifier?: string | null;
+    tmdbId?: number | null;
+    physicalMedia?: PhysicalMedia | null;
+  }>
+) => {
+  let updated = 0;
+  for (const movie of movies) {
+    if (!isCriterionSourceIdentifier(movie.sourceIdentifier)) {
+      continue;
+    }
+    const merged = mergePhysicalMedia(movie.physicalMedia, criterionSourcePhysicalMedia());
+    if (!merged) {
+      continue;
+    }
+    if (JSON.stringify(merged) !== JSON.stringify(movie.physicalMedia || null)) {
+      movie.physicalMedia = merged;
+      updated += 1;
+    }
+  }
+  return updated;
 };
 
 export const isUsefulPhysicalMedia = (media?: PhysicalMedia | null) => {
@@ -271,6 +305,32 @@ export const filterIndexToCatalog = (
     }
   }
   return filtered;
+};
+
+export const applyIndexToMovies = (
+  movies: Array<{ tmdbId?: number | null; physicalMedia?: PhysicalMedia | null }>,
+  byTmdbId: Map<string, PhysicalMedia>,
+  options: { overwriteManual?: boolean } = {}
+) => {
+  let updated = 0;
+  for (const movie of movies) {
+    if (!movie.tmdbId) {
+      continue;
+    }
+    const inferred = byTmdbId.get(String(movie.tmdbId));
+    if (!inferred || isEmptyPhysicalMedia(inferred)) {
+      continue;
+    }
+    if (movie.physicalMedia?.manualOverride && !options.overwriteManual) {
+      continue;
+    }
+    const merged = mergePhysicalMedia(movie.physicalMedia, inferred);
+    if (JSON.stringify(merged) !== JSON.stringify(movie.physicalMedia || null)) {
+      movie.physicalMedia = merged;
+      updated += 1;
+    }
+  }
+  return updated;
 };
 
 export const overlayFromIndex = (byTmdbId: Map<string, PhysicalMedia>) => {

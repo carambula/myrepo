@@ -188,6 +188,31 @@ struct WatchedItTests {
         #expect(merged.editions.contains(where: { $0.label == .arrow }))
     }
 
+    @Test func physicalMediaInfersCriterionDiscFromClosetPicksSource() {
+        let inferred = PhysicalMediaCatalog.inferredFromSourceIdentifiers(["criterion-closet-picks"])
+        #expect(inferred?.hasCriterion == true)
+        #expect(inferred?.hasBluRay == true)
+        #expect(PhysicalMediaCatalog.inferredFromSourceIdentifiers(["rewatchables"]) == nil)
+
+        PhysicalMediaCatalog.shared.replaceForTesting([
+            15: PhysicalMedia(hasCriterion: true, has4K: true)
+        ])
+        let resolved = PhysicalMediaCatalog.shared.resolvedMedia(
+            stored: nil,
+            tmdbId: nil,
+            sourceIdentifiers: ["criterion-closet-picks"]
+        )
+        #expect(resolved?.hasCriterion == true)
+        let withOverlay = PhysicalMediaCatalog.shared.resolvedMedia(
+            stored: nil,
+            tmdbId: 15,
+            sourceIdentifiers: ["criterion-closet-picks"]
+        )
+        #expect(withOverlay?.hasCriterion == true)
+        #expect(withOverlay?.has4K == true)
+        PhysicalMediaCatalog.shared.replaceForTesting([:])
+    }
+
     @Test func physicalMediaSearchTokensMatchQueries() {
         let media = PhysicalMedia(
             editions: [PhysicalEdition(label: .criterion, format: .uhd4k, spineNumber: "1")],

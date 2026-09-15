@@ -915,22 +915,36 @@ func bestPhysicalMedia(from movies: [BootstrapMovie]) -> BootstrapPhysicalMedia?
     })
 }
 
-func overlayPhysicalMedia(tmdbId: Int?, stored: BootstrapPhysicalMedia?) -> BootstrapPhysicalMedia? {
-    guard let tmdbId, let overlay = physicalMediaOverlayByTmdbId[String(tmdbId)] else {
-        return stored
+func isCriterionSourceIdentifier(_ identifier: String) -> Bool {
+    identifier == "criterion" || identifier == "criterion-closet-picks"
+}
+
+func overlayPhysicalMedia(
+    tmdbId: Int?,
+    stored: BootstrapPhysicalMedia?,
+    sourceIdentifiers: [String] = []
+) -> BootstrapPhysicalMedia? {
+    let overlay = tmdbId.flatMap { physicalMediaOverlayByTmdbId[String($0)] }
+    let fromCriterionSource = sourceIdentifiers.contains { isCriterionSourceIdentifier($0) }
+    if overlay == nil && stored == nil && !fromCriterionSource {
+        return nil
     }
     if stored?.manualOverride == true {
         return stored
     }
+    let sourceEditions: [BootstrapPhysicalEdition] = fromCriterionSource
+        ? [BootstrapPhysicalEdition(id: "criterion-bluRay-none", label: "criterion", format: "bluRay", spineNumber: nil, notes: nil)]
+        : []
     return BootstrapPhysicalMedia(
         editions: {
             let storedEditions = stored?.editions ?? []
-            let overlayEditions = overlay.editions ?? []
-            return storedEditions.isEmpty ? overlayEditions : storedEditions + overlayEditions
+            let overlayEditions = overlay?.editions ?? []
+            let combined = storedEditions + overlayEditions + sourceEditions
+            return combined.isEmpty ? nil : combined
         }(),
-        hasCriterion: (stored?.hasCriterion == true) || (overlay.hasCriterion == true),
-        has4K: (stored?.has4K == true) || (overlay.has4K == true),
-        hasBluRay: (stored?.hasBluRay == true) || (overlay.hasBluRay == true),
+        hasCriterion: (stored?.hasCriterion == true) || (overlay?.hasCriterion == true) || fromCriterionSource,
+        has4K: (stored?.has4K == true) || (overlay?.has4K == true),
+        hasBluRay: (stored?.hasBluRay == true) || (overlay?.hasBluRay == true) || fromCriterionSource,
         manualOverride: stored?.manualOverride == true
     )
 }
@@ -1315,7 +1329,8 @@ func generateBootstrapDatabase() async throws {
         let mergedOscarAwards = bestOscarAwards(from: mergeCandidates)
         let mergedPhysicalMedia = overlayPhysicalMedia(
             tmdbId: baseMovie.tmdbId,
-            stored: bestPhysicalMedia(from: mergeCandidates)
+            stored: bestPhysicalMedia(from: mergeCandidates),
+            sourceIdentifiers: mergeCandidates.map(\.sourceIdentifier)
         )
         let mergedYear = baseMovie.year ?? mergeCandidates.compactMap { $0.year }.first
 
@@ -1501,7 +1516,8 @@ func generateBootstrapDatabase() async throws {
         let mergedOscarAwards = bestOscarAwards(from: mergeCandidates)
         let mergedPhysicalMedia = overlayPhysicalMedia(
             tmdbId: baseMovie.tmdbId,
-            stored: bestPhysicalMedia(from: mergeCandidates)
+            stored: bestPhysicalMedia(from: mergeCandidates),
+            sourceIdentifiers: mergeCandidates.map(\.sourceIdentifier)
         )
         let mergedYear = baseMovie.year ?? mergeCandidates.compactMap { $0.year }.first
 

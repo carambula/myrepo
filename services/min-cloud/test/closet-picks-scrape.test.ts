@@ -161,6 +161,7 @@ describe("closet-picks scrape", () => {
     assert.equal(item.filmUrl, "https://www.criterion.com/films/28993-rumble-fish");
     assert.equal(item.youtubeUrl, "https://www.youtube.com/watch?v=abcABCdef12");
     assert.deepEqual(item.guests, collapsed[0].guests);
+    assert.equal(item.physicalMedia.hasCriterion, true);
   });
 
   it("hydrates guest Watch & Shop permalinks from other Closet Picks rows", () => {

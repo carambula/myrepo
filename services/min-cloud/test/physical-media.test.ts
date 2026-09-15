@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  applyCriterionSourcePhysicalMedia,
   filterIndexToCatalog,
   mediaFromWikidataRow,
   mergePhysicalMedia,
@@ -98,5 +99,15 @@ describe("physical media", () => {
     assert.equal(stats.withPhysicalMedia, 2);
     assert.equal(stats.withCriterion, 2);
     assert.equal(stats.manualOverrides, 1);
+  });
+
+  it("tags Criterion source movies as discs even without TMDB", () => {
+    const movies = [
+      { title: "Dekalog", sourceIdentifier: "criterion-closet-picks", tmdbId: null, physicalMedia: null },
+      { title: "Heat", sourceIdentifier: "rewatchables", tmdbId: 949, physicalMedia: null }
+    ];
+    assert.equal(applyCriterionSourcePhysicalMedia(movies), 1);
+    assert.equal(movies[0].physicalMedia?.hasCriterion, true);
+    assert.equal(movies[1].physicalMedia, null);
   });
 });

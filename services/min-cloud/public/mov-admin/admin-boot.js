@@ -189,8 +189,19 @@
     }
   };
 
+  const syncRailDrawers = () => {
+    const desktop = window.matchMedia("(min-width: 768px)").matches;
+    document.querySelectorAll("details.rail-drawer").forEach((drawer) => {
+      if (desktop) {
+        drawer.open = true;
+      }
+    });
+  };
+
   const boot = () => {
     ensureGate();
+    syncRailDrawers();
+    window.addEventListener("resize", syncRailDrawers);
     const gate = document.getElementById("adminTokenGate");
     if (!token()) {
       return;

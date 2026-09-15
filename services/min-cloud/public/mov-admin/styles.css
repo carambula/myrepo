@@ -3710,6 +3710,14 @@ button.danger:hover {
     --grid-gutter: 20px;
   }
 
+  html,
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .topbar {
     flex-wrap: wrap;
     height: auto;
@@ -3804,6 +3812,15 @@ button.danger:hover {
 
   .sources-layout {
     grid-template-columns: 1fr;
+  }
+
+  .movie-table th:nth-child(4),
+  .movie-table td:nth-child(4),
+  .movie-table th:nth-child(5),
+  .movie-table td:nth-child(5),
+  .movie-table th:nth-child(6),
+  .movie-table td:nth-child(6) {
+    display: none;
   }
 }
 
@@ -4101,6 +4118,25 @@ button.danger:hover {
   width: 100%;
 }
 
+.rail-drawer {
+  display: contents;
+}
+
+.rail-drawer-summary {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .rail-drawer[open],
+  .rail-drawer:not([open]) {
+    display: contents;
+  }
+
+  .rail-drawer-summary {
+    display: none !important;
+  }
+}
+
 /* ============================================================
    Phone / compact — unlock the desktop app shell
    ============================================================ */
@@ -4182,6 +4218,40 @@ button.danger:hover {
   .theme-toggle-btn {
     width: var(--tap);
     height: var(--tap);
+  }
+
+  .rail-drawer {
+    display: block;
+  }
+
+  .rail-drawer-summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .rail-drawer-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .rail-drawer-summary::after {
+    content: "";
+    margin-left: auto;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--color-text-secondary);
+    border-bottom: 2px solid var(--color-text-secondary);
+    transform: rotate(45deg);
+  }
+
+  .rail-drawer[open] > .rail-drawer-summary::after {
+    transform: rotate(-135deg);
   }
 
   .view-rail {

@@ -1,0 +1,11 @@
+.git
+apps
+packages
+docs
+scripts
+src
+node_modules
+**/.DS_Store
+**/*.log
+.env
+.env.local

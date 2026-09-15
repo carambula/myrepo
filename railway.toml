@@ -1,0 +1,17 @@
+# Used when Railway's service root is the repository root (GitHub auto-deploy).
+# Keep in sync with services/min-cloud/railway.toml.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "services/min-cloud/**",
+  "Dockerfile",
+  "railway.toml",
+  ".dockerignore"
+]
+
+[deploy]
+startCommand = "npm run start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

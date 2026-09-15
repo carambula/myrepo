@@ -3710,6 +3710,14 @@ button.danger:hover {
     --grid-gutter: 20px;
   }
 
+  html,
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .topbar {
     flex-wrap: wrap;
     height: auto;
@@ -3804,6 +3812,15 @@ button.danger:hover {
 
   .sources-layout {
     grid-template-columns: 1fr;
+  }
+
+  .movie-table th:nth-child(4),
+  .movie-table td:nth-child(4),
+  .movie-table th:nth-child(5),
+  .movie-table td:nth-child(5),
+  .movie-table th:nth-child(6),
+  .movie-table td:nth-child(6) {
+    display: none;
   }
 }
 
@@ -4099,4 +4116,262 @@ button.danger:hover {
 .admin-token-card label,
 .admin-token-card input {
   width: 100%;
+}
+
+.rail-drawer {
+  display: contents;
+}
+
+.rail-drawer-summary {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .rail-drawer[open],
+  .rail-drawer:not([open]) {
+    display: contents;
+  }
+
+  .rail-drawer-summary {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   Phone / compact — unlock the desktop app shell
+   ============================================================ */
+
+@media (max-width: 767px) {
+  :root {
+    --grid-margin: 16px;
+    --grid-gutter: 16px;
+    --tap: 44px;
+  }
+
+  html,
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .admin-shell,
+  .admin-content,
+  .admin-view,
+  .admin-view.is-active,
+  .view-shell,
+  .catalog-content,
+  .layout,
+  .list-pane,
+  .detail-pane,
+  .themes-layout,
+  .sources-layout {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    flex: none;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  }
+
+  .brand-title {
+    font-size: 16px;
+  }
+
+  .top-tabs {
+    order: 3;
+    width: 100%;
+    height: auto;
+    margin: 0 -16px;
+    padding: 0 16px;
+    border-top: 1px solid var(--color-border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .top-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .top-tab {
+    min-height: var(--tap);
+    padding: 0 12px;
+  }
+
+  .theme-toggle-btn {
+    width: var(--tap);
+    height: var(--tap);
+  }
+
+  .rail-drawer {
+    display: block;
+  }
+
+  .rail-drawer-summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .rail-drawer-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .rail-drawer-summary::after {
+    content: "";
+    margin-left: auto;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--color-text-secondary);
+    border-bottom: 2px solid var(--color-text-secondary);
+    transform: rotate(45deg);
+  }
+
+  .rail-drawer[open] > .rail-drawer-summary::after {
+    transform: rotate(-135deg);
+  }
+
+  .view-rail {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 16px;
+    overflow: visible;
+  }
+
+  .view-rail-btn,
+  .view-rail .rail-actions button,
+  .operations-actions button,
+  .pane-actions button,
+  .step-actions button,
+  .history-toolbar button {
+    min-height: var(--tap);
+  }
+
+  .view-content {
+    padding: 24px 16px 32px;
+    overflow: visible;
+    max-width: none;
+  }
+
+  .view-content-heading .toolbar-title {
+    font-size: 28px;
+  }
+
+  .layout,
+  .themes-layout {
+    padding: 12px 16px 24px;
+  }
+
+  .list-pane,
+  .detail-pane {
+    margin-bottom: 16px;
+  }
+
+  .list-container,
+  .detail-content,
+  .preview-table,
+  .design-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .movie-table th:nth-child(4),
+  .movie-table td:nth-child(4),
+  .movie-table th:nth-child(5),
+  .movie-table td:nth-child(5),
+  .movie-table th:nth-child(6),
+  .movie-table td:nth-child(6) {
+    display: none;
+  }
+
+  .movie-table th,
+  .movie-table td {
+    padding: 12px 10px;
+  }
+
+  .pane-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .pane-actions {
+    width: 100%;
+  }
+
+  .pane-actions button {
+    flex: 1;
+  }
+
+  .operations-actions,
+  .history-toolbar,
+  .podcast-controls,
+  .oscar-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .history-toolbar input,
+  .podcast-controls select,
+  .oscar-controls select,
+  .oscar-controls input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .modal {
+    align-items: stretch;
+    justify-content: flex-end;
+    padding: 0;
+  }
+
+  .modal-content,
+  .modal-content.small,
+  .theme-editor-modal,
+  .sources-editor-modal {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .admin-token-card {
+    width: min(100vw - 32px, 420px);
+    margin: 16px;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

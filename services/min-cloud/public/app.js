@@ -90,10 +90,40 @@ const refreshAuth = async () => {
   }
 };
 
+const showView = (name) => {
+  const view = name === "social" || name === "account" ? name : "browse";
+  document.querySelectorAll("[data-view]").forEach((section) => {
+    const active = section.getAttribute("data-view") === view;
+    section.classList.toggle("is-active", active);
+    section.hidden = !active;
+  });
+  document.querySelectorAll("[data-nav]").forEach((link) => {
+    link.classList.toggle("is-active", link.getAttribute("data-nav") === view);
+  });
+};
+
+const viewFromHash = () => {
+  const hash = (location.hash || "#browse").replace("#", "");
+  showView(hash);
+};
+
+document.querySelectorAll("[data-nav]").forEach((link) => {
+  link.addEventListener("click", () => {
+    showView(link.getAttribute("data-nav"));
+  });
+});
+
+window.addEventListener("hashchange", viewFromHash);
+viewFromHash();
+
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll("[data-tab]").forEach((el) => el.classList.remove("is-active"));
+    document.querySelectorAll("[data-tab]").forEach((el) => {
+      el.classList.remove("is-active");
+      el.setAttribute("aria-selected", "false");
+    });
     button.classList.add("is-active");
+    button.setAttribute("aria-selected", "true");
     const tab = button.getAttribute("data-tab");
     document.getElementById("browse-movies").classList.toggle("hidden", tab !== "movies");
     document.getElementById("browse-podcasts").classList.toggle("hidden", tab !== "podcasts");

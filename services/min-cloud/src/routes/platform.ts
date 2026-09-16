@@ -231,7 +231,7 @@ router.put("/me/notifications", requireUser, async (req, res) => {
 router.get("/me/library/mov", requireUser, async (req, res) => {
   const user = getUser(req);
   const result = await query(
-    `SELECT movie_id, is_watched, is_saved, is_rewatched, is_listened, rating, notes, updated_at
+    `SELECT movie_id, is_watched, is_saved, is_rewatched, is_listened, is_owned_disc, rating, notes, updated_at
      FROM user_library_mov WHERE user_id = $1`,
     [user.id]
   );
@@ -242,6 +242,7 @@ router.get("/me/library/mov", requireUser, async (req, res) => {
       isSaved: row.is_saved,
       isRewatched: row.is_rewatched,
       isListened: row.is_listened,
+      isOwnedDisc: row.is_owned_disc,
       rating: row.rating,
       notes: row.notes,
       updatedAt: row.updated_at
@@ -259,13 +260,14 @@ router.put("/me/library/mov", requireUser, async (req, res) => {
     await query(
       `
       INSERT INTO user_library_mov (
-        user_id, movie_id, is_watched, is_saved, is_rewatched, is_listened, rating, notes, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+        user_id, movie_id, is_watched, is_saved, is_rewatched, is_listened, is_owned_disc, rating, notes, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
       ON CONFLICT (user_id, movie_id) DO UPDATE SET
         is_watched = EXCLUDED.is_watched,
         is_saved = EXCLUDED.is_saved,
         is_rewatched = EXCLUDED.is_rewatched,
         is_listened = EXCLUDED.is_listened,
+        is_owned_disc = EXCLUDED.is_owned_disc,
         rating = EXCLUDED.rating,
         notes = EXCLUDED.notes,
         updated_at = NOW()
@@ -277,6 +279,7 @@ router.put("/me/library/mov", requireUser, async (req, res) => {
         Boolean(item.isSaved),
         Boolean(item.isRewatched),
         Boolean(item.isListened),
+        Boolean(item.isOwnedDisc),
         item.rating ?? null,
         item.notes ?? null
       ]

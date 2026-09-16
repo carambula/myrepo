@@ -31,6 +31,7 @@ final class MovieModel {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isSaved: Bool = false
+    var isOwnedDisc: Bool = false
     var lastUpdated: Date
     var cloudKitRecordID: String?
     
@@ -54,6 +55,7 @@ final class MovieModel {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
+        isOwnedDisc: Bool = false,
         lastUpdated: Date = Date(),
         cloudKitRecordID: String? = nil
     ) {
@@ -68,6 +70,7 @@ final class MovieModel {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
+        self.isOwnedDisc = isOwnedDisc
         self.lastUpdated = lastUpdated
         self.cloudKitRecordID = cloudKitRecordID
         
@@ -213,6 +216,7 @@ final class MovieModel {
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
+            isOwnedDisc: isOwnedDisc,
             lastUpdated: lastUpdated
         )
     }
@@ -238,6 +242,7 @@ final class MovieModel {
             isRewatched: movie.isRewatched,
             isListened: movie.isListened,
             isSaved: movie.isSaved,
+            isOwnedDisc: movie.isOwnedDisc,
             lastUpdated: movie.lastUpdated,
             cloudKitRecordID: cloudKitRecordID
         )

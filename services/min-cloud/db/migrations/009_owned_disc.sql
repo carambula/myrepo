@@ -1,0 +1,2 @@
+ALTER TABLE user_library_mov
+  ADD COLUMN IF NOT EXISTS is_owned_disc BOOLEAN NOT NULL DEFAULT FALSE;

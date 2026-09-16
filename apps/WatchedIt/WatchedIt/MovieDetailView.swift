@@ -50,6 +50,7 @@ struct MovieDetailView: View {
     @State private var localIsRewatched: Bool
     @State private var localIsListened: Bool
     @State private var localIsSaved: Bool
+    @State private var localIsOwnedDisc: Bool
     @State private var buttonScale: [String: CGFloat] = [:]
     @State private var legacySourcesSnapshot: [LegacySourceSnapshot] = []
     @State private var sourceContentSnapshot: [SourceContentSnapshot] = []
@@ -129,6 +130,7 @@ struct MovieDetailView: View {
                 isRewatched: localIsRewatched,
                 isListened: localIsListened,
                 isSaved: localIsSaved,
+                isOwnedDisc: localIsOwnedDisc,
                 lastUpdated: movie.lastUpdated
             )
         }
@@ -165,6 +167,7 @@ struct MovieDetailView: View {
             isRewatched: localIsRewatched,
             isListened: localIsListened,
             isSaved: localIsSaved,
+            isOwnedDisc: localIsOwnedDisc,
             lastUpdated: max(current.lastUpdated, movie.lastUpdated)
         )
     }
@@ -502,6 +505,7 @@ struct MovieDetailView: View {
         _localIsRewatched = State(initialValue: movie.isRewatched)
         _localIsListened = State(initialValue: movie.isListened)
         _localIsSaved = State(initialValue: movie.isSaved)
+        _localIsOwnedDisc = State(initialValue: movie.isOwnedDisc)
     }
     
     // Sync local state with database when it updates
@@ -510,6 +514,7 @@ struct MovieDetailView: View {
             localIsRewatched = updated.isRewatched
             localIsListened = updated.isListened
             localIsSaved = updated.isSaved
+            localIsOwnedDisc = updated.isOwnedDisc
         }
     }
 
@@ -1531,10 +1536,13 @@ struct MovieDetailView: View {
         .sheet(isPresented: $showPhysicalPurchaseSheet) {
             if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
                 PhysicalPurchaseSheet(
-                    movieTitle: displayMovie.title,
-                    year: displayMovie.year,
-                    media: media
-                )
+                    movie: displayMovie,
+                    media: media,
+                    isOwnedDisc: localIsOwnedDisc
+                ) { isOwned in
+                    localIsOwnedDisc = isOwned
+                    localDB.queueOwnedDiscStatusUpdate(displayMovie, isOwnedDisc: isOwned)
+                }
             }
         }
         .sheet(isPresented: $showTheatricalTicketSheet) {

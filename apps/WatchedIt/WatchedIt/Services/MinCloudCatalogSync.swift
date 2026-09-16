@@ -226,12 +226,12 @@ final class MinCloudCatalogSync {
 
     private func movieHasUserFlags(_ movie: MovieData) -> Bool {
         if let user = movie.userData {
-            if user.isSaved || user.isRewatched || user.isListened || user.isWatched { return true }
+            if user.isSaved || user.isRewatched || user.isListened || user.isWatched || user.isOwnedDisc { return true }
             if user.userRating != nil { return true }
             if let notes = user.userNotes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
         }
         if let states = movie.states {
-            return states.contains { $0.isSaved || $0.isRewatched || $0.isListened }
+            return states.contains { $0.isSaved || $0.isRewatched || $0.isListened || $0.isOwnedDisc }
         }
         return false
     }

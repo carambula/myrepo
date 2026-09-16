@@ -157,13 +157,15 @@ export const TOOLS = [
     kind: 'read',
     scopes: [readScope('mov')],
     description:
-      'List movies in the user library. Filter by saved, rewatched (watched), or listened. Defaults to saved + rewatched.',
+      'List movies in the user library. Filter by saved, rewatched (watched), listened, owned, or want (saved and not owned). Defaults to saved + rewatched + owned.',
     inputSchema: {
       type: 'object',
       properties: {
         saved: { type: 'boolean' },
         rewatched: { type: 'boolean' },
         listened: { type: 'boolean' },
+        owned: { type: 'boolean' },
+        want: { type: 'boolean', description: 'Saved and not owned.' },
         query: { type: 'string', description: 'Optional title or id search.' },
         limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
       },
@@ -239,6 +241,24 @@ export const TOOLS = [
     },
   },
   {
+    name: 'set_movie_owned',
+    app: 'mov',
+    kind: 'write',
+    scopes: [writeScope('mov')],
+    description: 'Mark a disc as owned. Want is derived as saved and not owned. Reversible via undo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        title: { type: 'string' },
+        year: { type: 'integer' },
+        owned: { type: 'boolean' },
+      },
+      required: ['owned'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'set_movie_listened',
     app: 'mov',
     kind: 'write',
@@ -274,6 +294,7 @@ export const TOOLS = [
         saved: { type: 'boolean' },
         rewatched: { type: 'boolean' },
         listened: { type: 'boolean' },
+        owned: { type: 'boolean' },
       },
       required: ['title'],
       additionalProperties: false,

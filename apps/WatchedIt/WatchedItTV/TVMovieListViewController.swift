@@ -53,6 +53,8 @@ final class TVMovieListViewController: UIViewController {
         case rewatched = "Rewatched"
         case listened = "Listened"
         case saved = "Saved"
+        case owned = "Owned"
+        case want = "Want"
     }
 
     private var allMovies: [Movie] = []
@@ -220,6 +222,10 @@ final class TVMovieListViewController: UIViewController {
                 matchesFilter = movie.isListened
             case .saved:
                 matchesFilter = movie.isSaved
+            case .owned:
+                matchesFilter = movie.isOwnedDisc
+            case .want:
+                matchesFilter = movie.isWantedDisc
             }
 
             if !matchesFilter {

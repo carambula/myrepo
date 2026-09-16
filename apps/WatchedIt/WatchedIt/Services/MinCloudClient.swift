@@ -193,6 +193,7 @@ struct MinCloudMovLibraryItem: Decodable {
     let isSaved: Bool?
     let isRewatched: Bool?
     let isListened: Bool?
+    let isOwnedDisc: Bool?
     let rating: Int?
     let notes: String?
     let updatedAt: String?

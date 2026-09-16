@@ -26,7 +26,7 @@ final class MinCloudLibrarySync {
         try? await MinCloudClient.shared.pushLibrary(items: items)
     }
 
-    func pushMovie(movieId: String, isSaved: Bool, isRewatched: Bool, isListened: Bool, isWatched: Bool) {
+    func pushMovie(movieId: String, isSaved: Bool, isRewatched: Bool, isListened: Bool, isWatched: Bool, isOwnedDisc: Bool) {
         guard MinCloudSettings.isSignedIn else { return }
         Task {
             try? await MinCloudClient.shared.pushLibrary(items: [[
@@ -34,7 +34,8 @@ final class MinCloudLibrarySync {
                 "isSaved": isSaved,
                 "isRewatched": isRewatched,
                 "isListened": isListened,
-                "isWatched": isWatched
+                "isWatched": isWatched,
+                "isOwnedDisc": isOwnedDisc
             ]])
         }
     }

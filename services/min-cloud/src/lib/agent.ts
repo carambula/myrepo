@@ -40,6 +40,7 @@ type Movie = {
   isSaved: boolean;
   isRewatched: boolean;
   isListened: boolean;
+  isOwnedDisc: boolean;
 };
 
 type Podcast = {
@@ -71,12 +72,13 @@ export const AGENT_TOOLS = [
   { name: "undo", kind: "write", app: null, description: "Reverse the latest write, or a specific undoId." },
   { name: "list_undo_history", kind: "read", app: null, description: "Undo journal for this connection." },
   { name: "list_audit_log", kind: "read", app: null, description: "Redacted audit log for this connection." },
-  { name: "list_movies", kind: "read", app: "mov", description: "List saved or rewatched movies." },
+  { name: "list_movies", kind: "read", app: "mov", description: "List saved, rewatched, or owned movies." },
   { name: "search_movies", kind: "read", app: "mov", description: "Search the user's movie library." },
   { name: "get_movie", kind: "read", app: "mov", description: "Look up one movie by id or title." },
   { name: "set_movie_saved", kind: "write", app: "mov", description: "Save or unsaved a movie." },
   { name: "set_movie_rewatched", kind: "write", app: "mov", description: "Mark a movie rewatched." },
   { name: "set_movie_listened", kind: "write", app: "mov", description: "Mark a movie listened." },
+  { name: "set_movie_owned", kind: "write", app: "mov", description: "Mark a disc as owned. Want is saved and not owned." },
   { name: "upsert_movie", kind: "write", app: "mov", description: "Add or update a movie and optional flags." },
   { name: "list_podcasts", kind: "read", app: "pod", description: "List followed podcasts." },
   { name: "search_podcasts", kind: "read", app: "pod", description: "Search followed podcasts." },
@@ -157,7 +159,7 @@ const loadConnection = async (token: string | null): Promise<Connection> => {
 
 const loadLibrary = async (userId: string): Promise<Library> => {
   const movies = await query(
-    `SELECT l.movie_id, l.is_saved, l.is_rewatched, l.is_listened,
+    `SELECT l.movie_id, l.is_saved, l.is_rewatched, l.is_listened, l.is_owned_disc,
             m.title, m.year, m.tmdb_id, m.overview
      FROM user_library_mov l
      LEFT JOIN mov_movies m ON m.id = l.movie_id
@@ -182,7 +184,8 @@ const loadLibrary = async (userId: string): Promise<Library> => {
       overview: String(row.overview || ""),
       isSaved: Boolean(row.is_saved),
       isRewatched: Boolean(row.is_rewatched),
-      isListened: Boolean(row.is_listened)
+      isListened: Boolean(row.is_listened),
+      isOwnedDisc: Boolean(row.is_owned_disc)
     })),
     podcasts: podcasts.rows.map((row) => ({
       id: String(row.podcast_id),
@@ -213,15 +216,16 @@ const persistLibrary = async (userId: string, library: Library) => {
     );
     await query(
       `INSERT INTO user_library_mov (
-         user_id, movie_id, is_watched, is_saved, is_rewatched, is_listened, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         user_id, movie_id, is_watched, is_saved, is_rewatched, is_listened, is_owned_disc, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (user_id, movie_id) DO UPDATE SET
          is_watched = EXCLUDED.is_watched,
          is_saved = EXCLUDED.is_saved,
          is_rewatched = EXCLUDED.is_rewatched,
          is_listened = EXCLUDED.is_listened,
+         is_owned_disc = EXCLUDED.is_owned_disc,
          updated_at = NOW()`,
-      [userId, movie.id, movie.isRewatched || movie.isSaved, movie.isSaved, movie.isRewatched, movie.isListened]
+      [userId, movie.id, movie.isRewatched || movie.isSaved, movie.isSaved, movie.isRewatched, movie.isListened, movie.isOwnedDisc]
     );
   }
   for (const podcast of library.podcasts) {
@@ -310,7 +314,8 @@ const findMovie = async (library: Library, input: Record<string, unknown>) => {
       overview: String(row.overview || ""),
       isSaved: false,
       isRewatched: false,
-      isListened: false
+      isListened: false,
+      isOwnedDisc: false
     }));
   const movie = uniqueMatch(mapped, () => true, "movie");
   library.movies.push(movie);
@@ -430,13 +435,15 @@ const dispatch = async (connection: Connection, name: string, input: Record<stri
   let summary = name;
 
   if (name === "list_movies") {
-    const { saved, rewatched, listened, query: q, limit = 50 } = input as Record<string, any>;
+    const { saved, rewatched, listened, owned, want, query: q, limit = 50 } = input as Record<string, any>;
     let items = library.movies;
-    const hasFilter = saved != null || rewatched != null || listened != null || q;
-    if (!hasFilter) items = items.filter((movie) => movie.isSaved || movie.isRewatched);
+    const hasFilter = saved != null || rewatched != null || listened != null || owned != null || want != null || q;
+    if (!hasFilter) items = items.filter((movie) => movie.isSaved || movie.isRewatched || movie.isOwnedDisc);
     if (saved != null) items = items.filter((movie) => movie.isSaved === Boolean(saved));
     if (rewatched != null) items = items.filter((movie) => movie.isRewatched === Boolean(rewatched));
     if (listened != null) items = items.filter((movie) => movie.isListened === Boolean(listened));
+    if (owned != null) items = items.filter((movie) => movie.isOwnedDisc === Boolean(owned));
+    if (want != null) items = items.filter((movie) => (movie.isSaved && !movie.isOwnedDisc) === Boolean(want));
     if (q) items = items.filter((movie) => includesQuery(`${movie.title} ${movie.year ?? ""} ${movie.id}`, q));
     output = { movies: items.slice(0, Number(limit)), total: items.length };
   } else if (name === "search_movies") {
@@ -467,6 +474,13 @@ const dispatch = async (connection: Connection, name: string, input: Record<stri
     after = { movies: [{ ...movie }] };
     summary = `Updated listened on ${movie.title}`;
     output = { movie };
+  } else if (name === "set_movie_owned") {
+    const movie = await findMovie(library, input);
+    before = { movies: [{ ...movie }] };
+    movie.isOwnedDisc = Boolean(input.owned);
+    after = { movies: [{ ...movie }] };
+    summary = input.owned ? `Marked ${movie.title} owned` : `Cleared owned on ${movie.title}`;
+    output = { movie };
   } else if (name === "upsert_movie") {
     if (!input.title && !input.id) throw new AgentHttpError("invalid_input", "Provide title or id.");
     const existing = library.movies.find(
@@ -480,6 +494,7 @@ const dispatch = async (connection: Connection, name: string, input: Record<stri
       if (input.saved != null) existing.isSaved = Boolean(input.saved);
       if (input.rewatched != null) existing.isRewatched = Boolean(input.rewatched);
       if (input.listened != null) existing.isListened = Boolean(input.listened);
+      if (input.owned != null) existing.isOwnedDisc = Boolean(input.owned);
       after = { movies: [{ ...existing }] };
       summary = `Updated ${existing.title}`;
       output = { movie: existing, created: false };
@@ -492,7 +507,8 @@ const dispatch = async (connection: Connection, name: string, input: Record<stri
         overview: String(input.overview || ""),
         isSaved: input.saved == null ? true : Boolean(input.saved),
         isRewatched: Boolean(input.rewatched),
-        isListened: Boolean(input.listened)
+        isListened: Boolean(input.listened),
+        isOwnedDisc: Boolean(input.owned)
       };
       library.movies.push(movie);
       before = { movies: [] };

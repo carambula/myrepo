@@ -733,17 +733,19 @@ public class LocalDatabaseManager: ObservableObject {
                 movieData.lastUpdated = Date()
 
                 let userData = getOrCreateUserMovieData(for: movieData, modelContext: modelContext)
-                if incoming.isRewatched || incoming.isListened || incoming.isSaved {
+                if incoming.isRewatched || incoming.isListened || incoming.isSaved || incoming.isOwnedDisc {
                     userData.isRewatched = incoming.isRewatched
                     userData.isListened = incoming.isListened
                     userData.isSaved = incoming.isSaved
+                    userData.isOwnedDisc = incoming.isOwnedDisc
                     userData.lastUpdated = Date()
                 }
 
-                if let existingState = movieData.states?.first, incoming.isRewatched || incoming.isListened || incoming.isSaved {
+                if let existingState = movieData.states?.first, incoming.isRewatched || incoming.isListened || incoming.isSaved || incoming.isOwnedDisc {
                     existingState.isRewatched = incoming.isRewatched
                     existingState.isListened = incoming.isListened
                     existingState.isSaved = incoming.isSaved
+                    existingState.isOwnedDisc = incoming.isOwnedDisc
                     existingState.lastUpdated = Date()
                 }
 
@@ -857,6 +859,7 @@ public class LocalDatabaseManager: ObservableObject {
                 isSaved: oldState.isSaved,
                 isRewatched: oldState.isRewatched,
                 isListened: oldState.isListened,
+                isOwnedDisc: oldState.isOwnedDisc,
                 isWatched: false,
                 userRating: nil,
                 userNotes: nil,
@@ -881,7 +884,7 @@ public class LocalDatabaseManager: ObservableObject {
     
     /// Optimistically updates a movie's status in the cache immediately (before database operation)
     /// This provides instant UI feedback without waiting for async database operations
-    private func optimisticallyUpdateMovieStatus(_ movieId: String, isRewatched: Bool? = nil, isListened: Bool? = nil, isSaved: Bool? = nil) {
+    private func optimisticallyUpdateMovieStatus(_ movieId: String, isRewatched: Bool? = nil, isListened: Bool? = nil, isSaved: Bool? = nil, isOwnedDisc: Bool? = nil) {
         guard let index = movies.firstIndex(where: { $0.id == movieId }) else { return }
         
         // Create a new array to trigger SwiftUI update detection
@@ -904,9 +907,13 @@ public class LocalDatabaseManager: ObservableObject {
             credits: currentMovie.credits,
             rewatchablesDiscussion: currentMovie.rewatchablesDiscussion,
             trailer: currentMovie.trailer,
+            oscarAwards: currentMovie.oscarAwards,
+            physicalMedia: currentMovie.physicalMedia,
+            theatricalRun: currentMovie.theatricalRun,
             isRewatched: isRewatched ?? currentMovie.isRewatched,
             isListened: isListened ?? currentMovie.isListened,
             isSaved: isSaved ?? currentMovie.isSaved,
+            isOwnedDisc: isOwnedDisc ?? currentMovie.isOwnedDisc,
             lastUpdated: Date()
         )
         
@@ -949,6 +956,7 @@ public class LocalDatabaseManager: ObservableObject {
             isRewatched: userData.isRewatched,
             isListened: userData.isListened,
             isWatched: userData.isWatched,
+            isOwnedDisc: userData.isOwnedDisc,
             userRating: userData.userRating,
             userNotes: userData.userNotes,
             watchedDate: userData.watchedDate,
@@ -963,7 +971,7 @@ public class LocalDatabaseManager: ObservableObject {
     }
 
     private func isUserDataEmpty(_ userData: UserMovieData) -> Bool {
-        let hasFlags = userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched
+        let hasFlags = userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched || userData.isOwnedDisc
         let hasRating = userData.userRating != nil
         let hasNotes = (userData.userNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
         let hasTags = (userData.tagsData?.isEmpty == false)
@@ -1079,6 +1087,7 @@ public class LocalDatabaseManager: ObservableObject {
             userData.isRewatched = payload.isRewatched
             userData.isListened = payload.isListened
             userData.isWatched = payload.isWatched
+            userData.isOwnedDisc = payload.isOwnedDisc
             userData.userRating = payload.userRating
             userData.userNotes = payload.userNotes
             userData.watchedDate = payload.watchedDate
@@ -1108,6 +1117,7 @@ public class LocalDatabaseManager: ObservableObject {
             isRewatched: userData.isRewatched,
             isListened: userData.isListened,
             isWatched: userData.isWatched,
+            isOwnedDisc: userData.isOwnedDisc,
             userRating: userData.userRating,
             userNotes: userData.userNotes,
             watchedDate: userData.watchedDate,
@@ -1125,6 +1135,7 @@ public class LocalDatabaseManager: ObservableObject {
             isRewatched: state.isRewatched,
             isListened: state.isListened,
             isWatched: false,
+            isOwnedDisc: state.isOwnedDisc,
             userRating: nil,
             userNotes: nil,
             watchedDate: nil,
@@ -1145,7 +1156,7 @@ public class LocalDatabaseManager: ObservableObject {
 
         let oldStateDescriptor = FetchDescriptor<MovieState>()
         if let oldStates = try? modelContext.fetch(oldStateDescriptor) {
-            if oldStates.contains(where: { $0.isSaved || $0.isRewatched || $0.isListened }) {
+            if oldStates.contains(where: { $0.isSaved || $0.isRewatched || $0.isListened || $0.isOwnedDisc }) {
                 return true
             }
         }
@@ -1249,7 +1260,7 @@ public class LocalDatabaseManager: ObservableObject {
         
         let oldStateDescriptor = FetchDescriptor<MovieState>()
         if let oldStates = try? modelContext.fetch(oldStateDescriptor) {
-            for state in oldStates where (state.isSaved || state.isRewatched || state.isListened) {
+            for state in oldStates where (state.isSaved || state.isRewatched || state.isListened || state.isOwnedDisc) {
                 guard let movieId = state.movie?.id else { continue }
                 payloads.append(makePayload(for: movieId, state: state))
             }
@@ -1718,6 +1729,7 @@ public class LocalDatabaseManager: ObservableObject {
         userData.isRewatched = movie.isRewatched
         userData.isListened = movie.isListened
         userData.isSaved = movie.isSaved
+        userData.isOwnedDisc = movie.isOwnedDisc
         userData.lastUpdated = movie.lastUpdated
         
         // Also update old MovieState for backward compatibility during migration
@@ -1725,6 +1737,7 @@ public class LocalDatabaseManager: ObservableObject {
             existingState.isRewatched = movie.isRewatched
             existingState.isListened = movie.isListened
             existingState.isSaved = movie.isSaved
+            existingState.isOwnedDisc = movie.isOwnedDisc
             existingState.lastUpdated = movie.lastUpdated
         }
         
@@ -1833,7 +1846,8 @@ public class LocalDatabaseManager: ObservableObject {
                 isSaved: userData.isSaved,
                 isRewatched: userData.isRewatched,
                 isListened: userData.isListened,
-                isWatched: userData.isWatched
+                isWatched: userData.isWatched,
+                isOwnedDisc: userData.isOwnedDisc
             )
         }
     }
@@ -1886,7 +1900,8 @@ public class LocalDatabaseManager: ObservableObject {
                 isSaved: userData.isSaved,
                 isRewatched: userData.isRewatched,
                 isListened: userData.isListened,
-                isWatched: userData.isWatched
+                isWatched: userData.isWatched,
+                isOwnedDisc: userData.isOwnedDisc
             )
         }
     }
@@ -1939,7 +1954,54 @@ public class LocalDatabaseManager: ObservableObject {
                 isSaved: userData.isSaved,
                 isRewatched: userData.isRewatched,
                 isListened: userData.isListened,
-                isWatched: userData.isWatched
+                isWatched: userData.isWatched,
+                isOwnedDisc: userData.isOwnedDisc
+            )
+        }
+    }
+
+    public func queueOwnedDiscStatusUpdate(_ movie: Movie, isOwnedDisc: Bool) {
+        optimisticallyUpdateMovieStatus(movie.id, isOwnedDisc: isOwnedDisc)
+
+        Task { @MainActor in
+            persistOwnedDiscStatus(movie, isOwnedDisc: isOwnedDisc)
+        }
+    }
+
+    public func updateOwnedDiscStatus(_ movie: Movie, isOwnedDisc: Bool) throws {
+        optimisticallyUpdateMovieStatus(movie.id, isOwnedDisc: isOwnedDisc)
+        persistOwnedDiscStatus(movie, isOwnedDisc: isOwnedDisc)
+    }
+
+    private func persistOwnedDiscStatus(_ movie: Movie, isOwnedDisc: Bool) {
+        guard let modelContext = modelContext else {
+            return
+        }
+
+        let descriptor = FetchDescriptor<MovieData>(
+            predicate: #Predicate<MovieData> { $0.id == movie.id }
+        )
+
+        if let movieData = try? modelContext.fetch(descriptor).first {
+            let userData = getOrCreateUserMovieData(for: movieData, modelContext: modelContext)
+            userData.isOwnedDisc = isOwnedDisc
+            userData.lastUpdated = Date()
+
+            if let existingState = movieData.states?.first {
+                existingState.isOwnedDisc = isOwnedDisc
+                existingState.lastUpdated = Date()
+            }
+
+            try? modelContext.save()
+            updateMovieInCache(movie.id)
+            syncUserMovieDataToCloudKit(movieId: movie.id, userData: userData)
+            MinCloudLibrarySync.shared.pushMovie(
+                movieId: movie.id,
+                isSaved: userData.isSaved,
+                isRewatched: userData.isRewatched,
+                isListened: userData.isListened,
+                isWatched: userData.isWatched,
+                isOwnedDisc: userData.isOwnedDisc
             )
         }
     }
@@ -1957,6 +2019,7 @@ public class LocalDatabaseManager: ObservableObject {
             userData.isRewatched = userData.isRewatched || (item.isRewatched ?? false)
             userData.isListened = userData.isListened || (item.isListened ?? false)
             userData.isWatched = userData.isWatched || (item.isWatched ?? false)
+            userData.isOwnedDisc = userData.isOwnedDisc || (item.isOwnedDisc ?? false)
             if let rating = item.rating { userData.userRating = rating }
             if let notes = item.notes { userData.userNotes = notes }
             userData.lastUpdated = Date()
@@ -1971,7 +2034,7 @@ public class LocalDatabaseManager: ObservableObject {
         let rows = (try? modelContext.fetch(FetchDescriptor<UserMovieData>())) ?? []
         return rows.compactMap { userData -> [String: Any]? in
             guard let movieId = userData.movie?.id else { return nil }
-            guard userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched else {
+            guard userData.isSaved || userData.isRewatched || userData.isListened || userData.isWatched || userData.isOwnedDisc else {
                 return nil
             }
             var item: [String: Any] = [
@@ -1979,7 +2042,8 @@ public class LocalDatabaseManager: ObservableObject {
                 "isSaved": userData.isSaved,
                 "isRewatched": userData.isRewatched,
                 "isListened": userData.isListened,
-                "isWatched": userData.isWatched
+                "isWatched": userData.isWatched,
+                "isOwnedDisc": userData.isOwnedDisc
             ]
             if let rating = userData.userRating { item["rating"] = rating }
             if let notes = userData.userNotes { item["notes"] = notes }
@@ -2046,19 +2110,21 @@ public class LocalDatabaseManager: ObservableObject {
             // Update or create user movie data (preserve existing states)
             let userData = getOrCreateUserMovieData(for: movieData, modelContext: modelContext)
             // Only update if movie has explicit states
-            if movie.isRewatched || movie.isListened || movie.isSaved {
+            if movie.isRewatched || movie.isListened || movie.isSaved || movie.isOwnedDisc {
                 userData.isRewatched = movie.isRewatched
                 userData.isListened = movie.isListened
                 userData.isSaved = movie.isSaved
+                userData.isOwnedDisc = movie.isOwnedDisc
                 userData.lastUpdated = movie.lastUpdated
             }
             
             // Also update old MovieState for backward compatibility
             if let existingState = movieData.states?.first {
-                if movie.isRewatched || movie.isListened || movie.isSaved {
+                if movie.isRewatched || movie.isListened || movie.isSaved || movie.isOwnedDisc {
                     existingState.isRewatched = movie.isRewatched
                     existingState.isListened = movie.isListened
                     existingState.isSaved = movie.isSaved
+                    existingState.isOwnedDisc = movie.isOwnedDisc
                     existingState.lastUpdated = movie.lastUpdated
                 }
             }
@@ -2193,10 +2259,12 @@ public class LocalDatabaseManager: ObservableObject {
             if userData.isRewatched { score += 1 }
             if userData.isListened { score += 1 }
             if userData.isSaved { score += 1 }
+            if userData.isOwnedDisc { score += 1 }
         } else if let state = movieData.states?.first {
             if state.isRewatched { score += 1 }
             if state.isListened { score += 1 }
             if state.isSaved { score += 1 }
+            if state.isOwnedDisc { score += 1 }
         }
         return score
     }
@@ -2248,6 +2316,7 @@ public class LocalDatabaseManager: ObservableObject {
                 targetUserData.isListened = targetUserData.isListened || sourceUserData.isListened
                 targetUserData.isSaved = targetUserData.isSaved || sourceUserData.isSaved
                 targetUserData.isWatched = targetUserData.isWatched || sourceUserData.isWatched
+                targetUserData.isOwnedDisc = targetUserData.isOwnedDisc || sourceUserData.isOwnedDisc
                 if targetUserData.userRating == nil {
                     targetUserData.userRating = sourceUserData.userRating
                 }
@@ -2266,6 +2335,7 @@ public class LocalDatabaseManager: ObservableObject {
                 targetUserData.isRewatched = targetUserData.isRewatched || sourceState.isRewatched
                 targetUserData.isListened = targetUserData.isListened || sourceState.isListened
                 targetUserData.isSaved = targetUserData.isSaved || sourceState.isSaved
+                targetUserData.isOwnedDisc = targetUserData.isOwnedDisc || sourceState.isOwnedDisc
                 if sourceState.lastUpdated > targetUserData.lastUpdated {
                     targetUserData.lastUpdated = sourceState.lastUpdated
                 }
@@ -2278,6 +2348,7 @@ public class LocalDatabaseManager: ObservableObject {
                 isRewatched: sourceState.isRewatched,
                 isListened: sourceState.isListened,
                 isSaved: sourceState.isSaved,
+                isOwnedDisc: sourceState.isOwnedDisc,
                 lastUpdated: sourceState.lastUpdated,
                 movie: target
             )
@@ -3002,7 +3073,7 @@ public class LocalDatabaseManager: ObservableObject {
             return true
         }
         if let state = movie.states?.first {
-            if state.isRewatched || state.isListened || state.isSaved {
+            if state.isRewatched || state.isListened || state.isSaved || state.isOwnedDisc {
                 return true
             }
         }

@@ -97,7 +97,7 @@ mincloud.baseURL = http://localhost:4000
 - `POST /v1/admin/jobs/mov.theaters.refresh` — refresh the shared theater-stay snapshot
 - `POST /v1/admin/jobs/mov.closet.rematch` — start Closet Picks rematch (returns immediately). Progress is written to `job_runs.stats` and shown on `/v1/admin/health` as `progressLabel`. A second start while one is running returns `already_running`.
 - `POST /v1/admin/jobs/mov.closet.youtube` — attach Closet Picks YouTube episode URLs to existing catalog rows (no Criterion re-scrape). Movie detail then deep links to `vidmin://watch?v=` / YouTube.
-- `GET /v1/me/library/mov` `GET /v1/me/library/pod` — pull on sign-in
+- `GET /v1/me/library/mov` `GET /v1/me/library/pod` — pull on sign-in. Mov library items include `isSaved`, `isRewatched`, `isListened`, `isOwnedDisc`. Want is Saved and not owned.
 - `POST /v1/admin/pod/import` with PodLink `DefaultPodcasts.json`
 - `POST /v1/admin/mov/physical-media` with WatchedIt `physical_media.json`
 - `GET /v1/pod/catalog` `GET /v1/pod/feeds?url=`

@@ -372,6 +372,7 @@ enum DesignSystem {
         static let play = "play.fill"
         static let pause = "pause.fill"
         static let disc = "opticaldisc"
+        static let discFill = "opticaldisc.fill"
         static let ticket = "ticket"
         
         // Status Icons

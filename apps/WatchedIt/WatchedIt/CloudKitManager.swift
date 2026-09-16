@@ -27,6 +27,7 @@ class CloudKitManager: ObservableObject {
         let isRewatched: Bool
         let isListened: Bool
         let isWatched: Bool
+        let isOwnedDisc: Bool
         let userRating: Int?
         let userNotes: String?
         let watchedDate: Date?
@@ -188,6 +189,7 @@ class CloudKitManager: ObservableObject {
             isRewatched: isRewatched,
             isListened: movie.isListened,
             isWatched: false,
+            isOwnedDisc: movie.isOwnedDisc,
             userRating: nil,
             userNotes: nil,
             watchedDate: nil,
@@ -207,6 +209,7 @@ class CloudKitManager: ObservableObject {
             isRewatched: movie.isRewatched,
             isListened: isListened,
             isWatched: false,
+            isOwnedDisc: movie.isOwnedDisc,
             userRating: nil,
             userNotes: nil,
             watchedDate: nil,
@@ -226,6 +229,7 @@ class CloudKitManager: ObservableObject {
             isRewatched: movie.isRewatched,
             isListened: movie.isListened,
             isWatched: false,
+            isOwnedDisc: movie.isOwnedDisc,
             userRating: nil,
             userNotes: nil,
             watchedDate: nil,
@@ -319,6 +323,7 @@ class CloudKitManager: ObservableObject {
             isRewatched: record["isRewatched"] as? Bool ?? false,
             isListened: record["isListened"] as? Bool ?? false,
             isWatched: record["isWatched"] as? Bool ?? false,
+            isOwnedDisc: record["isOwnedDisc"] as? Bool ?? false,
             userRating: record["userRating"] as? Int,
             userNotes: record["userNotes"] as? String,
             watchedDate: record["watchedDate"] as? Date,
@@ -389,6 +394,7 @@ class CloudKitManager: ObservableObject {
             record["isRewatched"] = payload.isRewatched
             record["isListened"] = payload.isListened
             record["isWatched"] = payload.isWatched
+            record["isOwnedDisc"] = payload.isOwnedDisc
             record["userRating"] = payload.userRating
             record["userNotes"] = payload.userNotes
             record["watchedDate"] = payload.watchedDate
@@ -538,6 +544,7 @@ class CloudKitManager: ObservableObject {
             isRewatched: userData.isRewatched,
             isListened: userData.isListened,
             isWatched: userData.isWatched,
+            isOwnedDisc: userData.isOwnedDisc,
             userRating: userData.userRating,
             userNotes: userData.userNotes,
             watchedDate: userData.watchedDate,
@@ -571,6 +578,7 @@ class CloudKitManager: ObservableObject {
                 isRewatched: record["isRewatched"] as? Bool ?? false,
                 isListened: record["isListened"] as? Bool ?? false,
                 isWatched: record["isWatched"] as? Bool ?? false,
+                isOwnedDisc: record["isOwnedDisc"] as? Bool ?? false,
                 userRating: record["userRating"] as? Int,
                 userNotes: record["userNotes"] as? String,
                 watchedDate: record["watchedDate"] as? Date,
@@ -586,6 +594,7 @@ class CloudKitManager: ObservableObject {
                 isRewatched: payload.isRewatched,
                 isListened: payload.isListened,
                 isWatched: payload.isWatched,
+                isOwnedDisc: payload.isOwnedDisc,
                 userRating: payload.userRating,
                 userNotes: payload.userNotes,
                 watchedDate: payload.watchedDate,
@@ -742,6 +751,7 @@ class CloudKitManager: ObservableObject {
                 "isRewatched",
                 "isListened",
                 "isWatched",
+                "isOwnedDisc",
                 "userRating",
                 "userNotes",
                 "watchedDate",

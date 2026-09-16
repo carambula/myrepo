@@ -302,8 +302,16 @@ final class TVMovieDetailViewController: UIViewController {
             title: movie.title,
             year: movie.year
         )
+        let ownAction = UIAction(
+            title: movie.isOwnedDisc ? "Owned" : "I own this",
+            state: movie.isOwnedDisc ? .on : .off
+        ) { [weak self] _ in
+            guard let self else { return }
+            try? self.localDB.updateOwnedDiscStatus(self.movie, isOwnedDisc: !self.movie.isOwnedDisc)
+        }
         if !buyOffers.isEmpty {
-            let buyActions = buyOffers.map { offer in
+            var buyActions: [UIMenuElement] = [ownAction]
+            buyActions.append(contentsOf: buyOffers.map { offer in
                 UIAction(title: offer.title) { [weak self] _ in
                     self?.openURLPreferApp(
                         appURL: nil,
@@ -312,8 +320,10 @@ final class TVMovieDetailViewController: UIViewController {
                         preferUniversalLink: true
                     )
                 }
-            }
+            })
             actions.append(UIMenu(title: "Buy disc", children: buyActions))
+        } else {
+            actions.append(ownAction)
         }
 
         let ticketOffers = TheatricalTicketLinkBuilder.compactOffers(

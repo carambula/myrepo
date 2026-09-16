@@ -29,6 +29,7 @@ public struct Movie: Identifiable, Codable, Hashable {
     public var isRewatched: Bool
     public var isListened: Bool
     public var isSaved: Bool
+    public var isOwnedDisc: Bool
     public let lastUpdated: Date
     /// Guest names, source titles, and full episode/source descriptions for keyword search.
     /// Not persisted on Movie JSON/CloudKit; filled when mapping from catalog source rows.
@@ -55,6 +56,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
+        isOwnedDisc: Bool = false,
         lastUpdated: Date = Date(),
         sourceSearchText: String = ""
     ) {
@@ -78,6 +80,7 @@ public struct Movie: Identifiable, Codable, Hashable {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
+        self.isOwnedDisc = isOwnedDisc
         self.lastUpdated = lastUpdated
         self.sourceSearchText = sourceSearchText
     }
@@ -86,8 +89,38 @@ public struct Movie: Identifiable, Codable, Hashable {
         case id, title, year, tmdbId, posterPath, backdropPath, overview
         case mpaaRating, genres, streamingServices, podcastEpisode, credits
         case rewatchablesDiscussion, trailer, oscarAwards, physicalMedia, theatricalRun
-        case isRewatched, isListened, isSaved, lastUpdated
+        case isRewatched, isListened, isSaved, isOwnedDisc, lastUpdated
     }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        year = try container.decodeIfPresent(Int.self, forKey: .year)
+        tmdbId = try container.decodeIfPresent(Int.self, forKey: .tmdbId)
+        posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
+        backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        mpaaRating = try container.decodeIfPresent(String.self, forKey: .mpaaRating)
+        genres = try container.decodeIfPresent([String].self, forKey: .genres) ?? []
+        streamingServices = try container.decodeIfPresent([StreamingService].self, forKey: .streamingServices) ?? []
+        podcastEpisode = try container.decodeIfPresent(PodcastEpisode.self, forKey: .podcastEpisode)
+        credits = try container.decodeIfPresent(MovieCredits.self, forKey: .credits)
+        rewatchablesDiscussion = try container.decodeIfPresent(RewatchablesDiscussion.self, forKey: .rewatchablesDiscussion)
+        trailer = try container.decodeIfPresent(MovieTrailer.self, forKey: .trailer)
+        oscarAwards = try container.decodeIfPresent(OscarAwards.self, forKey: .oscarAwards)
+        physicalMedia = try container.decodeIfPresent(PhysicalMedia.self, forKey: .physicalMedia)
+        theatricalRun = try container.decodeIfPresent(TheatricalRun.self, forKey: .theatricalRun)
+        isRewatched = try container.decodeIfPresent(Bool.self, forKey: .isRewatched) ?? false
+        isListened = try container.decodeIfPresent(Bool.self, forKey: .isListened) ?? false
+        isSaved = try container.decodeIfPresent(Bool.self, forKey: .isSaved) ?? false
+        isOwnedDisc = try container.decodeIfPresent(Bool.self, forKey: .isOwnedDisc) ?? false
+        lastUpdated = try container.decodeIfPresent(Date.self, forKey: .lastUpdated) ?? Date()
+        sourceSearchText = ""
+    }
+
+    /// Want-to-buy is Saved and not owned — no separate want flag.
+    public var isWantedDisc: Bool { isSaved && !isOwnedDisc }
 
     /// Newest-first lists use episode date when the catalog/RSS link has one,
     /// otherwise the row's lastUpdated so admin additions are not buried.
@@ -223,6 +256,7 @@ extension Movie {
         let isRewatched = false
         let isListened = false
         let isSaved = false
+        let isOwnedDisc = false
         let lastUpdated = record.modificationDate ?? record.creationDate ?? Date()
         
         // Decode genres
@@ -299,6 +333,7 @@ extension Movie {
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
+            isOwnedDisc: isOwnedDisc,
             lastUpdated: lastUpdated
         )
     }
@@ -318,6 +353,7 @@ extension Movie {
         record["isRewatched"] = isRewatched
         record["isListened"] = isListened
         record["isSaved"] = isSaved
+        record["isOwnedDisc"] = isOwnedDisc
         record["lastUpdated"] = lastUpdated
         
         // Encode rewatchables discussion

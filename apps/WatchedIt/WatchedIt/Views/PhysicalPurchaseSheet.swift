@@ -6,15 +6,16 @@
 import SwiftUI
 
 struct PhysicalPurchaseSheet: View {
-    let movieTitle: String
-    let year: Int?
+    let movie: Movie
     let media: PhysicalMedia
+    let isOwnedDisc: Bool
+    let onOwnedChange: (Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     private var groups: [PhysicalPurchaseEditionGroup] {
-        PhysicalPurchaseLinkBuilder.groups(for: media, title: movieTitle, year: year)
+        PhysicalPurchaseLinkBuilder.groups(for: media, title: movie.title, year: movie.year)
     }
 
     var body: some View {
@@ -22,6 +23,7 @@ struct PhysicalPurchaseSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxl) {
                     header
+                    ownToggle
                     ForEach(groups) { group in
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                             Text(group.headline)
@@ -37,7 +39,7 @@ struct PhysicalPurchaseSheet: View {
                                         offerRow(offer)
                                     }
                                     .buttonStyle(.plain)
-                                    .accessibilityLabel("Search \(offer.title) for \(movieTitle)")
+                                    .accessibilityLabel("Search \(offer.title) for \(movie.title)")
                                 }
                             }
                         }
@@ -63,7 +65,7 @@ struct PhysicalPurchaseSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-            Text(movieTitle)
+            Text(movie.title)
                 .titleLarge()
                 .foregroundHeadline()
             let meta = metadataLine
@@ -75,12 +77,48 @@ struct PhysicalPurchaseSheet: View {
         }
     }
 
+    private var ownToggle: some View {
+        Button {
+            onOwnedChange(!isOwnedDisc)
+        } label: {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                Image(systemName: isOwnedDisc ? DesignSystem.Icon.discFill : DesignSystem.Icon.disc)
+                    .font(.system(size: DesignSystem.IconSize.md))
+                    .foregroundColor(isOwnedDisc ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Text(isOwnedDisc ? "Owned" : "I own this")
+                        .bodyMedium()
+                        .foregroundColor(DesignSystem.Color.textPrimary)
+                    Text(isOwnedDisc ? "On your shelf" : "I already have this disc")
+                        .captionMedium()
+                        .foregroundColor(DesignSystem.Color.textSecondary)
+                }
+                Spacer(minLength: DesignSystem.Spacing.sm)
+                Image(systemName: isOwnedDisc ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: DesignSystem.IconSize.md))
+                    .foregroundColor(isOwnedDisc ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
+            }
+            .padding(.vertical, DesignSystem.Spacing.md)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                    .fill(DesignSystem.Color.backgroundSecondary)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isOwnedDisc ? "Owned" : "I own this")
+        .accessibilityAddTraits(isOwnedDisc ? [.isSelected] : [])
+    }
+
     private var metadataLine: String {
         var parts: [String] = []
-        if let year {
+        if let year = movie.year {
             parts.append(String(year))
         }
         parts.append(contentsOf: media.badgeLabels)
+        if isOwnedDisc {
+            parts.append("Owned")
+        }
         return parts.joined(separator: "   ")
     }
 

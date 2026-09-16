@@ -341,22 +341,26 @@ final class MovieData {
         let isRewatched: Bool
         let isListened: Bool
         let isSaved: Bool
+        let isOwnedDisc: Bool
         
         if let userData = userData {
             // Use new schema
             isRewatched = userData.isRewatched
             isListened = userData.isListened
             isSaved = userData.isSaved
+            isOwnedDisc = userData.isOwnedDisc
         } else if let state = states?.first {
             // Fall back to old schema for backward compatibility
             isRewatched = state.isRewatched
             isListened = state.isListened
             isSaved = state.isSaved
+            isOwnedDisc = state.isOwnedDisc
         } else {
             // Default values
             isRewatched = false
             isListened = false
             isSaved = false
+            isOwnedDisc = false
         }
         
         // Get source content - prefer new SourceContent, fall back to old MovieDataSource
@@ -414,6 +418,7 @@ final class MovieData {
             isRewatched: isRewatched,
             isListened: isListened,
             isSaved: isSaved,
+            isOwnedDisc: isOwnedDisc,
             lastUpdated: lastUpdated,
             sourceSearchText: collectedSourceSearchText()
         )
@@ -482,6 +487,7 @@ final class MovieState {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isSaved: Bool = false
+    var isOwnedDisc: Bool = false
     var lastUpdated: Date
     
     // Relationship to movie
@@ -491,12 +497,14 @@ final class MovieState {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
+        isOwnedDisc: Bool = false,
         lastUpdated: Date = Date(),
         movie: MovieData? = nil
     ) {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
+        self.isOwnedDisc = isOwnedDisc
         self.lastUpdated = lastUpdated
         self.movie = movie
     }
@@ -861,6 +869,7 @@ final class UserMovieData {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isWatched: Bool = false // For future: general "watched" status
+    var isOwnedDisc: Bool = false
     
     // User ratings & notes
     var userRating: Int? // 1-10 or 1-5 scale (nullable)
@@ -882,6 +891,7 @@ final class UserMovieData {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isWatched: Bool = false,
+        isOwnedDisc: Bool = false,
         userRating: Int? = nil,
         userNotes: String? = nil,
         watchedDate: Date? = nil,
@@ -896,6 +906,7 @@ final class UserMovieData {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isWatched = isWatched
+        self.isOwnedDisc = isOwnedDisc
         self.userRating = userRating
         self.userNotes = userNotes
         self.watchedDate = watchedDate

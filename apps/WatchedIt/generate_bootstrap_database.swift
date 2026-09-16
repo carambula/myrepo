@@ -379,6 +379,7 @@ final class MovieModel {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isSaved: Bool = false
+    var isOwnedDisc: Bool = false
     var lastUpdated: Date
     var cloudKitRecordID: String?
     
@@ -400,6 +401,7 @@ final class MovieModel {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
+        isOwnedDisc: Bool = false,
         lastUpdated: Date = Date(),
         cloudKitRecordID: String? = nil
     ) {
@@ -420,6 +422,7 @@ final class MovieModel {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
+        self.isOwnedDisc = isOwnedDisc
         self.lastUpdated = lastUpdated
         self.cloudKitRecordID = cloudKitRecordID
     }
@@ -430,6 +433,7 @@ final class MovieState {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isSaved: Bool = false
+    var isOwnedDisc: Bool = false
     var lastUpdated: Date
     var movie: MovieData?
     
@@ -437,12 +441,14 @@ final class MovieState {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isSaved: Bool = false,
+        isOwnedDisc: Bool = false,
         lastUpdated: Date = Date(),
         movie: MovieData? = nil
     ) {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isSaved = isSaved
+        self.isOwnedDisc = isOwnedDisc
         self.lastUpdated = lastUpdated
         self.movie = movie
     }
@@ -455,6 +461,7 @@ final class UserMovieData {
     var isRewatched: Bool = false
     var isListened: Bool = false
     var isWatched: Bool = false
+    var isOwnedDisc: Bool = false
     var userRating: Int?
     var userNotes: String?
     var watchedDate: Date?
@@ -470,6 +477,7 @@ final class UserMovieData {
         isRewatched: Bool = false,
         isListened: Bool = false,
         isWatched: Bool = false,
+        isOwnedDisc: Bool = false,
         userRating: Int? = nil,
         userNotes: String? = nil,
         watchedDate: Date? = nil,
@@ -484,6 +492,7 @@ final class UserMovieData {
         self.isRewatched = isRewatched
         self.isListened = isListened
         self.isWatched = isWatched
+        self.isOwnedDisc = isOwnedDisc
         self.userRating = userRating
         self.userNotes = userNotes
         self.watchedDate = watchedDate

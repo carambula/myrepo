@@ -24,6 +24,7 @@ describe("agent HTTP helpers", () => {
     const names = tools.map((tool) => tool.name);
     assert.ok(names.includes("list_movies"));
     assert.ok(names.includes("set_movie_saved"));
+    assert.ok(names.includes("set_movie_owned"));
     assert.ok(names.includes("follow_podcast"));
     assert.ok(names.includes("undo"));
     assert.ok(tools.every((tool) => tool.description && tool.kind));

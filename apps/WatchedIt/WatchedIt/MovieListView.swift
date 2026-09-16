@@ -17,6 +17,9 @@ enum WatchFilter: String, CaseIterable {
     case notSaved = "Not saved"
     case listened = "Listened"
     case notListened = "Not listened"
+    case owned = "Owned"
+    case notOwned = "Not owned"
+    case want = "Want"
     case completed = "Complete"
     case notComplete = "Not complete"
     case incomplete = "Incomplete"
@@ -28,6 +31,8 @@ enum WatchFilter: String, CaseIterable {
         case .saved: return DesignSystem.Icon.bookmarkFill
         case .notSaved: return DesignSystem.Icon.bookmark
         case .listened, .notListened: return DesignSystem.Icon.listen
+        case .owned: return DesignSystem.Icon.discFill
+        case .notOwned, .want: return DesignSystem.Icon.disc
         case .completed: return DesignSystem.Icon.checkmarkCircle
         case .notComplete, .incomplete: return DesignSystem.Icon.checkmark
         }
@@ -49,6 +54,12 @@ enum WatchFilter: String, CaseIterable {
             return movie.isListened
         case .notListened:
             return !movie.isListened
+        case .owned:
+            return movie.isOwnedDisc
+        case .notOwned:
+            return !movie.isOwnedDisc
+        case .want:
+            return movie.isWantedDisc
         case .completed:
             return movie.isRewatched && movie.isListened
         case .notComplete:
@@ -314,6 +325,7 @@ struct MovieStatus: Hashable {
     let isRewatched: Bool
     let isListened: Bool
     let isSaved: Bool
+    let isOwnedDisc: Bool
 }
 
 struct MovieListView: View {
@@ -906,6 +918,7 @@ struct MovieListView: View {
             hasher.combine(movie.isRewatched)
             hasher.combine(movie.isListened)
             hasher.combine(movie.isSaved)
+            hasher.combine(movie.isOwnedDisc)
         }
         return hasher.finalize()
     }
@@ -4574,7 +4587,8 @@ struct MovieRowView: View {
         return MovieStatus(
             isRewatched: movie.isRewatched,
             isListened: movie.isListened,
-            isSaved: movie.isSaved
+            isSaved: movie.isSaved,
+            isOwnedDisc: movie.isOwnedDisc
         )
     }
     

@@ -519,7 +519,7 @@ struct WatchedItTests {
         #expect(retailers == [.arrow, .amazon, .ebay, .criterion])
     }
 
-    @Test func watchFilterMatchesEachStatusPair() {
+    @Test func watchFilterMatchesEachStatusPair() throws {
         let rewatched = movie(isRewatched: true)
         let notRewatched = movie(isRewatched: false)
         let saved = movie(isSaved: true)
@@ -555,6 +555,27 @@ struct WatchedItTests {
         #expect(!WatchFilter.incomplete.matches(complete))
         #expect(!WatchFilter.incomplete.matches(untouched))
         #expect(WatchFilter.all.matches(untouched))
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let legacyJSON = Data(#"{"id":"tmdb-1","title":"Heat","isRewatched":false,"isListened":false,"isSaved":true,"lastUpdated":"2026-01-01T00:00:00Z"}"#.utf8)
+        let decoded = try decoder.decode(Movie.self, from: legacyJSON)
+        #expect(decoded.isSaved)
+        #expect(!decoded.isOwnedDisc)
+        #expect(decoded.isWantedDisc)
+
+        let owned = movie(isOwnedDisc: true)
+        let savedUnowned = movie(isSaved: true, isOwnedDisc: false)
+        let savedOwned = movie(isSaved: true, isOwnedDisc: true)
+        #expect(WatchFilter.owned.matches(owned))
+        #expect(!WatchFilter.owned.matches(untouched))
+        #expect(WatchFilter.notOwned.matches(untouched))
+        #expect(!WatchFilter.notOwned.matches(owned))
+        #expect(WatchFilter.want.matches(savedUnowned))
+        #expect(!WatchFilter.want.matches(savedOwned))
+        #expect(!WatchFilter.want.matches(owned))
+        #expect(savedUnowned.isWantedDisc)
+        #expect(!savedOwned.isWantedDisc)
     }
 
     @Test func theatricalFilterAndTicketLinks() {
@@ -699,6 +720,27 @@ struct WatchedItTests {
         #expect(ids(for: .completed) == [complete.id])
         #expect(ids(for: .notSaved) == [rewatched.id, listened.id, complete.id])
         #expect(Set(ids(for: .all)) == Set(movies.map(\.id)))
+
+        let owned = movie(isOwnedDisc: true)
+        let want = movie(isSaved: true)
+        let ownedAndSaved = movie(isSaved: true, isOwnedDisc: true)
+        let discMovies = [owned, want, ownedAndSaved]
+        let discIndex = MovieSearchEngine.buildIndex(from: discMovies)
+        func discIds(for filter: WatchFilter) -> [String] {
+            var filters = MovieSearchFilters()
+            filters.watchFilter = filter
+            return MovieSearchEngine.filterMovies(
+                movies: discMovies,
+                query: "",
+                filters: filters,
+                movieSearchIndex: discIndex,
+                sourceCache: [:],
+                restrictedMovieIDs: nil
+            ).map(\.id)
+        }
+        #expect(discIds(for: .owned) == [owned.id, ownedAndSaved.id])
+        #expect(discIds(for: .want) == [want.id])
+        #expect(discIds(for: .saved) == [want.id, ownedAndSaved.id])
     }
 
     @Test func watchFilterMenuIncludesPairedStatusCases() {
@@ -711,6 +753,9 @@ struct WatchedItTests {
         #expect(labels.contains("Not listened"))
         #expect(labels.contains("Complete"))
         #expect(labels.contains("Not complete"))
+        #expect(labels.contains("Owned"))
+        #expect(labels.contains("Not owned"))
+        #expect(labels.contains("Want"))
     }
 
     @Test func closetPicksKeepsListenedAffordanceWithoutPodcastEpisode() {
@@ -879,13 +924,15 @@ struct WatchedItTests {
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,
-        isSaved: Bool = false
+        isSaved: Bool = false,
+        isOwnedDisc: Bool = false
     ) -> Movie {
         Movie(
             title: "Test",
             isRewatched: isRewatched,
             isListened: isListened,
-            isSaved: isSaved
+            isSaved: isSaved,
+            isOwnedDisc: isOwnedDisc
         )
     }
 

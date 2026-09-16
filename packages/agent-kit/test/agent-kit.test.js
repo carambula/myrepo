@@ -65,6 +65,13 @@ test('agent can list and save movies, then undo', async () => {
 
   const restored = await gateway.call(token, 'get_movie', { title: 'Heat' });
   assert.equal(restored.movie.isSaved, false);
+
+  const owned = await gateway.call(token, 'set_movie_owned', { title: 'The Matrix', owned: true });
+  assert.equal(owned.movie.isOwnedDisc, true);
+  const wants = await gateway.call(token, 'list_movies', { want: true });
+  assert.equal(wants.movies.some((movie) => movie.title === 'The Matrix'), false);
+  const ownedList = await gateway.call(token, 'list_movies', { owned: true });
+  assert.ok(ownedList.movies.some((movie) => movie.title === 'The Matrix'));
 });
 
 test('upsert adds a missing movie and marks it saved', async () => {

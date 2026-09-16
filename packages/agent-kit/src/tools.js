@@ -71,15 +71,17 @@ function podcastMatches(podcast, input) {
 
 export const toolHandlers = {
   list_movies(library, input = {}) {
-    const { saved, rewatched, listened, query, limit = 50 } = input;
-    const hasFilter = saved != null || rewatched != null || listened != null || query;
+    const { saved, rewatched, listened, owned, want, query, limit = 50 } = input;
+    const hasFilter = saved != null || rewatched != null || listened != null || owned != null || want != null || query;
     let items = library.movies;
     if (!hasFilter) {
-      items = items.filter((movie) => movie.isSaved || movie.isRewatched);
+      items = items.filter((movie) => movie.isSaved || movie.isRewatched || movie.isOwnedDisc);
     }
     if (saved != null) items = items.filter((movie) => movie.isSaved === saved);
     if (rewatched != null) items = items.filter((movie) => movie.isRewatched === rewatched);
     if (listened != null) items = items.filter((movie) => movie.isListened === listened);
+    if (owned != null) items = items.filter((movie) => movie.isOwnedDisc === owned);
+    if (want != null) items = items.filter((movie) => (movie.isSaved && !movie.isOwnedDisc) === want);
     if (query) {
       items = items.filter((movie) => includesQuery(`${movie.title} ${movie.year ?? ''} ${movie.id}`, query));
     }
@@ -134,6 +136,18 @@ export const toolHandlers = {
     };
   },
 
+  set_movie_owned(library, input = {}) {
+    const movie = findMovie(library, input);
+    const before = { ...movie };
+    movie.isOwnedDisc = Boolean(input.owned);
+    return {
+      result: { movie },
+      before: { movies: [before] },
+      after: { movies: [{ ...movie }] },
+      summary: input.owned ? `Marked ${movie.title} owned` : `Cleared owned on ${movie.title}`,
+    };
+  },
+
   upsert_movie(library, input = {}) {
     const existing = library.movies.find((movie) =>
       (input.id && movie.id === input.id)
@@ -148,6 +162,7 @@ export const toolHandlers = {
       if (input.saved != null) existing.isSaved = Boolean(input.saved);
       if (input.rewatched != null) existing.isRewatched = Boolean(input.rewatched);
       if (input.listened != null) existing.isListened = Boolean(input.listened);
+      if (input.owned != null) existing.isOwnedDisc = Boolean(input.owned);
       return {
         result: { movie: existing, created: false },
         before: { movies: [before] },
@@ -164,6 +179,7 @@ export const toolHandlers = {
       isSaved: input.saved ?? true,
       isRewatched: input.rewatched ?? false,
       isListened: input.listened ?? false,
+      isOwnedDisc: input.owned ?? false,
     };
     library.movies.push(movie);
     return {

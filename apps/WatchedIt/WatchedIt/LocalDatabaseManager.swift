@@ -2701,7 +2701,7 @@ public class LocalDatabaseManager: ObservableObject {
                     physicalMedia: PhysicalMediaCatalog.shared.resolvedMedia(
                         stored: bootstrapMovie.physicalMedia,
                         tmdbId: bootstrapMovie.tmdbId,
-                        sourceIdentifiers: [bootstrapMovie.sourceIdentifier]
+                        sourceIdentifiers: Array(bootstrapMovieSourceIds[bootstrapMovie.id] ?? [])
                     ),
                     keywords: bootstrapMovie.keywords,
                     lastUpdated: Date(),

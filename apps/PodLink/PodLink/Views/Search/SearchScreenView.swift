@@ -681,16 +681,9 @@ struct SearchScreenView: View {
     }
 
     private func toggleFollow(_ podcast: Podcast) {
-        var podcasts = Podcast.loadFollowedPodcasts()
-        let feedStr = podcast.feedURL.absoluteString
-        if let index = podcasts.firstIndex(where: { $0.id == podcast.id || $0.feedURL.absoluteString == feedStr }) {
-            podcasts.remove(at: index)
-        } else {
-            var updated = podcast
-            updated.isFollowed = true
-            podcasts.append(updated)
-        }
-        Podcast.saveFollowedPodcasts(podcasts)
+        let library = Podcast.loadFollowedPodcasts()
+        let isFollowed = library.contains { Podcast.isSameFollowedShow($0, podcast) }
+        Podcast.setFollowed(podcast, followed: !isFollowed)
         refreshFollowedIds()
     }
 }

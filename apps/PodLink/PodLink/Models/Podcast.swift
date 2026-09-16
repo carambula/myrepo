@@ -74,10 +74,43 @@ extension Podcast {
     private static let followedCacheLock = NSLock()
     private static var cachedFollowed: [Podcast]?
 
+    private static var lastLocalMutationAt: Date?
+
     static func invalidateFollowedCache() {
         followedCacheLock.lock()
         cachedFollowed = nil
         followedCacheLock.unlock()
+    }
+
+    static func isSameFollowedShow(_ lhs: Podcast, _ rhs: Podcast) -> Bool {
+        if lhs.id == rhs.id { return true }
+        if let leftiTunes = lhs.itunesID, let rightiTunes = rhs.itunesID,
+           !leftiTunes.isEmpty, leftiTunes == rightiTunes {
+            return true
+        }
+        let leftFeed = PrivateFeedAuthStore.canonicalFeedURL(lhs.feedURL).absoluteString
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .lowercased()
+        let rightFeed = PrivateFeedAuthStore.canonicalFeedURL(rhs.feedURL).absoluteString
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .lowercased()
+        return leftFeed == rightFeed
+    }
+
+    /// Adds or removes `podcast` from a library snapshot. Unfollow matches id, iTunes id, or feed URL.
+    static func applyingFollow(_ podcast: Podcast, followed: Bool, to library: [Podcast]) -> [Podcast] {
+        var next = library.filter { !isSameFollowedShow($0, podcast) }
+        if followed {
+            var updated = podcast
+            updated.isFollowed = true
+            next.append(updated)
+        }
+        return next
+    }
+
+    static func setFollowed(_ podcast: Podcast, followed: Bool) {
+        let library = loadFollowedPodcasts()
+        saveFollowedPodcasts(applyingFollow(podcast, followed: followed, to: library))
     }
 
     static func loadFollowedPodcasts() -> [Podcast] {
@@ -145,6 +178,9 @@ extension Podcast {
         if MinCloudSettings.iCloudBackupEnabled {
             CloudKeyValueWriter.setData(data, forKey: followedPodcastsStorageKey)
         }
+        followedCacheLock.lock()
+        lastLocalMutationAt = Date()
+        followedCacheLock.unlock()
         invalidateFollowedCache()
         NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
         Task {
@@ -170,6 +206,12 @@ extension Podcast {
 
     /// Called when iCloud KVS delivers changes (e.g. another device or after reinstall sync).
     static func applyFollowedPodcastsFromUbiquitousStore() {
+        followedCacheLock.lock()
+        let wroteLocallyJustNow = lastLocalMutationAt.map { Date().timeIntervalSince($0) < 3 } ?? false
+        followedCacheLock.unlock()
+        // A just-written unfollow can echo back from KVS as the previous snapshot and resurrect the show.
+        if wroteLocallyJustNow { return }
+
         guard let data = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey),
               (try? JSONDecoder().decode([Podcast].self, from: data)) != nil else { return }
         UserDefaults.standard.set(data, forKey: followedPodcastsStorageKey)

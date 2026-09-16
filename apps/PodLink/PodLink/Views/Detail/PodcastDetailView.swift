@@ -252,8 +252,7 @@ struct PodcastDetailView: View {
         let activeAccent = themeManager.currentTheme.accentColor
         return HStack(spacing: DesignSystem.Spacing.md) {
             Button {
-                isFollowed.toggle()
-                toggleFollow()
+                applyFollow(!isFollowed)
             } label: {
                 Image(systemName: isFollowed ? "minus.circle" : "plus.circle")
                     .font(.system(size: 24))
@@ -563,18 +562,9 @@ struct PodcastDetailView: View {
         episodes[idx] = EpisodePlaybackStore.merge(episodes[idx])
     }
 
-    private func toggleFollow() {
-        var podcasts = Podcast.loadFollowedPodcasts()
-        if isFollowed {
-            var updated = podcast
-            updated.isFollowed = true
-            if !podcasts.contains(where: { $0.id == podcast.id }) {
-                podcasts.append(updated)
-            }
-        } else {
-            podcasts.removeAll { $0.id == podcast.id }
-        }
-        Podcast.saveFollowedPodcasts(podcasts)
+    private func applyFollow(_ follow: Bool) {
+        isFollowed = follow
+        Podcast.setFollowed(podcast, followed: follow)
     }
     
     // MARK: - Bottom Detection

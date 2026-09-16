@@ -57,12 +57,13 @@ final class PodcastAgentService: AgentLibraryExporting {
 
     func unfollow(id: String?, title: String?) throws -> Podcast {
         var library = Podcast.mergedFollowedPodcastsForMutation()
-        guard let index = library.firstIndex(where: { podcast in
+        guard let match = library.first(where: { podcast in
             (id != nil && podcast.id == id) || (title != nil && podcast.title.localizedCaseInsensitiveContains(title!))
         }) else {
             throw AgentKitError.notFound("That podcast is not in your library.")
         }
-        let removed = library.remove(at: index)
+        let removed = match
+        library = Podcast.applyingFollow(match, followed: false, to: library)
         Podcast.saveFollowedPodcasts(library)
         AgentJournal.shared.recordWrite(
             connectionId: "on-device",

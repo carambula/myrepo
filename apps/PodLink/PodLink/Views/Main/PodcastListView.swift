@@ -638,7 +638,15 @@ struct PodcastListView: View {
     }
 
     private func savePodcastOrder() {
-        Podcast.saveFollowedPodcasts(followedPodcasts)
+        let persisted = Podcast.loadFollowedPodcasts()
+        let persistedIDs = Set(persisted.map(\.id))
+        var ordered = followedPodcasts.filter { persistedIDs.contains($0.id) }
+        let orderedIDs = Set(ordered.map(\.id))
+        for podcast in persisted where !orderedIDs.contains(podcast.id) {
+            ordered.append(podcast)
+        }
+        followedPodcasts = ordered
+        Podcast.saveFollowedPodcasts(ordered)
     }
 
     private func refreshFeeds() async {

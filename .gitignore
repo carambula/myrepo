@@ -43,3 +43,4 @@ Package.resolved
 
 # WatchedIt catalog pulled at Xcode build time
 apps/WatchedIt/WatchedIt/bootstrap_data.cloud.json
+apps/WatchedIt/WatchedIt/bootstrap_database.store

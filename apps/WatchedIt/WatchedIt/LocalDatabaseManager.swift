@@ -2651,7 +2651,10 @@ public class LocalDatabaseManager: ObservableObject {
                 existing.name = bootstrapSource.name
                 existing.type = bootstrapSource.type
                 existing.url = bootstrapSource.url
-                existing.isRankedList = bootstrapSource.isRankedList
+                existing.isRankedList = ClosetPicksSource.resolvesAsRankedList(
+                    bootstrapSource.isRankedList,
+                    identifier: bootstrapSource.identifier
+                )
                 existing.lastUpdated = Date()
             } else {
                 let newSource = DataSource(
@@ -2663,7 +2666,10 @@ public class LocalDatabaseManager: ObservableObject {
                     lastUpdated: Date(),
                     lastChecked: bootstrapSource.lastChecked,
                     createdAt: bootstrapSource.createdAt,
-                    isRankedList: bootstrapSource.isRankedList
+                    isRankedList: ClosetPicksSource.resolvesAsRankedList(
+                        bootstrapSource.isRankedList,
+                        identifier: bootstrapSource.identifier
+                    )
                 )
                 modelContext.insert(newSource)
                 sourceById[newSource.identifier] = newSource

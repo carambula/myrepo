@@ -303,7 +303,10 @@ class BootstrapDataService {
                     existingSource.name = bootstrapSource.name
                     existingSource.type = bootstrapSource.type
                     existingSource.url = bootstrapSource.url
-                    existingSource.isRankedList = bootstrapSource.isRankedList
+                    existingSource.isRankedList = ClosetPicksSource.resolvesAsRankedList(
+                        bootstrapSource.isRankedList,
+                        identifier: bootstrapSource.identifier
+                    )
                 }
             } else {
                 // Create new source
@@ -316,7 +319,10 @@ class BootstrapDataService {
                     lastUpdated: Date(),
                     lastChecked: nil,
                     createdAt: Date(),
-                    isRankedList: bootstrapSource.isRankedList
+                    isRankedList: ClosetPicksSource.resolvesAsRankedList(
+                        bootstrapSource.isRankedList,
+                        identifier: bootstrapSource.identifier
+                    )
                 )
                 modelContext.insert(newSource)
                 sourceMap[bootstrapSource.identifier] = newSource
@@ -637,7 +643,7 @@ class BootstrapDataService {
                 name: identifier.replacingOccurrences(of: "-", with: " ").capitalized,
                 type: identifier.contains("rt-") || identifier.contains("imdb-") || identifier.hasPrefix("criterion") ? "url" : "podcast",
                 url: nil,
-                isRankedList: identifier.contains("rt-") || identifier.contains("imdb-") || identifier == "criterion-closet-picks",
+                isRankedList: identifier.contains("rt-") || identifier.contains("imdb-"),
                 movieCount: 0
             )
         }

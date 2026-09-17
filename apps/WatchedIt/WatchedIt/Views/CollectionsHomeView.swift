@@ -751,7 +751,7 @@ private struct CollectionsHomeContentView: View {
         case .list(let identifier, let isRankedList):
             var filters = MovieSearchFilters()
             filters.selectedListIdentifier = identifier
-            if isRankedList {
+            if ClosetPicksSource.resolvesAsRankedList(isRankedList, identifier: identifier) {
                 filters.sortOption = .ranking
             }
             presentGlobalSearch(initialFilters: filters)
@@ -790,7 +790,7 @@ private struct CollectionsHomeContentView: View {
     private func applyListFilterFromToolbar(_ list: DataSource?) {
         var filters = MovieSearchFilters()
         filters.selectedListIdentifier = list?.identifier
-        if list?.isRankedList == true { filters.sortOption = .ranking }
+        if list?.sortsAsRankedList == true { filters.sortOption = .ranking }
         presentGlobalSearch(initialFilters: filters)
     }
 

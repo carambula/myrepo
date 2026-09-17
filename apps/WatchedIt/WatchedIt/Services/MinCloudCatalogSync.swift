@@ -91,14 +91,22 @@ final class MinCloudCatalogSync {
             sourceById[source.identifier] = source
         }
         for source in catalog.sources {
-            if sourceById[source.identifier] == nil {
+            let isRanked = ClosetPicksSource.resolvesAsRankedList(
+                source.is_ranked ?? false,
+                identifier: source.identifier
+            )
+            if let existing = sourceById[source.identifier] {
+                if ClosetPicksSource.sortsByRecency(source.identifier) {
+                    existing.isRankedList = false
+                }
+            } else {
                 let created = DataSource(
                     identifier: source.identifier,
                     name: source.name,
                     type: source.type,
                     url: source.url,
                     isEnabled: source.enabled ?? true,
-                    isRankedList: source.is_ranked ?? false
+                    isRankedList: isRanked
                 )
                 modelContext.insert(created)
                 sourceById[source.identifier] = created

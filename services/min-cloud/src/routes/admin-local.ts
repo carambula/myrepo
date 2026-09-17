@@ -951,7 +951,7 @@ router.post("/ingest/preview", async (req, res) => {
     }
     const items = collapseClosetPicks(visits).map((film) => ({
       ...toClosetPicksCatalogItem(film, identifier || "criterion-closet-picks"),
-      isRankedList: true
+      isRankedList: false
     }));
     res.json({
       items,

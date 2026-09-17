@@ -42,7 +42,7 @@
     },
     {
       "identifier": "criterion-closet-picks",
-      "isRankedList": true,
+      "isRankedList": false,
       "movieCount": 699,
       "name": "Criterion Closet Picks",
       "type": "url",

@@ -624,6 +624,6 @@ export const closetPicksSourceRecord = () => ({
   name: CLOSET_PICKS_SOURCE_NAME,
   type: "url",
   url: CLOSET_PICKS_INDEX_URL,
-  isRankedList: true,
+  isRankedList: false,
   movieCount: 0
 });

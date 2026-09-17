@@ -24,6 +24,7 @@ struct ClosetPicksGuestAttribution: Equatable {
 enum ClosetPicksSource {
     static let identifier = "criterion-closet-picks"
     static let indexURL = URL(string: "https://www.criterion.com/closet-picks")!
+    static let isRankedList = false
 
     static let collectionIdentifier = "criterion"
     static let badgeAssetName = "source_criterion"
@@ -35,6 +36,41 @@ enum ClosetPicksSource {
 
     static func showsPosterBadge(for sourceIdentifier: String) -> Bool {
         badgeIdentifiers.contains(normalizedIdentifier(sourceIdentifier))
+    }
+
+    static func isClosetPicksIdentifier(_ sourceIdentifier: String) -> Bool {
+        normalizedIdentifier(sourceIdentifier) == identifier
+    }
+
+    /// Closet Picks drop newest-first. Stored ranks are scrape order, not a list.
+    static func sortsByRecency(_ sourceIdentifier: String) -> Bool {
+        isClosetPicksIdentifier(sourceIdentifier)
+    }
+
+    static func resolvesAsRankedList(_ stored: Bool, identifier sourceIdentifier: String) -> Bool {
+        sortsByRecency(sourceIdentifier) ? false : stored
+    }
+
+    /// Watch & Shop collection IDs increment as new guest episodes publish.
+    static func shopCollectionID(from raw: String?) -> Int? {
+        let value = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !value.isEmpty else { return nil }
+        let path: String
+        if let url = URL(string: value), url.scheme?.hasPrefix("http") == true {
+            path = url.path
+        } else {
+            path = value
+        }
+        guard let regex = try? NSRegularExpression(pattern: #"/shop/collection/(\d+)"#, options: .caseInsensitive) else {
+            return nil
+        }
+        let range = NSRange(path.startIndex..., in: path)
+        guard let match = regex.firstMatch(in: path, options: [], range: range),
+              match.numberOfRanges > 1,
+              let digits = Range(match.range(at: 1), in: path) else {
+            return nil
+        }
+        return Int(path[digits])
     }
 
     static func showsListenedAction(hasPodcastEpisode: Bool, isOnClosetPicks: Bool) -> Bool {
@@ -269,6 +305,12 @@ enum ClosetPicksSource {
             return nil
         }
         return url
+    }
+}
+
+extension DataSource {
+    var sortsAsRankedList: Bool {
+        ClosetPicksSource.resolvesAsRankedList(isRankedList, identifier: identifier)
     }
 }
 

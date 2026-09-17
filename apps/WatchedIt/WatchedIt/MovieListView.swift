@@ -311,7 +311,7 @@ enum SortOption: String, CaseIterable {
         
         // Check if the selected list is ranked
         // Only check if source is marked as ranked - don't auto-mark sources
-        let isRanked = selectedList?.isRankedList ?? false
+        let isRanked = selectedList?.sortsAsRankedList ?? false
         if isRanked {
             return options
         } else {
@@ -851,7 +851,7 @@ struct MovieListView: View {
         let sourceId = source.identifier
         
         // Only build rank cache for sources that are marked as ranked
-        guard source.isRankedList else {
+        guard source.sortsAsRankedList else {
             rankCacheStore.rankCache[sourceId] = cache
             return
         }
@@ -1055,7 +1055,7 @@ struct MovieListView: View {
         case .ranking:
             // Sort by ranking from the selected list
             // Only sort by rank if a ranked list is selected
-            if let selectedList = selectedList, selectedList.isRankedList {
+            if let selectedList = selectedList, selectedList.sortsAsRankedList {
                 // ALWAYS rebuild cache for the selected source to ensure we have the correct ranks
                 // This prevents using ranks from a different source
                 let sourceId = selectedList.identifier
@@ -1229,7 +1229,7 @@ struct MovieListView: View {
                 return m1.title < m2.title
             }
         case .ranking:
-            if let selectedList = selectedList, selectedList.isRankedList {
+            if let selectedList = selectedList, selectedList.sortsAsRankedList {
                 return await MainActor.run {
                     let sourceId = selectedList.identifier
                     buildRankCache(for: selectedList)
@@ -1802,6 +1802,15 @@ struct MovieListView: View {
             }
             return map
         }()
+        let podcastGroupKeyBySource: [String: [String: String]] = {
+            var map: [String: [String: String]] = [:]
+            for entry in latestCarouselEntries() {
+                let trimmed = entry.groupKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !trimmed.isEmpty else { continue }
+                map[entry.sourceIdentifier, default: [:]][entry.movie.id] = trimmed
+            }
+            return map
+        }()
 
         let podcasts = preferredDataSources.filter { $0.isEnabled && $0.type == "podcast" }
         let lists = preferredDataSources.filter { $0.isEnabled && $0.type != "podcast" }
@@ -1815,16 +1824,27 @@ struct MovieListView: View {
             let orderedMovies = prioritizeSourceMovies(
                 sourceMovies,
                 for: source,
-                podcastDateMap: podcastDateBySource[source.identifier] ?? [:]
+                podcastDateMap: podcastDateBySource[source.identifier] ?? [:],
+                podcastGroupKeyMap: podcastGroupKeyBySource[source.identifier] ?? [:]
             )
             guard !orderedMovies.isEmpty else { return nil }
             return SourceCollectionUnit(source: source, movies: Array(orderedMovies.prefix(inspirationLimit)))
         }
     }
 
-    private func prioritizeSourceMovies(_ movies: [Movie], for source: DataSource, podcastDateMap: [String: Date]) -> [Movie] {
-        let baseSorted = defaultSortedMoviesForSourceUnit(movies, source: source, podcastDateMap: podcastDateMap)
-        if source.type == "podcast" {
+    private func prioritizeSourceMovies(
+        _ movies: [Movie],
+        for source: DataSource,
+        podcastDateMap: [String: Date],
+        podcastGroupKeyMap: [String: String]
+    ) -> [Movie] {
+        let baseSorted = defaultSortedMoviesForSourceUnit(
+            movies,
+            source: source,
+            podcastDateMap: podcastDateMap,
+            podcastGroupKeyMap: podcastGroupKeyMap
+        )
+        if source.type == "podcast" || ClosetPicksSource.sortsByRecency(source.identifier) {
             return uniqueMoviesPreservingOrder(baseSorted)
         }
         let saved = baseSorted.filter { $0.isSaved }
@@ -1833,7 +1853,28 @@ struct MovieListView: View {
         return uniqueMoviesPreservingOrder(saved + needsCompletion + remaining)
     }
 
-    private func defaultSortedMoviesForSourceUnit(_ movies: [Movie], source: DataSource, podcastDateMap: [String: Date]) -> [Movie] {
+    private func defaultSortedMoviesForSourceUnit(
+        _ movies: [Movie],
+        source: DataSource,
+        podcastDateMap: [String: Date],
+        podcastGroupKeyMap: [String: String]
+    ) -> [Movie] {
+        if source.type == "podcast" || ClosetPicksSource.sortsByRecency(source.identifier) {
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: movies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: podcastDateMap[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title,
+                        recency: ClosetPicksSource.shopCollectionID(from: podcastGroupKeyMap[$0.id])
+                    )
+                },
+                preferRecency: ClosetPicksSource.sortsByRecency(source.identifier)
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
+        }
+
         if source.isRankedList {
             buildRankCache(for: source)
             let ranks = rankCacheStore.rankCache[source.identifier] ?? [:]
@@ -1850,20 +1891,6 @@ struct MovieListView: View {
                 }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
-        }
-
-        if source.type == "podcast" {
-            let movieByIdentifier = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
-            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
-                from: movies.map {
-                    LatestPodcastPicker.SourceItem(
-                        movieId: $0.id,
-                        date: podcastDateMap[$0.id] ?? $0.podcastEpisode?.publishDate,
-                        title: $0.title
-                    )
-                }
-            )
-            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         }
 
         return movies.sorted { lhs, rhs in
@@ -2557,7 +2584,7 @@ struct MovieListView: View {
                             presentScopedSearch(title: source.name, movies: movies)
                         } else {
                             selectedList = source
-                            if source.isRankedList {
+                            if source.sortsAsRankedList {
                                 sortOption = .ranking
                             }
                         }
@@ -2942,7 +2969,7 @@ struct MovieListView: View {
     
     private func movieRow(movie: Movie, index: Int) -> some View {
         let movieRank: Int? = {
-            guard let selectedList, selectedList.isRankedList else { return nil }
+            guard let selectedList, selectedList.sortsAsRankedList else { return nil }
             return getRankForMovie(movie, in: selectedList)
         }()
 
@@ -3440,7 +3467,7 @@ struct MovieListView: View {
         if collectionsOnlyMode {
             var filters = MovieSearchFilters()
             filters.selectedListIdentifier = list?.identifier
-            if list?.isRankedList == true {
+            if list?.sortsAsRankedList == true {
                 filters.sortOption = .ranking
             }
             presentGlobalSearch(initialFilters: filters, focusSearchOnOpen: false)
@@ -3449,7 +3476,7 @@ struct MovieListView: View {
         selectedList = list
         if list == nil {
             sortOption = .episodeDateDesc
-        } else if list?.isRankedList == true {
+        } else if list?.sortsAsRankedList == true {
             sortOption = .ranking
         }
     }
@@ -4260,7 +4287,7 @@ struct MovieListView: View {
                 }
                 
                 // Auto-set sorting to ranking if the newly selected list is ranked
-                if let newList = newValue, newList.isRankedList {
+                if let newList = newValue, newList.sortsAsRankedList {
                     // Only change if ranking is available and not already set
                     let availableOptions = SortOption.availableOptions(for: newList)
                     if availableOptions.contains(.ranking) && sortOption != .ranking {
@@ -4600,7 +4627,7 @@ struct MovieRowView: View {
     // Get display title with rank prefix if applicable
     private var displayTitle: String {
         // Show rank only if a ranked list is selected and the movie has a rank in that list
-        if let selectedList = selectedList, selectedList.isRankedList, let rank = rank {
+        if let selectedList = selectedList, selectedList.sortsAsRankedList, let rank = rank {
             return "#\(rank) \(movie.title)"
         }
         return movie.title

@@ -272,7 +272,7 @@ struct SearchFilterMenus: View {
                 Button {
                     updateFilters {
                         $0.selectedListIdentifier = source.identifier
-                        if source.isRankedList {
+                        if source.sortsAsRankedList {
                             $0.sortOption = .ranking
                         }
                     }

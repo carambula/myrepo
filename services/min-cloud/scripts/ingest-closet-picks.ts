@@ -175,7 +175,7 @@ const mergeBootstrap = async (
 
   let text = await fs.readFile(bootstrapPath, "utf8");
   text = text.replace(
-    /("identifier": "criterion-closet-picks",\s*"isRankedList": true,\s*"movieCount": )(\d+)/,
+    /("identifier": "criterion-closet-picks",\s*"isRankedList": false,\s*"movieCount": )(\d+)/,
     `$1${rows.length}`
   );
   const indentRow = (row: (typeof rows)[number]) =>

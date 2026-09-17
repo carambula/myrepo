@@ -57,7 +57,7 @@ final class CatalogSnapshotService {
                 identifier: $0.identifier,
                 name: $0.name,
                 type: $0.type,
-                isRankedList: $0.isRankedList,
+                isRankedList: ClosetPicksSource.resolvesAsRankedList($0.isRankedList, identifier: $0.identifier),
                 isEnabled: $0.isEnabled
             )
         }
@@ -142,14 +142,15 @@ final class CatalogSnapshotService {
                 allMovies: movieByIdentifier,
                 movieToSourceIdentifiers: sourceIndexData.movieToSourceIdentifiers,
                 rankBySourceIdentifier: sourceIndexData.rankBySourceIdentifier,
-                latestPodcastDateBySourceIdentifier: sourceIndexData.latestPodcastDateBySourceIdentifier
+                latestPodcastDateBySourceIdentifier: sourceIndexData.latestPodcastDateBySourceIdentifier,
+                latestGroupKeyBySourceIdentifier: sourceIndexData.latestGroupKeyBySourceIdentifier
             )
             guard !sectionMovies.isEmpty else { continue }
             sections.append(
                 CollectionSection(
                     id: "source-\(source.identifier)",
                     title: source.name,
-                    subtitle: source.isRankedList ? "Ranked list" : (source.type == "podcast" ? "Podcast collection" : nil),
+                    subtitle: sourceSubtitle(source),
                     sourceIdentifier: source.identifier,
                     isRankedList: source.isRankedList,
                     movies: Array(sectionMovies.prefix(25)),
@@ -253,12 +254,26 @@ final class CatalogSnapshotService {
         )
     }
 
+    private func sourceSubtitle(_ source: SourceSummary) -> String? {
+        if ClosetPicksSource.sortsByRecency(source.identifier) {
+            return nil
+        }
+        if source.isRankedList {
+            return "Ranked list"
+        }
+        if source.type == "podcast" {
+            return "Podcast collection"
+        }
+        return nil
+    }
+
     private func moviesForSource(
         _ source: SourceSummary,
         allMovies: [String: Movie],
         movieToSourceIdentifiers: [String: Set<String>],
         rankBySourceIdentifier: [String: [String: Int]],
-        latestPodcastDateBySourceIdentifier: [String: [String: Date]]
+        latestPodcastDateBySourceIdentifier: [String: [String: Date]],
+        latestGroupKeyBySourceIdentifier: [String: [String: String]]
     ) -> [Movie] {
         let movieIdentifiers = movieToSourceIdentifiers
             .compactMap { movieIdentifier, sourceIdentifiers in
@@ -267,6 +282,25 @@ final class CatalogSnapshotService {
 
         var sectionMovies = movieIdentifiers.compactMap { allMovies[$0] }
         guard !sectionMovies.isEmpty else { return [] }
+
+        if source.type == "podcast" || ClosetPicksSource.sortsByRecency(source.identifier) {
+            let dates = latestPodcastDateBySourceIdentifier[source.identifier] ?? [:]
+            let groupKeys = latestGroupKeyBySourceIdentifier[source.identifier] ?? [:]
+            let movieByIdentifier = Dictionary(uniqueKeysWithValues: sectionMovies.map { ($0.id, $0) })
+            let preferRecency = ClosetPicksSource.sortsByRecency(source.identifier)
+            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
+                from: sectionMovies.map {
+                    LatestPodcastPicker.SourceItem(
+                        movieId: $0.id,
+                        date: dates[$0.id] ?? $0.podcastEpisode?.publishDate,
+                        title: $0.title,
+                        recency: ClosetPicksSource.shopCollectionID(from: groupKeys[$0.id])
+                    )
+                },
+                preferRecency: preferRecency
+            )
+            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
+        }
 
         if source.isRankedList {
             let ranks = rankBySourceIdentifier[source.identifier] ?? [:]
@@ -286,19 +320,6 @@ final class CatalogSnapshotService {
                     return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
                 }
             }
-        } else if source.type == "podcast" {
-            let dates = latestPodcastDateBySourceIdentifier[source.identifier] ?? [:]
-            let movieByIdentifier = Dictionary(uniqueKeysWithValues: sectionMovies.map { ($0.id, $0) })
-            let orderedIds = LatestPodcastPicker.sourceCarouselMovieIds(
-                from: sectionMovies.map {
-                    LatestPodcastPicker.SourceItem(
-                        movieId: $0.id,
-                        date: dates[$0.id] ?? $0.podcastEpisode?.publishDate,
-                        title: $0.title
-                    )
-                }
-            )
-            return uniqueMoviesPreservingOrder(orderedIds.compactMap { movieByIdentifier[$0] })
         } else {
             sectionMovies.sort { lhs, rhs in
                 lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending

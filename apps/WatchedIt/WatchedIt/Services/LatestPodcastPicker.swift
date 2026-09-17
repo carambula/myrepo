@@ -20,7 +20,7 @@ enum LatestPodcastPicker {
     }
 
     static func allowsMultipleEntries(sourceIdentifier: String) -> Bool {
-        sourceIdentifier == ClosetPicksSource.identifier
+        ClosetPicksSource.sortsByRecency(sourceIdentifier)
     }
 
     static func entryDate(
@@ -63,6 +63,9 @@ enum LatestPodcastPicker {
 
         let ordered = selected.sorted { lhs, rhs in
             if lhs.date != rhs.date { return lhs.date > rhs.date }
+            if let recency = compareRecency(lhs.groupKey, rhs.groupKey) {
+                return recency
+            }
             if lhs.sourceIdentifier != rhs.sourceIdentifier {
                 return lhs.sourceIdentifier < rhs.sourceIdentifier
             }
@@ -113,23 +116,39 @@ enum LatestPodcastPicker {
         let movieId: String
         let date: Date?
         let title: String
+        let recency: Int?
+
+        init(movieId: String, date: Date?, title: String, recency: Int? = nil) {
+            self.movieId = movieId
+            self.date = date
+            self.title = title
+            self.recency = recency
+        }
     }
 
-    /// Latest-first for a single podcast source. Missing dates go last so a
-    /// catalog dump that stamps `lastUpdated` cannot jump old titles to the front.
-    static func sourceCarouselMovieIds(from items: [SourceItem]) -> [String] {
+    /// Latest-first for a single podcast or Closet Picks source. Missing dates
+    /// go last so a catalog dump that stamps `lastUpdated` cannot jump old
+    /// titles to the front. Closet Picks then uses Watch & Shop collection IDs
+    /// (newer drops have higher IDs) when episode dates are missing or tied.
+    static func sourceCarouselMovieIds(from items: [SourceItem], preferRecency: Bool = false) -> [String] {
         items.sorted { lhs, rhs in
+            if preferRecency, let recency = compareRecency(lhs.recency, rhs.recency) {
+                return recency
+            }
             switch (lhs.date, rhs.date) {
             case let (left?, right?):
                 if left != right { return left > right }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             case (_?, nil):
                 return true
             case (nil, _?):
                 return false
             case (nil, nil):
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                break
             }
+            if let recency = compareRecency(lhs.recency, rhs.recency) {
+                return recency
+            }
+            return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
         }.map(\.movieId)
     }
 
@@ -168,6 +187,12 @@ enum LatestPodcastPicker {
 
         let orderedGroups = groups.values.sorted { lhs, rhs in
             if lhs.date != rhs.date { return lhs.date > rhs.date }
+            if let recency = compareRecency(
+                lhs.entries.compactMap(\.groupKey).first,
+                rhs.entries.compactMap(\.groupKey).first
+            ) {
+                return recency
+            }
             let lhsId = lhs.entries.map(\.movieId).min() ?? ""
             let rhsId = rhs.entries.map(\.movieId).min() ?? ""
             return lhsId < rhsId
@@ -191,5 +216,21 @@ enum LatestPodcastPicker {
             }
         }
         return selected
+    }
+
+    private static func compareRecency(_ lhs: Int?, _ rhs: Int?) -> Bool? {
+        switch (lhs, rhs) {
+        case let (left?, right?) where left != right:
+            return left > right
+        default:
+            return nil
+        }
+    }
+
+    private static func compareRecency(_ lhsKey: String?, _ rhsKey: String?) -> Bool? {
+        compareRecency(
+            ClosetPicksSource.shopCollectionID(from: lhsKey),
+            ClosetPicksSource.shopCollectionID(from: rhsKey)
+        )
     }
 }

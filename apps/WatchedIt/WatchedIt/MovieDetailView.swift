@@ -413,7 +413,7 @@ struct MovieDetailView: View {
                 sourceIdentifier: identifier,
                 sourceName: sourceName.isEmpty ? identifier : sourceName,
                 sourceType: source.type,
-                isRankedList: source.isRankedList,
+                isRankedList: ClosetPicksSource.resolvesAsRankedList(source.isRankedList, identifier: identifier),
                 rank: content.rank,
                 sourceTitle: content.sourceTitle,
                 sourceUrl: content.sourceUrl,

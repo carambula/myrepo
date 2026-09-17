@@ -136,7 +136,7 @@ class GapFillingScraper {
             name: "Criterion Closet Picks",
             url: "https://www.criterion.com/closet-picks",
             type: "url",
-            isRanked: true,
+            isRanked: false,
             expectedCount: 200,
             minCount: 40
         ),

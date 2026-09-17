@@ -16,6 +16,7 @@ import {
   parseClosetPicksCreditLine,
   parseCriterionFilmPage,
   shouldSkipClosetPicksFilmTitle,
+  closetPicksSourceRecord,
   toClosetPicksCatalogItem
 } from "../src/lib/closet-picks-scrape.ts";
 
@@ -162,6 +163,12 @@ describe("closet-picks scrape", () => {
     assert.equal(item.youtubeUrl, "https://www.youtube.com/watch?v=abcABCdef12");
     assert.deepEqual(item.guests, collapsed[0].guests);
     assert.equal(item.physicalMedia.hasCriterion, true);
+  });
+
+  it("treats Closet Picks as a recency source, not a ranked list", () => {
+    const source = closetPicksSourceRecord();
+    assert.equal(source.identifier, "criterion-closet-picks");
+    assert.equal(source.isRankedList, false);
   });
 
   it("hydrates guest Watch & Shop permalinks from other Closet Picks rows", () => {

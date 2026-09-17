@@ -383,6 +383,61 @@ struct WatchedItTests {
         #expect(ids == ["newest-episode", "older-episode", "undated-saved"])
     }
 
+    @Test func closetPicksIsNotARankedList() {
+        #expect(ClosetPicksSource.isRankedList == false)
+        #expect(ClosetPicksSource.sortsByRecency(ClosetPicksSource.identifier))
+        #expect(ClosetPicksSource.resolvesAsRankedList(true, identifier: ClosetPicksSource.identifier) == false)
+        #expect(ClosetPicksSource.resolvesAsRankedList(true, identifier: "criterion"))
+        #expect(
+            ClosetPicksSource.shopCollectionID(
+                from: "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
+            ) == 765
+        )
+        #expect(
+            ClosetPicksSource.shopCollectionID(
+                from: "https://www.criterion.com/closet-picks/matthew-mcconaughey"
+            ) == nil
+        )
+    }
+
+    @Test func closetPicksSourceCarouselIsNewestCollectionFirst() {
+        let ids = LatestPodcastPicker.sourceCarouselMovieIds(
+            from: [
+                .init(movieId: "older-drop", date: nil, title: "Heat", recency: 552),
+                .init(movieId: "newer-drop", date: nil, title: "Zodiac", recency: 765),
+                .init(movieId: "same-drop-a", date: nil, title: "All That Jazz", recency: 757),
+                .init(movieId: "same-drop-b", date: nil, title: "La Strada", recency: 757)
+            ],
+            preferRecency: true
+        )
+        #expect(ids == ["newer-drop", "same-drop-a", "same-drop-b", "older-drop"])
+    }
+
+    @Test func latestCarouselOrdersTiedClosetDropsByCollectionID() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(
+                movieId: "old-guest",
+                date: date,
+                sourceIdentifier: ClosetPicksSource.identifier,
+                groupKey: "https://www.criterion.com/shop/collection/552-carl-franklin-s-closet-picks"
+            ),
+            .init(
+                movieId: "new-guest-a",
+                date: date,
+                sourceIdentifier: ClosetPicksSource.identifier,
+                groupKey: "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
+            ),
+            .init(
+                movieId: "new-guest-b",
+                date: date,
+                sourceIdentifier: ClosetPicksSource.identifier,
+                groupKey: "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
+            )
+        ])
+        #expect(ids == ["new-guest-a", "new-guest-b", "old-guest"])
+    }
+
     @Test func latestPodcastSearchIncludesMultipleEpisodesPerShowAndCaps() {
         let older = Date(timeIntervalSince1970: 1_700_000_000)
         let mid = Date(timeIntervalSince1970: 1_750_000_000)

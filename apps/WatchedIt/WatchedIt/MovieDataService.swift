@@ -15,6 +15,8 @@ public class MovieDataService {
     private let apiKey = "4f6ab1dde752aedd41093bab21f383c7"
     private let baseURL = "https://api.themoviedb.org/3"
     private let imageBaseURL = "https://image.tmdb.org/t/p" // Format: https://image.tmdb.org/t/p/{size}{path}
+    private let personProfileLock = NSLock()
+    private var personProfileCache: [String: URL?] = [:]
     
     // Image sizes for different contexts
     public enum ImageSize: String {
@@ -625,6 +627,57 @@ public class MovieDataService {
         return url
     }
     
+    /// TMDB headshot for a Closet Picks guest. First name wins when the episode is a pair.
+    public func personProfileURL(name: String) async -> URL? {
+        let searchName = personSearchName(from: name)
+        let cacheKey = searchName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !cacheKey.isEmpty else { return nil }
+
+        personProfileLock.lock()
+        let cached = personProfileCache[cacheKey]
+        personProfileLock.unlock()
+        if let cached {
+            return cached
+        }
+
+        let encoded = searchName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "\(baseURL)/search/person?api_key=\(apiKey)&query=\(encoded)"
+        guard let url = URL(string: urlString) else { return nil }
+
+        let resolved: URL?
+        do {
+            let (data, response) = try await fetchDataIgnoringTaskCancellation(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                resolved = nil
+                cachePersonProfile(cacheKey, resolved)
+                return resolved
+            }
+            let decoded = try JSONDecoder().decode(TMDBPersonSearchResponse.self, from: data)
+            let path = decoded.results.first(where: { $0.profilePath != nil })?.profilePath
+            resolved = getPosterURL(path: path, size: .thumbnail).flatMap(URL.init(string:))
+        } catch {
+            resolved = nil
+        }
+        cachePersonProfile(cacheKey, resolved)
+        return resolved
+    }
+
+    private func cachePersonProfile(_ key: String, _ url: URL?) {
+        personProfileLock.lock()
+        personProfileCache[key] = url
+        personProfileLock.unlock()
+    }
+
+    private func personSearchName(from raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let range = trimmed.range(of: " and ", options: .caseInsensitive) {
+            return String(trimmed[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return trimmed
+    }
+
     public func getThumbnailURL(path: String?) -> String? {
         return getPosterURL(path: path, size: .thumbnail)
     }
@@ -993,6 +1046,20 @@ struct TMDBImagesResponse: Codable {
     let backdrops: [TMDBImage]
     let logos: [TMDBImage]
     let posters: [TMDBImage]
+}
+
+private struct TMDBPersonSearchResponse: Codable {
+    let results: [TMDBPersonSearchResult]
+}
+
+private struct TMDBPersonSearchResult: Codable {
+    let name: String?
+    let profilePath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case profilePath = "profile_path"
+    }
 }
 
 struct TMDBImage: Codable {

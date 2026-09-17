@@ -16,9 +16,34 @@ public struct ClosetPicksGuest: Codable, Hashable, Sendable {
     }
 }
 
-struct ClosetPicksGuestAttribution: Equatable {
+struct ClosetPicksGuestAttribution: Equatable, Identifiable {
     let name: String
     let url: URL?
+    let episodeTitle: String
+    let episodeNumber: Int?
+
+    var id: String { "\(name)|\(url?.absoluteString ?? "")" }
+
+    var saysHeadline: String { "\(name) says" }
+
+    var episodeSubtitle: String {
+        var parts: [String] = []
+        if let episodeNumber {
+            parts.append("Ep \(episodeNumber)")
+        }
+        let title = episodeTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !title.isEmpty {
+            parts.append(title)
+        }
+        return parts.joined(separator: "   ")
+    }
+
+    init(name: String, url: URL?, episodeTitle: String = "", episodeNumber: Int? = nil) {
+        self.name = name
+        self.url = url
+        self.episodeTitle = episodeTitle
+        self.episodeNumber = episodeNumber
+    }
 }
 
 enum ClosetPicksSource {
@@ -304,12 +329,31 @@ enum ClosetPicksSource {
             addGuestURL(first, permalink, to: &index)
         }
         return names.map { name in
-            ClosetPicksGuestAttribution(
+            let url = watchAndShopURL(from: index[normalizedGuestName(name)])
+            return ClosetPicksGuestAttribution(
                 name: name,
-                url: watchAndShopURL(from: index[normalizedGuestName(name)])
+                url: url,
+                episodeTitle: episodeTitle(for: name),
+                episodeNumber: episodeNumber(from: url?.absoluteString)
             )
         }
     }
+
+    static func episodeTitle(for guestName: String) -> String {
+        let name = guestName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "" }
+        return "\(name)’s Closet Picks"
+    }
+
+    static func episodeNumber(from rawURL: String?) -> Int? {
+        guard let id = shopCollectionID(from: rawURL) else { return nil }
+        return episodeNumberByCollectionID[id]
+    }
+
+    private static let episodeNumberByCollectionID: [Int: Int] = {
+        let ids = Set(ClosetPicksGuestURLCatalog.urls.values.compactMap { shopCollectionID(from: $0) }).sorted()
+        return Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($1, $0 + 1) })
+    }()
 
     static func attributionText(_ guests: [ClosetPicksGuestAttribution]) -> AttributedString {
         var attributed = AttributedString()

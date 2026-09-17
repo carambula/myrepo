@@ -208,7 +208,10 @@ final class CatalogSnapshotService {
                             episodePublishDate: content.podcastEpisode?.publishDate,
                             discoveredAt: content.discoveredAt
                         ),
-                        groupKey: content.sourceUrl,
+                        groupKey: ClosetPicksSource.episodeGroupKey(
+                            sourceUrl: content.sourceUrl,
+                            sourceTitle: content.sourceTitle
+                        ) ?? content.sourceUrl,
                         dates: &latestPodcastDateBySourceIdentifier,
                         groupKeys: &latestGroupKeyBySourceIdentifier
                     )
@@ -236,7 +239,10 @@ final class CatalogSnapshotService {
                                 ? dataSource.lastUpdated
                                 : nil
                         ),
-                        groupKey: dataSource.sourceUrl,
+                        groupKey: ClosetPicksSource.episodeGroupKey(
+                            sourceUrl: dataSource.sourceUrl,
+                            sourceTitle: dataSource.sourceTitle
+                        ) ?? dataSource.sourceUrl,
                         dates: &latestPodcastDateBySourceIdentifier,
                         groupKeys: &latestGroupKeyBySourceIdentifier
                     )

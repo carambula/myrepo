@@ -2,7 +2,8 @@ import Foundation
 
 enum LatestPodcastPicker {
     static let defaultLimit = 50
-    static let defaultMultiEntryLimit = 36
+    static let defaultMultiEntryLimit = 12
+    static let defaultMultiGroupLimit = 1
     static let searchLimit = 100
 
     struct Entry: Equatable {
@@ -35,13 +36,14 @@ enum LatestPodcastPicker {
         return [episodePublishDate, sourceDate].compactMap { $0 }.max()
     }
 
-    /// Newest episode from each podcast, newest show first.
-    /// Closet Picks can contribute a whole drop (grouped by episode URL) so a
-    /// guest episode does not collapse to a single poster.
+    /// Newest episodes first across every show. A podcast can contribute more
+    /// than one recent episode. Closet Picks contributes the newest guest drop
+    /// as a cluster so Latest is not filled with one film from every episode.
     static func carouselMovieIds(
         from entries: [Entry],
         limit: Int = defaultLimit,
-        multiEntryLimit: Int = defaultMultiEntryLimit
+        multiEntryLimit: Int = defaultMultiEntryLimit,
+        multiGroupLimit: Int = defaultMultiGroupLimit
     ) -> [String] {
         guard limit > 0, !entries.isEmpty else { return [] }
 
@@ -49,16 +51,22 @@ enum LatestPodcastPicker {
         var multiBySource: [String: [Entry]] = [:]
         for entry in entries {
             if allowsMultipleEntries(sourceIdentifier: entry.sourceIdentifier) {
-                multiBySource[entry.sourceIdentifier, default: []].append(entry)
+                multiBySource[entry.sourceIdentifier, default: []].append(normalizedMultiEntry(entry))
             } else {
                 regular.append(entry)
             }
         }
 
         var selected: [Entry] = []
-        selected.append(contentsOf: latestOnePerSource(regular))
+        selected.append(contentsOf: newestDatePerMovie(regular))
         for sourceEntries in multiBySource.values {
-            selected.append(contentsOf: latestGroups(from: sourceEntries, limit: multiEntryLimit))
+            selected.append(
+                contentsOf: latestGroups(
+                    from: sourceEntries,
+                    limit: multiEntryLimit,
+                    groupLimit: multiGroupLimit
+                )
+            )
         }
 
         let ordered = selected.sorted { lhs, rhs in
@@ -68,6 +76,9 @@ enum LatestPodcastPicker {
             }
             if lhs.sourceIdentifier != rhs.sourceIdentifier {
                 return lhs.sourceIdentifier < rhs.sourceIdentifier
+            }
+            if lhs.groupKey != rhs.groupKey {
+                return (lhs.groupKey ?? "") < (rhs.groupKey ?? "")
             }
             return lhs.movieId < rhs.movieId
         }
@@ -152,47 +163,59 @@ enum LatestPodcastPicker {
         }.map(\.movieId)
     }
 
-    private static func latestOnePerSource(_ entries: [Entry]) -> [Entry] {
-        var latestBySource: [String: Entry] = [:]
+    /// Same movie mentioned on two shows keeps the newest date.
+    private static func newestDatePerMovie(_ entries: [Entry]) -> [Entry] {
+        var newestByMovie: [String: Entry] = [:]
         for entry in entries {
-            if let current = latestBySource[entry.sourceIdentifier] {
+            if let current = newestByMovie[entry.movieId] {
                 if entry.date > current.date
-                    || (entry.date == current.date && entry.movieId < current.movieId) {
-                    latestBySource[entry.sourceIdentifier] = entry
+                    || (entry.date == current.date && entry.sourceIdentifier < current.sourceIdentifier) {
+                    newestByMovie[entry.movieId] = entry
                 }
             } else {
-                latestBySource[entry.sourceIdentifier] = entry
+                newestByMovie[entry.movieId] = entry
             }
         }
-        return Array(latestBySource.values)
+        return Array(newestByMovie.values)
     }
 
-    private static func latestGroups(from entries: [Entry], limit: Int) -> [Entry] {
-        guard limit > 0, !entries.isEmpty else { return [] }
+    private static func normalizedMultiEntry(_ entry: Entry) -> Entry {
+        Entry(
+            movieId: entry.movieId,
+            date: entry.date,
+            sourceIdentifier: entry.sourceIdentifier,
+            groupKey: ClosetPicksSource.episodeGroupKey(sourceUrl: entry.groupKey) ?? entry.groupKey
+        )
+    }
 
-        var groups: [String: (date: Date, entries: [Entry])] = [:]
+    private static func latestGroups(
+        from entries: [Entry],
+        limit: Int,
+        groupLimit: Int = defaultMultiGroupLimit
+    ) -> [Entry] {
+        guard limit > 0, groupLimit > 0, !entries.isEmpty else { return [] }
+
+        var groups: [String: (date: Date, key: String, entries: [Entry])] = [:]
         for entry in entries {
-            let trimmedKey = entry.groupKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let key = trimmedKey.isEmpty ? entry.movieId : trimmedKey
-            if var existing = groups[key] {
+            let key = entry.groupKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let groupKey = key.isEmpty ? entry.movieId : key
+            if var existing = groups[groupKey] {
                 if entry.date > existing.date {
                     existing.date = entry.date
                 }
                 existing.entries.append(entry)
-                groups[key] = existing
+                groups[groupKey] = existing
             } else {
-                groups[key] = (date: entry.date, entries: [entry])
+                groups[groupKey] = (date: entry.date, key: groupKey, entries: [entry])
             }
         }
 
         let orderedGroups = groups.values.sorted { lhs, rhs in
-            if lhs.date != rhs.date { return lhs.date > rhs.date }
-            if let recency = compareRecency(
-                lhs.entries.compactMap(\.groupKey).first,
-                rhs.entries.compactMap(\.groupKey).first
-            ) {
+            // Episode identity (collection ID) beats per-film discoveredAt noise.
+            if let recency = compareRecency(lhs.key, rhs.key) {
                 return recency
             }
+            if lhs.date != rhs.date { return lhs.date > rhs.date }
             let lhsId = lhs.entries.map(\.movieId).min() ?? ""
             let rhsId = rhs.entries.map(\.movieId).min() ?? ""
             return lhsId < rhsId
@@ -201,15 +224,21 @@ enum LatestPodcastPicker {
         var seen = Set<String>()
         var selected: [Entry] = []
         selected.reserveCapacity(min(limit, entries.count))
-        for group in orderedGroups {
+        for group in orderedGroups.prefix(groupLimit) {
             let groupEntries = group.entries.sorted { lhs, rhs in
-                if lhs.date != rhs.date { return lhs.date > rhs.date }
-                return lhs.movieId < rhs.movieId
+                lhs.movieId < rhs.movieId
             }
             for entry in groupEntries {
-                if seen.insert(entry.movieId).inserted {
-                    selected.append(entry)
-                }
+                guard seen.insert(entry.movieId).inserted else { continue }
+                // Stamp the group date so the final mix cannot interleave guests.
+                selected.append(
+                    Entry(
+                        movieId: entry.movieId,
+                        date: group.date,
+                        sourceIdentifier: entry.sourceIdentifier,
+                        groupKey: group.key
+                    )
+                )
                 if selected.count == limit {
                     return selected
                 }

@@ -2036,71 +2036,95 @@ private struct PodcastSourceArtworkView: View {
     }
 }
 
-private struct ClosetPicksGuestLinkLine: View {
+private struct ClosetPicksGuestSourceRows: View {
     let guests: [ClosetPicksGuestAttribution]
     var onOpenGuest: ((URL) -> Void)? = nil
 
     var body: some View {
-        ClosetPicksGuestFlow {
-            ForEach(Array(guests.enumerated()), id: \.offset) { index, guest in
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    if index == 1 {
-                        Text("   also ")
-                    } else if index > 1 {
-                        Text(", ")
-                    }
-                    if let url = guest.url {
-                        Button {
-                            onOpenGuest?(url)
-                        } label: {
-                            Text(guest.name)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                        .allowsHitTesting(true)
-                    } else {
-                        Text(guest.name)
-                    }
-                }
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            ForEach(guests) { guest in
+                ClosetPicksGuestSourceRow(guest: guest, onOpenGuest: onOpenGuest)
             }
         }
-        .captionMedium()
-        .foregroundColor(DesignSystem.Color.textSecondary)
     }
 }
 
-private struct ClosetPicksGuestFlow: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        layout(proposal: proposal, subviews: subviews).size
-    }
+private struct ClosetPicksGuestSourceRow: View {
+    let guest: ClosetPicksGuestAttribution
+    var onOpenGuest: ((URL) -> Void)? = nil
+    @State private var photoURL: URL?
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let frames = layout(proposal: proposal, subviews: subviews).frames
-        for (subview, frame) in zip(subviews, frames) {
-            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
-        }
-    }
-
-    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, frames: [CGRect]) {
-        let maxWidth = proposal.width ?? .infinity
-        var frames: [CGRect] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var width: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if maxWidth.isFinite, x > 0, x + size.width > maxWidth {
-                x = 0
-                y += rowHeight
-                rowHeight = 0
+    var body: some View {
+        let row = HStack(alignment: .top, spacing: DesignSystem.Spacing.md) {
+            artwork
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(guest.saysHeadline)
+                    .headlineSmall()
+                    .foregroundColor(DesignSystem.Color.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !guest.episodeSubtitle.isEmpty {
+                    Text(guest.episodeSubtitle)
+                        .captionMedium()
+                        .fontWeight(.medium)
+                        .foregroundColor(DesignSystem.Color.textSecondary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
-            x += size.width
-            rowHeight = max(rowHeight, size.height)
-            width = max(width, x)
         }
-        return (CGSize(width: maxWidth.isFinite ? maxWidth : width, height: y + rowHeight), frames)
+        .contentShape(Rectangle())
+
+        Group {
+            if let url = guest.url {
+                Button {
+                    onOpenGuest?(url)
+                } label: {
+                    row
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(guest.saysHeadline)
+            } else {
+                row
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(guest.saysHeadline)
+            }
+        }
+        .task(id: guest.name) {
+            photoURL = await MovieDataService.shared.personProfileURL(name: guest.name)
+        }
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        if let photoURL {
+            CachedAsyncImage(url: photoURL) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                playFallback
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
+            .accessibilityHidden(true)
+        } else {
+            playFallback
+        }
+    }
+
+    private var playFallback: some View {
+        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
+                    .stroke(GlassControl.Border.card.color, lineWidth: GlassControl.Border.card.width)
+            )
+            .overlay(
+                DesignSystemIcon(DesignSystem.Icon.play, size: DesignSystem.IconSize.md, color: DesignSystem.Color.textSecondary)
+            )
+            .frame(width: 40, height: 40)
+            .accessibilityHidden(true)
     }
 }
 
@@ -2147,7 +2171,7 @@ struct SourceContentCardView: View {
                 }
             }
             if !closetPicksGuests.isEmpty {
-                ClosetPicksGuestLinkLine(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
+                ClosetPicksGuestSourceRows(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
                     .captionMedium()
@@ -2278,7 +2302,7 @@ struct LegacySourceCardView: View {
                 }
             }
             if !closetPicksGuests.isEmpty {
-                ClosetPicksGuestLinkLine(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
+                ClosetPicksGuestSourceRows(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = legacySource.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
                     .captionMedium()

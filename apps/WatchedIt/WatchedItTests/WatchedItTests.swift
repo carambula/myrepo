@@ -948,6 +948,18 @@ struct WatchedItTests {
             permalink: ClosetPicksSource.indexURL.absoluteString
         )
         #expect(ignoredIndex[0].url == nil)
+
+        let rows = ClosetPicksSource.guestAttributions(
+            guests: nil,
+            description: "Agnes Varda   also Jeremy O. Harris",
+            sourceTitle: "Agnes Varda’s Closet Picks",
+            permalink: nil
+        )
+        #expect(rows[0].saysHeadline == "Agnes Varda says")
+        #expect(rows[0].episodeNumber == 47)
+        #expect(rows[0].episodeSubtitle == "Ep 47   Agnes Varda’s Closet Picks")
+        #expect(rows[1].saysHeadline == "Jeremy O. Harris says")
+        #expect(rows[1].episodeNumber == 154)
     }
 
     @Test func closetPicksMenuTitleUsesEpisodeName() {

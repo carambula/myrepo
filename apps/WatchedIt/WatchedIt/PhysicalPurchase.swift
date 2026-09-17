@@ -85,6 +85,14 @@ public enum PhysicalPurchaseLinkBuilder {
         return [flagGroup(for: media, title: title, year: year)]
     }
 
+    public static func playMenuTitle(isOwned: Bool) -> String {
+        isOwned ? "Disc owned…" : "Buy disc…"
+    }
+
+    public static func playMenuIcon(isOwned: Bool) -> String {
+        isOwned ? DesignSystem.Icon.discFill : DesignSystem.Icon.disc
+    }
+
     /// One offer per retailer for compact menus (tvOS).
     public static func compactOffers(
         for media: PhysicalMedia?,

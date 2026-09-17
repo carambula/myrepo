@@ -510,6 +510,13 @@ struct WatchedItTests {
         #expect(decoded.physicalMedia?.has4K == true)
     }
 
+    @Test func physicalPurchasePlayMenuLabelReflectsOwnedState() {
+        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: false) == "Buy disc…")
+        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: true) == "Disc owned…")
+        #expect(PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: false) == DesignSystem.Icon.disc)
+        #expect(PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: true) == DesignSystem.Icon.discFill)
+    }
+
     @Test func physicalPurchaseLinksIncludeBoutiqueAndMarketplaces() {
         let media = PhysicalMedia(
             editions: [

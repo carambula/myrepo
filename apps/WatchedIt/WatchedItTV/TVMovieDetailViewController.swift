@@ -321,7 +321,10 @@ final class TVMovieDetailViewController: UIViewController {
                     )
                 }
             })
-            actions.append(UIMenu(title: "Buy disc", children: buyActions))
+            actions.append(UIMenu(
+                title: movie.isOwnedDisc ? "Disc owned" : "Buy disc",
+                children: buyActions
+            ))
         } else {
             actions.append(ownAction)
         }

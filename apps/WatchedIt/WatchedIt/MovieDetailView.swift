@@ -1150,7 +1150,10 @@ struct MovieDetailView: View {
                                 if hasPhysicalPurchaseOptions {
                                     Divider()
                                     Button(action: presentPhysicalPurchaseSheet) {
-                                        Label("Buy disc…", systemImage: DesignSystem.Icon.disc)
+                                        Label(
+                                            PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: localIsOwnedDisc),
+                                            systemImage: PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: localIsOwnedDisc)
+                                        )
                                     }
                                 }
 

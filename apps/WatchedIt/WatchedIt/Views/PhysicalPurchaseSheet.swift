@@ -19,7 +19,7 @@ struct PhysicalPurchaseSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .topLeading) {
             ScrollView {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xxl) {
                     header
@@ -31,7 +31,7 @@ struct PhysicalPurchaseSheet: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(DesignSystem.Color.textSecondary)
 
-                            VStack(spacing: DesignSystem.Spacing.sm) {
+                            VStack(spacing: 0) {
                                 ForEach(group.offers) { offer in
                                     Button {
                                         openURL(offer.url)
@@ -46,21 +46,29 @@ struct PhysicalPurchaseSheet: View {
                     }
                 }
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                .padding(.top, DesignSystem.Spacing.lg)
+                .padding(.top, closeButtonClearance)
                 .padding(.bottom, DesignSystem.Spacing.xxl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(DesignSystem.Color.background.ignoresSafeArea())
-            .navigationTitle("Buy disc")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
+
+            Button(action: { dismiss() }) {
+                GlassCircleButton(
+                    systemImage: DesignSystem.Icon.close,
+                    size: .compact,
+                    accessibilityLabel: "Close"
+                )
             }
+            .buttonStyle(.plain)
+            .padding(.leading, DesignSystem.Spacing.lg)
+            .padding(.top, DesignSystem.Spacing.lg)
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var closeButtonClearance: CGFloat {
+        DesignSystem.Spacing.lg + GlassControl.compactHeight + DesignSystem.Spacing.md
     }
 
     private var header: some View {
@@ -85,25 +93,15 @@ struct PhysicalPurchaseSheet: View {
                 Image(systemName: isOwnedDisc ? DesignSystem.Icon.discFill : DesignSystem.Icon.disc)
                     .font(.system(size: DesignSystem.IconSize.md))
                     .foregroundColor(isOwnedDisc ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text(isOwnedDisc ? "Owned" : "I own this")
-                        .bodyMedium()
-                        .foregroundColor(DesignSystem.Color.textPrimary)
-                    Text(isOwnedDisc ? "On your shelf" : "I already have this disc")
-                        .captionMedium()
-                        .foregroundColor(DesignSystem.Color.textSecondary)
-                }
+                Text(isOwnedDisc ? "Owned" : "I own this")
+                    .bodyMedium()
+                    .foregroundColor(DesignSystem.Color.textPrimary)
                 Spacer(minLength: DesignSystem.Spacing.sm)
                 Image(systemName: isOwnedDisc ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: DesignSystem.IconSize.md))
                     .foregroundColor(isOwnedDisc ? DesignSystem.Color.accent : DesignSystem.Color.textSecondary)
             }
             .padding(.vertical, DesignSystem.Spacing.md)
-            .padding(.horizontal, DesignSystem.Spacing.lg)
-            .background(
-                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
-                    .fill(DesignSystem.Color.backgroundSecondary)
-            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isOwnedDisc ? "Owned" : "I own this")
@@ -136,10 +134,5 @@ struct PhysicalPurchaseSheet: View {
                 .foregroundColor(DesignSystem.Color.textSecondary)
         }
         .padding(.vertical, DesignSystem.Spacing.md)
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
-                .fill(DesignSystem.Color.backgroundSecondary)
-        )
     }
 }

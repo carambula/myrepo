@@ -1979,7 +1979,10 @@ struct MovieListView: View {
                         movie: movie,
                         date: date,
                         sourceIdentifier: source.identifier,
-                        groupKey: content.sourceUrl
+                        groupKey: ClosetPicksSource.episodeGroupKey(
+                            sourceUrl: content.sourceUrl,
+                            sourceTitle: content.sourceTitle
+                        ) ?? content.sourceUrl
                     ))
                 }
             }
@@ -2002,7 +2005,10 @@ struct MovieListView: View {
                         movie: movie,
                         date: date,
                         sourceIdentifier: source.identifier,
-                        groupKey: dataSource.sourceUrl
+                        groupKey: ClosetPicksSource.episodeGroupKey(
+                            sourceUrl: dataSource.sourceUrl,
+                            sourceTitle: dataSource.sourceTitle
+                        ) ?? dataSource.sourceUrl
                     ))
                 }
             }

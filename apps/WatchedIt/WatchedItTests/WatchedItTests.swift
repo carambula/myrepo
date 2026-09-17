@@ -398,6 +398,19 @@ struct WatchedItTests {
                 from: "https://www.criterion.com/closet-picks/matthew-mcconaughey"
             ) == nil
         )
+        #expect(
+            ClosetPicksSource.episodeGroupKey(
+                sourceUrl: "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
+            ) == "collection:765"
+        )
+        #expect(
+            ClosetPicksSource.episodeGroupKey(
+                sourceUrl: nil,
+                sourceTitle: "Pamela Anderson’s Closet Picks"
+            ) == "guest:pamela anderson"
+        )
+        #expect(LatestPodcastPicker.defaultMultiGroupLimit == 1)
+        #expect(LatestPodcastPicker.defaultMultiEntryLimit == 12)
     }
 
     @Test func closetPicksSourceCarouselIsNewestCollectionFirst() {
@@ -413,7 +426,7 @@ struct WatchedItTests {
         #expect(ids == ["newer-drop", "same-drop-a", "same-drop-b", "older-drop"])
     }
 
-    @Test func latestCarouselOrdersTiedClosetDropsByCollectionID() {
+    @Test func latestCarouselKeepsOnlyTheNewestClosetEpisode() {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         let ids = LatestPodcastPicker.carouselMovieIds(from: [
             .init(
@@ -435,7 +448,25 @@ struct WatchedItTests {
                 groupKey: "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
             )
         ])
-        #expect(ids == ["new-guest-a", "new-guest-b", "old-guest"])
+        #expect(ids == ["new-guest-a", "new-guest-b"])
+        #expect(!ids.contains("old-guest"))
+    }
+
+    @Test func latestCarouselClustersClosetEpisodeDespiteImportDateNoise() {
+        let early = Date(timeIntervalSince1970: 1_700_000_000)
+        let mid = Date(timeIntervalSince1970: 1_750_000_000)
+        let late = Date(timeIntervalSince1970: 1_800_000_000)
+        let newestDrop = "https://www.criterion.com/shop/collection/765-juliette-binoche-and-ralph-fiennes-s-closet-picks"
+        let olderDrop = "https://www.criterion.com/shop/collection/757-pamela-anderson-s-closet-picks"
+        let ids = LatestPodcastPicker.carouselMovieIds(from: [
+            .init(movieId: "closet-z", date: late, sourceIdentifier: ClosetPicksSource.identifier, groupKey: newestDrop),
+            .init(movieId: "closet-a", date: early, sourceIdentifier: ClosetPicksSource.identifier, groupKey: newestDrop),
+            .init(movieId: "closet-other", date: mid, sourceIdentifier: ClosetPicksSource.identifier, groupKey: olderDrop),
+            .init(movieId: "closet-m", date: mid, sourceIdentifier: ClosetPicksSource.identifier, groupKey: newestDrop),
+            .init(movieId: "rewatchable", date: late, sourceIdentifier: "rewatchables")
+        ])
+        #expect(ids == ["closet-a", "closet-m", "closet-z", "rewatchable"])
+        #expect(!ids.contains("closet-other"))
     }
 
     @Test func latestPodcastSearchIncludesMultipleEpisodesPerShowAndCaps() {

@@ -55,6 +55,10 @@ enum ClosetPicksSource {
     static func shopCollectionID(from raw: String?) -> Int? {
         let value = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !value.isEmpty else { return nil }
+        let collectionPrefix = "collection:"
+        if value.lowercased().hasPrefix(collectionPrefix) {
+            return Int(value.dropFirst(collectionPrefix.count))
+        }
         let path: String
         if let url = URL(string: value), url.scheme?.hasPrefix("http") == true {
             path = url.path
@@ -71,6 +75,31 @@ enum ClosetPicksSource {
             return nil
         }
         return Int(path[digits])
+    }
+
+    /// Stable key for one guest episode so Latest can keep that drop together.
+    static func episodeGroupKey(sourceUrl: String?, sourceTitle: String? = nil) -> String? {
+        let existing = sourceUrl?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        if existing.hasPrefix("collection:"), shopCollectionID(from: existing) != nil {
+            return existing
+        }
+        if existing.hasPrefix("guest:"), existing.count > 6 {
+            return existing
+        }
+        if let id = shopCollectionID(from: sourceUrl) {
+            return "collection:\(id)"
+        }
+        if let url = watchAndShopURL(from: sourceUrl) {
+            return url.absoluteString.lowercased()
+        }
+        let guest = guestNameFromEpisodeTitle(sourceTitle ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if !guest.isEmpty {
+            return "guest:\(guest)"
+        }
+        let trimmed = sourceUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     static func showsListenedAction(hasPodcastEpisode: Bool, isOnClosetPicks: Bool) -> Bool {

@@ -321,7 +321,7 @@ struct WatchedItTests {
         #expect(ids == ["closet-new-a", "closet-new-b", "closet-new-c", "rewatchable"])
     }
 
-    @Test func latestCarouselCapsClosetPicksAndKeepsOnePodcastPerSource() {
+    @Test func latestCarouselCapsClosetPicksAndKeepsRecentPodcastEpisodes() {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         var entries: [LatestPodcastPicker.Entry] = [
             .init(movieId: "rewatch-old", date: Date(timeIntervalSince1970: 1_700_000_000), sourceIdentifier: "rewatchables"),
@@ -340,13 +340,13 @@ struct WatchedItTests {
         }
         let ids = LatestPodcastPicker.carouselMovieIds(from: entries, limit: 8, multiEntryLimit: 5)
         #expect(ids.contains("rewatch-new"))
-        #expect(!ids.contains("rewatch-old"))
+        #expect(ids.contains("rewatch-old"))
         #expect(ids.contains("blank-check"))
         #expect(ids.filter { $0.hasPrefix("closet-") }.count == 5)
-        #expect(ids.count == 7)
+        #expect(ids.count == 8)
     }
 
-    @Test func latestPodcastCarouselKeepsOneNewestPerSource() {
+    @Test func latestPodcastCarouselKeepsMultipleEpisodesPerShow() {
         let older = Date(timeIntervalSince1970: 1_700_000_000)
         let mid = Date(timeIntervalSince1970: 1_750_000_000)
         let newest = Date(timeIntervalSince1970: 1_800_000_000)
@@ -358,7 +358,14 @@ struct WatchedItTests {
             .init(movieId: "blank-check-latest", date: mid, sourceIdentifier: "blank-check"),
             .init(movieId: "big-picture", date: newest, sourceIdentifier: "big-picture")
         ])
-        #expect(ids == ["new-rewatchable", "big-picture", "blank-check-latest"])
+        #expect(ids == [
+            "big-picture",
+            "new-rewatchable",
+            "blank-check-latest",
+            "mid-rewatchable",
+            "blank-check-old",
+            "old-rewatchable"
+        ])
     }
 
     @Test func latestPodcastCarouselDedupesSharedMovieAcrossSources() {

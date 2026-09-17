@@ -36,9 +36,9 @@ enum LatestPodcastPicker {
         return [episodePublishDate, sourceDate].compactMap { $0 }.max()
     }
 
-    /// Newest episode from each podcast, newest show first.
-    /// Closet Picks contributes the newest guest drop as a cluster so Latest
-    /// is not filled with one film from every episode.
+    /// Newest episodes first across every show. A podcast can contribute more
+    /// than one recent episode. Closet Picks contributes the newest guest drop
+    /// as a cluster so Latest is not filled with one film from every episode.
     static func carouselMovieIds(
         from entries: [Entry],
         limit: Int = defaultLimit,
@@ -58,7 +58,7 @@ enum LatestPodcastPicker {
         }
 
         var selected: [Entry] = []
-        selected.append(contentsOf: latestOnePerSource(regular))
+        selected.append(contentsOf: newestDatePerMovie(regular))
         for sourceEntries in multiBySource.values {
             selected.append(
                 contentsOf: latestGroups(
@@ -163,19 +163,20 @@ enum LatestPodcastPicker {
         }.map(\.movieId)
     }
 
-    private static func latestOnePerSource(_ entries: [Entry]) -> [Entry] {
-        var latestBySource: [String: Entry] = [:]
+    /// Same movie mentioned on two shows keeps the newest date.
+    private static func newestDatePerMovie(_ entries: [Entry]) -> [Entry] {
+        var newestByMovie: [String: Entry] = [:]
         for entry in entries {
-            if let current = latestBySource[entry.sourceIdentifier] {
+            if let current = newestByMovie[entry.movieId] {
                 if entry.date > current.date
-                    || (entry.date == current.date && entry.movieId < current.movieId) {
-                    latestBySource[entry.sourceIdentifier] = entry
+                    || (entry.date == current.date && entry.sourceIdentifier < current.sourceIdentifier) {
+                    newestByMovie[entry.movieId] = entry
                 }
             } else {
-                latestBySource[entry.sourceIdentifier] = entry
+                newestByMovie[entry.movieId] = entry
             }
         }
-        return Array(latestBySource.values)
+        return Array(newestByMovie.values)
     }
 
     private static func normalizedMultiEntry(_ entry: Entry) -> Entry {

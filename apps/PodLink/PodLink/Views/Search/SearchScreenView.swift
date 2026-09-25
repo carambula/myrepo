@@ -647,11 +647,18 @@ struct SearchScreenView: View {
     }
 
     private func episodeMatchesLibraryQuery(_ episode: Episode, podcast: Podcast, loweredQuery: String) async -> Bool {
-        if episode.title.lowercased().contains(loweredQuery) || episode.description.lowercased().contains(loweredQuery) {
+        if episode.title.lowercased().contains(loweredQuery) {
             return true
         }
 
         if podcast.title.lowercased().contains(loweredQuery) || podcast.author.lowercased().contains(loweredQuery) {
+            return true
+        }
+
+        // Show notes and transcripts are large; skip them until the query is specific enough.
+        guard loweredQuery.count >= 3 else { return false }
+
+        if episode.description.lowercased().contains(loweredQuery) {
             return true
         }
 

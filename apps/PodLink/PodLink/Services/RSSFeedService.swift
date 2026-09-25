@@ -37,37 +37,51 @@ actor RSSFeedService {
             return cached
         }
 
-        var cloudEpisodes: [Episode] = []
-        if provisionalAuth == nil, await MinCloudClient.shared.isReachable() {
-            cloudEpisodes = (try? await MinCloudClient.shared.fetchFeedEpisodes(
-                feedURL: PrivateFeedAuthStore.canonicalFeedURL(feedURL)
-            )) ?? []
-        }
+        async let cloudEpisodes = fetchCloudEpisodes(
+            feedURL: feedURL,
+            includeCloud: provisionalAuth == nil
+        )
 
+        let liveEpisodes: [Episode]
         do {
-            var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
-            request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
-            auth?.apply(to: &request)
-
-            let (data, response) = try await session.data(for: request)
-            try validateHTTP(response: response)
-
-            let parser = RSSParser()
-            let liveEpisodes = parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
-            let episodes = EpisodeArchive.merge(cloudEpisodes, liveEpisodes)
-            guard !episodes.isEmpty else {
-                throw RSSFeedError.invalidFeed
-            }
-
-            await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
-            await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
-            return episodes
+            liveEpisodes = try await fetchLiveEpisodes(feedURL: feedURL, auth: auth)
         } catch {
-            guard !cloudEpisodes.isEmpty else { throw error }
-            await cache.set(cacheKey, value: cloudEpisodes, ttl: 1800)
-            await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: cloudEpisodes)
-            return cloudEpisodes
+            let cloud = await cloudEpisodes
+            guard !cloud.isEmpty else { throw error }
+            await rememberFetchedEpisodes(cloud, cacheKey: cacheKey, feedURL: feedURL)
+            return cloud
         }
+
+        let episodes = EpisodeArchive.merge(await cloudEpisodes, liveEpisodes)
+        guard !episodes.isEmpty else {
+            throw RSSFeedError.invalidFeed
+        }
+        await rememberFetchedEpisodes(episodes, cacheKey: cacheKey, feedURL: feedURL)
+        return episodes
+    }
+
+    private func rememberFetchedEpisodes(_ episodes: [Episode], cacheKey: String, feedURL: URL) async {
+        await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
+        await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
+    }
+
+    private func fetchCloudEpisodes(feedURL: URL, includeCloud: Bool) async -> [Episode] {
+        guard includeCloud, await MinCloudClient.shared.isReachable() else { return [] }
+        return (try? await MinCloudClient.shared.fetchFeedEpisodes(
+            feedURL: PrivateFeedAuthStore.canonicalFeedURL(feedURL)
+        )) ?? []
+    }
+
+    private func fetchLiveEpisodes(feedURL: URL, auth: FeedHTTPAuth?) async throws -> [Episode] {
+        var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
+        request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
+        auth?.apply(to: &request)
+
+        let (data, response) = try await session.data(for: request)
+        try validateHTTP(response: response)
+
+        let parser = RSSParser()
+        return parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
     }
 
     /// Reads cached episodes only (no network fetch). Tries authenticated and unauthenticated keys.

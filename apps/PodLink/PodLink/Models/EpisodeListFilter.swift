@@ -14,8 +14,8 @@ enum EpisodeListFilter {
         return episodes.filter { episode in
             guard statusFilter.matches(episode) else { return false }
             if query.isEmpty { return true }
+            // Title only — Rewatchables-scale show notes hitch the search field on every keystroke.
             return episode.title.localizedCaseInsensitiveContains(query)
-                || episode.description.localizedCaseInsensitiveContains(query)
         }
     }
 }

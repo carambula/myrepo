@@ -263,6 +263,7 @@ struct MovieDetailView: View {
         let id: String
         let podcastName: String
         let dataSourceIdentifier: String?
+        let sourceTitle: String?
         let episode: PodcastEpisode
     }
 
@@ -277,6 +278,7 @@ struct MovieDetailView: View {
                 id: "\(content.sourceIdentifier)-\(episode.episodeId)",
                 podcastName: name,
                 dataSourceIdentifier: content.sourceIdentifier,
+                sourceTitle: content.sourceTitle,
                 episode: episode
             ))
         }
@@ -289,6 +291,7 @@ struct MovieDetailView: View {
                 id: "\(legacySource.sourceIdentifier)-\(episode.episodeId)",
                 podcastName: name,
                 dataSourceIdentifier: legacySource.sourceIdentifier,
+                sourceTitle: legacySource.sourceTitle,
                 episode: episode
             ))
         }
@@ -596,7 +599,8 @@ struct MovieDetailView: View {
                 identifier: content.sourceIdentifier,
                 sourceUrl: content.sourceUrl,
                 episode: content.podcastEpisode,
-                sourceName: content.sourceName
+                sourceName: content.sourceName,
+                sourceTitle: content.sourceTitle
             ) else { continue }
             items.append(ClosetPicksMenuItem(
                 id: "closet-\(content.id)",
@@ -616,7 +620,8 @@ struct MovieDetailView: View {
                     identifier: legacy.sourceIdentifier,
                     sourceUrl: legacy.sourceUrl,
                     episode: legacy.podcastEpisode,
-                    sourceName: legacy.sourceName
+                    sourceName: legacy.sourceName,
+                    sourceTitle: legacy.sourceTitle
                 ) else { continue }
                 items.append(ClosetPicksMenuItem(
                     id: "closet-legacy-\(legacy.sourceIdentifier)-\(url.absoluteString)",
@@ -672,7 +677,8 @@ struct MovieDetailView: View {
         identifier: String,
         sourceUrl: String?,
         episode: PodcastEpisode?,
-        sourceName: String
+        sourceName: String,
+        sourceTitle: String? = nil
     ) -> URL? {
         if identifier == ClosetPicksSource.identifier {
             return ClosetPicksSource.destinationURL(
@@ -686,7 +692,8 @@ struct MovieDetailView: View {
                 podcastName: sourceName,
                 dataSourceIdentifier: identifier,
                 episode: episode,
-                movieTitle: displayMovie.title
+                movieTitle: displayMovie.title,
+                sourceTitle: sourceTitle
             )
         }
     }
@@ -695,7 +702,8 @@ struct MovieDetailView: View {
         podcastName: String,
         dataSourceIdentifier: String?,
         episode: PodcastEpisode,
-        movieTitle: String?
+        movieTitle: String?,
+        sourceTitle: String? = nil
     ) -> URL? {
         switch preferredPodcastApp {
         case .applePodcasts:
@@ -726,7 +734,9 @@ struct MovieDetailView: View {
         case .podMin:
             if let deepLink = createPodMinDeepLinkURL(
                 dataSourceIdentifier: dataSourceIdentifier,
-                episode: episode
+                episode: episode,
+                sourceTitle: sourceTitle,
+                movieTitle: movieTitle
             ) {
                 return deepLink
             }
@@ -739,7 +749,8 @@ struct MovieDetailView: View {
             podcastName: item.podcastName,
             dataSourceIdentifier: item.dataSourceIdentifier,
             episode: item.episode,
-            movieTitle: displayMovie.title
+            movieTitle: displayMovie.title,
+            sourceTitle: item.sourceTitle
         )
     }
 
@@ -763,7 +774,9 @@ struct MovieDetailView: View {
 
     private func createPodMinDeepLinkURL(
         dataSourceIdentifier: String?,
-        episode: PodcastEpisode
+        episode: PodcastEpisode,
+        sourceTitle: String? = nil,
+        movieTitle: String? = nil
     ) -> URL? {
         guard let identifier = dataSourceIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
               !identifier.isEmpty,
@@ -775,15 +788,21 @@ struct MovieDetailView: View {
         components.scheme = "podmin"
         var items = [URLQueryItem(name: "feed", value: feedURL)]
 
-        // Our dataset has no per-episode audio URL, so deep link by episode title.
-        // pod min matches the title within the feed and opens that episode directly,
-        // falling back to the show screen if it can't find a match.
-        let episodeTitle = episode.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if episodeTitle.isEmpty {
+        // Prefer the full source/episode title over the movie name so pod min can match Rocky vs Rocky II.
+        let episodeTitle = [sourceTitle, episode.title]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? ""
+        let movie = movieTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if episodeTitle.isEmpty && movie.isEmpty {
             components.host = "show"
         } else {
             components.host = "episode"
-            items.append(URLQueryItem(name: "title", value: episodeTitle))
+            if !episodeTitle.isEmpty {
+                items.append(URLQueryItem(name: "title", value: episodeTitle))
+            }
+            if !movie.isEmpty, movie.caseInsensitiveCompare(episodeTitle) != .orderedSame {
+                items.append(URLQueryItem(name: "movie", value: movie))
+            }
         }
 
         components.queryItems = items
@@ -1472,7 +1491,8 @@ struct MovieDetailView: View {
                                             identifier: sourceContent.sourceIdentifier,
                                             sourceUrl: sourceContent.sourceUrl,
                                             episode: sourceContent.podcastEpisode,
-                                            sourceName: sourceContent.sourceName
+                                            sourceName: sourceContent.sourceName,
+                                            sourceTitle: sourceContent.sourceTitle
                                         ),
                                         closetPicksGuestURLs: closetPicksGuestURLs,
                                         onOpenGuest: { openExternalURL($0) },
@@ -1509,7 +1529,8 @@ struct MovieDetailView: View {
                                             identifier: legacySource.sourceIdentifier,
                                             sourceUrl: legacySource.sourceUrl,
                                             episode: legacySource.podcastEpisode,
-                                            sourceName: legacySource.sourceName
+                                            sourceName: legacySource.sourceName,
+                                            sourceTitle: legacySource.sourceTitle
                                         ),
                                         closetPicksGuestURLs: closetPicksGuestURLs,
                                         onOpenGuest: { openExternalURL($0) },

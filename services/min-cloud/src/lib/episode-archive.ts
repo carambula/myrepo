@@ -23,19 +23,47 @@ export const episodeArchiveKeys = (episode: ArchiveEpisode) => {
 
 export const episodeArchiveKey = (episode: ArchiveEpisode) => episodeArchiveKeys(episode)[0] ?? "";
 
-/** Union two episode lists by guid / audio URL / title. `primary` wins on duplicates. */
+/** Postgres `Date` objects must go out as ISO-8601. `String(date)` is `Tue Mar 04 2025 …` and iOS cannot parse it. */
+export const toIsoDateString = (value: unknown): string | null => {
+  if (value == null || value === "") {
+    return null;
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const fromNumber = new Date(value);
+    return Number.isNaN(fromNumber.getTime()) ? null : fromNumber.toISOString();
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : raw;
+};
+
+/** Union two episode lists by guid / audio URL / title. `primary` wins on duplicates unless its date is unusable. */
 export const mergeEpisodeArchives = <T extends ArchiveEpisode>(primary: T[], extra: T[]): T[] => {
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const merged: T[] = [];
   for (const episode of [...primary, ...extra]) {
     const keys = episodeArchiveKeys(episode);
-    if (!keys.length || keys.some((key) => seen.has(key))) {
+    if (!keys.length) {
       continue;
     }
-    for (const key of keys) {
-      seen.add(key);
+    const existingIndex = keys.map((key) => seen.get(key)).find((index) => index !== undefined);
+    if (existingIndex !== undefined) {
+      if (!hasUsablePublishDate(merged[existingIndex]) && hasUsablePublishDate(episode)) {
+        merged[existingIndex] = episode;
+      }
+      continue;
     }
+    const index = merged.length;
     merged.push(episode);
+    for (const key of keys) {
+      seen.set(key, index);
+    }
   }
   merged.sort((left, right) => {
     const leftTime = Date.parse(left.publishDate || "");
@@ -51,4 +79,9 @@ export const mergeEpisodeArchives = <T extends ArchiveEpisode>(primary: T[], ext
     return String(right.title || "").localeCompare(String(left.title || ""));
   });
   return merged.slice(0, PODCAST_ARCHIVE_CAP);
+};
+
+const hasUsablePublishDate = (episode: ArchiveEpisode) => {
+  const time = Date.parse(episode.publishDate || "");
+  return Number.isFinite(time) && time > 0;
 };

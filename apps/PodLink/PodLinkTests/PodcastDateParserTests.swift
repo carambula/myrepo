@@ -58,6 +58,16 @@ struct PodcastDateParserTests {
     }
 
     @Test
+    func parsesNodeDateToString() {
+        let date = PodcastDateParser.parse("Tue Mar 04 2025 05:09:00 GMT+0000 (Coordinated Universal Time)")
+        #expect(date != nil)
+        let parts = Calendar(identifier: .gregorian).dateComponents(in: TimeZone(secondsFromGMT: 0)!, from: date!)
+        #expect(parts.year == 2025)
+        #expect(parts.month == 3)
+        #expect(parts.day == 4)
+    }
+
+    @Test
     func emptyAndInvalidReturnNil() {
         #expect(PodcastDateParser.parse(nil) == nil)
         #expect(PodcastDateParser.parse("") == nil)

@@ -22,19 +22,32 @@ enum PodcastDateParser {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        for format in Self.legacyFormats {
-            formatter.dateFormat = format
-            if let date = formatter.date(from: raw) {
-                return date
+        for candidate in Self.parseCandidates(from: raw) {
+            for format in Self.legacyFormats {
+                formatter.dateFormat = format
+                if let date = formatter.date(from: candidate) {
+                    return date
+                }
             }
         }
         return nil
+    }
+
+    /// `String(date)` from Node is `Tue Mar 04 2025 05:09:00 GMT+0000 (Coordinated Universal Time)`.
+    private static func parseCandidates(from raw: String) -> [String] {
+        var candidates = [raw]
+        if let paren = raw.range(of: " (") {
+            candidates.append(String(raw[..<paren.lowerBound]))
+        }
+        return candidates
     }
 
     private static let legacyFormats = [
         "EEE, dd MMM yyyy HH:mm:ss Z",
         "EEE, dd MMM yyyy HH:mm:ss zzz",
         "EEE, dd MMM yyyy HH:mm:ss z",
+        "EEE MMM dd yyyy HH:mm:ss 'GMT'Z",
+        "EEE MMM dd yyyy HH:mm:ss zzz",
         "yyyy-MM-dd'T'HH:mm:ssZ",
         "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
         "yyyy-MM-dd HH:mm:ssXXXXX",

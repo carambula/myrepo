@@ -20,11 +20,13 @@ actor RSSFeedService {
         await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: "none"))
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none")
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none_dates2")
+        await cache.remove("feed_episodes_\(feedURL.absoluteString)_none_archive1")
         await cache.remove(metaCacheKey(feedURL: feedURL, authTag: "none"))
         if let seg = await PrivateFeedAuthStore.shared.cacheKeySegment(for: feedURL) {
             await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: seg))
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)")
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)_dates2")
+            await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)_archive1")
             await cache.remove(metaCacheKey(feedURL: feedURL, authTag: seg))
         }
     }
@@ -131,7 +133,7 @@ actor RSSFeedService {
     }
 
     private func episodeCacheKey(feedURL: URL, authTag: String) -> String {
-        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_archive1"
+        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_archive2"
     }
 
     private func metaCacheKey(feedURL: URL, authTag: String) -> String {

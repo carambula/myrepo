@@ -36,6 +36,15 @@ struct EpisodeArchiveTests {
     }
 
     @Test
+    func prefersLiveDateWhenCatalogDateIsDistantPast() {
+        let catalog = episode(id: "ep-rocky", title: "Rocky", date: .distantPast)
+        let live = episode(id: "ep-rocky", title: "Rocky", date: date(2025, 3, 4))
+        let merged = EpisodeArchive.merge([catalog], [live])
+        #expect(merged.count == 1)
+        #expect(Calendar(identifier: .gregorian).component(.year, from: merged[0].publishDate) == 2025)
+    }
+
+    @Test
     func prefersNewerPublishDate() {
         let older = episode(id: "a", title: "Older", date: date(2018, 1, 1))
         let newer = episode(id: "b", title: "Newer", date: date(2025, 5, 1))

@@ -3,7 +3,8 @@ import { describe, it } from "node:test";
 import {
   episodeArchiveKey,
   mergeEpisodeArchives,
-  PODCAST_ARCHIVE_CAP
+  PODCAST_ARCHIVE_CAP,
+  toIsoDateString
 } from "../src/lib/episode-archive.ts";
 
 describe("mergeEpisodeArchives", () => {
@@ -88,6 +89,21 @@ describe("mergeEpisodeArchives", () => {
     const merged = mergeEpisodeArchives([], extra);
     assert.equal(merged.length, PODCAST_ARCHIVE_CAP);
     assert.equal(merged[0].guid, `ep-${PODCAST_ARCHIVE_CAP + 19}`);
+  });
+
+  it("replaces a catalog row whose date is missing", () => {
+    const catalog = [{ guid: "ep-rocky", title: "Rocky", publishDate: null }];
+    const live = [{ guid: "ep-rocky", title: "Rocky", publishDate: "2025-03-04T05:09:00.000Z" }];
+    const merged = mergeEpisodeArchives(catalog, live);
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0].publishDate, "2025-03-04T05:09:00.000Z");
+  });
+
+  it("serializes postgres Date objects as ISO-8601", () => {
+    const iso = toIsoDateString(new Date("2025-03-04T05:09:00.000Z"));
+    assert.equal(iso, "2025-03-04T05:09:00.000Z");
+    assert.equal(toIsoDateString("Tue Mar 04 2025 05:09:00 GMT+0000 (Coordinated Universal Time)"), "2025-03-04T05:09:00.000Z");
+    assert.notEqual(toIsoDateString(new Date("2025-03-04T05:09:00.000Z")), String(new Date("2025-03-04T05:09:00.000Z")));
   });
 
   it("builds a stable identity key", () => {

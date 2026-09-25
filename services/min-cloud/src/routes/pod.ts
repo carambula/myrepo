@@ -3,7 +3,7 @@ import { query } from "../db.js";
 import { fetchText } from "../lib/http.js";
 import { searchItunesPodcasts } from "../lib/itunes.js";
 import { parseRssFeed, type ParsedEpisode } from "../lib/rss.js";
-import { mergeEpisodeArchives, PODCAST_ARCHIVE_CAP } from "../lib/episode-archive.js";
+import { mergeEpisodeArchives, PODCAST_ARCHIVE_CAP, toIsoDateString } from "../lib/episode-archive.js";
 import { ensurePodcast } from "../lib/podcasts.js";
 import { upsertAnonymousDevice } from "../lib/devices.js";
 
@@ -55,7 +55,7 @@ const mapEpisode = (row: Record<string, unknown>): FeedEpisode => ({
   guid: asNullableString(row.guid),
   title: asNullableString(row.title),
   description: asNullableString(row.description),
-  publishDate: asNullableString(row.publish_date),
+  publishDate: toIsoDateString(row.publish_date),
   duration: Number(row.duration_seconds ?? 0),
   audioUrl: asNullableString(row.audio_url),
   videoUrl: asNullableString(row.video_url),
@@ -70,7 +70,7 @@ const mapLiveEpisode = (episode: ParsedEpisode): FeedEpisode => ({
   guid: episode.guid,
   title: episode.title,
   description: episode.description,
-  publishDate: episode.publishDate,
+  publishDate: toIsoDateString(episode.publishDate),
   duration: Number(episode.durationSeconds ?? 0),
   audioUrl: episode.audioUrl,
   videoUrl: episode.videoUrl,

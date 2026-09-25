@@ -2,7 +2,8 @@ import { Router } from "express";
 import { query } from "../db.js";
 import { fetchText } from "../lib/http.js";
 import { searchItunesPodcasts } from "../lib/itunes.js";
-import { parseRssFeed } from "../lib/rss.js";
+import { parseRssFeed, type ParsedEpisode } from "../lib/rss.js";
+import { mergeEpisodeArchives, PODCAST_ARCHIVE_CAP } from "../lib/episode-archive.js";
 import { ensurePodcast } from "../lib/podcasts.js";
 import { upsertAnonymousDevice } from "../lib/devices.js";
 
@@ -24,19 +25,58 @@ const mapPodcast = (row: Record<string, unknown>) => ({
   updatedAt: row.updated_at
 });
 
-const mapEpisode = (row: Record<string, unknown>) => ({
-  id: row.id,
-  podcastId: row.podcast_id,
-  guid: row.guid,
-  title: row.title,
-  description: row.description,
-  publishDate: row.publish_date,
+type FeedEpisode = {
+  id: string | null;
+  podcastId: string | null;
+  guid: string | null;
+  title: string | null;
+  description: string | null;
+  publishDate: string | null;
+  duration: number;
+  audioUrl: string | null;
+  videoUrl: string | null;
+  artworkUrl: string | null;
+  episodeNumber: number | null;
+  seasonNumber: number | null;
+};
+
+const asNullableString = (value: unknown) => (value == null ? null : String(value));
+const asNullableNumber = (value: unknown) => {
+  if (value == null || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const mapEpisode = (row: Record<string, unknown>): FeedEpisode => ({
+  id: asNullableString(row.id),
+  podcastId: asNullableString(row.podcast_id),
+  guid: asNullableString(row.guid),
+  title: asNullableString(row.title),
+  description: asNullableString(row.description),
+  publishDate: asNullableString(row.publish_date),
   duration: Number(row.duration_seconds ?? 0),
-  audioUrl: row.audio_url,
-  videoUrl: row.video_url,
-  artworkUrl: row.artwork_url,
-  episodeNumber: row.episode_number,
-  seasonNumber: row.season_number
+  audioUrl: asNullableString(row.audio_url),
+  videoUrl: asNullableString(row.video_url),
+  artworkUrl: asNullableString(row.artwork_url),
+  episodeNumber: asNullableNumber(row.episode_number),
+  seasonNumber: asNullableNumber(row.season_number)
+});
+
+const mapLiveEpisode = (episode: ParsedEpisode): FeedEpisode => ({
+  id: episode.id,
+  podcastId: null,
+  guid: episode.guid,
+  title: episode.title,
+  description: episode.description,
+  publishDate: episode.publishDate,
+  duration: Number(episode.durationSeconds ?? 0),
+  audioUrl: episode.audioUrl,
+  videoUrl: episode.videoUrl,
+  artworkUrl: episode.artworkUrl,
+  episodeNumber: episode.episodeNumber,
+  seasonNumber: episode.seasonNumber
 });
 
 router.get("/catalog", async (req, res) => {
@@ -83,7 +123,7 @@ router.get("/podcasts/:id/episodes", async (req, res) => {
     res.status(404).json({ error: "Podcast not found." });
     return;
   }
-  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const limit = Math.min(Number(req.query.limit) || PODCAST_ARCHIVE_CAP, PODCAST_ARCHIVE_CAP);
   const episodes = await query(
     `SELECT * FROM pod_episodes WHERE podcast_id = $1 ORDER BY publish_date DESC NULLS LAST LIMIT $2`,
     [podcast.rows[0].id, limit]
@@ -102,29 +142,38 @@ router.get("/feeds", async (req, res) => {
     return;
   }
   const cachedPodcast = await query(`SELECT id FROM pod_podcasts WHERE feed_url = $1`, [feedUrl]);
+  let catalog: FeedEpisode[] = [];
   if (cachedPodcast.rowCount) {
     const episodes = await query(
-      `SELECT * FROM pod_episodes WHERE podcast_id = $1 ORDER BY publish_date DESC NULLS LAST LIMIT 80`,
-      [cachedPodcast.rows[0].id]
+      `SELECT * FROM pod_episodes WHERE podcast_id = $1 ORDER BY publish_date DESC NULLS LAST LIMIT $2`,
+      [cachedPodcast.rows[0].id, PODCAST_ARCHIVE_CAP]
     );
-    if (episodes.rowCount) {
-      res.json({
-        podcastId: cachedPodcast.rows[0].id,
-        episodes: episodes.rows.map(mapEpisode),
-        source: "catalog"
-      });
-      return;
-    }
+    catalog = episodes.rows.map(mapEpisode);
   }
   try {
     const xml = await fetchText(feedUrl);
     const parsed = parseRssFeed(xml);
+    const live = parsed.episodes.map(mapLiveEpisode);
+    const episodes = mergeEpisodeArchives(catalog, live);
+    if (!episodes.length) {
+      res.status(502).json({ error: "Feed fetch failed." });
+      return;
+    }
     res.json({
+      podcastId: cachedPodcast.rows[0]?.id ?? null,
       meta: parsed.meta,
-      episodes: parsed.episodes,
-      source: "live"
+      episodes,
+      source: catalog.length ? "catalog+live" : "live"
     });
   } catch (error) {
+    if (catalog.length) {
+      res.json({
+        podcastId: cachedPodcast.rows[0]?.id ?? null,
+        episodes: catalog,
+        source: "catalog"
+      });
+      return;
+    }
     res.status(502).json({ error: error instanceof Error ? error.message : "Feed fetch failed." });
   }
 });

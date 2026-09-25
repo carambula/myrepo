@@ -19,10 +19,12 @@ actor RSSFeedService {
         await cache.remove("feed_meta_\(u)")
         await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: "none"))
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none")
+        await cache.remove("feed_episodes_\(feedURL.absoluteString)_none_dates2")
         await cache.remove(metaCacheKey(feedURL: feedURL, authTag: "none"))
         if let seg = await PrivateFeedAuthStore.shared.cacheKeySegment(for: feedURL) {
             await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: seg))
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)")
+            await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)_dates2")
             await cache.remove(metaCacheKey(feedURL: feedURL, authTag: seg))
         }
     }
@@ -35,28 +37,37 @@ actor RSSFeedService {
             return cached
         }
 
+        var cloudEpisodes: [Episode] = []
         if provisionalAuth == nil, await MinCloudClient.shared.isReachable() {
-            if let cloudEpisodes = try? await MinCloudClient.shared.fetchFeedEpisodes(feedURL: PrivateFeedAuthStore.canonicalFeedURL(feedURL)),
-               !cloudEpisodes.isEmpty {
-                await cache.set(cacheKey, value: cloudEpisodes, ttl: 1800)
-                await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: cloudEpisodes)
-                return cloudEpisodes
-            }
+            cloudEpisodes = (try? await MinCloudClient.shared.fetchFeedEpisodes(
+                feedURL: PrivateFeedAuthStore.canonicalFeedURL(feedURL)
+            )) ?? []
         }
 
-        var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
-        request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
-        auth?.apply(to: &request)
+        do {
+            var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
+            request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
+            auth?.apply(to: &request)
 
-        let (data, response) = try await session.data(for: request)
-        try validateHTTP(response: response)
+            let (data, response) = try await session.data(for: request)
+            try validateHTTP(response: response)
 
-        let parser = RSSParser()
-        let episodes = parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
+            let parser = RSSParser()
+            let liveEpisodes = parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
+            let episodes = EpisodeArchive.merge(cloudEpisodes, liveEpisodes)
+            guard !episodes.isEmpty else {
+                throw RSSFeedError.invalidFeed
+            }
 
-        await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
-        await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
-        return episodes
+            await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
+            await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
+            return episodes
+        } catch {
+            guard !cloudEpisodes.isEmpty else { throw error }
+            await cache.set(cacheKey, value: cloudEpisodes, ttl: 1800)
+            await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: cloudEpisodes)
+            return cloudEpisodes
+        }
     }
 
     /// Reads cached episodes only (no network fetch). Tries authenticated and unauthenticated keys.
@@ -106,7 +117,7 @@ actor RSSFeedService {
     }
 
     private func episodeCacheKey(feedURL: URL, authTag: String) -> String {
-        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_dates2"
+        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_archive1"
     }
 
     private func metaCacheKey(feedURL: URL, authTag: String) -> String {

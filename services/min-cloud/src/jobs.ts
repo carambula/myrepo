@@ -9,6 +9,7 @@ import {
 } from "./lib/apns.js";
 import { lookupItunesPodcast } from "./lib/itunes.js";
 import { fetchText } from "./lib/http.js";
+import { PODCAST_ARCHIVE_CAP } from "./lib/episode-archive.js";
 import { notifyWorthyEpisodes, parseRssFeed } from "./lib/rss.js";
 import { fetchStreamingServices } from "./lib/tmdb.js";
 import { persistStreamingProviders } from "./lib/streaming-cache.js";
@@ -309,7 +310,7 @@ export const refreshMoviePodcastSources = async () => {
             parsed.meta.artworkUrl
           ]
         );
-        for (const episode of parsed.episodes.slice(0, 40)) {
+        for (const episode of parsed.episodes.slice(0, PODCAST_ARCHIVE_CAP)) {
           await upsertEpisode(podcastId, episode);
         }
         const existing = await query(

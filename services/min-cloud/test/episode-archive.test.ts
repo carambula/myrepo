@@ -7,6 +7,30 @@ import {
 } from "../src/lib/episode-archive.ts";
 
 describe("mergeEpisodeArchives", () => {
+  it("keeps Rewatchables Rocky when the catalog stops at May 2025", () => {
+    const catalog = [
+      { guid: "law-abiding", title: "‘Law Abiding Citizen’", publishDate: "2026-09-22T01:00:00.000Z" },
+      { guid: "new-hope", title: "‘Star Wars: A New Hope’ (Part One)", publishDate: "2025-05-06T04:00:00.000Z" }
+    ];
+    const live = [
+      ...catalog,
+      {
+        guid: "8a9fa838-df79-11ef-83d0-579de67c18fd",
+        title: "‘Rocky’ With Bill Simmons, Chris Ryan, and Van Lathan",
+        audioUrl: "https://traffic.megaphone.fm/rocky.mp3",
+        publishDate: "2025-03-04T05:09:00.000Z"
+      },
+      { guid: "intro", title: "Intro: 'The Rewatchables'", publishDate: "2017-08-07T03:32:58.000Z" }
+    ];
+
+    const merged = mergeEpisodeArchives(catalog, live);
+    assert.equal(merged.length, 4);
+    assert.equal(
+      merged.some((episode) => episode.title === "‘Rocky’ With Bill Simmons, Chris Ryan, and Van Lathan"),
+      true
+    );
+  });
+
   it("unions a truncated catalog with the live RSS archive", () => {
     const catalog = [
       { guid: "ep-new", title: "Fargo", audioUrl: "https://example.com/fargo.mp3", publishDate: "2025-04-01T10:00:00.000Z" },

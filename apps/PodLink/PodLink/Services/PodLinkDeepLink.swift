@@ -3,6 +3,20 @@ import Foundation
 struct PodLinkEpisodeHint: Equatable {
     let episodeURL: URL?
     let episodeTitle: String?
+    let movieTitle: String?
+
+    init(episodeURL: URL? = nil, episodeTitle: String? = nil, movieTitle: String? = nil) {
+        self.episodeURL = episodeURL
+        self.episodeTitle = episodeTitle
+        self.movieTitle = movieTitle
+    }
+
+    var titleCandidates: [String] {
+        [episodeTitle, movieTitle].compactMap { title in
+            let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
 }
 
 enum PodLinkDeepLink {
@@ -51,21 +65,31 @@ enum PodLinkDeepLink {
         let episodeRaw = firstQueryValue(["episode", "episodeurl", "episode_url", "ep", "audio", "media"])
         let episodeURL = episodeRaw.flatMap(URL.init(string:))
         let episodeTitle = firstQueryValue(["title", "episodetitle", "episode_title"])
+        let movieTitle = firstQueryValue(["movie", "movietitle", "movie_title"])
 
         switch host {
         case "episode":
-            self = .episode(feedURL: feedURL, hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle))
+            self = .episode(
+                feedURL: feedURL,
+                hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle, movieTitle: movieTitle)
+            )
         case "show":
             self = .show(feedURL: feedURL)
         case "open":
-            if episodeURL != nil || episodeTitle != nil {
-                self = .episode(feedURL: feedURL, hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle))
+            if episodeURL != nil || episodeTitle != nil || movieTitle != nil {
+                self = .episode(
+                    feedURL: feedURL,
+                    hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle, movieTitle: movieTitle)
+                )
             } else {
                 self = .show(feedURL: feedURL)
             }
         default:
-            if episodeURL != nil || episodeTitle != nil {
-                self = .episode(feedURL: feedURL, hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle))
+            if episodeURL != nil || episodeTitle != nil || movieTitle != nil {
+                self = .episode(
+                    feedURL: feedURL,
+                    hint: PodLinkEpisodeHint(episodeURL: episodeURL, episodeTitle: episodeTitle, movieTitle: movieTitle)
+                )
             } else {
                 self = .show(feedURL: feedURL)
             }

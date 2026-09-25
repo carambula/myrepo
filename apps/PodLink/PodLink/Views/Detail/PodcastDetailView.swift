@@ -212,7 +212,6 @@ struct PodcastDetailView: View {
         .task {
             await loadEpisodes()
             isFollowed = Podcast.loadFollowedPodcasts().contains { $0.id == podcast.id }
-            resolveInitialDeepLinkEpisodeIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .episodePlaybackStateDidChange)) { note in
             if let changedID = note.object as? String {
@@ -352,13 +351,8 @@ struct PodcastDetailView: View {
 
     private var episodeSearchButton: some View {
         Button {
-            withAnimation(DesignSystem.Animation.standard) {
-                isSearchActive = true
-            }
-            Task { @MainActor in
-                await Task.yield()
-                isSearchFieldFocused = true
-            }
+            isSearchActive = true
+            isSearchFieldFocused = true
         } label: {
             Image(systemName: "magnifyingglass")
         }
@@ -429,128 +423,68 @@ struct PodcastDetailView: View {
     // MARK: - Data
 
     private func loadEpisodes() async {
-        isLoading = true
+        if let cached = await RSSFeedService.shared.cachedEpisodes(feedURL: podcast.feedURL), !cached.isEmpty {
+            applyFetchedEpisodes(cached)
+            resolveDeepLink(consumeOnMiss: false)
+        } else {
+            isLoading = episodes.isEmpty
+        }
+
         do {
             let fetched = try await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL)
-            episodes = fetched.map { EpisodePlaybackStore.merge($0) }
+            guard !Task.isCancelled else { return }
+            applyFetchedEpisodes(fetched)
+            resolveDeepLink(consumeOnMiss: true)
         } catch {
-            episodes = []
+            guard !Task.isCancelled, !isCancellation(error) else { return }
+            isLoading = false
+            if episodes.isEmpty {
+                resolveDeepLink(consumeOnMiss: true)
+            }
         }
+    }
+
+    private func applyFetchedEpisodes(_ fetched: [Episode]) {
+        episodes = fetched.map { EpisodePlaybackStore.merge($0) }
         isLoading = false
     }
 
-    private func resolveInitialDeepLinkEpisodeIfNeeded() {
-        guard !hasAttemptedInitialDeepLinkResolve else { return }
-        hasAttemptedInitialDeepLinkResolve = true
-        defer { onHandledInitialDeepLinkEpisode?() }
-
-        guard let hint = initialDeepLinkEpisode else { return }
-
-        // Most reliable: exact audio/video URL identity (used when the sender has a real enclosure URL).
-        if let url = hint.episodeURL,
-           let matched = episodes.first(where: { episodeMatchesDeepLinkURL($0, targetURL: url) }) {
-            selectedEpisode = matched
-            return
-        }
-
-        // Cross-app links (e.g. from WatchedIt) usually only carry the episode title, which can differ
-        // from the live feed by punctuation, smart quotes, casing, or whitespace. Match robustly and
-        // fall back to the show screen only when no confident match exists.
-        if let matched = bestEpisodeMatch(forTitle: hint.episodeTitle) {
-            selectedEpisode = matched
-        }
-    }
-
-    /// Finds the episode whose title best matches a deep-link title hint, tolerant of formatting
-    /// differences. Returns `nil` (so the caller falls back to the show screen) when no episode is a
-    /// confident match.
-    private func bestEpisodeMatch(forTitle rawTitle: String?) -> Episode? {
-        guard let rawTitle else { return nil }
-        let target = normalizedTitleForMatching(rawTitle)
-        guard !target.isEmpty else { return nil }
-
-        // 1. Exact match after normalization (handles smart quotes, casing, punctuation, whitespace).
-        if let exact = episodes.first(where: { normalizedTitleForMatching($0.title) == target }) {
-            return exact
-        }
-
-        // 2. Bidirectional containment: a short stored title inside a verbose feed title, or vice versa.
-        let contained = episodes.filter { episode in
-            let candidate = normalizedTitleForMatching(episode.title)
-            guard !candidate.isEmpty else { return false }
-            return candidate.contains(target) || target.contains(candidate)
-        }
-        if !contained.isEmpty {
-            // When several episodes contain the target, prefer the one closest in length so we do not
-            // grab an unrelated longer episode that merely happens to include the words.
-            return contained.min { lhs, rhs in
-                let lhsDelta = abs(normalizedTitleForMatching(lhs.title).count - target.count)
-                let rhsDelta = abs(normalizedTitleForMatching(rhs.title).count - target.count)
-                return lhsDelta < rhsDelta
-            }
-        }
-
-        // 3. Token-overlap (Jaccard) best match as a last resort, with a high threshold so an
-        //    uncertain match never overrides the graceful show-screen fallback.
-        let targetTokens = Set(target.split(separator: " ").map(String.init))
-        guard !targetTokens.isEmpty else { return nil }
-
-        var best: (episode: Episode, score: Double)?
-        for episode in episodes {
-            let candidateTokens = Set(normalizedTitleForMatching(episode.title).split(separator: " ").map(String.init))
-            guard !candidateTokens.isEmpty else { continue }
-            let intersection = Double(targetTokens.intersection(candidateTokens).count)
-            let union = Double(targetTokens.union(candidateTokens).count)
-            guard union > 0 else { continue }
-            let score = intersection / union
-            if score > (best?.score ?? 0) {
-                best = (episode, score)
-            }
-        }
-
-        if let best, best.score >= 0.6 {
-            return best.episode
-        }
-        return nil
-    }
-
-    /// Lowercases, strips diacritics/punctuation/quotes, and collapses whitespace so titles from
-    /// different sources compare equal when they refer to the same episode.
-    private func normalizedTitleForMatching(_ value: String) -> String {
-        let folded = value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
-        var characters: [Character] = []
-        var lastWasSpace = false
-        for scalar in folded.unicodeScalars {
-            if CharacterSet.alphanumerics.contains(scalar) {
-                characters.append(Character(scalar))
-                lastWasSpace = false
-            } else if !lastWasSpace {
-                characters.append(" ")
-                lastWasSpace = true
-            }
-        }
-        return String(characters).trimmingCharacters(in: .whitespaces)
-    }
-
-    private func episodeMatchesDeepLinkURL(_ episode: Episode, targetURL: URL) -> Bool {
-        let lhs = normalizedEpisodeIdentityURL(episode.audioURL)
-        let rhs = normalizedEpisodeIdentityURL(targetURL)
-        if lhs == rhs { return true }
-        if let video = episode.videoURL {
-            return normalizedEpisodeIdentityURL(video) == rhs
-        }
+    private func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
         return false
     }
 
-    private func normalizedEpisodeIdentityURL(_ url: URL) -> String {
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.query = nil
-        components?.fragment = nil
-        let normalized = components?.url?.absoluteString ?? url.absoluteString
-        return normalized
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    private func resolveDeepLink(consumeOnMiss: Bool) {
+        guard !hasAttemptedInitialDeepLinkResolve else { return }
+        guard let hint = initialDeepLinkEpisode else {
+            if consumeOnMiss {
+                hasAttemptedInitialDeepLinkResolve = true
+                onHandledInitialDeepLinkEpisode?()
+            }
+            return
+        }
+
+        if let url = hint.episodeURL,
+           let matched = episodes.first(where: { EpisodeDeepLinkMatcher.episode($0, matchesURL: url) }) {
+            selectedEpisode = matched
+            hasAttemptedInitialDeepLinkResolve = true
+            onHandledInitialDeepLinkEpisode?()
+            return
+        }
+
+        for title in hint.titleCandidates {
+            if let matched = EpisodeDeepLinkMatcher.bestEpisode(in: episodes, matchingTitle: title) {
+                selectedEpisode = matched
+                hasAttemptedInitialDeepLinkResolve = true
+                onHandledInitialDeepLinkEpisode?()
+                return
+            }
+        }
+
+        guard consumeOnMiss else { return }
+        hasAttemptedInitialDeepLinkResolve = true
+        onHandledInitialDeepLinkEpisode?()
     }
 
     private func refreshMergedEpisodes() {

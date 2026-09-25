@@ -73,6 +73,15 @@ struct PodcastListPerformanceTests {
         #expect(unlistened.map(\.id) == ["2"])
     }
 
+    @Test
+    func episodeFilterIgnoresShowNotes() {
+        let titleHit = episode(id: "1", podcastID: "p", title: "Rocky")
+        let notesHit = episode(id: "2", podcastID: "p", title: "Heat")
+        // Description is not part of the helper; this documents title-only filtering.
+        let filtered = EpisodeListFilter.apply([titleHit, notesHit], searchText: "Rocky", statusFilter: .all)
+        #expect(filtered.map(\.id) == ["1"])
+    }
+
     private func podcast(id: String, title: String) -> Podcast {
         Podcast(
             id: id,

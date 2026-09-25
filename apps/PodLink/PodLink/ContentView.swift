@@ -386,10 +386,13 @@ struct ContentView: View {
         let resolvedPodcast = try? await RSSFeedService.shared.fetchPodcastMetadata(feedURL: canonicalFeedURL)
         guard let resolvedPodcast else { return }
 
+        // Replacing an already-open show sheet remounts PodcastDetailView, cancels the archive
+        // fetch, and can consume the deep-link hint before episodes arrive.
         if let currentPodcast = currentRootSheetPodcast(),
            PrivateFeedAuthStore.canonicalFeedURL(currentPodcast.feedURL) == canonicalFeedURL {
-            presentRootSheet(.podcast(resolvedPodcast))
+            return
         }
+        presentRootSheet(.podcast(resolvedPodcast))
     }
 
     private func placeholderPodcastTitle(for feedURL: URL) -> String {

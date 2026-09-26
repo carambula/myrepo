@@ -549,8 +549,8 @@ struct WatchedItTests {
     }
 
     @Test func physicalPurchasePlayMenuLabelReflectsOwnedState() {
-        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: false) == "Buy disc…")
-        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: true) == "Disc owned…")
+        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: false) == "Buy disc")
+        #expect(PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: true) == "Disc owned")
         #expect(PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: false) == DesignSystem.Icon.disc)
         #expect(PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: true) == DesignSystem.Icon.discFill)
     }
@@ -599,6 +599,8 @@ struct WatchedItTests {
         #expect(!PhysicalPurchaseLinkBuilder.hasOptions(for: nil))
         #expect(!PhysicalPurchaseLinkBuilder.hasOptions(for: PhysicalMedia()))
         #expect(PhysicalPurchaseLinkBuilder.groups(for: nil, title: "Heat", year: 1995).isEmpty)
+        #expect(PhysicalPurchaseLinkBuilder.compactOffers(for: nil, title: "Heat", year: 1995).isEmpty)
+        #expect(PhysicalPurchaseLinkBuilder.compactOffers(for: PhysicalMedia(), title: "Heat", year: 1995).isEmpty)
     }
 
     @Test func physicalPurchaseCompactOffersDedupesRetailers() {
@@ -616,7 +618,15 @@ struct WatchedItTests {
             year: 1995
         )
         let retailers = offers.map(\.retailer)
-        #expect(retailers == [.arrow, .amazon, .ebay, .criterion])
+        #expect(retailers == [.criterion, .arrow, .amazon, .ebay])
+        #expect(offers.allSatisfy { offer in
+            offer.url.absoluteString.contains("Heat")
+                && offer.url.absoluteString.contains("1995")
+                && !offer.url.absoluteString.contains("4K")
+                && !offer.url.absoluteString.contains("Blu-ray")
+                && !offer.url.absoluteString.contains("Blu")
+        })
+        #expect(!offers.contains { $0.url.absoluteString.contains("Criterion") && $0.retailer != .criterion })
     }
 
     @Test func watchFilterMatchesEachStatusPair() throws {

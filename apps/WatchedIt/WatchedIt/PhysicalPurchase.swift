@@ -86,28 +86,72 @@ public enum PhysicalPurchaseLinkBuilder {
     }
 
     public static func playMenuTitle(isOwned: Bool) -> String {
-        isOwned ? "Disc owned…" : "Buy disc…"
+        isOwned ? "Disc owned" : "Buy disc"
     }
 
     public static func playMenuIcon(isOwned: Bool) -> String {
         isOwned ? DesignSystem.Icon.discFill : DesignSystem.Icon.disc
     }
 
-    /// One offer per retailer for compact menus (tvOS).
+    /// One title-and-year search per retailer for compact menus.
     public static func compactOffers(
         for media: PhysicalMedia?,
         title: String,
         year: Int?
     ) -> [PhysicalPurchaseOffer] {
-        var seen = Set<PhysicalPurchaseRetailer>()
-        var offers: [PhysicalPurchaseOffer] = []
-        for group in groups(for: media, title: title, year: year) {
-            for offer in group.offers where !seen.contains(offer.retailer) {
-                seen.insert(offer.retailer)
-                offers.append(offer)
-            }
+        guard let media, media.hasDisplayableAvailability else { return [] }
+        return compactRetailers(for: media).compactMap { retailer in
+            generalOffer(retailer: retailer, title: title, year: year)
         }
-        return offers
+    }
+
+    private static func compactRetailers(for media: PhysicalMedia) -> [PhysicalPurchaseRetailer] {
+        var retailers: [PhysicalPurchaseRetailer] = []
+        if matchesLabel(media, .criterion) { retailers.append(.criterion) }
+        if matchesLabel(media, .arrow) { retailers.append(.arrow) }
+        if matchesLabel(media, .shoutFactory) { retailers.append(.shoutFactory) }
+        if matchesLabel(media, .kinoLorber) { retailers.append(.kinoLorber) }
+        retailers.append(.amazon)
+        retailers.append(.ebay)
+        return retailers
+    }
+
+    private static func matchesLabel(_ media: PhysicalMedia, _ label: PhysicalLabel) -> Bool {
+        if label == .criterion, media.hasCriterion { return true }
+        return media.editions.contains { $0.label == label }
+    }
+
+    private static func generalOffer(
+        retailer: PhysicalPurchaseRetailer,
+        title: String,
+        year: Int?
+    ) -> PhysicalPurchaseOffer? {
+        let query = searchTerms(title: title, year: year, extras: [])
+        let encoded = encodeQuery(query)
+        let prefix: String
+        switch retailer {
+        case .criterion:
+            prefix = "https://www.criterion.com/search?q="
+        case .arrow:
+            prefix = "https://www.arrowvideo.com/search?q="
+        case .shoutFactory:
+            prefix = "https://www.shoutfactory.com/search?q="
+        case .kinoLorber:
+            prefix = "https://www.kinolorber.com/search?q="
+        case .amazon:
+            prefix = "https://www.amazon.com/s?k="
+        case .ebay:
+            prefix = "https://www.ebay.com/sch/i.html?_nkw="
+        }
+        let suffix = retailer == .amazon ? "\(encoded)&i=movies-tv" : encoded
+        guard let url = URL(string: prefix + suffix) else { return nil }
+        return PhysicalPurchaseOffer(
+            id: "compact-\(retailer.rawValue)",
+            retailer: retailer,
+            title: retailer.displayName,
+            kind: .search,
+            url: url
+        )
     }
 
     private static func editionGroup(

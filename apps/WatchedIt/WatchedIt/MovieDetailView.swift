@@ -39,7 +39,6 @@ struct MovieDetailView: View {
     @AppStorage(MovieDetailLayoutParameters.storageKey) private var layoutParametersData: Data = MovieDetailLayoutParameters().encode()
     @State private var isLoadingDetails = false
     @State private var showRewatchablesEditor = false
-    @State private var showPhysicalPurchaseSheet = false
     @State private var hasTriggeredCatalogRefresh = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -239,7 +238,15 @@ struct MovieDetailView: View {
     }
 
     private var hasPhysicalPurchaseOptions: Bool {
-        PhysicalPurchaseLinkBuilder.hasOptions(for: displayMovie.physicalMedia)
+        !physicalPurchaseOffers.isEmpty
+    }
+
+    private var physicalPurchaseOffers: [PhysicalPurchaseOffer] {
+        PhysicalPurchaseLinkBuilder.compactOffers(
+            for: displayMovie.physicalMedia,
+            title: displayMovie.title,
+            year: displayMovie.year
+        )
     }
 
     private var hasTheatricalTicketOptions: Bool {
@@ -1086,11 +1093,9 @@ struct MovieDetailView: View {
         }
     }
 
-    private func presentPhysicalPurchaseSheet() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(150))
-            showPhysicalPurchaseSheet = true
-        }
+    private func toggleOwnedDiscStatus() {
+        localIsOwnedDisc.toggle()
+        localDB.queueOwnedDiscStatusUpdate(displayMovie, isOwnedDisc: localIsOwnedDisc)
     }
 
     private func openStreamingService(_ service: StreamingService) {
@@ -1166,9 +1171,24 @@ struct MovieDetailView: View {
                                     }
                                 }
 
-                                if hasPhysicalPurchaseOptions {
+                                if !physicalPurchaseOffers.isEmpty {
                                     Divider()
-                                    Button(action: presentPhysicalPurchaseSheet) {
+                                    Menu {
+                                        Button(action: toggleOwnedDiscStatus) {
+                                            Label(
+                                                localIsOwnedDisc ? "Owned" : "I own this",
+                                                systemImage: PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: localIsOwnedDisc)
+                                            )
+                                        }
+                                        Divider()
+                                        ForEach(physicalPurchaseOffers) { offer in
+                                            Button {
+                                                openURL(offer.url)
+                                            } label: {
+                                                Label(offer.title, systemImage: DesignSystem.Icon.disc)
+                                            }
+                                        }
+                                    } label: {
                                         Label(
                                             PhysicalPurchaseLinkBuilder.playMenuTitle(isOwned: localIsOwnedDisc),
                                             systemImage: PhysicalPurchaseLinkBuilder.playMenuIcon(isOwned: localIsOwnedDisc)
@@ -1565,18 +1585,6 @@ struct MovieDetailView: View {
             }
         }
 
-        .sheet(isPresented: $showPhysicalPurchaseSheet) {
-            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
-                PhysicalPurchaseSheet(
-                    movie: displayMovie,
-                    media: media,
-                    isOwnedDisc: localIsOwnedDisc
-                ) { isOwned in
-                    localIsOwnedDisc = isOwned
-                    localDB.queueOwnedDiscStatusUpdate(displayMovie, isOwnedDisc: isOwned)
-                }
-            }
-        }
         .onAppear {
             // Sync local state from database when view appears
             syncLocalState()

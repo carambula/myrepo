@@ -40,7 +40,6 @@ struct MovieDetailView: View {
     @State private var isLoadingDetails = false
     @State private var showRewatchablesEditor = false
     @State private var showPhysicalPurchaseSheet = false
-    @State private var showTheatricalTicketSheet = false
     @State private var hasTriggeredCatalogRefresh = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -244,7 +243,15 @@ struct MovieDetailView: View {
     }
 
     private var hasTheatricalTicketOptions: Bool {
-        TheatricalTicketLinkBuilder.hasOptions(for: displayMovie.theatricalRun)
+        !theatricalTicketOffers.isEmpty
+    }
+
+    private var theatricalTicketOffers: [TheatricalTicketOffer] {
+        TheatricalTicketLinkBuilder.compactOffers(
+            for: displayMovie.theatricalRun,
+            title: displayMovie.title,
+            year: displayMovie.year
+        )
     }
 
     private var showsPlayMenu: Bool {
@@ -1086,13 +1093,6 @@ struct MovieDetailView: View {
         }
     }
 
-    private func presentTheatricalTicketSheet() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(150))
-            showTheatricalTicketSheet = true
-        }
-    }
-
     private func openStreamingService(_ service: StreamingService) {
         let link = StreamingServiceLinkBuilder.link(
             for: service,
@@ -1176,10 +1176,18 @@ struct MovieDetailView: View {
                                     }
                                 }
 
-                                if hasTheatricalTicketOptions {
+                                if !theatricalTicketOffers.isEmpty {
                                     Divider()
-                                    Button(action: presentTheatricalTicketSheet) {
-                                        Label("Get tickets…", systemImage: DesignSystem.Icon.ticket)
+                                    Menu {
+                                        ForEach(theatricalTicketOffers) { offer in
+                                            Button {
+                                                openURL(offer.url)
+                                            } label: {
+                                                Label(offer.title, systemImage: DesignSystem.Icon.ticket)
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Get tickets", systemImage: DesignSystem.Icon.ticket)
                                     }
                                 }
                             } label: {
@@ -1567,15 +1575,6 @@ struct MovieDetailView: View {
                     localIsOwnedDisc = isOwned
                     localDB.queueOwnedDiscStatusUpdate(displayMovie, isOwnedDisc: isOwned)
                 }
-            }
-        }
-        .sheet(isPresented: $showTheatricalTicketSheet) {
-            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
-                TheatricalTicketSheet(
-                    movieTitle: displayMovie.title,
-                    year: displayMovie.year,
-                    run: run
-                )
             }
         }
         .onAppear {

@@ -639,7 +639,9 @@ class PlaybackService {
             feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
                 for podcast in followed {
                     group.addTask {
-                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                        guard let episodes = try? await RSSFeedService.shared.fetchRecentEpisodes(
+                            feedURL: podcast.feedURL
+                        ) else { return nil }
                         return (podcast.id, episodes)
                     }
                 }
@@ -652,21 +654,19 @@ class PlaybackService {
             }
         }
 
-        // Merging every fetched episode runs `EpisodePlaybackStore.merge` (UserDefaults reads, SHA-256
-        // key hashing, and `FileManager` download lookups) across all followed feeds. That is pure,
-        // main-thread-free work, so it runs off the main actor (matching `restoreResumeSessionIfNeeded`)
-        // to avoid a multi-second launch hang once the feeds resolve.
+        // Merge playback state only until the first unfinished episode per show. Walking the full
+        // archive with SHA-256 / UserDefaults / download lookups caused multi-second launch hangs
+        // once feeds grew past a few hundred episodes.
         let rebuiltQueue = await Task.detached(priority: .userInitiated) { () -> [Episode] in
             var seenEpisodeIDs = Set<String>()
             var rebuilt: [Episode] = []
 
             for podcast in followed {
                 guard let fetched = feedMap[podcast.id] else { continue }
-                let merged = fetched
-                    .map { EpisodePlaybackStore.merge($0) }
-                    .sorted { $0.publishDate > $1.publishDate }
-                guard let latestUnfinished = merged.first(where: { !$0.isEffectivelyFinished }) else { continue }
-                guard latestUnfinished.id != currentID else { continue }
+                guard let latestUnfinished = EpisodeQueueBuilder.latestUnfinished(
+                    in: fetched,
+                    excluding: currentID
+                ) else { continue }
                 guard !seenEpisodeIDs.contains(latestUnfinished.id) else { continue }
                 seenEpisodeIDs.insert(latestUnfinished.id)
                 rebuilt.append(latestUnfinished)

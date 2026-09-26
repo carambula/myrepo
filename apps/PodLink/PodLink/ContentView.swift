@@ -240,7 +240,9 @@ struct ContentView: View {
             let feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
                 for podcast in followed {
                     group.addTask {
-                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                        guard let episodes = try? await RSSFeedService.shared.fetchRecentEpisodes(
+                            feedURL: podcast.feedURL
+                        ) else { return nil }
                         return (podcast.id, episodes)
                     }
                 }

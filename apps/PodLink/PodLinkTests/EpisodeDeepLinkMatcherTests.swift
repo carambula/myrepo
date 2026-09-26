@@ -48,6 +48,21 @@ struct EpisodeDeepLinkMatcherTests {
     }
 
     @Test
+    func parsesTitleWhenFeedURLIsEmbeddedUnencoded() {
+        let raw = "podmin://episode?feed=https://feeds.megaphone.fm/the-rewatchables&title=%E2%80%98Rocky%E2%80%99%20With%20Bill%20Simmons&movie=Rocky"
+        let url = URL(string: raw)!
+        let deepLink = PodLinkDeepLink(url: url)
+        guard case .episode(let feed, let hint) = deepLink else {
+            Issue.record("expected episode deep link from unencoded feed URL")
+            return
+        }
+        #expect(feed.host == "feeds.megaphone.fm")
+        #expect(hint.movieTitle == "Rocky")
+        #expect(hint.episodeTitle?.contains("Rocky") == true)
+        #expect(EpisodeDeepLinkMatcher.bestEpisode(in: rockyFranchise(), matchingTitle: hint.episodeTitle)?.id == "rocky-1")
+    }
+
+    @Test
     func episodeFilterDoesNotScanShowNotes() {
         let hit = episode(id: "title-hit", title: "Rocky", description: "")
         let notesOnly = episode(

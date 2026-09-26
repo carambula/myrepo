@@ -82,6 +82,13 @@ struct PodcastListPerformanceTests {
         #expect(filtered.map(\.id) == ["1"])
     }
 
+    @Test
+    func homeAndQueueUseABoundedRecentWindow() {
+        // Opening the app must not pull the full podcast archive (up to 5000) per follow.
+        #expect(RSSFeedService.recentEpisodeWindow == 40)
+        #expect(RSSFeedService.recentEpisodeWindow < EpisodeArchive.archiveCap)
+    }
+
     private func podcast(id: String, title: String) -> Podcast {
         Podcast(
             id: id,

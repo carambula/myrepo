@@ -667,7 +667,10 @@ struct PodcastListView: View {
         await withTaskGroup(of: (String, Episode)?.self) { group in
             for podcast in podcasts {
                 group.addTask {
-                    guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL),
+                    guard let episodes = try? await RSSFeedService.shared.fetchRecentEpisodes(
+                        feedURL: podcast.feedURL,
+                        limit: 1
+                    ),
                           let latest = episodes.first else { return nil }
                     let merged = EpisodePlaybackStore.merge(latest)
                     return (podcast.id, merged)

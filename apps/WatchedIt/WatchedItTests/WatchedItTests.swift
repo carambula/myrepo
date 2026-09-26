@@ -687,6 +687,10 @@ struct WatchedItTests {
         #expect(groups.map(\.headline) == ["Tickets", "IMAX"])
         #expect(groups[0].offers.contains(where: { $0.title == "Fandango" }))
         #expect(groups[1].offers.contains(where: { $0.url.absoluteString.contains("IMAX") }))
+        #expect(
+            TheatricalTicketLinkBuilder.compactOffers(for: run, title: "Fight Club", year: 1999).map(\.title)
+                == ["Fandango", "Atom Tickets", "AMC", "Google"]
+        )
 
         let resolved = TheatricalRun(
             tmdbId: 550,

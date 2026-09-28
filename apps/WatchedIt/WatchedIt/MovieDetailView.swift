@@ -928,30 +928,26 @@ struct MovieDetailView: View {
 
     @ViewBuilder
     private var ratingAndYearRow: some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            if hasCriterionSourceBadge {
-                Image(ClosetPicksSource.badgeAssetName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: ratingBadgeHeight, height: ratingBadgeHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-                    .accessibilityLabel("Criterion")
-            }
-            if let mpaaRating = displayMovie.mpaaRating {
-                let podcastItems = podcastItemsForRatingRow
-                HStack(spacing: DesignSystem.Spacing.md) {
-                    if !podcastItems.isEmpty {
-                        HStack(spacing: DesignSystem.Spacing.xs) {
-                            ForEach(podcastItems) { item in
-                                if let feedURL = podcastFeedURL(for: item) {
-                                    Button(action: { openPodcastMenuItem(item) }) {
-                                        PodcastSourceArtworkView(feedURLString: feedURL)
-                                            .frame(width: ratingBadgeHeight, height: ratingBadgeHeight)
-                                    }
-                                    .buttonStyle(CreditTapButtonStyle())
-                                    .accessibilityLabel("Open \(item.podcastName)")
-                                }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                if hasCriterionSourceBadge {
+                    Image(ClosetPicksSource.badgeAssetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: ratingBadgeHeight, height: ratingBadgeHeight)
+                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                        .accessibilityLabel("Criterion")
+                }
+
+                if let mpaaRating = displayMovie.mpaaRating {
+                    ForEach(podcastItemsForRatingRow) { item in
+                        if let feedURL = podcastFeedURL(for: item) {
+                            Button(action: { openPodcastMenuItem(item) }) {
+                                PodcastSourceArtworkView(feedURLString: feedURL)
+                                    .frame(width: ratingBadgeHeight, height: ratingBadgeHeight)
                             }
+                            .buttonStyle(CreditTapButtonStyle())
+                            .accessibilityLabel("Open \(item.podcastName)")
                         }
                     }
 
@@ -962,119 +958,79 @@ struct MovieDetailView: View {
                             .foregroundColor(DesignSystem.Color.textPrimary)
                             .padding(.horizontal, DesignSystem.Spacing.sm)
                             .padding(.vertical, DesignSystem.Spacing.xs)
-                            .frame(minHeight: ratingBadgeHeight)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                    .fill(DesignSystem.Color.accent.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
+                            .frame(minWidth: ratingBadgeHeight, minHeight: ratingBadgeHeight)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .background(metadataChipBackground)
                     }
                     .buttonStyle(CreditTapButtonStyle())
                 }
-            }
 
-            if let year = displayMovie.year {
-                Button(action: { handleYearTap(year) }) {
-                    Text(String(year))
-                        .titleMedium()
-                        .foregroundColor(DesignSystem.Color.textSecondary)
+                if let year = displayMovie.year {
+                    Button(action: { handleYearTap(year) }) {
+                        Text(String(year))
+                            .titleMedium()
+                            .foregroundColor(DesignSystem.Color.textSecondary)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .buttonStyle(CreditTapButtonStyle())
                 }
-                .buttonStyle(CreditTapButtonStyle())
-            }
 
-            if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
-                if media.hasCriterion {
-                    Button(action: { handlePhysicalMediaTap("criterion") }) {
-                        Text("Criterion")
-                            .labelMedium()
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Color.textPrimary)
-                            .padding(.horizontal, DesignSystem.Spacing.sm)
-                            .padding(.vertical, DesignSystem.Spacing.xs)
-                            .frame(minHeight: ratingBadgeHeight)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                    .fill(DesignSystem.Color.accent.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
+                if let media = displayMovie.physicalMedia, media.hasDisplayableAvailability {
+                    if media.hasCriterion {
+                        metadataChip("Criterion", accessibilityLabel: "Criterion Collection") {
+                            handlePhysicalMediaTap("criterion")
+                        }
                     }
-                    .buttonStyle(CreditTapButtonStyle())
-                    .accessibilityLabel("Criterion Collection")
-                }
-                if media.has4K {
-                    Button(action: { handlePhysicalMediaTap("4k") }) {
-                        Text("4K")
-                            .labelMedium()
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Color.textPrimary)
-                            .padding(.horizontal, DesignSystem.Spacing.sm)
-                            .padding(.vertical, DesignSystem.Spacing.xs)
-                            .frame(minHeight: ratingBadgeHeight)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                    .fill(DesignSystem.Color.accent.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
+                    if media.has4K {
+                        metadataChip("4K", accessibilityLabel: "4K UHD") {
+                            handlePhysicalMediaTap("4k")
+                        }
                     }
-                    .buttonStyle(CreditTapButtonStyle())
-                    .accessibilityLabel("4K UHD")
                 }
-            }
 
-            if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
-                if run.isInTheaters {
-                    Button(action: { handleTheatricalTap(.inTheaters) }) {
-                        Text("In Theaters")
-                            .labelMedium()
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Color.textPrimary)
-                            .padding(.horizontal, DesignSystem.Spacing.sm)
-                            .padding(.vertical, DesignSystem.Spacing.xs)
-                            .frame(minHeight: ratingBadgeHeight)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                    .fill(DesignSystem.Color.accent.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
+                if let run = displayMovie.theatricalRun, run.hasDisplayableAvailability {
+                    if run.isInTheaters {
+                        metadataChip("In Theaters", accessibilityLabel: "In theaters") {
+                            handleTheatricalTap(.inTheaters)
+                        }
                     }
-                    .buttonStyle(CreditTapButtonStyle())
-                    .accessibilityLabel("In theaters")
-                }
-                if run.hasIMAX {
-                    Button(action: { handleTheatricalTap(.imax) }) {
-                        Text("IMAX")
-                            .labelMedium()
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Color.textPrimary)
-                            .padding(.horizontal, DesignSystem.Spacing.sm)
-                            .padding(.vertical, DesignSystem.Spacing.xs)
-                            .frame(minHeight: ratingBadgeHeight)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                    .fill(DesignSystem.Color.accent.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
-                                            .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            )
+                    if run.hasIMAX {
+                        metadataChip("IMAX") {
+                            handleTheatricalTap(.imax)
+                        }
                     }
-                    .buttonStyle(CreditTapButtonStyle())
-                    .accessibilityLabel("IMAX")
                 }
             }
         }
+    }
+
+    private func metadataChip(
+        _ title: String,
+        accessibilityLabel: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .labelMedium()
+                .fontWeight(.semibold)
+                .foregroundColor(DesignSystem.Color.textPrimary)
+                .padding(.horizontal, DesignSystem.Spacing.sm)
+                .padding(.vertical, DesignSystem.Spacing.xs)
+                .frame(minWidth: ratingBadgeHeight, minHeight: ratingBadgeHeight)
+                .fixedSize(horizontal: true, vertical: false)
+                .background(metadataChipBackground)
+        }
+        .buttonStyle(CreditTapButtonStyle())
+        .accessibilityLabel(accessibilityLabel ?? title)
+    }
+
+    private var metadataChipBackground: some View {
+        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+            .fill(DesignSystem.Color.accent.opacity(0.15))
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                    .stroke(DesignSystem.Color.accent.opacity(0.3), lineWidth: 0.5)
+            )
     }
 
     private func refreshLiveStreamingProviders() async {

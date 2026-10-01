@@ -1753,7 +1753,11 @@ enum StreamingServiceAssets {
         "vudu": "service_vudu",
         "plex": "service_plex",
         "mgm plus": "service_mgm_plus",
-        "starz": "service_starz"
+        "starz": "service_starz",
+        "delta in-flight": "service_delta_in_flight",
+        "delta inflight": "service_delta_in_flight",
+        "delta in flight": "service_delta_in_flight",
+        "delta studio": "service_delta_in_flight"
     ]
 
     static var knownServiceNames: [String] {
@@ -1786,6 +1790,8 @@ enum StreamingServiceAssets {
             return "Netflix"
         case "the criterion channel", "criterion channel":
             return "Criterion Channel"
+        case "delta in-flight", "delta inflight", "delta in flight", "delta studio":
+            return DeltaInFlightSource.displayName
         default:
             return trimmed
         }
@@ -1886,6 +1892,8 @@ private enum StreamingServiceLinkBuilder {
         case "starz":
             appURL = URL(string: "starz://search?query=\(query)")
             webURL = webURL ?? URL(string: "https://www.starz.com/us/en/search?searchTerm=\(query)")
+        case "delta in-flight", "delta inflight", "delta in flight", "delta studio":
+            webURL = webURL ?? URL(string: DeltaInFlightSource.catalogURL)
         default:
             break
         }

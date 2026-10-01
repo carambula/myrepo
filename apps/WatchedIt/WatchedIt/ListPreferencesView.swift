@@ -116,6 +116,10 @@ struct ListPreferencesView: View {
             preferredListIds = allDataSources.map { $0.identifier }
             preferredListsData = ListPreferences.encode(preferredListIds)
             ListPreferences.setHasInitialized(true)
+            _ = ListPreferences.applyDefaultOnListsIfNeeded(
+                availableIdentifiers: allDataSources.map(\.identifier)
+            )
+            preferredListIds = ListPreferences.decode(from: preferredListsData)
             applySeasonalListPreferences()
             return
         }
@@ -130,6 +134,11 @@ struct ListPreferencesView: View {
         let filtered = preferredListIds.filter { existingIds.contains($0) }
         if filtered != preferredListIds {
             preferredListIds = filtered
+        }
+        if ListPreferences.applyDefaultOnListsIfNeeded(
+            availableIdentifiers: allDataSources.map(\.identifier)
+        ) {
+            preferredListIds = ListPreferences.decode(from: preferredListsData)
         }
         applySeasonalListPreferences()
     }

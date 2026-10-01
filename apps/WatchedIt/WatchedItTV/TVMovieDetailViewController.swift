@@ -856,6 +856,8 @@ private enum StreamingServiceLinkBuilder {
         case "starz":
             appURL = URL(string: "starz://search?query=\(query)")
             webURL = webURL ?? URL(string: "https://www.starz.com/us/en/search?searchTerm=\(query)")
+        case "delta in-flight", "delta inflight", "delta in flight", "delta studio":
+            webURL = webURL ?? URL(string: DeltaInFlightSource.catalogURL)
         default:
             break
         }

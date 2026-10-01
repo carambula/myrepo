@@ -114,6 +114,9 @@ struct WatchedItApp: App {
 
             let streamingPrefsStart = ProcessInfo.processInfo.systemUptime
             await localDB.restoreStreamingPreferencesFromCloudKitIfNeeded()
+            if StreamingPreferences.applyDefaultOnServicesIfNeeded() {
+                await localDB.pushLocalStreamingPreferencesToCloudKitIfNeeded()
+            }
             if isPerfLoggingEnabled {
                 let elapsedMs = (ProcessInfo.processInfo.systemUptime - streamingPrefsStart) * 1000
                 print("⏱️ [PERF] [Startup] restoreStreamingPreferencesFromCloudKitIfNeeded: \(String(format: "%.1f", elapsedMs))ms")
@@ -121,6 +124,11 @@ struct WatchedItApp: App {
 
             let listPrefsStart = ProcessInfo.processInfo.systemUptime
             await localDB.restoreListPreferencesFromCloudKitIfNeeded()
+            let sourceIdentifiers = ((try? localDB.modelContext?.fetch(FetchDescriptor<DataSource>())) ?? [])
+                .map(\.identifier)
+            if ListPreferences.applyDefaultOnListsIfNeeded(availableIdentifiers: sourceIdentifiers) {
+                await localDB.pushLocalListPreferencesToCloudKitIfNeeded()
+            }
             if isPerfLoggingEnabled {
                 let elapsedMs = (ProcessInfo.processInfo.systemUptime - listPrefsStart) * 1000
                 print("⏱️ [PERF] [Startup] restoreListPreferencesFromCloudKitIfNeeded: \(String(format: "%.1f", elapsedMs))ms")
@@ -148,6 +156,11 @@ struct WatchedItApp: App {
 
             if let context = localDB.modelContext {
                 _ = await MinCloudCatalogSync.shared.syncIfAvailable(modelContext: context)
+                let syncedSourceIdentifiers = ((try? context.fetch(FetchDescriptor<DataSource>())) ?? [])
+                    .map(\.identifier)
+                if ListPreferences.applyDefaultOnListsIfNeeded(availableIdentifiers: syncedSourceIdentifiers) {
+                    await localDB.pushLocalListPreferencesToCloudKitIfNeeded()
+                }
             }
             await TheatricalAvailabilitySync.shared.refresh(
                 catalogTmdbIds: localDB.movies.compactMap(\.tmdbId)

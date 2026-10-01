@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { catalogMovieId, type ImportMovie } from "./catalog-import.js";
 import { movieIdFromTmdb } from "./passwords.js";
 import { normalizePhysicalMedia } from "./physical-media.js";
+import { DELTA_IN_FLIGHT_SOURCE_ID, withDeltaInFlightProvider } from "./delta-in-flight.js";
 
 export type AdminMovie = {
   __index?: number;
@@ -91,7 +92,10 @@ export const loadAdminMovies = async (): Promise<AdminMovie[]> => {
       posterPath: (row.poster_path as string | null) ?? null,
       backdropPath: (row.backdrop_path as string | null) ?? null,
       genres: Array.isArray(row.genres) ? (row.genres as string[]) : [],
-      streamingServices: Array.isArray(row.providers) ? row.providers : [],
+      streamingServices: withDeltaInFlightProvider(
+        Array.isArray(row.providers) ? row.providers : [],
+        String(row.source_id || "") === DELTA_IN_FLIGHT_SOURCE_ID
+      ),
       credits: row.credits ?? null,
       trailer: row.trailer ?? null,
       oscarAwards: row.oscar_awards ?? null,

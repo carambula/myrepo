@@ -60,6 +60,7 @@ func generateBootstrapJSON() {
         "IMDb List 2": ("imdb-list-2", "IMDb List 2", "url", "https://www.imdb.com/list/ls058479560/", true),
         "Criterion Collection": ("criterion", "Criterion Collection", "url", "https://en.wikipedia.org/wiki/Criterion_Closet#Criterion_Collection_40", true),
         "Criterion Closet Picks": ("criterion-closet-picks", "Criterion Closet Picks", "url", "https://www.criterion.com/closet-picks", false),
+        "Delta in-flight": ("delta-in-flight", "Delta in-flight", "url", "https://www.delta.com/us/en/onboard/inflight-entertainment/current-movies", false),
     ]
     
     // Parse movies

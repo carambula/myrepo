@@ -153,6 +153,9 @@ struct StreamingServicesPreferencesView: View {
         }
         #endif
         .onAppear {
+            _ = StreamingPreferences.applyDefaultOnServicesIfNeeded()
+            preferredServicesData = StreamingPreferences.preferredServicesData()
+            hiddenServicesData = StreamingPreferences.hiddenServicesData()
             preferredServices = canonicalizeServices(StreamingPreferences.decode(from: preferredServicesData))
             hiddenServices = canonicalizeServices(StreamingPreferences.decode(from: hiddenServicesData))
         }

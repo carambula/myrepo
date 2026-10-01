@@ -22,16 +22,18 @@ final class TVListPreferencesViewController: UITableViewController {
     }
 
     private func loadData() {
+        if let context = LocalDatabaseManager.shared.modelContext {
+            let descriptor = FetchDescriptor<DataSource>(sortBy: [SortDescriptor(\.name)])
+            allDataSources = (try? context.fetch(descriptor)) ?? []
+        }
         preferredListIds = ListPreferences.decode(from: UserDefaults.standard.data(forKey: ListPreferences.storageKey) ?? Data())
         if !ListPreferences.hasInitialized() {
             preferredListIds = allDataSources.map { $0.identifier }
             ListPreferences.setHasInitialized(true)
             UserDefaults.standard.set(ListPreferences.encode(preferredListIds), forKey: ListPreferences.storageKey)
         }
-
-        if let context = LocalDatabaseManager.shared.modelContext {
-            let descriptor = FetchDescriptor<DataSource>(sortBy: [SortDescriptor(\.name)])
-            allDataSources = (try? context.fetch(descriptor)) ?? []
+        if ListPreferences.applyDefaultOnListsIfNeeded(availableIdentifiers: allDataSources.map(\.identifier)) {
+            preferredListIds = ListPreferences.decode(from: UserDefaults.standard.data(forKey: ListPreferences.storageKey) ?? Data())
         }
         tableView.reloadData()
     }

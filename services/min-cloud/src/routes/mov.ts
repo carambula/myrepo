@@ -6,6 +6,10 @@ import { isFreshStreamingCache, persistStreamingProviders } from "../lib/streami
 import { config } from "../config.js";
 import { CLOSET_PICKS_SOURCE_ID, attachClosetPicksGuestLinks } from "../lib/closet-picks-scrape.js";
 import { catalogCacheHeaders, catalogPageMeta, mapCatalogSourceLink } from "../lib/catalog-response.js";
+import {
+  DELTA_IN_FLIGHT_SOURCE_ID,
+  withDeltaInFlightProvider
+} from "../lib/delta-in-flight.js";
 
 const SHIPPABLE_MOVIE_SQL = `m.tmdb_id IS NOT NULL AND NULLIF(BTRIM(m.poster_path), '') IS NOT NULL`;
 
@@ -96,10 +100,16 @@ router.get("/catalog", async (req, res) => {
     list.push(mapCatalogSourceLink(link));
     linksByMovie.set(String(link.movie_id), list);
   }
-  const mapped = movies.rows.map((row) => ({
-    ...mapMovie(row, Array.isArray(row.providers) ? row.providers : []),
-    sources: linksByMovie.get(String(row.id)) ?? []
-  }));
+  const mapped = movies.rows.map((row) => {
+    const sources = linksByMovie.get(String(row.id)) ?? [];
+    const linkedToDelta = sources.some(
+      (link) => String((link as { identifier?: unknown }).identifier ?? "") === DELTA_IN_FLIGHT_SOURCE_ID
+    );
+    return {
+      ...mapMovie(row, withDeltaInFlightProvider(row.providers, linkedToDelta)),
+      sources
+    };
+  });
   const revisionNumber = Number(revision.rows[0]?.revision ?? 0);
   const total = Number(totalResult.rows[0]?.count ?? 0);
   const page = catalogPageMeta(total, offset, mapped.length, limit);
@@ -139,9 +149,10 @@ router.get("/movies/:id", async (req, res) => {
         [CLOSET_PICKS_SOURCE_ID]
       )
     : { rows: [] };
+  const linkedToDelta = links.rows.some((link) => String(link.source_id) === DELTA_IN_FLIGHT_SOURCE_ID);
   res.json({
     movie: {
-      ...mapMovie(result.rows[0], result.rows[0].providers ?? []),
+      ...mapMovie(result.rows[0], withDeltaInFlightProvider(result.rows[0].providers ?? [], linkedToDelta)),
       sources: attachClosetPicksGuestLinks(
         links.rows as Array<Record<string, unknown>>,
         closetIndex.rows as Array<Record<string, unknown>>
@@ -187,11 +198,18 @@ router.get("/streaming/:tmdbId", async (req, res) => {
   const movieId = cached.rows[0]?.id ? String(cached.rows[0].id) : null;
   const cachedProviders = cached.rows[0]?.providers ?? null;
   const refreshedAt = cached.rows[0]?.refreshed_at ?? null;
+  const deltaLink = movieId
+    ? await query(`SELECT 1 FROM mov_movie_sources WHERE movie_id = $1 AND source_id = $2 LIMIT 1`, [
+        movieId,
+        DELTA_IN_FLIGHT_SOURCE_ID
+      ])
+    : { rowCount: 0 };
+  const linkedToDelta = Boolean(deltaLink.rowCount);
   if (cachedProviders && isFreshStreamingCache(refreshedAt)) {
     res.json({
       tmdbId,
       region: config.tmdbRegion,
-      providers: cachedProviders,
+      providers: withDeltaInFlightProvider(cachedProviders, linkedToDelta),
       refreshedAt,
       source: "cache"
     });
@@ -202,7 +220,7 @@ router.get("/streaming/:tmdbId", async (req, res) => {
       res.json({
         tmdbId,
         region: config.tmdbRegion,
-        providers: cachedProviders,
+        providers: withDeltaInFlightProvider(cachedProviders, linkedToDelta),
         refreshedAt,
         source: "cache"
       });
@@ -219,7 +237,7 @@ router.get("/streaming/:tmdbId", async (req, res) => {
     res.json({
       tmdbId,
       region: config.tmdbRegion,
-      providers,
+      providers: withDeltaInFlightProvider(providers, linkedToDelta),
       refreshedAt: new Date().toISOString(),
       source: "tmdb"
     });
@@ -228,7 +246,7 @@ router.get("/streaming/:tmdbId", async (req, res) => {
       res.json({
         tmdbId,
         region: config.tmdbRegion,
-        providers: cachedProviders,
+        providers: withDeltaInFlightProvider(cachedProviders, linkedToDelta),
         refreshedAt,
         source: "cache"
       });

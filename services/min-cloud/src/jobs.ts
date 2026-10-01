@@ -17,6 +17,7 @@ import { bumpWatchedIt } from "./lib/admin-catalog.js";
 import { resolveNowPlaying } from "./lib/theater-stays.js";
 import { ingestPodcastEpisode, purgePodcastNoiseMovies } from "./lib/podcast-ingest.js";
 import { attachClosetPicksYouTubeToCatalog, rematchClosetPicks } from "./lib/closet-picks-rematch.js";
+import { refreshDeltaInFlightCatalog } from "./lib/delta-in-flight-refresh.js";
 
 type JobStats = Record<string, number | string | boolean | undefined>;
 type JobReport = (stats: JobStats) => Promise<void>;
@@ -636,6 +637,16 @@ export const attachClosetPicksYouTubeCatalog = async () => {
   });
 };
 
+export const refreshDeltaInFlight = async () => {
+  return recordJob("mov.delta.refresh", async () => {
+    const stats = await refreshDeltaInFlightCatalog();
+    return {
+      phase: "done",
+      ...stats
+    };
+  });
+};
+
 export const runNamedJob = async (name: string) => {
   switch (name) {
     case "mov.streaming.refresh":
@@ -654,12 +665,15 @@ export const runNamedJob = async (name: string) => {
       return rematchClosetPicksCatalog();
     case "mov.closet.youtube":
       return attachClosetPicksYouTubeCatalog();
+    case "mov.delta.refresh":
+      return refreshDeltaInFlight();
     case "all":
       return {
         streaming: await refreshStreamingCatalog(),
         theaters: await refreshTheaterStays(),
         podFeeds: await refreshPodcastFeeds(),
         movFeeds: await refreshMoviePodcastSources(),
+        delta: await refreshDeltaInFlight(),
         notifications: await dispatchNotifications()
       };
     default:
@@ -678,6 +692,9 @@ export const startJobScheduler = () => {
   setTimeout(() => {
     void runNamedJob("mov.feeds.refresh");
   }, 20_000);
+  setTimeout(() => {
+    void runNamedJob("mov.delta.refresh");
+  }, 45_000);
   setInterval(() => {
     void runNamedJob("pod.feeds.refresh");
   }, 30 * 60 * 1000);
@@ -690,6 +707,9 @@ export const startJobScheduler = () => {
   setInterval(() => {
     void runNamedJob("mov.feeds.refresh");
   }, 2 * hour);
+  setInterval(() => {
+    void runNamedJob("mov.delta.refresh");
+  }, 12 * hour);
   setInterval(() => {
     void runNamedJob("notifications.dispatch");
   }, 15 * 60 * 1000);

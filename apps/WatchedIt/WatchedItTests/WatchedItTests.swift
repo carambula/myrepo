@@ -1047,6 +1047,81 @@ struct WatchedItTests {
         #expect(noPreferences.map(\.id) == criterionOnly.map(\.id))
     }
 
+    @Test func deltaInFlightIsAKnownDefaultOnStreamer() {
+        #expect(StreamingServiceAssets.normalizedName("Delta Studio") == "Delta in-flight")
+        #expect(StreamingServiceAssets.knownServiceNames.contains("Delta in-flight"))
+        #expect(StreamingPreferences.defaultOnServices.contains("Delta in-flight"))
+        #expect(ListPreferences.defaultOnIdentifiers.contains(DeltaInFlightSource.identifier))
+
+        let available = [
+            StreamingService(id: "8", name: "Netflix"),
+            StreamingService(id: DeltaInFlightSource.identifier, name: "Delta in-flight")
+        ]
+        let filtered = PlayMenuStreamingFilter.services(
+            available: available,
+            preferredNames: ["Delta in-flight"]
+        )
+        #expect(filtered.map(\.name) == ["Delta in-flight"])
+    }
+
+    @Test func defaultOnStreamerSeedsOnceAndStaysControllable() {
+        let preferredKey = StreamingPreferences.storageKey
+        let hiddenKey = StreamingPreferences.hiddenStorageKey
+        let appliedKey = StreamingPreferences.defaultOnAppliedKey
+        let previousPreferred = UserDefaults.standard.data(forKey: preferredKey)
+        let previousHidden = UserDefaults.standard.data(forKey: hiddenKey)
+        let previousApplied = UserDefaults.standard.data(forKey: appliedKey)
+        defer {
+            UserDefaults.standard.set(previousPreferred, forKey: preferredKey)
+            UserDefaults.standard.set(previousHidden, forKey: hiddenKey)
+            UserDefaults.standard.set(previousApplied, forKey: appliedKey)
+        }
+
+        UserDefaults.standard.removeObject(forKey: preferredKey)
+        UserDefaults.standard.removeObject(forKey: hiddenKey)
+        UserDefaults.standard.removeObject(forKey: appliedKey)
+
+        #expect(StreamingPreferences.applyDefaultOnServicesIfNeeded())
+        #expect(StreamingPreferences.decode(from: StreamingPreferences.preferredServicesData()) == ["Delta in-flight"])
+        #expect(StreamingPreferences.applyDefaultOnServicesIfNeeded() == false)
+
+        StreamingPreferences.setPreferredServicesData(StreamingPreferences.encode(["Netflix"]))
+        #expect(StreamingPreferences.applyDefaultOnServicesIfNeeded() == false)
+        #expect(StreamingPreferences.decode(from: StreamingPreferences.preferredServicesData()) == ["Netflix"])
+    }
+
+    @Test func defaultOnListSeedsWhenTheSourceExists() {
+        let storageKey = ListPreferences.storageKey
+        let appliedKey = ListPreferences.defaultOnAppliedKey
+        let previousPreferred = UserDefaults.standard.data(forKey: storageKey)
+        let previousApplied = UserDefaults.standard.data(forKey: appliedKey)
+        let previousInitialized = ListPreferences.hasInitialized()
+        defer {
+            UserDefaults.standard.set(previousPreferred, forKey: storageKey)
+            UserDefaults.standard.set(previousApplied, forKey: appliedKey)
+            ListPreferences.setHasInitialized(previousInitialized)
+        }
+
+        ListPreferences.setHasInitialized(true)
+        UserDefaults.standard.set(ListPreferences.encode(["rewatchables"]), forKey: storageKey)
+        UserDefaults.standard.removeObject(forKey: appliedKey)
+
+        #expect(
+            ListPreferences.applyDefaultOnListsIfNeeded(
+                availableIdentifiers: ["rewatchables", DeltaInFlightSource.identifier]
+            )
+        )
+        #expect(
+            ListPreferences.decode(from: UserDefaults.standard.data(forKey: storageKey) ?? Data())
+                == ["rewatchables", DeltaInFlightSource.identifier]
+        )
+        #expect(
+            ListPreferences.applyDefaultOnListsIfNeeded(
+                availableIdentifiers: ["rewatchables", DeltaInFlightSource.identifier]
+            ) == false
+        )
+    }
+
     private func movie(
         isRewatched: Bool = false,
         isListened: Bool = false,

@@ -21,6 +21,7 @@ let package = Package(
                 "AppDataBootstrapper.swift",
                 "BootstrapDataService.swift",
                 "CloudKitManager.swift",
+                "DeltaInFlightSource.swift",
                 "ImageCache.swift",
                 "ListPreferences.swift",
                 "LocalDatabaseManager.swift",

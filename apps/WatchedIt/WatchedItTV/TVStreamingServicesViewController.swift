@@ -22,6 +22,7 @@ final class TVStreamingServicesViewController: UITableViewController {
     }
 
     private func loadData() {
+        _ = StreamingPreferences.applyDefaultOnServicesIfNeeded()
         preferredServices = canonicalizeServices(StreamingPreferences.decode(from: StreamingPreferences.preferredServicesData()))
         hiddenServices = canonicalizeServices(StreamingPreferences.decode(from: StreamingPreferences.hiddenServicesData()))
         rebuildAvailableServices()
@@ -39,7 +40,7 @@ final class TVStreamingServicesViewController: UITableViewController {
             }
         }
         let hiddenSet = Set(hiddenServices.map { normalizedCaseKey($0) })
-        availableServices = Array(Set(normalized))
+        availableServices = Array(Set(normalized).union(StreamingPreferences.defaultOnServices))
             .filter { !hiddenSet.contains(normalizedCaseKey($0)) }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }

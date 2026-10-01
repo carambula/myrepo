@@ -92,7 +92,8 @@ class BootstrapDataService {
         "imdb-list-2",
         "criterion",
         "criterion-closet-picks",
-        "afi-100-1998"
+        "afi-100-1998",
+        "delta-in-flight"
     ]
     
     private let lastBootstrapImportDateKey = "lastBootstrapImportDate"

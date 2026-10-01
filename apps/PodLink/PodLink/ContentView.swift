@@ -41,6 +41,7 @@ struct ContentView: View {
     @State private var autoQueueRefreshTask: Task<Void, Never>?
     @State private var isSearchSheetPresented = false
     @State private var deepLinkEpisodeHint: PodLinkEpisodeHint?
+    @State private var deepLinkGeneration = 0
 
     /// Grid + no titles (compact posters). List + titles uses the same large-art emphasis.
     private var isGridPosterStyle: Bool {
@@ -185,8 +186,12 @@ struct ContentView: View {
                     PodcastDetailView(
                         podcast: podcast,
                         initialDeepLinkEpisode: deepLinkEpisodeHint,
+                        onResolvedDeepLinkEpisode: { episode in
+                            presentDeepLinkPlayer(episode, podcast: podcast)
+                        },
                         onHandledInitialDeepLinkEpisode: { deepLinkEpisodeHint = nil }
                     )
+                    .id("\(podcast.id)-deeplink-\(deepLinkGeneration)")
                 case .account:
                     AccountSheetView()
                 case .offline:
@@ -367,6 +372,9 @@ struct ContentView: View {
         }
 
         deepLinkEpisodeHint = episodeHint
+        if episodeHint != nil {
+            deepLinkGeneration += 1
+        }
         isSearchSheetPresented = false
         playbackService.isNowPlayingSheetPresented = false
 
@@ -379,20 +387,36 @@ struct ContentView: View {
             feedURL: canonicalFeedURL
         )
         let initialPodcast = existing ?? placeholderPodcast
-        presentRootSheet(.podcast(initialPodcast))
+        if !isShowingPodcast(feedURL: canonicalFeedURL) {
+            presentRootSheet(.podcast(initialPodcast))
+        }
 
         guard existing == nil else { return }
 
         let resolvedPodcast = try? await RSSFeedService.shared.fetchPodcastMetadata(feedURL: canonicalFeedURL)
         guard let resolvedPodcast else { return }
 
-        // Replacing an already-open show sheet remounts PodcastDetailView, cancels the archive
-        // fetch, and can consume the deep-link hint before episodes arrive.
-        if let currentPodcast = currentRootSheetPodcast(),
-           PrivateFeedAuthStore.canonicalFeedURL(currentPodcast.feedURL) == canonicalFeedURL {
+        // Replacing an already-open show sheet remounts PodcastDetailView and can drop the hint.
+        if isShowingPodcast(feedURL: canonicalFeedURL) {
             return
         }
         presentRootSheet(.podcast(resolvedPodcast))
+    }
+
+    private func isShowingPodcast(feedURL: URL) -> Bool {
+        guard let current = currentRootSheetPodcast() else { return false }
+        return PrivateFeedAuthStore.canonicalFeedURL(current.feedURL) == feedURL
+            || current.id == feedURL.absoluteString
+    }
+
+    private func presentDeepLinkPlayer(_ episode: Episode, podcast: Podcast) {
+        Task { @MainActor in
+            // The show sheet swallows a nested player if it is still presenting.
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard !Task.isCancelled else { return }
+            await playbackService.play(episode: episode, podcast: podcast)
+            playbackService.isNowPlayingSheetPresented = true
+        }
     }
 
     private func placeholderPodcastTitle(for feedURL: URL) -> String {

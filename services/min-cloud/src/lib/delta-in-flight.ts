@@ -5,6 +5,9 @@ export const DELTA_IN_FLIGHT_SOURCE_ID = "delta-in-flight";
 export const DELTA_IN_FLIGHT_SOURCE_NAME = "Delta in-flight";
 export const DELTA_IN_FLIGHT_URL =
   "https://www.delta.com/us/en/onboard/inflight-entertainment/current-movies";
+export const DELTA_IN_FLIGHT_LETTERBOXD_URL =
+  "https://letterboxd.com/ebusch0320/list/delta-in-flight-movies/";
+export const DELTA_IN_FLIGHT_LETTERBOXD_SECTION = "Letterboxd";
 
 export const DELTA_IN_FLIGHT_PROVIDER = {
   id: DELTA_IN_FLIGHT_SOURCE_ID,
@@ -48,6 +51,15 @@ export const isDeltaInFlightUrl = (url: string) => {
   }
 };
 
+export const isDeltaInFlightLetterboxdUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.endsWith("letterboxd.com") && /\/list\/delta-in-flight-movies/i.test(parsed.pathname);
+  } catch {
+    return /letterboxd\.com\/.+\/list\/delta-in-flight-movies/i.test(url);
+  }
+};
+
 export const isDeltaInFlightProvider = (service: { name?: unknown; providerName?: unknown; id?: unknown }) => {
   const name = String(service.providerName ?? service.name ?? "")
     .trim()
@@ -72,7 +84,7 @@ export const withDeltaInFlightProvider = (providers: unknown, linked: boolean) =
   return [DELTA_IN_FLIGHT_PROVIDER, ...without];
 };
 
-export const parseDeltaTitle = (rawTitle: string) => {
+export const parseDeltaTitle = (rawTitle: string, options: { stripPossessive?: boolean } = {}) => {
   const decoded = decodeEntities(rawTitle);
   const yearMatch = decoded.match(/[\(\[]\s*(?:'|’)?((?:19|20)\d{2})\s*[\)\]]\s*$/);
   const shortYear = decoded.match(/[\(\[]\s*(?:'|’)?(\d{2})\s*[\)\]]\s*$/);
@@ -85,7 +97,9 @@ export const parseDeltaTitle = (rawTitle: string) => {
     year = 2000 + Number(shortYear[1]);
     title = decoded.slice(0, shortYear.index).trim();
   }
-  title = title.replace(POSSESSIVE_CREDIT, "").trim() || title;
+  if (options.stripPossessive) {
+    title = title.replace(POSSESSIVE_CREDIT, "").trim() || title;
+  }
   return { title, year };
 };
 
@@ -128,7 +142,7 @@ export const scrapeDeltaInFlightMovies = (html: string): DeltaInFlightMovie[] =>
       section = token.value;
       continue;
     }
-    const parsed = parseDeltaTitle(token.value);
+    const parsed = parseDeltaTitle(token.value, { stripPossessive: true });
     if (isNoiseTitle(parsed.title)) {
       continue;
     }
@@ -142,8 +156,77 @@ export const scrapeDeltaInFlightMovies = (html: string): DeltaInFlightMovie[] =>
   return movies;
 };
 
-export const fetchDeltaInFlightPage = async (url = DELTA_IN_FLIGHT_URL) =>
-  fetchText(
+export const foldDeltaTitle = (title: string) =>
+  decodeEntities(title)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const sameDeltaMovie = (left: DeltaInFlightMovie, right: DeltaInFlightMovie) => {
+  if (foldDeltaTitle(left.title) !== foldDeltaTitle(right.title)) {
+    return false;
+  }
+  if (left.year == null || right.year == null) {
+    return true;
+  }
+  return left.year === right.year;
+};
+
+export const scrapeLetterboxdDeltaInFlightMovies = (html: string): DeltaInFlightMovie[] => {
+  const movies: DeltaInFlightMovie[] = [];
+  const seen = new Set<string>();
+  const names = [
+    ...html.matchAll(/data-item-full-display-name="([^"]+)"/gi),
+    ...html.matchAll(/data-item-name="([^"]+)"/gi)
+  ];
+  for (const match of names) {
+    const parsed = parseDeltaTitle(match[1]);
+    if (isNoiseTitle(parsed.title)) {
+      continue;
+    }
+    const key = `${foldDeltaTitle(parsed.title)}|${parsed.year ?? ""}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    movies.push({ title: parsed.title, year: parsed.year, section: DELTA_IN_FLIGHT_LETTERBOXD_SECTION });
+  }
+  return movies;
+};
+
+export const letterboxdDeltaListPageCount = (html: string) => {
+  const pages = [...html.matchAll(/\/list\/delta-in-flight-movies\/page\/(\d+)\//gi)].map((match) => Number(match[1]));
+  return Math.max(1, ...pages.filter((page) => Number.isFinite(page)));
+};
+
+export const mergeDeltaInFlightMovies = (
+  official: DeltaInFlightMovie[],
+  letterboxd: DeltaInFlightMovie[]
+): DeltaInFlightMovie[] => {
+  const merged: DeltaInFlightMovie[] = [];
+  for (const movie of [...official, ...letterboxd]) {
+    const existing = merged.find((row) => sameDeltaMovie(row, movie));
+    if (!existing) {
+      merged.push({ ...movie });
+      continue;
+    }
+    if (existing.year == null && movie.year != null) {
+      existing.year = movie.year;
+    }
+  }
+  return merged;
+};
+
+const looksLikeChallenge = (html: string) =>
+  /just a moment|cf-mitigated|security verification/i.test(html) &&
+  !/data-item-full-display-name|movie-thumbs/i.test(html);
+
+const fetchCatalogPage = async (url: string) => {
+  const html = await fetchText(
     url,
     {
       "User-Agent": BROWSER_UA,
@@ -152,3 +235,62 @@ export const fetchDeltaInFlightPage = async (url = DELTA_IN_FLIGHT_URL) =>
     },
     { timeoutMs: 20000 }
   );
+  if (looksLikeChallenge(html)) {
+    throw new Error(`GET ${url} returned a bot challenge`);
+  }
+  return html;
+};
+
+const letterboxdPageUrl = (page: number) => {
+  const base = DELTA_IN_FLIGHT_LETTERBOXD_URL.endsWith("/")
+    ? DELTA_IN_FLIGHT_LETTERBOXD_URL
+    : `${DELTA_IN_FLIGHT_LETTERBOXD_URL}/`;
+  return page <= 1 ? base : `${base}page/${page}/`;
+};
+
+export const fetchDeltaInFlightPage = async (url = DELTA_IN_FLIGHT_URL) => fetchCatalogPage(url);
+
+export const fetchLetterboxdDeltaInFlightPages = async (htmlPages?: string[]) => {
+  if (htmlPages) {
+    return htmlPages;
+  }
+  const first = await fetchCatalogPage(letterboxdPageUrl(1));
+  const pages = [first];
+  const total = letterboxdDeltaListPageCount(first);
+  for (let page = 2; page <= total; page += 1) {
+    try {
+      pages.push(await fetchCatalogPage(letterboxdPageUrl(page)));
+    } catch {
+      break;
+    }
+  }
+  return pages;
+};
+
+export const collectDeltaInFlightMovies = async (options: {
+  officialHtml?: string;
+  letterboxdHtml?: string[];
+} = {}) => {
+  let official: DeltaInFlightMovie[] = [];
+  let letterboxd: DeltaInFlightMovie[] = [];
+  if (options.officialHtml) {
+    official = scrapeDeltaInFlightMovies(options.officialHtml);
+  } else {
+    try {
+      official = scrapeDeltaInFlightMovies(await fetchDeltaInFlightPage());
+    } catch {
+      official = [];
+    }
+  }
+  try {
+    const pages = await fetchLetterboxdDeltaInFlightPages(options.letterboxdHtml);
+    letterboxd = pages.flatMap((page) => scrapeLetterboxdDeltaInFlightMovies(page));
+  } catch {
+    letterboxd = [];
+  }
+  return {
+    official,
+    letterboxd,
+    movies: mergeDeltaInFlightMovies(official, letterboxd)
+  };
+};

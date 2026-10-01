@@ -1,5 +1,10 @@
 import { isAvailabilityBlurbTitle } from "./title-match.js";
-import { isDeltaInFlightUrl, scrapeDeltaInFlightMovies } from "./delta-in-flight.js";
+import {
+  isDeltaInFlightLetterboxdUrl,
+  isDeltaInFlightUrl,
+  scrapeDeltaInFlightMovies,
+  scrapeLetterboxdDeltaInFlightMovies
+} from "./delta-in-flight.js";
 
 export type ScrapedTitle = {
   title: string;
@@ -83,8 +88,11 @@ const scrapeGenericLinks = (html: string): ScrapedTitle[] => {
 };
 
 export const scrapeListItems = (url: string, html: string): ScrapedTitle[] => {
-  if (isDeltaInFlightUrl(url)) {
-    const titles = scrapeDeltaInFlightMovies(html).map((movie, index) => ({
+  if (isDeltaInFlightUrl(url) || isDeltaInFlightLetterboxdUrl(url)) {
+    const movies = isDeltaInFlightLetterboxdUrl(url)
+      ? scrapeLetterboxdDeltaInFlightMovies(html)
+      : scrapeDeltaInFlightMovies(html);
+    const titles = movies.map((movie, index) => ({
       title: movie.year ? `${movie.title} (${movie.year})` : movie.title,
       rank: index + 1
     }));

@@ -5,18 +5,26 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { scrapeListItems } from "../src/lib/list-scrape.ts";
 import {
+  DELTA_IN_FLIGHT_LETTERBOXD_URL,
   DELTA_IN_FLIGHT_PROVIDER,
   DELTA_IN_FLIGHT_SOURCE_ID,
   DELTA_IN_FLIGHT_URL,
+  collectDeltaInFlightMovies,
+  isDeltaInFlightLetterboxdUrl,
   isDeltaInFlightProvider,
   isDeltaInFlightUrl,
+  letterboxdDeltaListPageCount,
+  mergeDeltaInFlightMovies,
   parseDeltaTitle,
   scrapeDeltaInFlightMovies,
+  scrapeLetterboxdDeltaInFlightMovies,
   withDeltaInFlightProvider
 } from "../src/lib/delta-in-flight.ts";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const html = readFileSync(path.join(fixtures, "delta-current-movies.html"), "utf8");
+const letterboxdHtml = readFileSync(path.join(fixtures, "delta-letterboxd-list.html"), "utf8");
+const letterboxdPage2Html = readFileSync(path.join(fixtures, "delta-letterboxd-list-page-2.html"), "utf8");
 
 describe("delta in-flight scrape", () => {
   it("recognizes the current-movies URL", () => {
@@ -34,8 +42,15 @@ describe("delta in-flight scrape", () => {
   it("strips years and possessive credit prefixes", () => {
     assert.deepEqual(parseDeltaTitle("Moana (2026)"), { title: "Moana", year: 2026 });
     assert.deepEqual(parseDeltaTitle("Obsession ('26)"), { title: "Obsession", year: 2026 });
-    assert.deepEqual(parseDeltaTitle("Lee Cronin's The Mummy"), { title: "The Mummy", year: null });
-    assert.deepEqual(parseDeltaTitle("Lee Cronin&#39;s The Mummy"), { title: "The Mummy", year: null });
+    assert.deepEqual(parseDeltaTitle("Lee Cronin's The Mummy", { stripPossessive: true }), {
+      title: "The Mummy",
+      year: null
+    });
+    assert.deepEqual(parseDeltaTitle("Lee Cronin&#39;s The Mummy", { stripPossessive: true }), {
+      title: "The Mummy",
+      year: null
+    });
+    assert.deepEqual(parseDeltaTitle("Ocean&#039;s Eleven (2001)"), { title: "Ocean's Eleven", year: 2001 });
   });
 
   it("reads unique titles and sections from the Delta page", () => {
@@ -56,6 +71,48 @@ describe("delta in-flight scrape", () => {
       items.map((item) => item.title),
       ["Backrooms", "Moana (2026)", "The Mummy", "Coco", "The Prestige", "Obsession (2026)"]
     );
+  });
+
+  it("reads Letterboxd list posters and page count", () => {
+    assert.equal(isDeltaInFlightLetterboxdUrl(DELTA_IN_FLIGHT_LETTERBOXD_URL), true);
+    assert.equal(isDeltaInFlightLetterboxdUrl(`${DELTA_IN_FLIGHT_LETTERBOXD_URL}page/2/`), true);
+    assert.equal(isDeltaInFlightLetterboxdUrl("https://letterboxd.com/ebusch0320/list/other-list/"), false);
+    assert.equal(letterboxdDeltaListPageCount(letterboxdHtml), 2);
+    const movies = scrapeLetterboxdDeltaInFlightMovies(letterboxdHtml);
+    assert.deepEqual(
+      movies.map((movie) => `${movie.title} (${movie.year})`),
+      [
+        "10 Things I Hate About You (1999)",
+        "Coco (2017)",
+        "You, Me & Tuscany (2026)",
+        "Ocean's Eleven (2001)",
+        "The Prestige (2006)"
+      ]
+    );
+    assert.equal(scrapeListItems(DELTA_IN_FLIGHT_LETTERBOXD_URL, letterboxdHtml).length, 5);
+  });
+
+  it("merges the official featured titles with the Letterboxd list", async () => {
+    const official = scrapeDeltaInFlightMovies(html);
+    const letterboxd = [
+      ...scrapeLetterboxdDeltaInFlightMovies(letterboxdHtml),
+      ...scrapeLetterboxdDeltaInFlightMovies(letterboxdPage2Html)
+    ];
+    const merged = mergeDeltaInFlightMovies(official, letterboxd);
+    assert.equal(merged.some((movie) => movie.title === "Backrooms"), true);
+    assert.equal(merged.some((movie) => movie.title === "10 Things I Hate About You"), true);
+    assert.equal(merged.some((movie) => movie.title === "Zootopia 2"), true);
+    assert.equal(merged.filter((movie) => movie.title === "Coco").length, 1);
+    assert.equal(merged.filter((movie) => /tuscany/i.test(movie.title)).length, 1);
+    assert.equal(merged.find((movie) => movie.title === "The Prestige")?.year, 2006);
+
+    const collected = await collectDeltaInFlightMovies({
+      officialHtml: html,
+      letterboxdHtml: [letterboxdHtml, letterboxdPage2Html]
+    });
+    assert.equal(collected.official.length, 6);
+    assert.equal(collected.letterboxd.length, 7);
+    assert.equal(collected.movies.length, merged.length);
   });
 });
 

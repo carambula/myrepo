@@ -5,8 +5,7 @@ import {
   DELTA_IN_FLIGHT_SOURCE_ID,
   DELTA_IN_FLIGHT_SOURCE_NAME,
   DELTA_IN_FLIGHT_URL,
-  fetchDeltaInFlightPage,
-  scrapeDeltaInFlightMovies
+  collectDeltaInFlightMovies
 } from "./delta-in-flight.js";
 import { resolveTmdbMatch } from "./podcast-ingest.js";
 import { fetchTmdbMovieDetails } from "./tmdb.js";
@@ -14,6 +13,8 @@ import { prepareMovieQuery } from "./title-match.js";
 
 export type DeltaInFlightRefreshStats = {
   scraped: number;
+  official: number;
+  letterboxd: number;
   linked: number;
   added: number;
   unmatched: number;
@@ -83,14 +84,18 @@ const linkMovie = async (movieId: string, sourceTitle: string, rank: number, sec
 };
 
 export const refreshDeltaInFlightCatalog = async (
-  html?: string
+  htmlOrOptions?: string | { officialHtml?: string; letterboxdHtml?: string[] }
 ): Promise<DeltaInFlightRefreshStats> => {
   await ensureSource();
-  const page = html ?? (await fetchDeltaInFlightPage());
-  const movies = scrapeDeltaInFlightMovies(page);
+  const options =
+    typeof htmlOrOptions === "string" ? { officialHtml: htmlOrOptions } : (htmlOrOptions ?? {});
+  const collected = await collectDeltaInFlightMovies(options);
+  const movies = collected.movies;
   const linkedIds = new Set<string>();
   const stats: DeltaInFlightRefreshStats = {
     scraped: movies.length,
+    official: collected.official.length,
+    letterboxd: collected.letterboxd.length,
     linked: 0,
     added: 0,
     unmatched: 0,

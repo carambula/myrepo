@@ -12,18 +12,25 @@ actor RSSFeedService {
     private let session = URLSession.shared
     private let cache = CacheService.shared
 
+    /// Newest window used by home / Up Next. Full archives stay on show detail and deep links.
+    static let recentEpisodeWindow = 40
+
     /// Clears cached RSS for this feed (call after changing stored credentials).
     func invalidateFeedCache(feedURL: URL) async {
         let u = feedURL.absoluteString
         await cache.remove("feed_episodes_\(u)")
         await cache.remove("feed_meta_\(u)")
         await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: "none"))
+        await cache.remove(latestCacheKey(feedURL: feedURL, authTag: "none"))
+        await cache.remove(recentCacheKey(feedURL: feedURL, authTag: "none"))
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none")
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none_dates2")
         await cache.remove("feed_episodes_\(feedURL.absoluteString)_none_archive1")
         await cache.remove(metaCacheKey(feedURL: feedURL, authTag: "none"))
         if let seg = await PrivateFeedAuthStore.shared.cacheKeySegment(for: feedURL) {
             await cache.remove(episodeCacheKey(feedURL: feedURL, authTag: seg))
+            await cache.remove(latestCacheKey(feedURL: feedURL, authTag: seg))
+            await cache.remove(recentCacheKey(feedURL: feedURL, authTag: seg))
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)")
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)_dates2")
             await cache.remove("feed_episodes_\(feedURL.absoluteString)_\(seg)_archive1")
@@ -50,7 +57,7 @@ actor RSSFeedService {
         } catch {
             let cloud = await cloudEpisodes
             guard !cloud.isEmpty else { throw error }
-            await rememberFetchedEpisodes(cloud, cacheKey: cacheKey, feedURL: feedURL)
+            await rememberFetchedEpisodes(cloud, cacheKey: cacheKey, authTag: authTag, feedURL: feedURL)
             return cloud
         }
 
@@ -58,13 +65,74 @@ actor RSSFeedService {
         guard !episodes.isEmpty else {
             throw RSSFeedError.invalidFeed
         }
-        await rememberFetchedEpisodes(episodes, cacheKey: cacheKey, feedURL: feedURL)
+        await rememberFetchedEpisodes(episodes, cacheKey: cacheKey, authTag: authTag, feedURL: feedURL)
         return episodes
     }
 
-    private func rememberFetchedEpisodes(_ episodes: [Episode], cacheKey: String, feedURL: URL) async {
+    /// Home grid / Up Next only need a short newest window. Skip the full catalog∪live archive
+    /// merge so opening the app does not download and decode thousands of episodes per follow.
+    func fetchRecentEpisodes(
+        feedURL: URL,
+        limit: Int = RSSFeedService.recentEpisodeWindow,
+        provisionalAuth: FeedHTTPAuth? = nil
+    ) async throws -> [Episode] {
+        let cappedLimit = max(1, limit)
+        let auth = await resolvedAuth(feedURL: feedURL, provisionalAuth: provisionalAuth)
+        let authTag = auth.map { $0.cacheKeySegment() } ?? "none"
+
+        if let latest: Episode = await cache.get(latestCacheKey(feedURL: feedURL, authTag: authTag), as: Episode.self),
+           cappedLimit == 1 {
+            return [latest]
+        }
+
+        if let recent: [Episode] = await cache.get(recentCacheKey(feedURL: feedURL, authTag: authTag), as: [Episode].self),
+           !recent.isEmpty {
+            return Array(recent.prefix(cappedLimit))
+        }
+
+        if let cached: [Episode] = await cache.get(episodeCacheKey(feedURL: feedURL, authTag: authTag), as: [Episode].self),
+           !cached.isEmpty {
+            let prefix = Array(cached.prefix(cappedLimit))
+            await rememberRecentEpisodes(prefix, authTag: authTag, feedURL: feedURL, notify: false)
+            return prefix
+        }
+
+        let liveEpisodes = try await fetchLiveEpisodes(feedURL: feedURL, auth: auth, maxItems: cappedLimit)
+        let recent = Array(liveEpisodes.prefix(cappedLimit))
+        guard !recent.isEmpty else {
+            throw RSSFeedError.invalidFeed
+        }
+        await rememberRecentEpisodes(recent, authTag: authTag, feedURL: feedURL, notify: true)
+        return recent
+    }
+
+    private func rememberFetchedEpisodes(
+        _ episodes: [Episode],
+        cacheKey: String,
+        authTag: String,
+        feedURL: URL
+    ) async {
         await cache.set(cacheKey, value: episodes, ttl: 1800) // 30 min
-        await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
+        await rememberRecentEpisodes(
+            Array(episodes.prefix(Self.recentEpisodeWindow)),
+            authTag: authTag,
+            feedURL: feedURL,
+            notify: true
+        )
+    }
+
+    private func rememberRecentEpisodes(
+        _ episodes: [Episode],
+        authTag: String,
+        feedURL: URL,
+        notify: Bool
+    ) async {
+        guard !episodes.isEmpty else { return }
+        await cache.set(recentCacheKey(feedURL: feedURL, authTag: authTag), value: episodes, ttl: 1800)
+        await cache.set(latestCacheKey(feedURL: feedURL, authTag: authTag), value: episodes[0], ttl: 1800)
+        if notify {
+            await EpisodeNotificationService.shared.noteFetched(feedURL: feedURL, episodes: episodes)
+        }
     }
 
     private func fetchCloudEpisodes(feedURL: URL, includeCloud: Bool) async -> [Episode] {
@@ -74,7 +142,11 @@ actor RSSFeedService {
         )) ?? []
     }
 
-    private func fetchLiveEpisodes(feedURL: URL, auth: FeedHTTPAuth?) async throws -> [Episode] {
+    private func fetchLiveEpisodes(
+        feedURL: URL,
+        auth: FeedHTTPAuth?,
+        maxItems: Int? = nil
+    ) async throws -> [Episode] {
         var request = URLRequest(url: PrivateFeedAuthStore.canonicalFeedURL(feedURL))
         request.setValue("PodLink/1.0", forHTTPHeaderField: "User-Agent")
         auth?.apply(to: &request)
@@ -83,7 +155,7 @@ actor RSSFeedService {
         try validateHTTP(response: response)
 
         let parser = RSSParser()
-        return parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString)
+        return parser.parseEpisodes(from: data, podcastID: feedURL.absoluteString, maxItems: maxItems)
     }
 
     /// Reads cached episodes only (no network fetch). Tries authenticated and unauthenticated keys.
@@ -134,6 +206,14 @@ actor RSSFeedService {
 
     private func episodeCacheKey(feedURL: URL, authTag: String) -> String {
         "feed_episodes_\(feedURL.absoluteString)_\(authTag)_archive2"
+    }
+
+    private func recentCacheKey(feedURL: URL, authTag: String) -> String {
+        "feed_episodes_\(feedURL.absoluteString)_\(authTag)_recent1"
+    }
+
+    private func latestCacheKey(feedURL: URL, authTag: String) -> String {
+        "feed_latest_\(feedURL.absoluteString)_\(authTag)_v1"
     }
 
     private func metaCacheKey(feedURL: URL, authTag: String) -> String {
@@ -188,9 +268,11 @@ private class RSSParser: NSObject, XMLParserDelegate {
     private var channelExplicit = false
     private var channelWebsite: String?
     private var channelCategories: [String] = []
+    private var maxItems: Int?
 
-    func parseEpisodes(from data: Data, podcastID: String) -> [Episode] {
+    func parseEpisodes(from data: Data, podcastID: String, maxItems: Int? = nil) -> [Episode] {
         self.podcastID = podcastID
+        self.maxItems = maxItems
         episodes = []
         let parser = XMLParser(data: data)
         parser.delegate = self
@@ -285,6 +367,9 @@ private class RSSParser: NSObject, XMLParserDelegate {
                     episodes.append(episode)
                 }
                 isInItem = false
+                if let maxItems, episodes.count >= maxItems {
+                    parser.abortParsing()
+                }
             default: break
             }
         } else if isInChannel {

@@ -159,7 +159,8 @@ class PlaybackService {
         observeTimeControlStatus()
         player?.automaticallyWaitsToMinimizeStalling = true
         if let item = player?.currentItem {
-            item.preferredForwardBufferDuration = 45
+            // Short preroll for audible start; raised to the steady buffer once `.playing`.
+            item.preferredForwardBufferDuration = PlaybackStartupPolicy.initialForwardBufferDuration
         }
         await activateAudioSessionForPlayback()
         let resumeTime = startAt ?? (merged.playbackPosition > 0 ? merged.playbackPosition : nil)
@@ -639,7 +640,9 @@ class PlaybackService {
             feedMap = await withTaskGroup(of: (String, [Episode])?.self, returning: [String: [Episode]].self) { group in
                 for podcast in followed {
                     group.addTask {
-                        guard let episodes = try? await RSSFeedService.shared.fetchEpisodes(feedURL: podcast.feedURL) else { return nil }
+                        guard let episodes = try? await RSSFeedService.shared.fetchRecentEpisodes(
+                            feedURL: podcast.feedURL
+                        ) else { return nil }
                         return (podcast.id, episodes)
                     }
                 }
@@ -652,21 +655,19 @@ class PlaybackService {
             }
         }
 
-        // Merging every fetched episode runs `EpisodePlaybackStore.merge` (UserDefaults reads, SHA-256
-        // key hashing, and `FileManager` download lookups) across all followed feeds. That is pure,
-        // main-thread-free work, so it runs off the main actor (matching `restoreResumeSessionIfNeeded`)
-        // to avoid a multi-second launch hang once the feeds resolve.
+        // Merge playback state only until the first unfinished episode per show. Walking the full
+        // archive with SHA-256 / UserDefaults / download lookups caused multi-second launch hangs
+        // once feeds grew past a few hundred episodes.
         let rebuiltQueue = await Task.detached(priority: .userInitiated) { () -> [Episode] in
             var seenEpisodeIDs = Set<String>()
             var rebuilt: [Episode] = []
 
             for podcast in followed {
                 guard let fetched = feedMap[podcast.id] else { continue }
-                let merged = fetched
-                    .map { EpisodePlaybackStore.merge($0) }
-                    .sorted { $0.publishDate > $1.publishDate }
-                guard let latestUnfinished = merged.first(where: { !$0.isEffectivelyFinished }) else { continue }
-                guard latestUnfinished.id != currentID else { continue }
+                guard let latestUnfinished = EpisodeQueueBuilder.latestUnfinished(
+                    in: fetched,
+                    excluding: currentID
+                ) else { continue }
                 guard !seenEpisodeIDs.contains(latestUnfinished.id) else { continue }
                 seenEpisodeIDs.insert(latestUnfinished.id)
                 rebuilt.append(latestUnfinished)
@@ -753,10 +754,9 @@ class PlaybackService {
 
     /// Seeks to the saved/explicit resume position once the player item can honor it.
     ///
-    /// A previous implementation seeked after a fixed 350ms delay, but for streamed episodes the
-    /// `AVPlayerItem` is usually not `.readyToPlay` that quickly, so the seek was dropped and playback
-    /// restarted from 0. This waits for readiness via KVO (or seeks immediately if already ready) so the
-    /// resume position reliably lands, without blocking the main thread or reintroducing a launch hang.
+    /// Streamed items are often not `.readyToPlay` immediately, so a blind early seek is dropped and
+    /// playback restarts from 0. Wait for readiness via KVO (with `.initial` so a race between the
+    /// status check and observer install cannot leave play silent for the fallback timeout).
     private func scheduleStartupSeek(to time: TimeInterval, episodeID: String) {
         cancelStartupSeek()
         guard time > 0, let item = player?.currentItem else { return }
@@ -765,24 +765,34 @@ class PlaybackService {
         // the seek runs for this scheduling only.
         let token = startupSeekToken
 
-        if item.status == .readyToPlay {
-            performStartupSeek(to: time, episodeID: episodeID, token: token)
-            return
-        }
-
-        startupSeekStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observedItem, _ in
-            guard observedItem.status == .readyToPlay else { return }
+        startupSeekStatusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] observedItem, _ in
             Task { @MainActor [weak self] in
                 guard let self,
                       token == self.startupSeekToken,
                       self.state.currentEpisode?.id == episodeID,
                       observedItem === self.player?.currentItem else { return }
-                self.performStartupSeek(to: time, episodeID: episodeID, token: token)
+                switch observedItem.status {
+                case .readyToPlay:
+                    self.performStartupSeek(to: time, episodeID: episodeID, token: token)
+                case .failed:
+                    // Don't sit silent until the fallback timer — start anyway (usually near 0).
+                    self.startupSeekTask?.cancel()
+                    self.startupSeekTask = nil
+                    self.startupSeekStatusObservation?.invalidate()
+                    self.startupSeekStatusObservation = nil
+                    self.startupSeekToken &+= 1
+                    if self.playAfterStartupSeek, self.state.isPlaying {
+                        self.playAfterStartupSeek = false
+                        self.beginPlayback()
+                    }
+                default:
+                    break
+                }
             }
         }
 
         startupSeekTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            try? await Task.sleep(nanoseconds: PlaybackStartupPolicy.resumeSeekFallbackNanoseconds)
             guard let self, !Task.isCancelled else { return }
             guard token == self.startupSeekToken, self.state.currentEpisode?.id == episodeID else { return }
             self.performStartupSeek(to: time, episodeID: episodeID, token: token)
@@ -854,7 +864,13 @@ class PlaybackService {
         timeControlStatusObservation = player?.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             Task { @MainActor [weak self] in
                 guard let self, self.state.isPlaying else { return }
-                self.state.isBuffering = player.timeControlStatus != .playing
+                let isPlaying = player.timeControlStatus == .playing
+                self.state.isBuffering = !isPlaying
+                if isPlaying,
+                   let item = self.player?.currentItem,
+                   item.preferredForwardBufferDuration < PlaybackStartupPolicy.steadyForwardBufferDuration {
+                    item.preferredForwardBufferDuration = PlaybackStartupPolicy.steadyForwardBufferDuration
+                }
             }
         }
     }

@@ -83,12 +83,15 @@ class PlaybackService {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var startupSeekTask: Task<Void, Never>?
+    /// Forces audible playback if a mid-file resume seek hangs after consuming the seek token.
+    private var forcePlayWatchdogTask: Task<Void, Never>?
     /// Observes the current item's `status` so the startup resume-seek fires the moment it is ready.
     private var startupSeekStatusObservation: NSKeyValueObservation?
     /// Bumped on every schedule/cancel so the startup resume-seek fires at most once per session and a
     /// later `.readyToPlay` transition (rebuffer/stall recovery) can never re-seek to the stale start.
     private var startupSeekToken = 0
-    /// When resuming mid-episode, play only after the seek lands so we do not start from 0 and snap.
+    /// When resuming mid-episode, prefer play-after-seek so we do not start from 0 and snap.
+    /// A short watchdog clears this and starts audio if the seek never completes.
     private var playAfterStartupSeek = false
     private var positionSaveTask: Task<Void, Never>?
     private var nowPlayingArtworkTask: Task<Void, Never>?
@@ -162,11 +165,14 @@ class PlaybackService {
             // Short preroll for audible start; raised to the steady buffer once `.playing`.
             item.preferredForwardBufferDuration = PlaybackStartupPolicy.initialForwardBufferDuration
         }
-        await activateAudioSessionForPlayback()
+        // Match `resume()`: do not await session activation on the play path. Awaiting
+        // `setActive` made the first press feel dead while pause → play started immediately.
+        activateAudioSessionForPlaybackDetached()
         let resumeTime = startAt ?? (merged.playbackPosition > 0 ? merged.playbackPosition : nil)
         if let startTime = resumeTime, startTime > 0.5 {
             playAfterStartupSeek = true
             scheduleStartupSeek(to: startTime, episodeID: merged.id)
+            scheduleForcePlayWatchdog(episodeID: merged.id)
         } else {
             playAfterStartupSeek = false
             beginPlayback()
@@ -200,9 +206,11 @@ class PlaybackService {
             Task(priority: .userInitiated) { await play(episode: episode, podcast: podcast, startAt: startAt) }
             return
         }
+        cancelStartupSeek()
         activateAudioSessionForPlaybackDetached()
         beginPlayback()
         state.isPlaying = true
+        state.isBuffering = player?.timeControlStatus != .playing
         startPositionSaving()
         updateNowPlayingInfo()
     }
@@ -752,19 +760,100 @@ class PlaybackService {
         }
     }
 
-    /// Seeks to the saved/explicit resume position once the player item can honor it.
+    /// Seeks to the saved resume position, then starts playback.
     ///
-    /// Streamed items are often not `.readyToPlay` immediately, so a blind early seek is dropped and
-    /// playback restarts from 0. Wait for readiness via KVO (with `.initial` so a race between the
-    /// status check and observer install cannot leave play silent for the fallback timeout).
+    /// Issues the seek **immediately** with approximate (keyframe) tolerances. Waiting for
+    /// `readyToPlay` before seeking — and then demanding an exact sample — is what made resume
+    /// seek completion feel endless on streamed episodes. If the first seek is ignored, retry
+    /// once when the item becomes ready.
     private func scheduleStartupSeek(to time: TimeInterval, episodeID: String) {
-        cancelStartupSeek()
-        guard time > 0, let item = player?.currentItem else { return }
+        // Reset prior seek machinery without clearing `playAfterStartupSeek` — that flag is what
+        // tells seek-completion to call `beginPlayback()`. Clearing it here left mid-episode resume
+        // silent until the user did pause → play (`resume()` starts audio immediately).
+        cancelStartupSeek(clearPlayGate: false)
+        guard time > 0, player?.currentItem != nil else { return }
 
-        // `cancelStartupSeek()` bumped the token to a fresh value held by nobody else; capture it so
-        // the seek runs for this scheduling only.
         let token = startupSeekToken
+        issueStartupSeek(to: time, episodeID: episodeID, token: token, isRetry: false)
+    }
 
+    /// If mid-episode resume is still silent after the seek path stalls, start audio anyway.
+    /// `PlaybackResumeSeek.shouldApply` still blocks a late seek from snapping backward once live
+    /// time has advanced.
+    private func scheduleForcePlayWatchdog(episodeID: String) {
+        forcePlayWatchdogTask?.cancel()
+        forcePlayWatchdogTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: PlaybackStartupPolicy.forcePlayWatchdogNanoseconds)
+            guard let self, !Task.isCancelled else { return }
+            guard self.state.isPlaying, self.state.currentEpisode?.id == episodeID else { return }
+            let stuckOnSeekGate = self.playAfterStartupSeek
+            let notAudible = self.player?.timeControlStatus != .playing
+            guard stuckOnSeekGate || notAudible else { return }
+            // Do not bump the seek token here — a late successful seek can still land the
+            // resume position; we only need audio to start.
+            self.playAfterStartupSeek = false
+            self.beginPlayback()
+        }
+    }
+
+    private func issueStartupSeek(to time: TimeInterval, episodeID: String, token: Int, isRetry: Bool) {
+        guard token == startupSeekToken else { return }
+        guard let player else { return }
+
+        let liveBeforeSeek = player.currentTime().seconds
+        let live = liveBeforeSeek.isFinite ? liveBeforeSeek : 0
+        if !PlaybackResumeSeek.shouldApply(target: time, live: live) {
+            finishStartupSeekAndPlay(token: token)
+            return
+        }
+
+        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+        // Indefinite tolerances → nearest keyframe. Exact seeks on HTTP range streams are the
+        // common "seek completion takes forever" case for podcast resume.
+        let before: CMTime = PlaybackStartupPolicy.usesApproximateResumeSeek ? .positiveInfinity : .zero
+        let after: CMTime = PlaybackStartupPolicy.usesApproximateResumeSeek ? .positiveInfinity : .zero
+        player.seek(to: cmTime, toleranceBefore: before, toleranceAfter: after) { [weak self] finished in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard token == self.startupSeekToken, self.state.currentEpisode?.id == episodeID else { return }
+
+                if finished {
+                    let liveNow = self.player?.currentTime().seconds ?? time
+                    if PlaybackResumeSeek.shouldApply(target: time, live: liveNow.isFinite ? liveNow : 0) {
+                        self.state.currentTime = max(0, liveNow.isFinite ? liveNow : time)
+                    }
+                    self.finishStartupSeekAndPlay(token: token)
+                    return
+                }
+
+                // Seek was ignored (typical when the item is still `.unknown`). Retry once on ready
+                // instead of sitting in a ready-wait before the first attempt.
+                if !isRetry {
+                    self.observeReadyForStartupSeekRetry(to: time, episodeID: episodeID, token: token)
+                    return
+                }
+                self.finishStartupSeekAndPlay(token: token)
+            }
+        }
+    }
+
+    private func observeReadyForStartupSeekRetry(to time: TimeInterval, episodeID: String, token: Int) {
+        guard token == startupSeekToken else { return }
+        guard let item = player?.currentItem else {
+            finishStartupSeekAndPlay(token: token)
+            return
+        }
+
+        if item.status == .readyToPlay {
+            issueStartupSeek(to: time, episodeID: episodeID, token: token, isRetry: true)
+            return
+        }
+        if item.status == .failed {
+            finishStartupSeekAndPlay(token: token)
+            return
+        }
+
+        startupSeekStatusObservation?.invalidate()
         startupSeekStatusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] observedItem, _ in
             Task { @MainActor [weak self] in
                 guard let self,
@@ -773,81 +862,62 @@ class PlaybackService {
                       observedItem === self.player?.currentItem else { return }
                 switch observedItem.status {
                 case .readyToPlay:
-                    self.performStartupSeek(to: time, episodeID: episodeID, token: token)
-                case .failed:
-                    // Don't sit silent until the fallback timer — start anyway (usually near 0).
-                    self.startupSeekTask?.cancel()
-                    self.startupSeekTask = nil
                     self.startupSeekStatusObservation?.invalidate()
                     self.startupSeekStatusObservation = nil
-                    self.startupSeekToken &+= 1
-                    if self.playAfterStartupSeek, self.state.isPlaying {
-                        self.playAfterStartupSeek = false
-                        self.beginPlayback()
-                    }
+                    self.startupSeekTask?.cancel()
+                    self.startupSeekTask = nil
+                    self.issueStartupSeek(to: time, episodeID: episodeID, token: token, isRetry: true)
+                case .failed:
+                    self.finishStartupSeekAndPlay(token: token)
                 default:
                     break
                 }
             }
         }
 
+        startupSeekTask?.cancel()
         startupSeekTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: PlaybackStartupPolicy.resumeSeekFallbackNanoseconds)
+            try? await Task.sleep(nanoseconds: PlaybackStartupPolicy.resumeSeekRetryFallbackNanoseconds)
             guard let self, !Task.isCancelled else { return }
             guard token == self.startupSeekToken, self.state.currentEpisode?.id == episodeID else { return }
-            self.performStartupSeek(to: time, episodeID: episodeID, token: token)
+            self.startupSeekStatusObservation?.invalidate()
+            self.startupSeekStatusObservation = nil
+            self.issueStartupSeek(to: time, episodeID: episodeID, token: token, isRetry: true)
         }
     }
 
-    private func performStartupSeek(to time: TimeInterval, episodeID: String, token: Int) {
+    private func finishStartupSeekAndPlay(token: Int) {
         guard token == startupSeekToken else { return }
-        // Consume the token and permanently tear down the readiness observer so the resume-seek can
-        // run only once per session: a later `.readyToPlay` (after a rebuffer/stall/route change) — or
-        // a duplicate readyToPlay KVO delivery — can never re-seek playback back to the start position.
         startupSeekToken &+= 1
         startupSeekStatusObservation?.invalidate()
         startupSeekStatusObservation = nil
-
-        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
-        let liveBeforeSeek = player?.currentTime().seconds ?? 0
-        if !PlaybackResumeSeek.shouldApply(target: time, live: liveBeforeSeek) {
-            if playAfterStartupSeek, state.isPlaying {
-                beginPlayback()
-            }
-            playAfterStartupSeek = false
-            return
-        }
-
-        let shouldPlay = playAfterStartupSeek
+        startupSeekTask?.cancel()
+        startupSeekTask = nil
         playAfterStartupSeek = false
-        player?.seek(
-            to: cmTime,
-            toleranceBefore: .zero,
-            toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600)
-        ) { [weak self] finished in
-            guard let self, self.state.currentEpisode?.id == episodeID else { return }
-            let live = self.player?.currentTime().seconds ?? time
-            if finished, PlaybackResumeSeek.shouldApply(target: time, live: live) {
-                self.state.currentTime = time
-            }
-            if shouldPlay, self.state.isPlaying {
-                self.beginPlayback()
-            }
-            self.updateNowPlayingInfo()
+        updateNowPlayingInfo()
+        if state.isPlaying {
+            beginPlayback()
         }
     }
 
     private func beginPlayback() {
-        player?.play()
-        player?.rate = state.playbackRate
+        forcePlayWatchdogTask?.cancel()
+        forcePlayWatchdogTask = nil
+        playAfterStartupSeek = false
+        // More aggressive than `play()` + `rate` — matches the pre-seek-gate startup path.
+        player?.playImmediately(atRate: state.playbackRate)
     }
 
-    private func cancelStartupSeek() {
+    private func cancelStartupSeek(clearPlayGate: Bool = true) {
         // Invalidate any pending resume-seek (token mismatch aborts in-flight observer Tasks too).
-        playAfterStartupSeek = false
+        if clearPlayGate {
+            playAfterStartupSeek = false
+        }
         startupSeekToken &+= 1
         startupSeekTask?.cancel()
         startupSeekTask = nil
+        forcePlayWatchdogTask?.cancel()
+        forcePlayWatchdogTask = nil
         startupSeekStatusObservation?.invalidate()
         startupSeekStatusObservation = nil
     }

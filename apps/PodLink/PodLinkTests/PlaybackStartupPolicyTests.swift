@@ -4,15 +4,31 @@ import Testing
 
 struct PlaybackStartupPolicyTests {
     @Test
-    func resumeSeekFallbackIsBounded() {
-        // An 8s silent wait made play feel broken until pause → play. Keep the fallback short.
-        #expect(PlaybackStartupPolicy.resumeSeekFallbackNanoseconds <= 2_500_000_000)
-        #expect(PlaybackStartupPolicy.resumeSeekFallbackNanoseconds >= 500_000_000)
+    func resumeSeekRetryFallbackIsShort() {
+        // Ready-wait before the first seek is what made resume feel stuck. The retry path
+        // only runs when an immediate seek was ignored, and must stay brief.
+        #expect(PlaybackStartupPolicy.resumeSeekRetryFallbackNanoseconds <= 1_200_000_000)
+        #expect(PlaybackStartupPolicy.resumeSeekRetryFallbackNanoseconds >= 250_000_000)
+    }
+
+    @Test
+    func forcePlayWatchdogIsShortAndCoversHangingSeeks() {
+        #expect(PlaybackStartupPolicy.forcePlayWatchdogNanoseconds <= 2_000_000_000)
+        #expect(PlaybackStartupPolicy.forcePlayWatchdogNanoseconds >= 750_000_000)
+        #expect(
+            PlaybackStartupPolicy.forcePlayWatchdogNanoseconds
+                >= PlaybackStartupPolicy.resumeSeekRetryFallbackNanoseconds
+        )
     }
 
     @Test
     func startupBufferIsMuchSmallerThanSteadyBuffer() {
         #expect(PlaybackStartupPolicy.initialForwardBufferDuration < PlaybackStartupPolicy.steadyForwardBufferDuration)
-        #expect(PlaybackStartupPolicy.initialForwardBufferDuration <= 12)
+        #expect(PlaybackStartupPolicy.initialForwardBufferDuration <= 4)
+    }
+
+    @Test
+    func startupResumeUsesApproximateSeek() {
+        #expect(PlaybackStartupPolicy.usesApproximateResumeSeek)
     }
 }

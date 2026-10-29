@@ -1,8 +1,37 @@
 # Min Apps handoff notes
 
-Snapshot for the next person or agent. Written **5 October 2026** from `master` at `ed2b004` (`github.com/carambula/myrepo`). This is a working map, not a product spec. Prefer the code and open PRs when they disagree with this file.
+Snapshot for the next person or agent. Updated **29 October 2026** against `origin/master` at `eed91c3` (`github.com/carambula/myrepo`). This is a working map, not a product spec. Prefer the code and open PRs when they disagree with this file.
 
 Owner: Aaron Carambula (GitHub `carambula`).
+
+---
+
+## Repo, default branch, and how work lands
+
+This GitHub repo **is** the min apps monorepo. There is no separate “min apps” remote.
+
+| | |
+|---|---|
+| **GitHub** | [`carambula/myrepo`](https://github.com/carambula/myrepo) |
+| **Default / trunk branch** | **`master`** — not `main`. `origin/HEAD` → `origin/master`. |
+| **What ships** | Merging a PR into `master`. Railway auto-deploys Min Cloud from `master` (root `Dockerfile` copies `services/min-cloud`). Native apps ship from Xcode on a Mac, not from this merge. |
+| **Feature branches** | Cut from current `origin/master`. Cloud-agent names look like `cursor/<short-name>-<id>` (example: `cursor/handoff-notes-1e79`). |
+| **PRs** | One concern, back into **`master`**. Small PRs win. Draft until it is ready to review. |
+| **Do not** | Open PRs against `main` (it does not exist). Do not treat leftover `origin/cursor/…` branches as in-flight unless they have an open PR. |
+
+Day-to-day git:
+
+```bash
+git fetch origin master
+git checkout -b cursor/short-name-<id> origin/master
+# …work, commit…
+git push -u origin HEAD
+# open a PR with base = master
+```
+
+This VM’s checkout of `master` can be hours behind. Fetch `origin/master` before branching, rebasing, or claiming something is / is not on trunk.
+
+CI (`.github/workflows/ci.yml`) only builds **SpinMin**. A green check does not mean mov min or pod min compiled.
 
 ---
 
@@ -136,8 +165,10 @@ The Rewatchables (and similar) used to be a recent RSS slice. Cloud now serves t
 
 - Full archive in pod min (`#107`).
 - Mov min can open an old episode without hitching search (`#108`).
+- Launch no longer pulls the full archive just to find the newest episode (`#112`, merged). Home / Up Next use a small recent RSS window; show detail and deep links still load the archive.
+- Play / resume: first press starts audio without pause→play; resume seeks finish quickly (`#117`, merged 14 Oct 2026).
 - Fixes: mid-play seek jumping backward; episode dates collapsing to 31 Dec year 1; unfollow leaving shows on the home grid; keep show sheets open after tap; list scroll performance.
-- **Not finished:** opening the archive on launch is too expensive, and some deep links still present the show instead of the episode. See open PRs below.
+- **Not finished:** some mov → pod deep links still present the show instead of the episode (`#109`).
 
 ### 4. Min Cloud as the shared backend
 
@@ -165,9 +196,8 @@ Stood up and then hardened:
 
 ### Finish first (real user-facing gaps)
 
-1. **Pod min launch stall** — [PR #112](https://github.com/carambula/myrepo/pull/112) (`cursor/podmin-launch-pause-bc74`, draft). After the full-archive work, home / Up Next fetch the entire archive just to find the newest episode. The PR keeps launch on a small recent RSS window and leaves full archive for show detail + deep links. Review, rebase on current `master`, verify launch + Rewatchables Rocky, then merge.
-2. **Mov → pod episode presentation** — [PR #109](https://github.com/carambula/myrepo/pull/109) (`cursor/podmin-deeplink-present-bc74`, draft). Tapping Rocky from WatchedIt still opens The Rewatchables without the episode (sheet identity + nested player during animation). Same branch family as the archive work. Pair with #112.
-3. **Grid tap dismisses the show** — [issue #76](https://github.com/carambula/myrepo/issues/76) (feedback bug, `app:pod`). “They pop up and pop away before I can do anything.” `#80` already landed “keep sheets open after tapping a show”; this may be a regression or a different path (home grid vs search). Confirm on device before writing another fix. Feedback-Id: `23e5ad87-907e-4534-b053-726993c625e5`.
+1. **Mov → pod episode presentation** — [PR #109](https://github.com/carambula/myrepo/pull/109) (`cursor/podmin-deeplink-present-bc74`, draft). Tapping Rocky from WatchedIt still opens The Rewatchables without the episode (sheet identity + nested player during animation). Rebase onto current `master` (`#112` / `#117` already landed).
+2. **Grid tap dismisses the show** — [issue #76](https://github.com/carambula/myrepo/issues/76) (feedback bug, `app:pod`). “They pop up and pop away before I can do anything.” `#80` already landed “keep sheets open after tapping a show”; this may be a regression or a different path (home grid vs search). Confirm on device before writing another fix. Feedback-Id: `23e5ad87-907e-4534-b053-726993c625e5`.
 
 ### Product direction still in motion (no single open PR)
 
@@ -192,8 +222,8 @@ Lots of `origin/cursor/…` branches are merged leftovers. Do not treat a remote
 
 ### Suggested order for the next agent
 
-1. Rebase and land **#112** (launch) and **#109** (episode present), or re-implement them on a fresh `cursor/…` branch if they bitrotted.
-2. Reproduce **#76** on pod min home grid; fix only if still broken after those PRs.
+1. Rebase and land **#109** (episode present), or re-implement it on a fresh branch from `origin/master` if it bitrotted.
+2. Reproduce **#76** on pod min home grid; fix only if still broken.
 3. Walk `docs/FEEDBACK.md` secrets/automations so new ideas do not stall at “issue opened, no options.”
 4. Only then pick a catalog/Play item (Delta refresh, Closet rematch, ticket links) or a design-token sweep.
 
@@ -215,6 +245,7 @@ Lots of `origin/cursor/…` branches are merged leftovers. Do not treat a remote
 
 | Need | Where |
 |---|---|
+| GitHub / default branch | this file, **Repo, default branch** — trunk is `master` |
 | Repo overview | `README.md` |
 | Mov architecture / setup / contract | `apps/WatchedIt/Docs/` |
 | Min Cloud API + jobs | `services/min-cloud/README.md` |

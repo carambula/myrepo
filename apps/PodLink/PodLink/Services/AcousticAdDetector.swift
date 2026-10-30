@@ -112,8 +112,7 @@ enum AcousticAdDetector {
                         startTime: windows[start].startTime,
                         endTime: windows[i].startTime,
                         kind: windows[start].startTime < 60 ? .preRoll : .midRoll,
-                        source: .acoustic,
-                        confidence: 0.6
+                        confidence: 0.6, source: .acoustic
                     ))
                 }
                 runStart = nil
@@ -128,7 +127,6 @@ enum AcousticAdDetector {
                     startTime: windows[start].startTime,
                     endTime: windows.last!.startTime + 1,
                     kind: .midRoll,
-                    source: .acoustic,
                     confidence: 0.55
                 ))
             }
@@ -153,13 +151,13 @@ enum AcousticAdDetector {
             if let before = gaps.last(where: { $0 < s.startTime && s.startTime - $0 < 2 }) {
                 s = AdSegment(
                     id: s.id, startTime: before, endTime: s.endTime,
-                    kind: s.kind, source: s.source, confidence: min(1.0, s.confidence + 0.05)
+                    kind: s.kind, confidence: min(1.0, s.confidence + 0.05), source: s.source
                 )
             }
             if let after = gaps.first(where: { $0 > s.endTime && $0 - s.endTime < 2 }) {
                 s = AdSegment(
                     id: s.id, startTime: s.startTime, endTime: after,
-                    kind: s.kind, source: s.source, confidence: min(1.0, s.confidence + 0.05)
+                    kind: s.kind, confidence: min(1.0, s.confidence + 0.05), source: s.source
                 )
             }
             return s

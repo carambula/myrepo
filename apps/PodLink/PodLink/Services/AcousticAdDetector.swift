@@ -127,7 +127,7 @@ enum AcousticAdDetector {
                     startTime: windows[start].startTime,
                     endTime: windows.last!.startTime + 1,
                     kind: .midRoll,
-                    confidence: 0.55
+                    confidence: 0.55, source: .acoustic
                 ))
             }
         }

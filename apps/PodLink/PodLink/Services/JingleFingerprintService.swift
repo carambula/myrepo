@@ -48,8 +48,7 @@ actor JingleFingerprintService {
         let catalog = await catalog(for: podcastID)
         let jingleID = UUID().uuidString
         let mediaItem = SHMediaItem(
-            properties: [.title: "Ad cue \(Date().formatted(date: .abbreviated, time: .omitted))"],
-            customProperties: ["jingleID": jingleID]
+            properties: [.title: jingleID]
         )
         try await catalog.addReferenceSignature(signature, representing: [mediaItem])
 
@@ -165,10 +164,10 @@ private class JingleMatchDelegate: NSObject, SHSessionDelegate {
 
     func session(_ session: SHSession, didFind match: SHMatch) {
         for item in match.mediaItems {
-            if let jingleID = item.customProperties["jingleID"] as? String {
-                // TODO: get actual match time from session
-                matches.append(JingleMatch(time: 0, confidence: 0.8, jingleID: jingleID))
-            }
+            // jingleID is stored in the title
+            let jingleID = item.title ?? UUID().uuidString
+            // TODO: get actual match time from session
+            matches.append(JingleMatch(time: 0, confidence: 0.8, jingleID: jingleID))
         }
     }
 }

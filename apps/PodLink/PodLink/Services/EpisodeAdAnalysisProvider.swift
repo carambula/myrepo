@@ -154,7 +154,7 @@ final class EpisodeAdAnalysisProvider {
                     id: "jingle-\(start.jingleID)-\(i)",
                     startTime: start.time, endTime: end.time,
                     kind: start.time < 60 ? .preRoll : .midRoll,
-                    source: .jingle, confidence: 0.7))
+                    confidence: 0.7, source: .jingle))
             }
         }
         return segments

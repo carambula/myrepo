@@ -88,9 +88,6 @@ struct PodcastDetailView: View {
 
                     actionBar
                         .padding(.bottom, DesignSystem.Spacing.lg)
-
-                    adSkippingSection
-
                     catalogContinuationSection
 
                     episodeListHeader
@@ -273,47 +270,36 @@ struct PodcastDetailView: View {
                     .frame(width: 60, height: 60)
             }
             .buttonStyle(.liquidGlassCompact)
+
+            Menu {
+                Toggle("Auto-skip ads", isOn: $adProfile.autoSkipEnabled)
+                Stepper(
+                    "Skip intro: \(Int(adProfile.introTrimSeconds))s",
+                    value: $adProfile.introTrimSeconds,
+                    in: 0...600, step: 15
+                )
+                Stepper(
+                    "Skip outro: \(Int(adProfile.outroTrimSeconds))s",
+                    value: $adProfile.outroTrimSeconds,
+                    in: 0...600, step: 15
+                )
+            } label: {
+                Image(systemName: "gear")
+                    .font(.system(size: 24))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .frame(width: 60, height: 60)
+            }
+            .buttonStyle(.liquidGlassCompact)
+            .accessibilityLabel("Ad settings")
+            .onChange(of: adProfile.autoSkipEnabled) { _, _ in saveAdProfile() }
+            .onChange(of: adProfile.introTrimSeconds) { _, _ in saveAdProfile() }
+            .onChange(of: adProfile.outroTrimSeconds) { _, _ in saveAdProfile() }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .padding(.vertical, DesignSystem.Spacing.xs)
     }
 
-    // MARK: - Ad Skipping (Phase 0)
-
-    private var adSkippingSection: some View {
-        DisclosureGroup("Ad Skipping") {
-            Picker("Mode", selection: $adProfile.mode) {
-                Text(AdSkipMode.off.displayName).tag(AdSkipMode.off)
-                Text(AdSkipMode.smartSkip.displayName).tag(AdSkipMode.smartSkip)
-                Text(AdSkipMode.auto.displayName).tag(AdSkipMode.auto)
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: adProfile.mode) { _, _ in saveAdProfile() }
-
-            Stepper(
-                "Skip intro: \(Int(adProfile.introTrimSeconds))s",
-                value: $adProfile.introTrimSeconds,
-                in: 0...600,
-                step: 15
-            )
-            .onChange(of: adProfile.introTrimSeconds) { _, _ in saveAdProfile() }
-
-            Stepper(
-                "Skip outro: \(Int(adProfile.outroTrimSeconds))s",
-                value: $adProfile.outroTrimSeconds,
-                in: 0...600,
-                step: 15
-            )
-            .onChange(of: adProfile.outroTrimSeconds) { _, _ in saveAdProfile() }
-
-            Text("Smart skip turns a forward press inside a detected ad break into a jump to the break's end. Auto-skip jumps high-confidence breaks automatically. Intro/outro trims apply to every episode of this show.")
-                .font(DesignSystem.Typography.caption())
-                .foregroundColor(DesignSystem.Colors.textSecondary)
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .onAppear { adProfile = ShowAdProfileStore.shared.profile(for: podcast.id) }
-    }
 
     private func saveAdProfile() {
         ShowAdProfileStore.shared.save(adProfile, forPodcast: podcast)

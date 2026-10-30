@@ -14,6 +14,9 @@ class PlaybackState {
     var isPiPActive: Bool = false
     var sleepTimerEnd: Date?
     var isBuffering: Bool = false
+    /// The most recent ad segment jumped by smart skip-forward, so the player
+    /// can show a "Skipped ad break - Tap to replay" affordance. Nil otherwise.
+    var lastAdSkipSegment: AdSegment? 
 
     var remainingTime: TimeInterval {
         max(0, duration - currentTime)

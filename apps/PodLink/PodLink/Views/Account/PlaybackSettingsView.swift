@@ -60,6 +60,7 @@ struct PlaybackSettingsView: View {
     @AppStorage("preferVideoPlayback") private var preferVideoPlayback = false
     @AppStorage("backgroundVideoPlayback") private var backgroundVideoPlayback = true
     @AppStorage("continuousPlay") private var continuousPlay = true
+    @AppStorage("adSkipEnabled") private var adSkipEnabled = true
     @AppStorage("playbackFinishRemainingSeconds") private var finishRemainingSeconds = 45.0
     @AppStorage("playbackFinishProgressFraction") private var finishProgressFraction = 0.97
     @AppStorage("playbackPartialMinSeconds") private var partialMinSeconds = 30.0
@@ -99,6 +100,20 @@ struct PlaybackSettingsView: View {
             Section("Behavior") {
                 Toggle("Auto-Play Next Episode", isOn: $autoPlayNext)
                 Toggle("Continuous Play", isOn: $continuousPlay)
+            }
+            .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
+            Section {
+                Toggle("Detect & Skip Ads", isOn: $adSkipEnabled)
+                NavigationLink {
+                    AdSettingsOverviewView()
+                } label: {
+                    Text("Ad Settings by Podcast")
+                }
+            } header: {
+                Text("Ad Skipping")
+            } footer: {
+                Text("PodLink analyzes your downloaded episodes on-device to find ad breaks. A forward skip that would land in a break jumps to its end instead. Episode files are never modified.")
             }
             .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 

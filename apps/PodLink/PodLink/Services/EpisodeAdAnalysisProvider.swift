@@ -11,6 +11,9 @@ final class EpisodeAdAnalysisProvider {
     static let shared = EpisodeAdAnalysisProvider()
 
     private let lock = NSLock()
+    /// Diagnostic: episodes where audio analysis completed / is running.
+    private var audioAnalysisCompleted: Set<String> = []
+    private var audioAnalysisInProgress: Set<String> = []
     private var memoryCache: [String: EpisodeAdAnalysis] = [:]
     private let cacheDirectory: URL
 
@@ -115,6 +118,15 @@ final class EpisodeAdAnalysisProvider {
     /// Requires a downloaded audio file. Call from a background task
     /// (WiFi + charging) or on-demand, not during playback.
     func analyzeAudio(for episode: Episode) async {
+        lock.lock()
+        audioAnalysisInProgress.insert(episode.id)
+        lock.unlock()
+        defer {
+            lock.lock()
+            audioAnalysisInProgress.remove(episode.id)
+            audioAnalysisCompleted.insert(episode.id)
+            lock.unlock()
+        }
         guard let audioURL = downloadedFileURL(for: episode) else { return }
         var detected: [AdSegment] = []
         let jingles = await JingleFingerprintService.shared.findJingles(
@@ -207,5 +219,38 @@ final class EpisodeAdAnalysisProvider {
         } catch {
             // Cache is best-effort; analysis recomputes on the next read.
         }
+    }
+
+    // MARK: - Diagnostics
+
+    /// Human-readable analysis state for the settings UI.
+    struct AnalysisStatus {
+        let segmentCount: Int
+        let sources: [String]
+        let audioState: String
+    }
+
+    func status(for episode: Episode) -> AnalysisStatus {
+        let analysis = self.analysis(for: episode)
+        let sources = Array(Set(analysis.segments.map { $0.source.rawValue })).sorted()
+        lock.lock()
+        let completed = audioAnalysisCompleted.contains(episode.id)
+        let inProgress = audioAnalysisInProgress.contains(episode.id)
+        lock.unlock()
+        let audioState: String
+        if inProgress {
+            audioState = "Analyzing audio…"
+        } else if completed {
+            audioState = "Audio analyzed"
+        } else if episode.downloadedFileURL != nil {
+            audioState = "Audio queued"
+        } else {
+            audioState = "Download episode for audio detection"
+        }
+        return AnalysisStatus(
+            segmentCount: analysis.segments.count,
+            sources: sources,
+            audioState: audioState
+        )
     }
 }

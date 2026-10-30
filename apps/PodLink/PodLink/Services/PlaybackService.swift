@@ -105,6 +105,10 @@ class PlaybackService {
     private var timeControlStatusObservation: NSKeyValueObservation?
     /// Captures whether we were actively playing before a system interruption began.
     private var shouldResumeAfterInterruption = false
+    /// Guards the ad-skip outro trim so it fires once per episode.
+    private var outroTrimFiredEpisodeID: String?
+    /// Segments already auto-skipped this episode (prevents re-fire).
+    private var autoSkippedSegmentIDs: Set<String> = []
 
     init() {
         state.playbackRate = Self.preferredPlaybackRateFromDefaults()
@@ -123,6 +127,9 @@ class PlaybackService {
 
     func play(episode: Episode, podcast: Podcast? = nil, startAt: TimeInterval? = nil) async {
         state.playbackRate = Self.preferredPlaybackRateFromDefaults()
+        // Ad-skip: drop any stale analysis — chapters may have arrived
+        // after the episode was first analyzed (the provider caches).
+        EpisodeAdAnalysisProvider.shared.invalidate(episodeID: episode.id)
         var merged = EpisodePlaybackStore.merge(episode)
         if let localURL = merged.downloadedFileURL,
            !FileManager.default.fileExists(atPath: localURL.path) {
@@ -146,7 +153,9 @@ class PlaybackService {
 
         nowPlayingArtworkTask?.cancel()
         lastNowPlayingArtworkKey = nil
-        let resolvedStartTime = max(0, startAt ?? merged.playbackPosition)
+        // Ad-skip intro trim: never start inside a trimmed-away intro.
+        let introTrim = ShowAdProfileStore.shared.profile(for: merged.podcastID).introTrimSeconds
+        let resolvedStartTime = max(introTrim, startAt ?? merged.playbackPosition)
         merged.playbackPosition = resolvedStartTime
         lastPositionCheckpoint = resolvedStartTime
 
@@ -157,6 +166,9 @@ class PlaybackService {
         state.currentTime = resolvedStartTime
         state.duration = merged.duration
         state.isBuffering = true
+        state.lastAdSkipSegment = nil
+        outroTrimFiredEpisodeID = nil
+        autoSkippedSegmentIDs = []
 
         setupTimeObserver()
         observeTimeControlStatus()
@@ -223,7 +235,16 @@ class PlaybackService {
         }
     }
 
-    func seek(to time: TimeInterval) {
+    func seek(to time: TimeInterval, trigger: SeekTrigger = .scrub) {
+        if let episode = state.currentEpisode {
+            SeekEventStore.shared.log(
+                episodeID: episode.id,
+                podcastID: episode.podcastID,
+                from: state.currentTime,
+                to: time,
+                trigger: trigger
+            )
+        }
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         if let player {
             player.seek(to: cmTime) { [weak self] _ in
@@ -243,14 +264,37 @@ class PlaybackService {
 
     func skipForward(seconds: TimeInterval? = nil) {
         let interval = seconds ?? Self.skipForwardIntervalFromDefaults()
+        if let target = smartSkipForwardTarget(forwardSeconds: interval) {
+            seek(to: target, trigger: .forwardButton)
+            return
+        }
         let newTime = min(state.currentTime + interval, state.duration)
-        seek(to: newTime)
+        seek(to: newTime, trigger: .forwardButton)
     }
 
     func skipBackward(seconds: TimeInterval? = nil) {
         let interval = seconds ?? Self.skipBackwardIntervalFromDefaults()
         let newTime = max(state.currentTime - interval, 0)
-        seek(to: newTime)
+        seek(to: newTime, trigger: .backButton)
+    }
+
+    /// Smart 30s-forward: when the app-wide toggle is on, a forward press that
+    /// would land in a detected ad break jumps to the break's end instead.
+    /// Smart skip is always on — no per-show mode. Records the jumped segment
+    /// on `state.lastAdSkipSegment` so the player can offer a replay.
+    /// Returns nil when the press should behave as a normal forward skip.
+    private func smartSkipForwardTarget(forwardSeconds: TimeInterval) -> TimeInterval? {
+        guard AdSkipSettings.isEnabled,
+              let episode = state.currentEpisode
+        else { return nil }
+        let analysis = EpisodeAdAnalysisProvider.shared.analysis(for: episode)
+        guard let target = AdSkipEngine.smartSkipTarget(
+            currentTime: state.currentTime,
+            forwardSeconds: forwardSeconds,
+            segments: analysis.segments
+        ) else { return nil }
+        state.lastAdSkipSegment = analysis.segments.first { $0.endTime == target }
+        return min(target, state.duration)
     }
 
     func setRate(_ rate: Float) {
@@ -756,6 +800,50 @@ class PlaybackService {
             if let duration = self.player?.currentItem?.duration.seconds, duration.isFinite,
                abs(self.state.duration - duration) >= 0.25 {
                 self.state.duration = duration
+            }
+            // Ad-skip outro trim: finish the episode early instead of playing the outro.
+            if let episode = self.state.currentEpisode,
+               self.outroTrimFiredEpisodeID != episode.id
+            {
+                let outroTrim = ShowAdProfileStore.shared.profile(for: episode.podcastID).outroTrimSeconds
+                if outroTrim > 0, self.state.duration > 0, current >= self.state.duration - outroTrim {
+                    self.outroTrimFiredEpisodeID = episode.id
+                    Task { @MainActor in
+                        await self.handlePlaybackDidFinish()
+                        // With an empty queue the player would otherwise keep
+                        // playing the trimmed-away outro.
+                        if self.state.currentEpisode?.id == episode.id {
+                            self.player?.pause()
+                        }
+                    }
+                }
+            }
+            // Auto-skip: when the show's toggle is on, silently jump
+            // high-confidence ad segments. The toast (via lastAdSkipSegment)
+            // keeps it reversible.
+            self.maybeAutoSkip(at: current)
+        }
+    }
+
+    /// Auto-skip check, called from the time observer each second.
+    private func maybeAutoSkip(at current: TimeInterval) {
+        guard AdSkipSettings.isEnabled,
+              let episode = state.currentEpisode,
+              ShowAdProfileStore.shared.profile(for: episode.podcastID).autoSkipEnabled,
+              state.isPlaying
+        else { return }
+        let analysis = EpisodeAdAnalysisProvider.shared.analysis(for: episode)
+        for segment in analysis.segments where segment.confidence >= 0.8 {
+            // Inside the segment (with a small grace at the start) and not
+            // already skipped: jump to the end.
+            if current >= segment.startTime + 1,
+               current < segment.endTime - 1,
+               autoSkippedSegmentIDs.contains(segment.id) == false
+            {
+                autoSkippedSegmentIDs.insert(segment.id)
+                state.lastAdSkipSegment = segment
+                seek(to: segment.endTime, trigger: .forwardButton)
+                return
             }
         }
     }

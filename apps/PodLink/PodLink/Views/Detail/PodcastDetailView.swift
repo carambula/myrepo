@@ -283,6 +283,12 @@ struct PodcastDetailView: View {
                     value: $adProfile.outroTrimSeconds,
                     in: 0...600, step: 15
                 )
+
+                Divider()
+
+                Text(adDetectionStatusLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } label: {
                 Image(systemName: "gear")
                     .font(.system(size: 24))
@@ -300,6 +306,19 @@ struct PodcastDetailView: View {
         .padding(.vertical, DesignSystem.Spacing.xs)
     }
 
+
+    /// Diagnostic: what the ad analyzer found for the current episode.
+    private var adDetectionStatusLine: String {
+        guard let episode = playbackService.state.currentEpisode else {
+            return "No episode playing"
+        }
+        let status = EpisodeAdAnalysisProvider.shared.status(for: episode)
+        if status.segmentCount == 0 {
+            return "\(status.audioState) · no breaks found"
+        }
+        let sources = status.sources.joined(separator: ", ")
+        return "\(status.segmentCount) break\(status.segmentCount == 1 ? "" : "s") (\(sources)) · \(status.audioState)"
+    }
 
     private func saveAdProfile() {
         ShowAdProfileStore.shared.save(adProfile, forPodcast: podcast)

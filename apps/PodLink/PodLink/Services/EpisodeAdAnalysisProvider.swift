@@ -108,6 +108,66 @@ final class EpisodeAdAnalysisProvider {
         try? FileManager.default.removeItem(at: fileURL(for: episodeID))
     }
 
+
+    // MARK: - Phase 3: Audio analysis (L2 jingles + L3 acoustic)
+
+    /// Runs jingle + acoustic ad detection for an episode.
+    /// Requires a downloaded audio file. Call from a background task
+    /// (WiFi + charging) or on-demand, not during playback.
+    func analyzeAudio(for episode: Episode) async {
+        guard let audioURL = downloadedFileURL(for: episode) else { return }
+        var detected: [AdSegment] = []
+        let jingles = await JingleFingerprintService.shared.findJingles(
+            in: audioURL, for: episode.podcastID)
+        detected += jinglesToSegments(jingles)
+        if let acoustic = try? await AcousticAdDetector.detect(in: audioURL) {
+            detected += acoustic
+        }
+        guard !detected.isEmpty else { return }
+        lock.lock()
+        var current = memoryCache[episode.id]
+        lock.unlock()
+        if current == nil { current = loadFromDisk(episodeID: episode.id) }
+        let existing = current?.segments ?? []
+        var merged = existing
+        for seg in detected where !merged.contains(where: { overlaps($0, seg) }) {
+            merged.append(seg)
+        }
+        let updated = EpisodeAdAnalysis(
+            episodeID: episode.id, segments: merged,
+            analyzerVersion: EpisodeAdAnalysis.currentAnalyzerVersion)
+        saveToDisk(updated)
+        lock.lock()
+        memoryCache[episode.id] = updated
+        lock.unlock()
+    }
+
+    private func jinglesToSegments(_ jingles: [JingleMatch]) -> [AdSegment] {
+        guard !jingles.isEmpty else { return [] }
+        let sorted = jingles.sorted { $0.time < $1.time }
+        var segments: [AdSegment] = []
+        for i in 0..<(sorted.count - 1) {
+            let start = sorted[i]; let end = sorted[i + 1]
+            let duration = end.time - start.time
+            if duration >= 15 && duration <= 180 {
+                segments.append(AdSegment(
+                    id: "jingle-\(start.jingleID)-\(i)",
+                    startTime: start.time, endTime: end.time,
+                    kind: start.time < 60 ? .preRoll : .midRoll,
+                    source: .jingle, confidence: 0.7))
+            }
+        }
+        return segments
+    }
+
+    private func downloadedFileURL(for episode: Episode) -> URL? {
+        let downloads = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("PodLink/downloads", isDirectory: true)
+        let url = downloads.appendingPathComponent("\(episode.id).mp3")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
     // MARK: - Disk cache
 
     private func fileURL(for episodeID: String) -> URL {

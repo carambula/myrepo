@@ -51,7 +51,7 @@ struct AdSegment: Identifiable, Codable, Hashable {
 /// Cached per-episode analysis. `analyzerVersion` lets a better detector
 /// re-run without re-downloading; stale versions are recomputed on read.
 struct EpisodeAdAnalysis: Codable {
-    static let currentAnalyzerVersion = 3 // v3: + transcript-detected segments (Phase 2)
+    static let currentAnalyzerVersion = 4 // v4: + jingle + acoustic segments (Phase 2)
 
     let episodeID: String
     let analyzerVersion: Int

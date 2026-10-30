@@ -124,22 +124,26 @@ final class EpisodeAdAnalysisProvider {
             detected += acoustic
         }
         guard !detected.isEmpty else { return }
+        // Merge on a synchronous path (NSLock is not async-safe in Swift 6)
+        mergeDetectedSegments(detected, for: episode.id)
+    }
+
+    /// Synchronous cache merge (uses NSLock; do not call from async without care).
+    private func mergeDetectedSegments(_ detected: [AdSegment], for episodeID: String) {
         lock.lock()
-        var current = memoryCache[episode.id]
-        lock.unlock()
-        if current == nil { current = loadFromDisk(episodeID: episode.id) }
+        defer { lock.unlock() }
+        var current = memoryCache[episodeID]
+        if current == nil { current = loadFromDisk(episodeID: episodeID) }
         let existing = current?.segments ?? []
         var merged = existing
         for seg in detected where !merged.contains(where: { overlaps($0, seg) }) {
             merged.append(seg)
         }
         let updated = EpisodeAdAnalysis(
-            episodeID: episode.id, segments: merged,
+            episodeID: episodeID, segments: merged,
             analyzerVersion: EpisodeAdAnalysis.currentAnalyzerVersion)
         saveToDisk(updated)
-        lock.lock()
-        memoryCache[episode.id] = updated
-        lock.unlock()
+        memoryCache[episodeID] = updated
     }
 
     private func jinglesToSegments(_ jingles: [JingleMatch]) -> [AdSegment] {

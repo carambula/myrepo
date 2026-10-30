@@ -170,6 +170,16 @@ class PlaybackService {
         outroTrimFiredEpisodeID = nil
         autoSkippedSegmentIDs = []
 
+        // Ad-skip: kick off audio analysis (acoustic/jingle) for downloaded
+        // episodes. The heavy DSP work hops off-main internally; results merge
+        // into the analysis cache so smart skip and auto-skip pick them up.
+        if merged.isDownloaded {
+            let episodeForAnalysis = merged
+            Task(priority: .background) {
+                await EpisodeAdAnalysisProvider.shared.analyzeAudio(for: episodeForAnalysis)
+            }
+        }
+
         setupTimeObserver()
         observeTimeControlStatus()
         player?.automaticallyWaitsToMinimizeStalling = true

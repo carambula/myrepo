@@ -209,6 +209,9 @@ struct PodcastDetailView: View {
                 .environment(downloadManager)
                 .presentationDragIndicator(.visible)
         }
+        .onAppear {
+            adProfile = ShowAdProfileStore.shared.profile(forPodcast: podcast)
+        }
         .task {
             await loadEpisodes()
             isFollowed = Podcast.loadFollowedPodcasts().contains { $0.id == podcast.id }

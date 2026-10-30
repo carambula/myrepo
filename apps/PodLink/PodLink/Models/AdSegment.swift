@@ -51,7 +51,7 @@ struct AdSegment: Identifiable, Codable, Hashable {
 /// Cached per-episode analysis. `analyzerVersion` lets a better detector
 /// re-run without re-downloading; stale versions are recomputed on read.
 struct EpisodeAdAnalysis: Codable {
-    static let currentAnalyzerVersion = 4 // v4: + jingle + acoustic segments (Phase 2)
+    static let currentAnalyzerVersion = 5 // v4: + jingle + acoustic segments (Phase 2)
 
     let episodeID: String
     let analyzerVersion: Int
@@ -87,6 +87,7 @@ enum AdSkipEngine {
     ) -> TimeInterval? {
         segments
             .filter { $0.endTime > $0.startTime }
+            .filter { $0.confidence >= 0.5 }
             .filter { currentTime < $0.endTime && currentTime + forwardSeconds >= $0.startTime - 5 }
             .sorted { $0.startTime < $1.startTime }
             .first

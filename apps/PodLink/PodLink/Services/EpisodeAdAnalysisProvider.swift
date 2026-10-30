@@ -176,12 +176,19 @@ final class EpisodeAdAnalysisProvider {
         return segments
     }
 
-    private func downloadedFileURL(for episode: Episode) -> URL? {
+    /// Resolved local audio file, if downloaded. Checks the episode's URL,
+    /// then the DownloadMetadataStore record (merge() doesn't restore download
+    /// state), then the legacy sidecar path.
+    func downloadedFileURL(for episode: Episode) -> URL? {
         // Prefer the episode's resolved download URL (via DownloadManager /
         // EpisodePlaybackStore). Fall back to the legacy sidecar path.
         if let url = episode.downloadedFileURL,
            FileManager.default.fileExists(atPath: url.path) {
             return url
+        }
+        if let record = DownloadMetadataStore.record(for: episode),
+           FileManager.default.fileExists(atPath: record.localFilePath) {
+            return record.localFileURL
         }
         let downloads = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -242,7 +249,7 @@ final class EpisodeAdAnalysisProvider {
             audioState = "Analyzing audio…"
         } else if completed {
             audioState = "Audio analyzed"
-        } else if episode.downloadedFileURL != nil {
+        } else if self.downloadedFileURL(for: episode) != nil {
             audioState = "Audio queued"
         } else {
             audioState = "Download episode for audio detection"

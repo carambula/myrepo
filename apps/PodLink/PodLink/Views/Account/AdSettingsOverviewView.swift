@@ -1,10 +1,11 @@
 import SwiftUI
 
-// MARK: - Phase 1: Per-podcast ad settings overview
+// MARK: - Per-podcast ad settings overview
+//
+// Lists every podcast with customized ad settings — auto-skip toggle,
+// intro/outro trims, or learned breaks. Shows only shows where the user
+// has made choices, not the full library.
 
-/// Lists every podcast with customized ad settings — mode changes, trims,
-/// or learned ad patterns. Shows only shows where the user has made choices,
-/// not the full library.
 struct AdSettingsOverviewView: View {
     @State private var rows: [AdSettingsRow] = []
     @State private var selectedRow: AdSettingsRow?
@@ -15,7 +16,7 @@ struct AdSettingsOverviewView: View {
                 ContentUnavailableView(
                     "No custom ad settings",
                     systemImage: "speaker.slash",
-                    description: Text("Per-podcast ad choices — skip mode, intro/outro trims, learned breaks — will appear here once you customize them.")
+                    description: Text("Per-podcast ad choices — auto-skip, intro/outro trims, learned breaks — will appear here once you customize them.")
                 )
             } else {
                 List(rows) { row in
@@ -64,7 +65,7 @@ struct AdSettingsOverviewView: View {
 
     private func makeRow(podcastID key: String, name: String) -> AdSettingsRow? {
         let profile = ShowAdProfileStore.shared.profile(for: key)
-        let isCustomized = profile.mode != .smartSkip
+        let isCustomized = profile.autoSkipEnabled
             || profile.introTrimSeconds > 0
             || profile.outroTrimSeconds > 0
         let learned = AdPatternLearner.learnedSegments(for: key)
@@ -90,7 +91,10 @@ struct AdSettingsRow: Identifiable, Hashable {
 
     /// Human-readable summary of the choices made for this show.
     var summary: String {
-        var parts: [String] = [profile.mode.displayName]
+        var parts: [String] = []
+        if profile.autoSkipEnabled {
+            parts.append("Auto-skip on")
+        }
         if profile.introTrimSeconds > 0 {
             parts.append("intro \(Int(profile.introTrimSeconds))s")
         }
@@ -99,6 +103,9 @@ struct AdSettingsRow: Identifiable, Hashable {
         }
         if !learnedSegments.isEmpty {
             parts.append("\(learnedSegments.count) learned break\(learnedSegments.count == 1 ? "" : "s")")
+        }
+        if parts.isEmpty {
+            parts.append("Smart skip on")
         }
         return parts.joined(separator: " · ")
     }
@@ -132,30 +139,31 @@ private struct AdSettingsRowView: View {
 
 // MARK: - Per-podcast editor
 
-/// Edit a show's ad settings: mode, trims, and learned breaks.
+/// Edit a show's ad settings: auto-skip toggle, trims, and learned breaks.
 private struct PerPodcastAdEditorView: View {
     let row: AdSettingsRow
-    @State private var mode: AdSkipMode
+    @State private var autoSkipEnabled: Bool
     @State private var introTrim: Double
     @State private var outroTrim: Double
 
     init(row: AdSettingsRow) {
         self.row = row
-        _mode = State(initialValue: row.profile.mode)
+        _autoSkipEnabled = State(initialValue: row.profile.autoSkipEnabled)
         _introTrim = State(initialValue: row.profile.introTrimSeconds)
         _outroTrim = State(initialValue: row.profile.outroTrimSeconds)
     }
 
     var body: some View {
         Form {
-            Section("Skip mode") {
-                Picker("Mode", selection: $mode) {
-                    ForEach(AdSkipMode.allCases, id: \.self) { m in
-                        Text(m.displayName).tag(m)
-                    }
-                }
-                .pickerStyle(.segmented)
-                Text(modeExplanation)
+            Section {
+                Toggle("Auto-skip ads", isOn: $autoSkipEnabled)
+                Text("High-confidence breaks skip automatically. Tap the toast to replay.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Auto-skip")
+            } footer: {
+                Text("Smart skip (+30s jumps whole breaks) is always on.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -186,22 +194,14 @@ private struct PerPodcastAdEditorView: View {
         }
         .navigationTitle(row.podcastName)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: mode) { save() }
+        .onChange(of: autoSkipEnabled) { save() }
         .onChange(of: introTrim) { save() }
         .onChange(of: outroTrim) { save() }
     }
 
-    private var modeExplanation: String {
-        switch mode {
-        case .off: return "No ad skipping for this show."
-        case .smartSkip: return "The +30s button jumps whole ad breaks."
-        case .auto: return "High-confidence breaks skip automatically. Tap the toast to replay."
-        }
-    }
-
     private func save() {
         var profile = ShowAdProfile()
-        profile.mode = mode
+        profile.autoSkipEnabled = autoSkipEnabled
         profile.introTrimSeconds = introTrim
         profile.outroTrimSeconds = outroTrim
         ShowAdProfileStore.shared.save(profile, for: row.podcastID)

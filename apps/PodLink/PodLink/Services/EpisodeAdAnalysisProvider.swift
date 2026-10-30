@@ -165,6 +165,12 @@ final class EpisodeAdAnalysisProvider {
     }
 
     private func downloadedFileURL(for episode: Episode) -> URL? {
+        // Prefer the episode's resolved download URL (via DownloadManager /
+        // EpisodePlaybackStore). Fall back to the legacy sidecar path.
+        if let url = episode.downloadedFileURL,
+           FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
         let downloads = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("PodLink/downloads", isDirectory: true)

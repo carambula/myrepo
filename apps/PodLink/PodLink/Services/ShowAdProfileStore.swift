@@ -78,3 +78,16 @@ final class ShowAdProfileStore {
         return profiles
     }
 }
+
+// MARK: - Master toggle
+
+/// App-wide ad-skip master switch. Defaults ON: smart 30s-forward is the
+/// safe default — it never skips anything the user can't see and undo.
+enum AdSkipSettings {
+    private static let enabledKey = "adSkipEnabled"
+
+    static var isEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+    }
+}

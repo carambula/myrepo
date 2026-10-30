@@ -23,6 +23,11 @@ enum AcousticAdDetector {
         // Find loudness jumps: RMS increases >6dB sustained for 15-120s
         segments += findLoudnessJumps(windows: windows)
 
+        // Find over-compressed regions: ads are heavily limited even when
+        // loudness-normalized. Sustained low dynamic range without a loudness
+        // jump catches level-matched DAI spots.
+        segments += findCompressedRegions(windows: windows)
+
         // Silence gaps are boundary markers, not segments themselves.
         // They're used to refine the loudness-jump boundaries.
         let gaps = findSilenceGaps(windows: windows)
@@ -135,6 +140,51 @@ enum AcousticAdDetector {
     }
 
     // MARK: - Silence gaps
+
+    /// Compression-only detection for loudness-normalized ads (DAI).
+    /// Produced spots are heavily limited: sustained dynamic range < 9dB for
+    /// 20-120s, even when their RMS matches the show. Lower confidence than
+    /// loudness jumps — never auto-skips, only feeds smart skip.
+    private static func findCompressedRegions(windows: [AudioWindow]) -> [AdSegment] {
+        guard windows.count > 30 else { return [] }
+
+        var segments: [AdSegment] = []
+        var runStart: Int?
+
+        for (i, w) in windows.enumerated() {
+            // Ignore near-silence (gaps, fades) — not compression
+            let isCompressed = w.rmsDB > -40 && w.dynamicRange < 9
+            if isCompressed && runStart == nil {
+                runStart = i
+            } else if !isCompressed, let start = runStart {
+                let duration = Double(i - start)
+                if duration >= 20 && duration <= 120 {
+                    segments.append(AdSegment(
+                        id: "acoustic-comp-\(start)",
+                        startTime: windows[start].startTime,
+                        endTime: windows[i].startTime,
+                        kind: windows[start].startTime < 60 ? .preRoll : .midRoll,
+                        confidence: 0.5, source: .acoustic
+                    ))
+                }
+                runStart = nil
+            }
+        }
+        // Trailing run
+        if let start = runStart {
+            let duration = Double(windows.count - start)
+            if duration >= 20 && duration <= 120 {
+                segments.append(AdSegment(
+                    id: "acoustic-comp-\(start)",
+                    startTime: windows[start].startTime,
+                    endTime: windows.last!.startTime,
+                    kind: .midRoll,
+                    confidence: 0.5, source: .acoustic
+                ))
+            }
+        }
+        return segments
+    }
 
     private static func findSilenceGaps(windows: [AudioWindow]) -> [TimeInterval] {
         windows.filter { $0.rmsDB < -50 }.map(\.startTime)

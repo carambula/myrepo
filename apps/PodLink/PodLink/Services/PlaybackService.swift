@@ -173,7 +173,8 @@ class PlaybackService {
         // Ad-skip: kick off audio analysis (acoustic/jingle) for downloaded
         // episodes. The heavy DSP work hops off-main internally; results merge
         // into the analysis cache so smart skip and auto-skip pick them up.
-        if merged.isDownloaded {
+        // (Resolved via DownloadMetadataStore — merge() doesn't restore it.)
+        if EpisodeAdAnalysisProvider.shared.downloadedFileURL(for: merged) != nil {
             let episodeForAnalysis = merged
             Task(priority: .background) {
                 await EpisodeAdAnalysisProvider.shared.analyzeAudio(for: episodeForAnalysis)

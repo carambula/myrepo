@@ -1,28 +1,17 @@
 import Foundation
 
 // MARK: - Per-show ad settings
+//
+// Simplified model (Oct 29, 2026):
+// - Smart skip (+30s jumps whole breaks) is always on for every show. No toggle.
+// - Auto-skip is a per-show toggle.
+// - Intro/outro trims are per-show seconds.
 
-/// Per-show ad-skip behavior. `.auto` is reserved for Phase 2 (auto-skip);
-/// Phase 0 surfaces `.off` and `.smartSkip`.
-enum AdSkipMode: String, Codable, CaseIterable {
-    case off
-    case smartSkip
-    case auto
-
-    var displayName: String {
-        switch self {
-        case .off: return "Off"
-        case .smartSkip: return "Smart skip"
-        case .auto: return "Auto-skip"
-        }
-    }
-}
-
-/// Per-show ad profile: skip mode plus deterministic intro/outro trims.
+/// Per-show ad profile: auto-skip toggle plus deterministic intro/outro trims.
 /// Stored separately from `Podcast` so the iCloud-synced followed-podcasts
 /// model doesn't churn as ad settings grow.
 struct ShowAdProfile: Codable {
-    var mode: AdSkipMode = .smartSkip
+    var autoSkipEnabled: Bool = false
     var introTrimSeconds: TimeInterval = 0
     var outroTrimSeconds: TimeInterval = 0
 }
@@ -30,7 +19,7 @@ struct ShowAdProfile: Codable {
 final class ShowAdProfileStore {
     static let shared = ShowAdProfileStore()
 
-    private static let defaultsKey = "showAdProfilesV1"
+    private static let defaultsKey = "showAdProfilesV2"
     private let defaults: UserDefaults
     private let lock = NSLock()
 
@@ -64,12 +53,22 @@ final class ShowAdProfileStore {
         }
     }
 
-    /// All podcast IDs with a saved profile. Used by the ad-settings
-    /// overview to list only shows the user has customized.
+    func profile(forPodcast podcast: Podcast) -> ShowAdProfile {
+        let byID = profile(for: podcast.id)
+        // Prefer the id-keyed profile; fall back to feed URL
+        if byID.autoSkipEnabled || byID.introTrimSeconds > 0 || byID.outroTrimSeconds > 0 {
+            return byID
+        }
+        return profile(for: podcast.feedURL.absoluteString)
+    }
+
+    /// All podcast IDs with non-default profiles (for the settings overview).
     func allProfiledPodcastIDs() -> [String] {
         lock.lock()
         defer { lock.unlock() }
-        return Array(allProfiles().keys)
+        return allProfiles().filter { _, profile in
+            profile.autoSkipEnabled || profile.introTrimSeconds > 0 || profile.outroTrimSeconds > 0
+        }.map(\.key)
     }
 
     private func allProfiles() -> [String: ShowAdProfile] {
@@ -77,20 +76,5 @@ final class ShowAdProfileStore {
               let profiles = try? JSONDecoder().decode([String: ShowAdProfile].self, from: data)
         else { return [:] }
         return profiles
-    }
-}
-
-// MARK: - App-wide ad-skip settings
-
-/// App-wide ad-skip settings. The key must match
-/// `@AppStorage("adSkipEnabled")` in `PlaybackSettingsView`.
-enum AdSkipSettings {
-    private static let enabledKey = "adSkipEnabled"
-
-    /// Master toggle. Defaults ON: smart 30s-forward is the safe default —
-    /// it never skips anything the user can't see and undo.
-    static var isEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
     }
 }

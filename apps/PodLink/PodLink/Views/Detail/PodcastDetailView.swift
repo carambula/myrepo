@@ -214,7 +214,7 @@ struct PodcastDetailView: View {
         }
         .task {
             await loadEpisodes()
-            isFollowed = Podcast.loadFollowedPodcasts().contains { $0.id == podcast.id }
+            isFollowed = Podcast.loadFollowedPodcasts().contains { Podcast.isSameFollowedShow($0, podcast) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .episodePlaybackStateDidChange)) { note in
             if let changedID = note.object as? String {

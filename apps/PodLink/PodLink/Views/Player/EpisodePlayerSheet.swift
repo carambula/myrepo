@@ -148,6 +148,55 @@ struct EpisodePlayerSheet: View {
         return mergedEpisode.title
     }
 
+    // MARK: - Ad skip UI
+
+    private var adSegmentsForEpisode: [AdSegment] {
+        guard AdSkipSettings.isEnabled else { return [] }
+        return EpisodeAdAnalysisProvider.shared.analysis(for: mergedEpisode).segments
+    }
+
+    /// High-confidence breaks that auto-skip will jump.
+    /// These render as a break/gap in the progress track.
+    private var willSkipSegmentIDs: Set<String> {
+        guard AdSkipSettings.isEnabled,
+              ShowAdProfileStore.shared.profile(for: mergedEpisode.podcastID).autoSkipEnabled
+        else { return [] }
+        return Set(adSegmentsForEpisode.filter { $0.confidence >= 0.8 }.map(\.id))
+    }
+
+    /// "Skipped ad break · Tap to replay" toast after a smart skip-forward jump
+    /// or auto-skip. Auto-dismisses after a few seconds; tapping seeks back to
+    /// the break start.
+    @ViewBuilder
+    private var adSkipToast: some View {
+        if isCurrentEpisode, let segment = playbackService.state.lastAdSkipSegment {
+            Button {
+                playbackService.seek(to: segment.startTime)
+                playbackService.state.lastAdSkipSegment = nil
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "forward.fill")
+                    Text("Skipped ad break · Tap to replay")
+                        .font(DesignSystem.Typography.caption())
+                }
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+                .cornerRadius(20)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+            .task(id: segment.id) {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                if playbackService.state.lastAdSkipSegment?.id == segment.id {
+                    playbackService.state.lastAdSkipSegment = nil
+                }
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
     var body: some View {
         PlayerSheetChrome(
             artwork: { episodeArtwork },
@@ -156,6 +205,8 @@ struct EpisodePlayerSheet: View {
             overlaySheet: $overlaySheet,
             scrubTime: scrubBinding,
             scrubRange: scrubRange,
+            adSegments: adSegmentsForEpisode,
+            willSkipSegmentIDs: willSkipSegmentIDs,
             elapsedLabel: progressElapsedLabel,
             remainingLabel: progressRemainingLabel,
             onSkipBackward: skipBackward,
@@ -188,6 +239,7 @@ struct EpisodePlayerSheet: View {
             scrollBottomPadding: SheetPullToDismissLayout.scrollContentBottomInset(playbackService: playbackService)
         )
         .background((themeManager.currentTheme.backgroundTint ?? .clear).opacity(0.5))
+        .overlay(alignment: .top) { adSkipToast }
         .bottomSheetPullToDismiss()
         .sheet(item: $overlaySheet) { sheet in
             switch sheet {

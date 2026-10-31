@@ -73,6 +73,11 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
     @Binding var overlaySheet: PlayerChromeOverlaySheet?
     @Binding var scrubTime: TimeInterval
     var scrubRange: ClosedRange<Double>
+    /// Detected ad breaks to tint on the progress track.
+    var adSegments: [AdSegment] = []
+    /// High-confidence breaks that auto-skip will jump: rendered as a
+    /// visible break/gap in the track.
+    var willSkipSegmentIDs: Set<String> = []
     var elapsedLabel: String
     var remainingLabel: String
 
@@ -119,6 +124,49 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
         rate == 1.0 ? "1×" : String(format: "%.2g×", rate)
     }
 
+    /// Ad segments on the progress track, two tiers:
+    /// - Suspected (detected, won't auto-skip): faded accent color (30%).
+    /// - Will be skipped (high confidence + auto-skip on): a visible
+    ///   break/gap in the track, so the skip is legible before it happens.
+    /// Positions are fractional, so they stay aligned across size changes.
+    @ViewBuilder
+    private var adSegmentTrackOverlay: some View {
+        GeometryReader { geo in
+            let duration = max(scrubRange.upperBound, 1)
+            let accent = themeManager.currentTheme.accentColor
+            ForEach(adSegments) { segment in
+                let x0 = geo.size.width * (segment.startTime / duration)
+                let x1 = geo.size.width * (segment.endTime / duration)
+                let width = max(3, x1 - x0)
+                let cx = x0 + width / 2
+                let cy = geo.size.height / 2
+                if willSkipSegmentIDs.contains(segment.id) {
+                    // Break: erase the track here with background color,
+                    // flanked by thin cut marks.
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.systemBackground))
+                        .frame(width: width + 4, height: 6)
+                        .position(x: cx, y: cy)
+                    Rectangle()
+                        .fill(accent.opacity(0.5))
+                        .frame(width: 1.5, height: 8)
+                        .position(x: x0, y: cy)
+                    Rectangle()
+                        .fill(accent.opacity(0.5))
+                        .frame(width: 1.5, height: 8)
+                        .position(x: x1, y: cy)
+                } else {
+                    // Suspected: less opaque variant of the play bar color.
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(accent.opacity(0.3))
+                        .frame(width: width, height: 4)
+                        .position(x: cx, y: cy)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: DesignSystem.Spacing.lg) {
@@ -133,6 +181,7 @@ struct PlayerSheetChrome<Artwork: View, EpisodeHeader: View, BelowChrome: View>:
                     VStack(spacing: DesignSystem.Spacing.xs) {
                         Slider(value: $scrubTime, in: scrubRange)
                             .tint(themeManager.currentTheme.accentColor)
+                            .overlay { adSegmentTrackOverlay }
 
                         HStack {
                             Text(elapsedLabel)

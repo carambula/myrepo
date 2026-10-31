@@ -13,7 +13,7 @@ struct SearchScreenView: View {
     @State private var searchScope: SearchScope = .discover
     @State private var discoverResults: [Podcast] = []
     @State private var libraryEpisodeResults: [LibraryEpisodeSearchResult] = []
-    @State private var followedIds: Set<String> = []
+    @State private var followedPodcasts: [Podcast] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
     @State private var selectedPodcast: Podcast?
@@ -183,7 +183,7 @@ struct SearchScreenView: View {
                         } else {
                             SearchResultsView(
                                 results: discoverResults,
-                                followedIds: followedIds,
+                                followedPodcasts: followedPodcasts,
                                 onSelectPodcast: openPodcastFromSearch(_:),
                                 onToggleFollow: toggleFollow(_:)
                             )
@@ -554,7 +554,7 @@ struct SearchScreenView: View {
     }
 
     private func refreshFollowedIds() {
-        followedIds = Set(Podcast.loadFollowedPodcasts().map(\.id))
+        followedPodcasts = Podcast.loadFollowedPodcasts()
     }
 
     private func refreshLibraryEpisodeResult(id: String?) {

@@ -2,9 +2,13 @@ import SwiftUI
 
 struct SearchResultsView: View {
     let results: [Podcast]
-    let followedIds: Set<String>
+    let followedPodcasts: [Podcast]
     let onSelectPodcast: (Podcast) -> Void
     let onToggleFollow: (Podcast) -> Void
+
+    private func isFollowed(_ podcast: Podcast) -> Bool {
+        followedPodcasts.contains { Podcast.isSameFollowedShow($0, podcast) }
+    }
 
     @Environment(ThemeManager.self) private var themeManager
 
@@ -59,10 +63,10 @@ struct SearchResultsView: View {
                         Button {
                             onToggleFollow(podcast)
                         } label: {
-                            Image(systemName: followedIds.contains(podcast.id) ? "minus.circle" : "plus.circle")
+                            Image(systemName: isFollowed(podcast) ? "minus.circle" : "plus.circle")
                                 .font(.system(size: 18, weight: .medium))
                                 .foregroundStyle(
-                                    followedIds.contains(podcast.id)
+                                    isFollowed(podcast)
                                         ? themeManager.currentTheme.accentColor
                                         : DesignSystem.Colors.textPrimary
                                 )
@@ -71,7 +75,7 @@ struct SearchResultsView: View {
                         }
                         .buttonStyle(.borderless)
                         .accessibilityLabel(
-                            followedIds.contains(podcast.id) ? "Remove podcast from library" : "Add podcast to library"
+                            isFollowed(podcast) ? "Remove podcast from library" : "Add podcast to library"
                         )
                     }
                     .padding(.leading, DesignSystem.Spacing.screenHorizontalPadding)

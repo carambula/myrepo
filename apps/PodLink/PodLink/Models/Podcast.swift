@@ -207,18 +207,28 @@ extension Podcast {
     /// Called when iCloud KVS delivers changes (e.g. another device or after reinstall sync).
     static func applyFollowedPodcastsFromUbiquitousStore() {
         followedCacheLock.lock()
-        let wroteLocallyJustNow = lastLocalMutationAt.map { Date().timeIntervalSince($0) < 3 } ?? false
+        // iCloud KVS sync can take minutes; a 3-second guard is far too short and lets
+        // stale cloud data clobber recent local adds/removes (the "resets after a minute" bug).
+        let wroteLocallyRecently = lastLocalMutationAt.map { Date().timeIntervalSince($0) < 600 } ?? false
         followedCacheLock.unlock()
-        // A just-written unfollow can echo back from KVS as the previous snapshot and resurrect the show.
-        if wroteLocallyJustNow { return }
+        // A just-written change can echo back from KVS as the previous snapshot; don't let it undo the user.
+        if wroteLocallyRecently { return }
 
         guard let data = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey),
-              (try? JSONDecoder().decode([Podcast].self, from: data)) != nil else { return }
-        UserDefaults.standard.set(data, forKey: followedPodcastsStorageKey)
-        invalidateFollowedCache()
-        // Posted on the main thread because UI observers update SwiftUI state; this method may run off-main.
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .followedPodcastsDidChange, object: nil)
+              let fromCloud = try? JSONDecoder().decode([Podcast].self, from: data) else { return }
+
+        // Merge (union) instead of overwriting: stale cloud data must never remove
+        // shows the user added locally. Add-wins conflict resolution.
+        let local = loadFollowedPodcasts()
+        var merged = local
+        for podcast in fromCloud where !merged.contains(where: { isSameFollowedShow($0, podcast) }) {
+            merged.append(podcast)
         }
+        // Only write and notify if the merge actually changed something.
+        let localIDs = Set(local.map { $0.id })
+        let mergedIDs = Set(merged.map { $0.id })
+        guard localIDs != mergedIDs else { return }
+
+        saveFollowedPodcasts(merged)
     }
 }

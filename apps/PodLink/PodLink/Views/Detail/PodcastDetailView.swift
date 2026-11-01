@@ -13,6 +13,7 @@ struct BottomDetectionPreferenceKey: PreferenceKey {
 struct PodcastDetailView: View {
     let podcast: Podcast
     var initialDeepLinkEpisode: PodLinkEpisodeHint? = nil
+    var onResolvedDeepLinkEpisode: ((Episode) -> Void)? = nil
     var onHandledInitialDeepLinkEpisode: (() -> Void)? = nil
 
     @Environment(ThemeManager.self) private var themeManager
@@ -518,17 +519,13 @@ struct PodcastDetailView: View {
 
         if let url = hint.episodeURL,
            let matched = episodes.first(where: { EpisodeDeepLinkMatcher.episode($0, matchesURL: url) }) {
-            selectedEpisode = matched
-            hasAttemptedInitialDeepLinkResolve = true
-            onHandledInitialDeepLinkEpisode?()
+            presentResolvedDeepLink(matched)
             return
         }
 
         for title in hint.titleCandidates {
             if let matched = EpisodeDeepLinkMatcher.bestEpisode(in: episodes, matchingTitle: title) {
-                selectedEpisode = matched
-                hasAttemptedInitialDeepLinkResolve = true
-                onHandledInitialDeepLinkEpisode?()
+                presentResolvedDeepLink(matched)
                 return
             }
         }
@@ -536,6 +533,16 @@ struct PodcastDetailView: View {
         guard consumeOnMiss else { return }
         hasAttemptedInitialDeepLinkResolve = true
         onHandledInitialDeepLinkEpisode?()
+    }
+
+    private func presentResolvedDeepLink(_ episode: Episode) {
+        hasAttemptedInitialDeepLinkResolve = true
+        onHandledInitialDeepLinkEpisode?()
+        if let onResolvedDeepLinkEpisode {
+            onResolvedDeepLinkEpisode(episode)
+        } else {
+            selectedEpisode = episode
+        }
     }
 
     private func refreshMergedEpisodes() {

@@ -206,29 +206,17 @@ extension Podcast {
 
     /// Called when iCloud KVS delivers changes (e.g. another device or after reinstall sync).
     static func applyFollowedPodcastsFromUbiquitousStore() {
-        followedCacheLock.lock()
-        // iCloud KVS sync can take minutes; a 3-second guard is far too short and lets
-        // stale cloud data clobber recent local adds/removes (the "resets after a minute" bug).
-        let wroteLocallyRecently = lastLocalMutationAt.map { Date().timeIntervalSince($0) < 600 } ?? false
-        followedCacheLock.unlock()
-        // A just-written change can echo back from KVS as the previous snapshot; don't let it undo the user.
-        if wroteLocallyRecently { return }
+        // Local is the source of truth. iCloud is a backup/restore mechanism, not a
+        // real-time sync — without tombstones we can't distinguish "removed on this
+        // device" from "added on another device", and blind merges resurrect unfollowed
+        // shows. Only restore from iCloud when local is empty (first launch / new device).
+        let local = loadFollowedPodcasts()
+        guard local.isEmpty else { return }
 
         guard let data = CloudKeyValueWriter.data(forKey: followedPodcastsStorageKey),
-              let fromCloud = try? JSONDecoder().decode([Podcast].self, from: data) else { return }
+              let fromCloud = try? JSONDecoder().decode([Podcast].self, from: data),
+              !fromCloud.isEmpty else { return }
 
-        // Merge (union) instead of overwriting: stale cloud data must never remove
-        // shows the user added locally. Add-wins conflict resolution.
-        let local = loadFollowedPodcasts()
-        var merged = local
-        for podcast in fromCloud where !merged.contains(where: { isSameFollowedShow($0, podcast) }) {
-            merged.append(podcast)
-        }
-        // Only write and notify if the merge actually changed something.
-        let localIDs = Set(local.map { $0.id })
-        let mergedIDs = Set(merged.map { $0.id })
-        guard localIDs != mergedIDs else { return }
-
-        saveFollowedPodcasts(merged)
+        saveFollowedPodcasts(fromCloud)
     }
 }

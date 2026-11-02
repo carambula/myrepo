@@ -18,6 +18,12 @@ enum CloudKeyValueWriter {
     nonisolated private static let lock = NSLock()
     /// Guarded by `lock`.
     nonisolated(unsafe) private static var mirror: [String: Any] = [:]
+    /// When each key was last written locally. Guarded by `lock`.
+    /// Used to prevent stale iCloud data from clobbering recent local writes.
+    nonisolated(unsafe) private static var lastLocalWriteAt: [String: Date] = [:]
+    /// How long a local write protects its key from being overwritten by iCloud sync.
+    /// iCloud KVS sync delays are measured in minutes, not seconds.
+    nonisolated private static let localWriteProtectionWindow: TimeInterval = 600
 
     // MARK: - Lifecycle
 
@@ -48,11 +54,25 @@ enum CloudKeyValueWriter {
     private nonisolated static func refreshFromStore(changedKeys: [String]?) {
         queue.async {
             let store = NSUbiquitousKeyValueStore.default
+            let now = Date()
             lock.lock()
             if let changedKeys {
-                for key in changedKeys { mirror[key] = store.object(forKey: key) }
+                for key in changedKeys {
+                    // Don't let stale iCloud data clobber a recent local write.
+                    if let writtenAt = lastLocalWriteAt[key],
+                       now.timeIntervalSince(writtenAt) < localWriteProtectionWindow {
+                        continue
+                    }
+                    mirror[key] = store.object(forKey: key)
+                }
             } else {
-                for (key, value) in store.dictionaryRepresentation { mirror[key] = value }
+                for (key, value) in store.dictionaryRepresentation {
+                    if let writtenAt = lastLocalWriteAt[key],
+                       now.timeIntervalSince(writtenAt) < localWriteProtectionWindow {
+                        continue
+                    }
+                    mirror[key] = value
+                }
             }
             lock.unlock()
             postDidChange()
@@ -95,13 +115,19 @@ enum CloudKeyValueWriter {
     nonisolated static func setBool(_ value: Bool, forKey key: String) { write(value as NSNumber, forKey: key) }
 
     nonisolated static func removeObject(forKey key: String) {
-        lock.lock(); mirror.removeValue(forKey: key); lock.unlock()
+        lock.lock()
+        mirror.removeValue(forKey: key)
+        lastLocalWriteAt[key] = Date()
+        lock.unlock()
         guard MinCloudSettings.iCloudBackupEnabled else { return }
         queue.async { NSUbiquitousKeyValueStore.default.removeObject(forKey: key) }
     }
 
     private nonisolated static func write(_ value: Any, forKey key: String) {
-        lock.lock(); mirror[key] = value; lock.unlock()
+        lock.lock()
+        mirror[key] = value
+        lastLocalWriteAt[key] = Date()
+        lock.unlock()
         guard MinCloudSettings.iCloudBackupEnabled else { return }
         queue.async { NSUbiquitousKeyValueStore.default.set(value, forKey: key) }
     }

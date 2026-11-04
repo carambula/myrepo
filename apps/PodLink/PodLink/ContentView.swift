@@ -150,7 +150,11 @@ struct ContentView: View {
                     }
                     .toolbar(.hidden, for: .navigationBar)
                     .overlay(alignment: .top) {
-                        mainTopControls
+                        // Account / me lives inside PodcastListView scroll chrome.
+                        // Keep search / offline as top overlays so they stay tappable.
+                        if showsTopOverlayControls {
+                            mainTopControls
+                        }
                     }
                 }
                 .themeBackground()
@@ -278,6 +282,10 @@ struct ContentView: View {
         }
     }
 
+    private var showsTopOverlayControls: Bool {
+        !usesBottomTrailingSearch || !networkStatusService.isOnline
+    }
+
     private var mainTopControls: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             Spacer()
@@ -297,14 +305,10 @@ struct ContentView: View {
                     action: { presentRootSheet(.offline) }
                 )
             }
-
-            containedTopControlButton(
-                systemName: "person.crop.circle",
-                accessibilityLabel: "Account",
-                action: { presentRootSheet(.account) }
-            )
         }
-        .padding(.horizontal, MinSpacing.lg)
+        // Leave a trailing slot for the scroll-pinned Account button.
+        .padding(.leading, MinSpacing.lg)
+        .padding(.trailing, MinSpacing.lg + MinSpacing.TopControls.buttonSize + MinSpacing.TopControls.horizontalPadding)
         .padding(.top, MinSpacing.TopControls.verticalPadding)
         .contentShape(Rectangle())
         .allowsHitTesting(true)

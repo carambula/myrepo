@@ -47,14 +47,15 @@ export const spacing = {
     marginBottomMobile: '16px',
   },
 
-  // Top safe-area account / search / add buttons (MinSpacing.TopControls)
+  // Top safe-area account / search / add buttons (MinSpacing.TopControls).
+  // Account / me is scroll-pinned with the title mark (under content, blurs on scroll).
   topControls: {
     buttonSize: '56px',
     horizontalPadding: '8px',
     verticalPadding: '8px',
   },
 
-  // Scroll-pinned title-type wordmark (MinSpacing.TitleType)
+  // Scroll-pinned title-type wordmark + account chrome (MinSpacing.TitleType)
   titleType: {
     horizontalPadding: '24px',
     markOffsetY: '0',

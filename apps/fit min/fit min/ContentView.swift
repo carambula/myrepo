@@ -46,7 +46,8 @@ struct ContentView: View {
                 onEdit: { timer in
                     configuratorPresentation = ConfiguratorPresentation(timer: timer)
                 },
-                onDelete: deleteTimer
+                onDelete: deleteTimer,
+                onAccountTap: { isAccountPresented = true }
             )
             .overlay(alignment: .bottomTrailing) {
                 Button {
@@ -60,20 +61,6 @@ struct ContentView: View {
                 .padding(.bottom, DesignSystem.Spacing.lg)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .overlay(alignment: .top) {
-                HStack(spacing: DesignSystem.TopControls.horizontalPadding) {
-                    Spacer()
-                    Button {
-                        isAccountPresented = true
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.account)
-                    }
-                    .buttonStyle(CircularGlassIconButtonStyle())
-                    .accessibilityLabel("Account and settings")
-                }
-                .padding(.horizontal, MinSpacing.lg)
-                .padding(.top, DesignSystem.TopControls.verticalPadding)
-            }
             .themeBackground()
         }
         .sheet(isPresented: $isAccountPresented) {
@@ -222,14 +209,16 @@ struct SetTimerListView: View {
     var onPlaybackButton: (SetTimer) -> Void
     var onEdit: (SetTimer) -> Void
     var onDelete: (SetTimer) -> Void
-    @State private var titleTypeInitialY: CGFloat?
+    var onAccountTap: () -> Void
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                titleTypeMark
-                    .padding(.horizontal, DesignSystem.TitleType.horizontalPadding)
-                    .offset(y: DesignSystem.TitleType.markOffsetY)
+                scrollPinnedTopChrome
+
+                Color.clear
+                    .frame(height: DesignSystem.TitleType.contentTopSpacing)
+                    .allowsHitTesting(false)
 
                 if timers.isEmpty {
                     emptyState
@@ -259,7 +248,6 @@ struct SetTimerListView: View {
                         }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                    .padding(.top, DesignSystem.TitleType.contentTopSpacing)
                     .padding(.bottom, DesignSystem.Spacing.bottomSafeArea)
                 }
             }
@@ -270,38 +258,34 @@ struct SetTimerListView: View {
         .themeBackground()
     }
 
-    private var titleTypeMark: some View {
+    private var scrollPinnedTopChrome: some View {
         Image("Title Type")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .foregroundStyle(DesignSystem.Colors.accent)
+            .accessibilityHidden(true)
             .frame(
                 maxWidth: DesignSystem.TitleType.maxWidth,
                 maxHeight: DesignSystem.TitleType.maxHeight,
                 alignment: .leading
             )
-            .compositingGroup()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .named("setTimerListScroll")).minY
-            } action: { newValue in
-                if titleTypeInitialY == nil {
-                    titleTypeInitialY = newValue
+            .frame(maxWidth: .infinity, maxHeight: DesignSystem.TitleType.maxHeight, alignment: .leading)
+            .padding(.leading, DesignSystem.TitleType.horizontalPadding)
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    onAccountTap()
+                } label: {
+                    Image(systemName: DesignSystem.Icon.account)
                 }
+                .buttonStyle(CircularGlassIconButtonStyle())
+                .accessibilityLabel("Account and settings")
+                .padding(.trailing, MinSpacing.lg)
+                .offset(y: DesignSystem.TopControls.verticalPadding - DesignSystem.TitleType.scrollTopPadding)
             }
-            .visualEffect { content, proxy in
-                let scrollY = proxy.frame(in: .named("setTimerListScroll")).minY
-                let initial = titleTypeInitialY ?? scrollY
-                let drift = initial - scrollY
-                let progress = min(max(drift / DesignSystem.TitleType.blurDistance, 0), 1)
-                return content
-                    .offset(y: drift)
-                    .blur(radius: progress * DesignSystem.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * DesignSystem.TitleType.maxOpacityReduction)
-            }
-            .zIndex(-1)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+            .offset(y: DesignSystem.TitleType.markOffsetY)
+            .minScrollPinnedChrome(coordinateSpace: "setTimerListScroll")
+            .accessibilityElement(children: .contain)
     }
 
     private func liveSession(for timer: SetTimer) -> SetTimerSessionController? {

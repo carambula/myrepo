@@ -67,6 +67,9 @@ struct RootContentView: View {
                 },
                 onAddChannel: {
                     rootSheet = .addChannel
+                },
+                onAccountTap: {
+                    rootSheet = .account
                 }
             )
             .overlay(alignment: .bottomLeading) {
@@ -96,8 +99,11 @@ struct RootContentView: View {
             .themeBackground(using: themeManager.currentTheme)
             .navigationBarHidden(true)
             .overlay(alignment: .top) {
+                // Account / me is scroll-pinned inside the feed. Keep search (and
+                // Account on non-feed states) in the top overlay.
                 topControls
-                    .padding(.horizontal, MinSpacing.lg)
+                    .padding(.leading, MinSpacing.lg)
+                    .padding(.trailing, topControlsTrailingPadding)
                     .padding(.top, MinSpacing.TopControls.verticalPadding)
             }
             .sheet(item: $rootSheet) { sheet in
@@ -199,6 +205,18 @@ struct RootContentView: View {
         }
     }
 
+    /// Feed scroll hosts Account; reserve its trailing slot when search stays overlaid.
+    private var topControlsTrailingPadding: CGFloat {
+        if showsFeedAccountInScroll && searchPlacement == .topLeading {
+            return MinSpacing.lg + MinSpacing.TopControls.buttonSize + MinSpacing.TopControls.horizontalPadding
+        }
+        return MinSpacing.lg
+    }
+
+    private var showsFeedAccountInScroll: Bool {
+        feedViewModel.hasCompletedInitialLoad && !feedViewModel.channels.isEmpty
+    }
+
     private var topControls: some View {
         HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
             Spacer()
@@ -213,13 +231,15 @@ struct RootContentView: View {
                 .accessibilityIdentifier("topSearchButton")
             }
 
-            Button {
-                rootSheet = .account
-            } label: {
-                Image(systemName: DesignSystem.Icon.account)
+            if !showsFeedAccountInScroll {
+                Button {
+                    rootSheet = .account
+                } label: {
+                    Image(systemName: DesignSystem.Icon.account)
+                }
+                .buttonStyle(CircularGlassIconButtonStyle())
+                .accessibilityIdentifier("accountButton")
             }
-            .buttonStyle(CircularGlassIconButtonStyle())
-            .accessibilityIdentifier("accountButton")
         }
         .contentShape(Rectangle())
         .allowsHitTesting(true)

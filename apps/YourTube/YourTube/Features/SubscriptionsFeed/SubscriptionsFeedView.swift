@@ -14,6 +14,7 @@ struct SubscriptionsFeedView: View {
     var onChannelSelected: (YTChannel) -> Void
     var onConnectGoogle: () -> Void
     var onAddChannel: () -> Void
+    var onAccountTap: () -> Void
 
     private let gridColumns = [
         GridItem(.flexible(), spacing: DesignSystem.Spacing.lg),
@@ -28,7 +29,6 @@ struct SubscriptionsFeedView: View {
     @State private var hiddenSourceChannelID: String?
     @State private var dragSessionNonce = 0
     @State private var settlingChannelID: String?
-    @State private var titleTypeInitialY: CGFloat? = nil
     static func compactRelativeTimestamp(from date: Date, now: Date = Date()) -> String {
         let elapsedSeconds = max(0, Int(now.timeIntervalSince(date)))
         let elapsedMinutes = max(1, elapsedSeconds / 60)
@@ -67,35 +67,37 @@ struct SubscriptionsFeedView: View {
         Dictionary(uniqueKeysWithValues: watchStates.map { ($0.videoID, $0) })
     }
 
-    private var titleTypeMark: some View {
+    private var scrollPinnedTopChrome: some View {
         Image("Title Type")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .foregroundStyle(theme.accent)
+            .accessibilityHidden(true)
             .frame(maxWidth: MinSpacing.TitleType.maxWidth,
                    maxHeight: MinSpacing.TitleType.maxHeight,
                    alignment: .leading)
-            .compositingGroup()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .named("feedScroll")).minY
-            } action: { newValue in
-                if titleTypeInitialY == nil {
-                    titleTypeInitialY = newValue
-                }
+            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
+            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+            .overlay(alignment: .topTrailing) {
+                accountButton
+                    .padding(.trailing, MinSpacing.lg)
+                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .visualEffect { content, proxy in
-                let scrollY = proxy.frame(in: .named("feedScroll")).minY
-                let initial = titleTypeInitialY ?? scrollY
-                let drift = initial - scrollY
-                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1.0)
-                return content
-                    .offset(y: drift)
-                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
-            }
-            .zIndex(-1)
-            .accessibilityHidden(true)
+            .offset(y: MinSpacing.TitleType.markOffsetY)
+            .minScrollPinnedChrome(coordinateSpace: "feedScroll")
+            .accessibilityElement(children: .contain)
+    }
+
+    private var accountButton: some View {
+        Button {
+            onAccountTap()
+        } label: {
+            Image(systemName: DesignSystem.Icon.account)
+        }
+        .buttonStyle(CircularGlassIconButtonStyle())
+        .accessibilityIdentifier("accountButton")
+        .accessibilityLabel("Account")
     }
 
     var body: some View {
@@ -143,9 +145,11 @@ struct SubscriptionsFeedView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        titleTypeMark
-                            .padding(.horizontal, MinSpacing.TitleType.horizontalPadding)
-                            .offset(y: MinSpacing.TitleType.markOffsetY)
+                        scrollPinnedTopChrome
+
+                        Color.clear
+                            .frame(height: MinSpacing.TitleType.contentTopSpacing)
+                            .allowsHitTesting(false)
 
                         if let error = viewModel.errorMessage {
                             HStack(spacing: DesignSystem.Spacing.sm) {
@@ -217,7 +221,6 @@ struct SubscriptionsFeedView: View {
                                 }
                             }
                             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                            .padding(.top, MinSpacing.TitleType.contentTopSpacing)
                             .padding(.bottom, 48)
                             .onDrop(of: [.text], delegate: ChannelGridDropCleanupDelegate(
                                 draggedChannelID: $draggedChannelID,
@@ -238,7 +241,6 @@ struct SubscriptionsFeedView: View {
                                 }
                             }
                             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                            .padding(.top, MinSpacing.TitleType.contentTopSpacing)
                             .padding(.bottom, 48)
                         }
                     }

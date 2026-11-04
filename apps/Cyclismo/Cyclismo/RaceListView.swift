@@ -119,7 +119,6 @@ struct RaceListView: View {
     @State private var selectedRace: Race?
     @State private var isShowingAccount = false
     @State private var podcastMappingTask: Task<Void, Never>?
-    @State private var titleTypeInitialY: CGFloat? = nil
     @FocusState private var isBottomSearchFocused: Bool
     @AppStorage(SearchBarAppearance.storageKey) private var searchBarAppearanceRaw: String = SearchBarAppearance.classic.rawValue
     @AppStorage(MainListToolbarStyle.storageKey) private var mainListToolbarStyleRaw: String = MainListToolbarStyle.customFloating.rawValue
@@ -219,14 +218,15 @@ struct RaceListView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                titleTypeMark
-                    .padding(.horizontal, MinSpacing.TitleType.horizontalPadding)
-                    .offset(y: MinSpacing.TitleType.markOffsetY)
+                scrollPinnedTopChrome
+
+                Color.clear
+                    .frame(height: MinSpacing.TitleType.contentTopSpacing)
+                    .allowsHitTesting(false)
 
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
                     listContent
                 }
-                .padding(.top, MinSpacing.TitleType.contentTopSpacing)
                 .padding(.bottom, DesignSystem.Spacing.xl)
             }
             .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -239,16 +239,6 @@ struct RaceListView: View {
             if !usesCustomFloatingToolbar && !isBottomSearchVisible {
                 bottomToolbar
             }
-        }
-        .overlay(alignment: .top) {
-            HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
-                Spacer()
-                accountToolbarButton
-            }
-            .padding(.horizontal, MinSpacing.lg)
-            .padding(.top, MinSpacing.TopControls.verticalPadding)
-            .contentShape(Rectangle())
-            .allowsHitTesting(true)
         }
         #if os(iOS)
         .toolbar(isBottomSearchVisible ? .hidden : .visible, for: .bottomBar)
@@ -593,36 +583,26 @@ struct RaceListView: View {
         .accessibilityLabel("Search")
     }
 
-    private var titleTypeMark: some View {
+    private var scrollPinnedTopChrome: some View {
         Image("Title Type")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .foregroundStyle(DesignSystem.Color.accent)
+            .accessibilityHidden(true)
             .frame(maxWidth: MinSpacing.TitleType.maxWidth,
                    maxHeight: MinSpacing.TitleType.maxHeight,
                    alignment: .leading)
-            .compositingGroup()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .named("raceListScroll")).minY
-            } action: { newValue in
-                if titleTypeInitialY == nil {
-                    titleTypeInitialY = newValue
-                }
+            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
+            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+            .overlay(alignment: .topTrailing) {
+                accountToolbarButton
+                    .padding(.trailing, MinSpacing.lg)
+                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .visualEffect { content, proxy in
-                let scrollY = proxy.frame(in: .named("raceListScroll")).minY
-                let initial = titleTypeInitialY ?? scrollY
-                let drift = initial - scrollY
-                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1.0)
-                return content
-                    .offset(y: drift)
-                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
-            }
-            .zIndex(-1)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+            .offset(y: MinSpacing.TitleType.markOffsetY)
+            .minScrollPinnedChrome(coordinateSpace: "raceListScroll")
+            .accessibilityElement(children: .contain)
     }
 
     private var accountToolbarButton: some View {

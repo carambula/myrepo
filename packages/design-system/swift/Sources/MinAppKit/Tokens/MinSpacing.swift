@@ -49,13 +49,15 @@ public enum MinSpacing {
     public static let bottomSafeArea: CGFloat = 34
 
     /// Circular account / search / add / layout-toggle buttons.
-    /// These overlay the home surface — do not reserve a top `safeAreaInset` band for them.
+    /// Account / me sits inside the home `ScrollView` with `minScrollPinnedChrome`
+    /// (under content, blurs on scroll) — do not reserve a top `safeAreaInset` band.
+    /// Search / layout toggles may still use a top overlay when they must stay tappable.
     public enum TopControls {
         /// Floating circular glass button hit target. Matches WatchedIt `GlassControl.standardHeight`.
         public static let buttonSize: CGFloat = 56
         /// Gap between top-bar icon buttons.
         public static let horizontalPadding: CGFloat = sm
-        /// Padding from the top safe edge to the overlay control row.
+        /// Padding from the top safe edge to the control row (paired with `TitleType.scrollTopPadding`).
         public static let verticalPadding: CGFloat = sm
     }
 

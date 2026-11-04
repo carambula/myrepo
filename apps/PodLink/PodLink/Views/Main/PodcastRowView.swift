@@ -81,7 +81,7 @@ struct PodcastRowView: View {
                     AsyncCachedImage(url: mainThumbnailURL) { image in
                         image
                             .resizable()
-                            .aspectRatio(1, contentMode: .fill)
+                            .scaledToFill()
                     } placeholder: {
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                             .fill(Color(.tertiarySystemFill))
@@ -91,6 +91,7 @@ struct PodcastRowView: View {
                             }
                     }
                     .frame(width: listArtSize, height: listArtSize)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
                     .overlay(alignment: .bottomLeading) {
                         if showPodcastInsetThumbnail {

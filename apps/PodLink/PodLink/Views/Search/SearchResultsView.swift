@@ -23,7 +23,7 @@ struct SearchResultsView: View {
                                 AsyncCachedImage(url: podcast.displayArtworkURL) { image in
                                     image
                                         .resizable()
-                                        .aspectRatio(1, contentMode: .fill)
+                                        .scaledToFill()
                                 } placeholder: {
                                     RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                                         .fill(Color(.tertiarySystemFill))
@@ -33,6 +33,7 @@ struct SearchResultsView: View {
                                         }
                                 }
                                 .frame(width: 60, height: 60)
+                                .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
 
                                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {

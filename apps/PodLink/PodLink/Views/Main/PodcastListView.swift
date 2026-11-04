@@ -662,17 +662,18 @@ struct PodcastListView: View {
             AsyncCachedImage(url: podcast.displayArtworkURL) { image in
                 image
                     .resizable()
-                    .aspectRatio(1, contentMode: .fill)
+                    .scaledToFill()
             } placeholder: {
                 RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
                     .fill(Color(.tertiarySystemFill))
-                    .aspectRatio(1, contentMode: .fill)
                     .overlay {
                         Image(systemName: "mic.fill")
                             .font(.title)
                             .foregroundStyle(.secondary)
                     }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
 
             if overlayBadgeOnArt, unplayed {

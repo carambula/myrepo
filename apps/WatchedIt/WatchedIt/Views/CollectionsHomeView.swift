@@ -63,7 +63,6 @@ private struct CollectionsHomeContentView: View {
     @State private var podcastFeedArtworkCacheSavedAt: Date? = nil
     @State private var isCommittingPendingPodcastEpisodes = false
     @StateObject private var toolbarScrollState = ToolbarScrollState()
-    @State private var titleTypeInitialY: CGFloat? = nil
 
     private let basePosterWidth: CGFloat = 100
     private let basePosterHeight: CGFloat = 150
@@ -99,9 +98,12 @@ private struct CollectionsHomeContentView: View {
                     // the name used inside titleTypeMark's geometry readers.
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            titleTypeMark
-                                .padding(.horizontal, MinSpacing.TitleType.horizontalPadding)
-                                .offset(y: MinSpacing.TitleType.markOffsetY)
+                            scrollPinnedTopChrome
+
+                            // Non-hit-testing gap so the overhanging Account control stays tappable.
+                            Color.clear
+                                .frame(height: MinSpacing.TitleType.contentTopSpacing)
+                                .allowsHitTesting(false)
 
                             LazyVStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
                                 ForEach(viewModel.sections) { section in
@@ -124,7 +126,6 @@ private struct CollectionsHomeContentView: View {
                                     )
                                 }
                             }
-                            .padding(.top, MinSpacing.TitleType.contentTopSpacing)
                             .padding(.bottom, DesignSystem.Spacing.lg)
                         }
                         .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -151,17 +152,15 @@ private struct CollectionsHomeContentView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .top) {
-                HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
-                    Spacer()
-                    if pendingPodcastEpisodeCount > 0 {
-                        podcastNotificationsMenu
-                    }
-                    accountButton
+                // Non-scroll home states still need Account; the main ScrollView
+                // hosts the scroll-pinned chrome instead.
+                if shouldShowLoading || shouldShowEmptyState {
+                    topTrailingAccountControls
+                        .padding(.horizontal, MinSpacing.lg)
+                        .padding(.top, MinSpacing.TopControls.verticalPadding)
+                        .contentShape(Rectangle())
+                        .allowsHitTesting(true)
                 }
-                .padding(.horizontal, MinSpacing.lg)
-                .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .contentShape(Rectangle())
-                .allowsHitTesting(true)
             }
             .safeAreaInset(edge: .bottom) {
                 dynamicBottomToolbar
@@ -237,60 +236,41 @@ private struct CollectionsHomeContentView: View {
         .preferredColorScheme(themeManager.currentTheme.supportsLightMode ? nil : .dark)
     }
 
-    // MARK: - Title Type Mark (Scroll-Pinned Brand Logo with Blur)
+    // MARK: - Scroll-Pinned Top Chrome (Title + Account)
     //
-    // Reusable pattern for sister apps (PodLink, Cyclismo, YourTube):
+    // Title mark and account / me share `minScrollPinnedChrome`: pinned in place,
+    // blur/fade on scroll, `zIndex(-1)` so list content draws above both.
     //
-    // HOW IT WORKS
-    // The logo lives INSIDE the ScrollView as the first item so that
-    // `.visualEffect` receives continuous geometry updates during scroll.
-    // `.onGeometryChange` captures the initial Y position on first layout.
-    // `.visualEffect` then:
-    //   1. Offsets the logo by `drift` (initial - current) to pin it in place.
-    //   2. Applies blur and opacity fade proportional to scroll travel.
-    // `.zIndex(-1)` keeps it behind subsequent scroll content.
-    //
-    // SETUP CHECKLIST FOR OTHER APPS
-    // 1. Add a `@State private var titleTypeInitialY: CGFloat? = nil` property.
-    // 2. Add your brand asset to Assets.xcassets as an image set (SVG works).
-    //    Use `.renderingMode(.template)` so `.foregroundStyle()` tints it.
-    // 3. Place `titleTypeMark` as the FIRST child of a LazyVStack/VStack
-    //    inside a ScrollView.
-    // 4. Apply `.coordinateSpace(name: "yourScrollSpace")` to the ScrollView.
-    // 5. Match the coordinate space name in `.onGeometryChange` and
-    //    `.visualEffect` below.
-    // 6. Tune `maxWidth`, `maxHeight`, blur `distance` (80), max `radius` (12),
-    //    and `opacity` multiplier (0.5) to taste.
-    //
-    private var titleTypeMark: some View {
+    private var scrollPinnedTopChrome: some View {
         Image("TitleTypeMark")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .foregroundStyle(DesignSystem.Color.headline)
+            .accessibilityHidden(true)
             .frame(maxWidth: MinSpacing.TitleType.maxWidth,
                    maxHeight: MinSpacing.TitleType.maxHeight,
                    alignment: .leading)
-            .compositingGroup()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .named("collectionsHomeScroll")).minY
-            } action: { newValue in
-                if titleTypeInitialY == nil {
-                    titleTypeInitialY = newValue
-                }
+            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
+            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+            .overlay(alignment: .topTrailing) {
+                topTrailingAccountControls
+                    .padding(.trailing, MinSpacing.lg)
+                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .visualEffect { content, proxy in
-                let scrollY = proxy.frame(in: .named("collectionsHomeScroll")).minY
-                let initial = titleTypeInitialY ?? scrollY
-                let drift = initial - scrollY
-                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1.0)
-                return content
-                    .offset(y: drift)
-                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
+            .offset(y: MinSpacing.TitleType.markOffsetY)
+            .minScrollPinnedChrome(coordinateSpace: "collectionsHomeScroll")
+            .accessibilityElement(children: .contain)
+    }
+
+    private var topTrailingAccountControls: some View {
+        HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
+            Spacer(minLength: 0)
+            if pendingPodcastEpisodeCount > 0 {
+                podcastNotificationsMenu
             }
-            .zIndex(-1)
-            .accessibilityHidden(true)
+            accountButton
+        }
     }
 
     private var loadingCollectionsView: some View {

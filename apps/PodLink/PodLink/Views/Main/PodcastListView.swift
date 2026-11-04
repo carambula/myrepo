@@ -44,8 +44,6 @@ struct PodcastListView: View {
     @State private var suppressLayoutModeAnimation = false
     @State private var layoutFlipGeneration = 0
 
-    @State private var titleTypeInitialY: CGFloat? = nil
-
     // MARK: - Drag & Drop State
     @State private var draggedPodcastID: String?
     @State private var dragFingerLocation: CGPoint = .zero
@@ -156,9 +154,7 @@ struct PodcastListView: View {
             ZStack {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        titleTypeMark
-                            .padding(.horizontal, MinSpacing.TitleType.horizontalPadding)
-                            .offset(y: MinSpacing.TitleType.markOffsetY)
+                        scrollPinnedTopChrome
 
                         if !hasAttemptedInitialLoad {
                             initialLoadPlaceholder
@@ -240,11 +236,14 @@ struct PodcastListView: View {
 
     @ViewBuilder
     private var layoutContent: some View {
+        // Non-hit-testing gap so the overhanging Account control stays tappable.
+        Color.clear
+            .frame(height: MinSpacing.TitleType.contentTopSpacing)
+            .allowsHitTesting(false)
+
         if visibleLayoutMode == "grid" {
             gridContent
         } else {
-            Color.clear
-                .frame(height: MinSpacing.TitleType.contentTopSpacing)
             ForEach(sortedListPodcasts) { podcast in
                 listRow(for: podcast)
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
@@ -283,7 +282,6 @@ struct PodcastListView: View {
             }
         }
         .padding(.horizontal, gridHorizontalPadding)
-        .padding(.top, MinSpacing.TitleType.contentTopSpacing)
         .padding(.bottom, scrollBottomInset)
     }
 
@@ -722,45 +720,46 @@ struct PodcastListView: View {
         .padding(.bottom, scrollBottomInset)
     }
 
-    // MARK: - Title Type Mark (Scroll-Pinned Brand Logo with Blur)
-    //
-    // The logo lives INSIDE the ScrollView as the first item so that
-    // `.visualEffect` receives continuous geometry updates during scroll.
-    // `.onGeometryChange` captures the initial Y position on first layout.
-    // `.visualEffect` then:
-    //   1. Offsets the logo by `drift` (initial - current) to pin it in place.
-    //   2. Applies blur and opacity fade proportional to scroll travel.
-    // `.zIndex(-1)` keeps it behind subsequent scroll content.
+    // MARK: - Scroll-Pinned Top Chrome (Title + Account)
 
-    private var titleTypeMark: some View {
+    private var scrollPinnedTopChrome: some View {
         Image("Title Type")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .foregroundStyle(themeManager.currentTheme.accentColor)
+            .accessibilityHidden(true)
             .frame(maxWidth: MinSpacing.TitleType.maxWidth,
                    maxHeight: MinSpacing.TitleType.maxHeight,
                    alignment: .leading)
-            .compositingGroup()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .named("podcastListScroll")).minY
-            } action: { newValue in
-                if titleTypeInitialY == nil {
-                    titleTypeInitialY = newValue
-                }
+            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
+            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+            .overlay(alignment: .topTrailing) {
+                accountButton
+                    .padding(.trailing, MinSpacing.lg)
+                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .visualEffect { content, proxy in
-                let scrollY = proxy.frame(in: .named("podcastListScroll")).minY
-                let initial = titleTypeInitialY ?? scrollY
-                let drift = initial - scrollY
-                let progress = min(max(drift / MinSpacing.TitleType.blurDistance, 0), 1.0)
-                return content
-                    .offset(y: drift)
-                    .blur(radius: progress * MinSpacing.TitleType.maxBlurRadius)
-                    .opacity(1.0 - progress * MinSpacing.TitleType.maxOpacityReduction)
-            }
-            .zIndex(-1)
-            .accessibilityHidden(true)
+            .offset(y: MinSpacing.TitleType.markOffsetY)
+            .minScrollPinnedChrome(coordinateSpace: "podcastListScroll")
+            .accessibilityElement(children: .contain)
+    }
+
+    private var accountButton: some View {
+        let aff = MinAffordanceStyle.shared
+        let size = MinSpacing.TopControls.buttonSize
+        return Button {
+            rootSheet = .account
+        } label: {
+            Image(systemName: "person.crop.circle")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                .frame(width: size, height: size)
+                .contentShape(Rectangle())
+                .frostedSurface(aff.insettableCircleShape)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .accessibilityLabel("Account")
     }
 
     // MARK: - Layout Switch Animation (FAB / settings — non-interactive)

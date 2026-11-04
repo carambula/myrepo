@@ -11,6 +11,7 @@ import Foundation
 /// - `MinCornerRadius`: Corner radius tokens for UI elements
 /// - `MinOpacity`: Opacity values for various states
 /// - `MinAffordanceStyle`: Shared styling for buttons and interactive elements
+/// - `minScrollPinnedChrome`: Shared title-mark / account scroll-pin + blur modifier
 ///
 /// ## Agent kit
 /// - `AgentConnectionStore`: hashed tokens and per-app read/write scopes

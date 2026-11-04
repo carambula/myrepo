@@ -700,7 +700,7 @@ function PhoneHomeScreen({ app }) {
     <div className="app-phone-screen" style={{ background: 'var(--phone-bg)' }}>
       <div className="app-phone-status-bar" {...ds({ el: 'Status Bar', size: '393 × 54pt', layout: 'HStack, space-between', spacing: 'padding: 14pt top, 24pt horizontal' })}>
         <span className="app-phone-time">9:41</span>
-        <span className="app-phone-account-btn" {...ds({ el: 'Account Button', size: `${S.topControls.buttonSize} × ${S.topControls.buttonSize}pt`, radius: 'CornerRadius.round', bg: '.thinMaterial', border: '0.8pt rgba(255,255,255,0.28)', icon: 'IconSize.md (20pt) person.crop.circle', effect: 'backdrop-filter: blur(16pt)' })}><Ico name="circle-user-round" size={20} /></span>
+        <span className="app-phone-account-btn" {...ds({ el: 'Account Button', size: `${S.topControls.buttonSize} × ${S.topControls.buttonSize}pt`, radius: 'CornerRadius.round', bg: '.thinMaterial', border: '0.8pt rgba(255,255,255,0.28)', icon: 'IconSize.md (20pt) person.crop.circle', effect: 'backdrop-filter: blur(16pt); scroll-pinned with title mark (under content, blurs on scroll)' })}><Ico name="circle-user-round" size={20} /></span>
       </div>
       <div className="app-home-content" {...ds({ el: 'Content', layout: 'ScrollView > LazyVStack', spacing: `bottom inset: ${S.bottomSafeArea}pt` })}>
         <div className="app-home-typemark" {...ds({ el: 'App Typemark', type: 'displayMedium (28pt) bold', color: 'headline', spacing: `padding-h: ${S.xl}pt (screenHorizontalPadding)` })}>{app.name}</div>

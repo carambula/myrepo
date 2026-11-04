@@ -36,13 +36,15 @@ struct PodcastListView: View {
     @State private var hasAttemptedInitialLoad = false
 
     @State private var renderedLayoutMode = UserDefaults.standard.string(forKey: "layoutMode") ?? "grid"
-    /// 0 = current layout flat; 1 = destination layout flat. Drives interactive + animated flips.
-    @State private var layoutFlipProgress: Double = 0
-    @State private var layoutFlipDirection: MainScreenLayoutToggle.SwipeDirection = .towardList
-    @State private var isLayoutFlipInteractive = false
-    @State private var layoutFlipAxisLocked = false
+    /// Top-card horizontal offset while sliding either direction to reveal the other layout.
+    @State private var cardSwipeOffset: CGFloat = 0
+    @State private var cardSwipeProgress: Double = 0
+    @State private var cardSwipeSign: CGFloat = -1
+    @State private var cardSwipeUnderMode: String?
+    @State private var isCardSwipeInteractive = false
+    @State private var cardSwipeAxisLocked = false
     @State private var suppressLayoutModeAnimation = false
-    @State private var layoutFlipGeneration = 0
+    @State private var cardSwipeGeneration = 0
 
     // MARK: - Drag & Drop State
     @State private var draggedPodcastID: String?
@@ -93,7 +95,7 @@ struct PodcastListView: View {
 
     /// Suppressed during layout transitions so grid tiles don't flash titles.
     private var gridShowsTitles: Bool {
-        guard visibleLayoutMode == "grid", layoutFlipProgress == 0 else { return false }
+        guard renderedLayoutMode == "grid", cardSwipeProgress == 0 else { return false }
         return showPodcastTitlesOnMain
     }
 
@@ -131,22 +133,16 @@ struct PodcastListView: View {
         )
     }
 
-    private var layoutFlipDegrees: Double {
-        guard layoutFlipProgress > 0 else { return 0 }
-        return MainScreenLayoutToggle.rotationDegrees(
-            progress: layoutFlipProgress,
-            direction: layoutFlipDirection
-        )
+    private var destinationLayoutMode: String {
+        MainScreenLayoutToggle.otherMode(fromGridPoster: isGridPosterStyle)
     }
 
-    /// Content face visible during an in-flight flip (swaps at the halfway edge-on point).
-    private var visibleLayoutMode: String {
-        guard layoutFlipProgress > 0 else { return renderedLayoutMode }
-        let source = MainScreenLayoutToggle.sourceMode(for: layoutFlipDirection)
-        let destination = MainScreenLayoutToggle.destinationMode(for: layoutFlipDirection)
-        return MainScreenLayoutToggle.showsDestination(progress: layoutFlipProgress)
-            ? destination
-            : source
+    private var underLayoutMode: String {
+        cardSwipeUnderMode ?? destinationLayoutMode
+    }
+
+    private var isCardSwipeActive: Bool {
+        isCardSwipeInteractive || cardSwipeProgress > 0 || cardSwipeOffset != 0
     }
 
     var body: some View {
@@ -161,15 +157,8 @@ struct PodcastListView: View {
                         } else if followedPodcasts.isEmpty {
                             emptyState
                         } else {
-                            layoutContent
-                                .rotation3DEffect(
-                                    .degrees(layoutFlipDegrees),
-                                    axis: (x: 0, y: 1, z: 0),
-                                    perspective: 0.55
-                                )
-                                // Hide the razor-thin edge-on frame mid-flip.
-                                .opacity(abs(layoutFlipDegrees) > 85 ? 0 : 1)
-                                .allowsHitTesting(layoutFlipProgress == 0 && !isLayoutFlipInteractive)
+                            cardSwipeStack
+                                .allowsHitTesting(!isCardSwipeActive)
                         }
                     }
                     .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -185,7 +174,7 @@ struct PodcastListView: View {
                             }
                     }
                 }
-                .scrollDisabled(draggedPodcastID != nil || layoutFlipAxisLocked)
+                .scrollDisabled(draggedPodcastID != nil || cardSwipeAxisLocked)
                 .simultaneousGesture(dragTrackingGesture(proxy: proxy))
                 .simultaneousGesture(layoutSwipeGesture)
 
@@ -198,7 +187,7 @@ struct PodcastListView: View {
         }
         .themeBackground()
         .onChange(of: layoutMode) { _, newValue in
-            guard !suppressLayoutModeAnimation, !isLayoutFlipInteractive else { return }
+            guard !suppressLayoutModeAnimation, !isCardSwipeInteractive else { return }
             animateLayoutSwitch(to: newValue)
         }
         .task {
@@ -232,16 +221,53 @@ struct PodcastListView: View {
         }
     }
 
-    // MARK: - Layout Content (grid or list, flipped as one card)
+    // MARK: - Layout Content (card slide: either direction reveals the other)
 
     @ViewBuilder
-    private var layoutContent: some View {
+    private var cardSwipeStack: some View {
+        if isCardSwipeActive {
+            ZStack(alignment: .top) {
+                layoutCard(for: underLayoutMode)
+                layoutCard(for: renderedLayoutMode)
+                    .background(DesignSystem.Colors.background)
+                    .offset(x: cardSwipeOffset)
+                    .shadow(
+                        color: Color.black.opacity(0.12 * cardSwipeProgress),
+                        radius: 8,
+                        x: -cardSwipeSign * 4,
+                        y: 0
+                    )
+            }
+            .clipped()
+        } else {
+            // Flat into the outer LazyVStack so grid/list stay lazy when idle.
+            layoutContentFlat
+        }
+    }
+
+    @ViewBuilder
+    private var layoutContentFlat: some View {
         // Non-hit-testing gap so the overhanging Account control stays tappable.
         Color.clear
             .frame(height: MinSpacing.TitleType.contentTopSpacing)
             .allowsHitTesting(false)
 
-        if visibleLayoutMode == "grid" {
+        layoutRows(for: renderedLayoutMode)
+    }
+
+    private func layoutCard(for mode: String) -> some View {
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(height: MinSpacing.TitleType.contentTopSpacing)
+                .allowsHitTesting(false)
+            layoutRows(for: mode)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func layoutRows(for mode: String) -> some View {
+        if mode == "grid" {
             gridContent
         } else {
             ForEach(sortedListPodcasts) { podcast in
@@ -304,90 +330,95 @@ struct PodcastListView: View {
             }
     }
 
-    /// Interactive horizontal flip between poster grid and titled list.
-    /// Progress tracks finger travel; release past halfway / with enough momentum commits,
-    /// otherwise the flip cancels back to the starting layout.
+    /// Interactive card peel: swipe either way to slide the current layout off and
+    /// reveal the other underneath. Release past halfway / with momentum commits;
+    /// otherwise the card springs back.
     private var layoutSwipeGesture: some Gesture {
         DragGesture(minimumDistance: 16, coordinateSpace: .local)
             .onChanged { value in
                 guard draggedPodcastID == nil else { return }
-                handleLayoutFlipChanged(value)
+                handleCardSwipeChanged(value)
             }
             .onEnded { value in
                 guard draggedPodcastID == nil else {
-                    cancelLayoutFlipAxisLock()
+                    cancelCardSwipeAxisLock()
                     return
                 }
-                handleLayoutFlipEnded(value)
+                handleCardSwipeEnded(value)
             }
     }
 
-    private func handleLayoutFlipChanged(_ value: DragGesture.Value) {
-        if !layoutFlipAxisLocked {
-            guard let direction = MainScreenLayoutToggle.interactiveDirection(
-                translation: value.translation,
-                fromGridPoster: isGridPosterStyle
+    private func handleCardSwipeChanged(_ value: DragGesture.Value) {
+        if !cardSwipeAxisLocked {
+            guard let sign = MainScreenLayoutToggle.cardSwipeSign(
+                translation: value.translation
             ) else { return }
-            layoutFlipAxisLocked = true
-            isLayoutFlipInteractive = true
-            layoutFlipDirection = direction
-            layoutFlipGeneration += 1
+            cardSwipeAxisLocked = true
+            isCardSwipeInteractive = true
+            cardSwipeSign = sign
+            cardSwipeUnderMode = destinationLayoutMode
+            cardSwipeGeneration += 1
         }
 
-        guard isLayoutFlipInteractive else { return }
+        guard isCardSwipeInteractive else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            layoutFlipProgress = MainScreenLayoutToggle.interactiveProgress(
-                translationWidth: value.translation.width,
-                direction: layoutFlipDirection
+            // Follow the finger; keep the locked sign so a mid-gesture reverse cancels.
+            cardSwipeOffset = value.translation.width
+            cardSwipeProgress = MainScreenLayoutToggle.cardSwipeProgress(
+                translationWidth: value.translation.width
             )
         }
     }
 
-    private func handleLayoutFlipEnded(_ value: DragGesture.Value) {
-        guard isLayoutFlipInteractive else {
-            cancelLayoutFlipAxisLock()
+    private func handleCardSwipeEnded(_ value: DragGesture.Value) {
+        guard isCardSwipeInteractive else {
+            cancelCardSwipeAxisLock()
             return
         }
 
-        let commit = MainScreenLayoutToggle.shouldCommit(
-            progress: layoutFlipProgress,
+        let commit = MainScreenLayoutToggle.shouldCommitCardSwipe(
+            progress: cardSwipeProgress,
             translationWidth: value.translation.width,
             predictedTranslationWidth: value.predictedEndTranslation.width,
-            direction: layoutFlipDirection
+            lockedSign: cardSwipeSign
         )
-        finishInteractiveLayoutFlip(commit: commit)
+        finishInteractiveCardSwipe(commit: commit)
     }
 
-    private func finishInteractiveLayoutFlip(commit: Bool) {
-        let direction = layoutFlipDirection
-        let generation = layoutFlipGeneration
-        let target = commit ? 1.0 : 0.0
-        isLayoutFlipInteractive = false
-        layoutFlipAxisLocked = false
+    private func finishInteractiveCardSwipe(commit: Bool) {
+        let sign = cardSwipeSign
+        let generation = cardSwipeGeneration
+        let targetOffset: CGFloat = commit
+            ? sign * MainScreenLayoutToggle.dismissDistance
+            : 0
+        let targetProgress: Double = commit ? 1 : 0
+        isCardSwipeInteractive = false
+        cardSwipeAxisLocked = false
 
-        withAnimation(.easeOut(duration: MainScreenLayoutToggle.flipAnimationDuration)) {
-            layoutFlipProgress = target
+        withAnimation(.easeOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
+            cardSwipeOffset = targetOffset
+            cardSwipeProgress = targetProgress
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.flipAnimationDuration) {
-            guard generation == layoutFlipGeneration else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
+            guard generation == cardSwipeGeneration else { return }
             if commit {
-                commitLayoutFlip(direction)
+                commitCardSwipe()
             } else {
-                renderedLayoutMode = MainScreenLayoutToggle.sourceMode(for: direction)
-                layoutFlipProgress = 0
+                cardSwipeOffset = 0
+                cardSwipeProgress = 0
+                cardSwipeUnderMode = nil
             }
         }
     }
 
-    private func commitLayoutFlip(_ direction: MainScreenLayoutToggle.SwipeDirection) {
+    private func commitCardSwipe() {
         var mode = layoutMode
         var titles = showPodcastTitlesOnMain
         var art = mainScreenArtEmphasisRaw
-        MainScreenLayoutToggle.apply(
-            direction,
+        MainScreenLayoutToggle.applyToggle(
             layoutMode: &mode,
             showTitles: &titles,
             artEmphasis: &art
@@ -397,17 +428,21 @@ struct PodcastListView: View {
         showPodcastTitlesOnMain = titles
         mainScreenArtEmphasisRaw = art
         renderedLayoutMode = mode
-        layoutFlipProgress = 0
+        cardSwipeOffset = 0
+        cardSwipeProgress = 0
+        cardSwipeUnderMode = nil
         DispatchQueue.main.async {
             suppressLayoutModeAnimation = false
         }
     }
 
-    private func cancelLayoutFlipAxisLock() {
-        layoutFlipAxisLocked = false
-        if isLayoutFlipInteractive {
-            isLayoutFlipInteractive = false
-            layoutFlipProgress = 0
+    private func cancelCardSwipeAxisLock() {
+        cardSwipeAxisLocked = false
+        if isCardSwipeInteractive {
+            isCardSwipeInteractive = false
+            cardSwipeOffset = 0
+            cardSwipeProgress = 0
+            cardSwipeUnderMode = nil
         }
     }
 
@@ -765,22 +800,26 @@ struct PodcastListView: View {
     // MARK: - Layout Switch Animation (FAB / settings — non-interactive)
 
     private func animateLayoutSwitch(to newMode: String) {
-        guard newMode != renderedLayoutMode || layoutFlipProgress > 0 else { return }
+        guard newMode != renderedLayoutMode || isCardSwipeActive else { return }
 
-        layoutFlipDirection =
-            (renderedLayoutMode == "grid" && newMode != "grid") ? .towardList : .towardGrid
-        layoutFlipGeneration += 1
-        let generation = layoutFlipGeneration
-        layoutFlipProgress = 0
+        cardSwipeSign = -1
+        cardSwipeUnderMode = newMode
+        cardSwipeGeneration += 1
+        let generation = cardSwipeGeneration
+        cardSwipeOffset = 0
+        cardSwipeProgress = 0
 
-        withAnimation(.easeInOut(duration: MainScreenLayoutToggle.flipAnimationDuration)) {
-            layoutFlipProgress = 1
+        withAnimation(.easeInOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
+            cardSwipeOffset = cardSwipeSign * MainScreenLayoutToggle.dismissDistance
+            cardSwipeProgress = 1
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.flipAnimationDuration) {
-            guard generation == layoutFlipGeneration else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
+            guard generation == cardSwipeGeneration else { return }
             renderedLayoutMode = newMode
-            layoutFlipProgress = 0
+            cardSwipeOffset = 0
+            cardSwipeProgress = 0
+            cardSwipeUnderMode = nil
         }
     }
 

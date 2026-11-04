@@ -172,7 +172,7 @@ struct PodcastListView: View {
                                 .allowsHitTesting(layoutFlipProgress == 0 && !isLayoutFlipInteractive)
                         }
                     }
-                    .padding(.top, MinSpacing.TitleType.scrollTopPadding)
+                    .padding(.top, MinSpacing.TopControls.verticalPadding)
                 }
                 .scrollClipDisabled()
                 .coordinateSpace(name: "podcastListScroll")
@@ -721,27 +721,36 @@ struct PodcastListView: View {
     }
 
     // MARK: - Scroll-Pinned Top Chrome (Title + Account)
+    //
+    // Height matches the 56pt account control so glass stays inside the bounds
+    // that `minScrollPinnedChrome` / `visualEffect` rasterizes.
 
     private var scrollPinnedTopChrome: some View {
-        Image("Title Type")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(themeManager.currentTheme.accentColor)
-            .accessibilityHidden(true)
-            .frame(maxWidth: MinSpacing.TitleType.maxWidth,
-                   maxHeight: MinSpacing.TitleType.maxHeight,
-                   alignment: .leading)
-            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
-            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
-            .overlay(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
+            Image("Title Type")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(themeManager.currentTheme.accentColor)
+                .accessibilityHidden(true)
+                .frame(maxWidth: MinSpacing.TitleType.maxWidth,
+                       maxHeight: MinSpacing.TitleType.maxHeight,
+                       alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
+                .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+
+            HStack {
+                Spacer(minLength: 0)
                 accountButton
-                    .padding(.trailing, MinSpacing.lg)
-                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .offset(y: MinSpacing.TitleType.markOffsetY)
-            .minScrollPinnedChrome(coordinateSpace: "podcastListScroll")
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, MinSpacing.lg)
+            .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MinSpacing.TopControls.buttonSize)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+        .minScrollPinnedChrome(coordinateSpace: "podcastListScroll")
+        .accessibilityElement(children: .contain)
     }
 
     private var accountButton: some View {

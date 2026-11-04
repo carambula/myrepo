@@ -44,18 +44,24 @@ struct ContentView: View {
 
     /// Grid + no titles (compact posters). List + titles uses the same large-art emphasis.
     private var isGridPosterStyle: Bool {
-        layoutMode == "grid" && !showPodcastTitlesOnMain
+        MainScreenLayoutToggle.isGridPosterStyle(
+            layoutMode: layoutMode,
+            showTitles: showPodcastTitlesOnMain
+        )
     }
 
     private func toggleMainViewDisplayStyle() {
-        if isGridPosterStyle {
-            layoutMode = "list"
-            showPodcastTitlesOnMain = true
-        } else {
-            layoutMode = "grid"
-            showPodcastTitlesOnMain = false
-        }
-        mainScreenArtEmphasisRaw = MainScreenArtEmphasis.largeArt.rawValue
+        var mode = layoutMode
+        var titles = showPodcastTitlesOnMain
+        var art = mainScreenArtEmphasisRaw
+        MainScreenLayoutToggle.toggle(
+            layoutMode: &mode,
+            showTitles: &titles,
+            artEmphasis: &art
+        )
+        layoutMode = mode
+        showPodcastTitlesOnMain = titles
+        mainScreenArtEmphasisRaw = art
     }
 
     private var searchPlacement: NavigationSearchPlacement {

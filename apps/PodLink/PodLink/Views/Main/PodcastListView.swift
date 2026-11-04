@@ -163,6 +163,7 @@ struct PodcastListView: View {
                 }
                 .scrollDisabled(draggedPodcastID != nil)
                 .simultaneousGesture(dragTrackingGesture(proxy: proxy))
+                .simultaneousGesture(layoutSwipeGesture)
 
                 dragOverlay
             }
@@ -255,6 +256,34 @@ struct PodcastListView: View {
                 guard draggedPodcastID != nil else { return }
                 endGridDrag()
             }
+    }
+
+    /// Horizontal swipe between poster grid and titled list (same as the floating toggle).
+    /// Requires clear horizontal dominance so vertical scrolling and grid reorder stay intact.
+    private var layoutSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 40, coordinateSpace: .local)
+            .onEnded { value in
+                guard draggedPodcastID == nil else { return }
+                guard let direction = MainScreenLayoutToggle.swipeDirection(
+                    translation: value.translation
+                ) else { return }
+                applyMainLayoutSwipe(direction)
+            }
+    }
+
+    private func applyMainLayoutSwipe(_ direction: MainScreenLayoutToggle.SwipeDirection) {
+        var mode = layoutMode
+        var titles = showPodcastTitlesOnMain
+        var art = mainScreenArtEmphasisRaw
+        MainScreenLayoutToggle.apply(
+            direction,
+            layoutMode: &mode,
+            showTitles: &titles,
+            artEmphasis: &art
+        )
+        layoutMode = mode
+        showPodcastTitlesOnMain = titles
+        mainScreenArtEmphasisRaw = art
     }
 
     // MARK: - Drag Overlay (outside ScrollView)

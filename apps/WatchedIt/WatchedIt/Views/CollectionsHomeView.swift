@@ -153,9 +153,11 @@ private struct CollectionsHomeContentView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .top) {
-                // Non-scroll home states still need Account; the main ScrollView
-                // hosts the scroll-pinned chrome instead.
-                if shouldShowLoading || shouldShowEmptyState {
+                // Only when the home ScrollView (and its scroll-pinned Account) is
+                // not on screen. `shouldShowEmptyState` alone is true whenever
+                // sources are prepared — that previously left a sharp overlay
+                // Account on top of the blurring chrome.
+                if !showsScrollPinnedHomeChrome {
                     topTrailingAccountControls
                         .padding(.horizontal, MinSpacing.lg)
                         .padding(.top, MinSpacing.TopControls.verticalPadding)
@@ -320,6 +322,11 @@ private struct CollectionsHomeContentView: View {
     /// lazy @Query is still materialising the DataSource rows.
     private var shouldShowEmptyState: Bool {
         viewModel.isPrepared && !allDataSources.isEmpty
+    }
+
+    /// Home ScrollView with title + Account chrome is on screen.
+    private var showsScrollPinnedHomeChrome: Bool {
+        !shouldShowLoading && !viewModel.sections.isEmpty
     }
 
     private var mainListToolbarStyle: MainListToolbarStyle {

@@ -68,25 +68,31 @@ struct SubscriptionsFeedView: View {
     }
 
     private var scrollPinnedTopChrome: some View {
-        Image("Title Type")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(theme.accent)
-            .accessibilityHidden(true)
-            .frame(maxWidth: MinSpacing.TitleType.maxWidth,
-                   maxHeight: MinSpacing.TitleType.maxHeight,
-                   alignment: .leading)
-            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
-            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
-            .overlay(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
+            Image("Title Type")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(theme.accent)
+                .accessibilityHidden(true)
+                .frame(maxWidth: MinSpacing.TitleType.maxWidth,
+                       maxHeight: MinSpacing.TitleType.maxHeight,
+                       alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
+                .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+
+            HStack {
+                Spacer(minLength: 0)
                 accountButton
-                    .padding(.trailing, MinSpacing.lg)
-                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .offset(y: MinSpacing.TitleType.markOffsetY)
-            .minScrollPinnedChrome(coordinateSpace: "feedScroll")
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, MinSpacing.lg)
+            .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MinSpacing.TopControls.buttonSize)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+        .minScrollPinnedChrome(coordinateSpace: "feedScroll")
+        .accessibilityElement(children: .contain)
     }
 
     private var accountButton: some View {
@@ -244,8 +250,9 @@ struct SubscriptionsFeedView: View {
                             .padding(.bottom, 48)
                         }
                     }
-                    .padding(.top, MinSpacing.TitleType.scrollTopPadding)
+                    .padding(.top, MinSpacing.TopControls.verticalPadding)
                 }
+                .scrollClipDisabled()
                 .coordinateSpace(name: "feedScroll")
                 .refreshable {
                     await viewModel.refresh(modelContext: modelContext)

@@ -100,7 +100,7 @@ private struct CollectionsHomeContentView: View {
                         LazyVStack(alignment: .leading, spacing: 0) {
                             scrollPinnedTopChrome
 
-                            // Non-hit-testing gap so the overhanging Account control stays tappable.
+                            // Non-hit-testing gap so Account stays tappable above section rows.
                             Color.clear
                                 .frame(height: MinSpacing.TitleType.contentTopSpacing)
                                 .allowsHitTesting(false)
@@ -128,7 +128,7 @@ private struct CollectionsHomeContentView: View {
                             }
                             .padding(.bottom, DesignSystem.Spacing.lg)
                         }
-                        .padding(.top, MinSpacing.TitleType.scrollTopPadding)
+                        .padding(.top, MinSpacing.TopControls.verticalPadding)
                         .background(
                             GeometryReader { geometry in
                                 Color.clear.preference(
@@ -138,6 +138,7 @@ private struct CollectionsHomeContentView: View {
                             }
                         )
                     }
+                    .scrollClipDisabled()
                     .coordinateSpace(name: "collectionsHomeScroll")
                     .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                         handleScrollOffset(value)
@@ -241,26 +242,38 @@ private struct CollectionsHomeContentView: View {
     // Title mark and account / me share `minScrollPinnedChrome`: pinned in place,
     // blur/fade on scroll, `zIndex(-1)` so list content draws above both.
     //
+    // Layout height matches the 56pt account control (not the 38pt wordmark) so the
+    // glass button stays inside the chrome bounds that `visualEffect` rasterizes.
+    //
     private var scrollPinnedTopChrome: some View {
-        Image("TitleTypeMark")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(DesignSystem.Color.headline)
-            .accessibilityHidden(true)
-            .frame(maxWidth: MinSpacing.TitleType.maxWidth,
-                   maxHeight: MinSpacing.TitleType.maxHeight,
-                   alignment: .leading)
-            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
-            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
-            .overlay(alignment: .topTrailing) {
-                topTrailingAccountControls
-                    .padding(.trailing, MinSpacing.lg)
-                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
+        ZStack(alignment: .topLeading) {
+            Image("TitleTypeMark")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(DesignSystem.Color.headline)
+                .accessibilityHidden(true)
+                .frame(maxWidth: MinSpacing.TitleType.maxWidth,
+                       maxHeight: MinSpacing.TitleType.maxHeight,
+                       alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
+                .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+
+            HStack(spacing: MinSpacing.TopControls.horizontalPadding) {
+                Spacer(minLength: 0)
+                if pendingPodcastEpisodeCount > 0 {
+                    podcastNotificationsMenu
+                }
+                accountButton
             }
-            .offset(y: MinSpacing.TitleType.markOffsetY)
-            .minScrollPinnedChrome(coordinateSpace: "collectionsHomeScroll")
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, MinSpacing.lg)
+            .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MinSpacing.TopControls.buttonSize)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+        .minScrollPinnedChrome(coordinateSpace: "collectionsHomeScroll")
+        .accessibilityElement(children: .contain)
     }
 
     private var topTrailingAccountControls: some View {

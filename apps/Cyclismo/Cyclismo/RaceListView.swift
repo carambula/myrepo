@@ -229,8 +229,9 @@ struct RaceListView: View {
                 }
                 .padding(.bottom, DesignSystem.Spacing.xl)
             }
-            .padding(.top, MinSpacing.TitleType.scrollTopPadding)
+            .padding(.top, MinSpacing.TopControls.verticalPadding)
         }
+        .scrollClipDisabled()
         .coordinateSpace(name: "raceListScroll")
         .id("race-list-\(themeManager.currentTheme.name)")
         .background(DesignSystem.Color.background)
@@ -584,25 +585,31 @@ struct RaceListView: View {
     }
 
     private var scrollPinnedTopChrome: some View {
-        Image("Title Type")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(DesignSystem.Color.accent)
-            .accessibilityHidden(true)
-            .frame(maxWidth: MinSpacing.TitleType.maxWidth,
-                   maxHeight: MinSpacing.TitleType.maxHeight,
-                   alignment: .leading)
-            .frame(maxWidth: .infinity, maxHeight: MinSpacing.TitleType.maxHeight, alignment: .leading)
-            .padding(.leading, MinSpacing.TitleType.horizontalPadding)
-            .overlay(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
+            Image("Title Type")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(DesignSystem.Color.accent)
+                .accessibilityHidden(true)
+                .frame(maxWidth: MinSpacing.TitleType.maxWidth,
+                       maxHeight: MinSpacing.TitleType.maxHeight,
+                       alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
+                .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+
+            HStack {
+                Spacer(minLength: 0)
                 accountToolbarButton
-                    .padding(.trailing, MinSpacing.lg)
-                    .offset(y: MinSpacing.TopControls.verticalPadding - MinSpacing.TitleType.scrollTopPadding)
             }
-            .offset(y: MinSpacing.TitleType.markOffsetY)
-            .minScrollPinnedChrome(coordinateSpace: "raceListScroll")
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, MinSpacing.lg)
+            .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MinSpacing.TopControls.buttonSize)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+        .minScrollPinnedChrome(coordinateSpace: "raceListScroll")
+        .accessibilityElement(children: .contain)
     }
 
     private var accountToolbarButton: some View {

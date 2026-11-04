@@ -251,7 +251,7 @@ struct SetTimerListView: View {
                     .padding(.bottom, DesignSystem.Spacing.bottomSafeArea)
                 }
             }
-            .padding(.top, DesignSystem.TitleType.scrollTopPadding)
+            .padding(.top, DesignSystem.TopControls.verticalPadding)
         }
         .scrollClipDisabled()
         .coordinateSpace(name: "setTimerListScroll")
@@ -259,20 +259,23 @@ struct SetTimerListView: View {
     }
 
     private var scrollPinnedTopChrome: some View {
-        Image("Title Type")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(DesignSystem.Colors.accent)
-            .accessibilityHidden(true)
-            .frame(
-                maxWidth: DesignSystem.TitleType.maxWidth,
-                maxHeight: DesignSystem.TitleType.maxHeight,
-                alignment: .leading
-            )
-            .frame(maxWidth: .infinity, maxHeight: DesignSystem.TitleType.maxHeight, alignment: .leading)
-            .padding(.leading, DesignSystem.TitleType.horizontalPadding)
-            .overlay(alignment: .topTrailing) {
+        ZStack(alignment: .topLeading) {
+            Image("Title Type")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .accessibilityHidden(true)
+                .frame(
+                    maxWidth: DesignSystem.TitleType.maxWidth,
+                    maxHeight: DesignSystem.TitleType.maxHeight,
+                    alignment: .leading
+                )
+                .frame(maxWidth: .infinity, maxHeight: DesignSystem.TopControls.buttonSize, alignment: .leading)
+                .padding(.leading, DesignSystem.TitleType.horizontalPadding)
+
+            HStack {
+                Spacer(minLength: 0)
                 Button {
                     onAccountTap()
                 } label: {
@@ -280,12 +283,15 @@ struct SetTimerListView: View {
                 }
                 .buttonStyle(CircularGlassIconButtonStyle())
                 .accessibilityLabel("Account and settings")
-                .padding(.trailing, MinSpacing.lg)
-                .offset(y: DesignSystem.TopControls.verticalPadding - DesignSystem.TitleType.scrollTopPadding)
             }
-            .offset(y: DesignSystem.TitleType.markOffsetY)
-            .minScrollPinnedChrome(coordinateSpace: "setTimerListScroll")
-            .accessibilityElement(children: .contain)
+            .padding(.horizontal, MinSpacing.lg)
+            .frame(maxWidth: .infinity, minHeight: DesignSystem.TopControls.buttonSize, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: DesignSystem.TopControls.buttonSize)
+        .offset(y: DesignSystem.TitleType.markOffsetY)
+        .minScrollPinnedChrome(coordinateSpace: "setTimerListScroll")
+        .accessibilityElement(children: .contain)
     }
 
     private func liveSession(for timer: SetTimer) -> SetTimerSessionController? {

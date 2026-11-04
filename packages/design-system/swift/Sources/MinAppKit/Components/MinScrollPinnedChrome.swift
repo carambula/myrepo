@@ -16,6 +16,10 @@ public struct MinScrollPinnedChromeModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
+            // Flatten materials (glass account buttons) into the layer so blur,
+            // opacity, and zIndex apply — UIVisualEffect-backed materials otherwise
+            // punch through SwiftUI stacking and ignore visualEffect.
+            .compositingGroup()
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.frame(in: .named(coordinateSpaceName)).minY
             } action: { newValue in

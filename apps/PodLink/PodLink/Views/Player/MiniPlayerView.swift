@@ -179,12 +179,13 @@ struct MiniPlayerView: View {
                                 AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
                                     image
                                         .resizable()
-                                        .aspectRatio(1, contentMode: .fill)
+                                        .scaledToFill()
                                 } placeholder: {
                                     RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
                                         .fill(Color(.tertiarySystemFill))
                                 }
                                 .frame(width: 52, height: 52)
+                                .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
 
                                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
@@ -285,12 +286,13 @@ struct MiniPlayerView: View {
                     AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
                         image
                             .resizable()
-                            .aspectRatio(1, contentMode: .fill)
+                            .scaledToFill()
                     } placeholder: {
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
                             .fill(Color(.tertiarySystemFill))
                     }
                     .frame(width: 44, height: 44)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -368,7 +370,7 @@ struct MiniPlayerView: View {
                             AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
                                 image
                                     .resizable()
-                                    .aspectRatio(1, contentMode: .fill)
+                                    .scaledToFill()
                             } placeholder: {
                                 artClipShape
                                     .fill(Color(.tertiarySystemFill))
@@ -377,6 +379,7 @@ struct MiniPlayerView: View {
                                 width: isSquare ? microplayerArtworkOuterSize : microplayerArtworkInnerSize,
                                 height: isSquare ? microplayerArtworkOuterSize : microplayerArtworkInnerSize
                             )
+                            .clipped()
                             .clipShape(artClipShape)
                         }
                         .frame(width: microplayerArtworkOuterSize, height: microplayerArtworkOuterSize)
@@ -844,12 +847,13 @@ struct MiniPlayerView: View {
         AsyncCachedImage(url: episodeListArtworkURL(episode: episode)) { image in
             image
                 .resizable()
-                .aspectRatio(1, contentMode: .fill)
+                .scaledToFill()
         } placeholder: {
             RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
                 .fill(Color(.tertiarySystemFill))
         }
         .frame(width: size, height: size)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
     }
 }

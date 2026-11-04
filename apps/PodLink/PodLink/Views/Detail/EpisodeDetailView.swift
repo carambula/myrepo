@@ -77,11 +77,10 @@ struct EpisodeDetailView: View {
             AsyncCachedImage(url: mergedEpisode.resolvedArtworkURL(podcast: podcast)) { image in
                 image
                     .resizable()
-                    .aspectRatio(1, contentMode: .fill)
+                    .scaledToFill()
             } placeholder: {
                 RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl)
                     .fill(Color(.tertiarySystemFill))
-                    .aspectRatio(1, contentMode: .fill)
                     .overlay {
                         Image(systemName: "waveform")
                             .font(.title)
@@ -89,6 +88,7 @@ struct EpisodeDetailView: View {
                     }
             }
             .frame(width: 160, height: 160)
+            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xl))
             .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
 

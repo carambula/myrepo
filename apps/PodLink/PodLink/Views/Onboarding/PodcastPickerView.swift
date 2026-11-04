@@ -49,12 +49,14 @@ struct PodcastPickerView: View {
                     AsyncCachedImage(url: podcast.displayArtworkURL) { image in
                         image
                             .resizable()
-                            .aspectRatio(1, contentMode: .fill)
+                            .scaledToFill()
                     } placeholder: {
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
                             .fill(Color(.tertiarySystemFill))
-                            .aspectRatio(1, contentMode: .fill)
                     }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
 
                     if isSelected {

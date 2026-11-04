@@ -25,6 +25,8 @@ struct EpisodePlayerSheet: View {
     @State private var isLoadingTranscript = false
     @State private var playbackMergeTick = 0
     @State private var overlaySheet: PlayerChromeOverlaySheet?
+    /// width÷height for the top artwork slot; updates when the bitmap loads.
+    @State private var artworkAspectRatio: CGFloat = PlayerArtworkAspect.defaultRatio
 
     private var mergedEpisode: Episode {
         _ = playbackMergeTick
@@ -279,20 +281,33 @@ struct EpisodePlayerSheet: View {
 
     // MARK: - Artwork
 
+    private var episodeArtworkURL: URL? {
+        mergedEpisode.resolvedArtworkURL(podcast: contextPodcast)
+    }
+
     private var episodeArtwork: some View {
         Group {
             if isCurrentEpisode,
                playbackService.state.isVideoMode,
                mergedEpisode.videoURL != nil {
                 VideoPlayerView()
-                    .aspectRatio(1, contentMode: .fit)
+                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
                     .frame(maxWidth: .infinity)
                     .clipped()
             } else {
-                AsyncCachedImage(url: mergedEpisode.resolvedArtworkURL(podcast: contextPodcast)) { image in
+                AsyncCachedImage(
+                    url: episodeArtworkURL,
+                    onImageSizeChange: { size in
+                        let next = PlayerArtworkAspect.clamped(size: size)
+                        guard abs(next - artworkAspectRatio) > 0.01 else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            artworkAspectRatio = next
+                        }
+                    }
+                ) { image in
                     image
                         .resizable()
-                        .aspectRatio(1, contentMode: .fill)
+                        .aspectRatio(contentMode: .fit)
                 } placeholder: {
                     Color(.tertiarySystemFill)
                         .overlay {
@@ -300,11 +315,13 @@ struct EpisodePlayerSheet: View {
                                 .font(.system(size: 60))
                                 .foregroundStyle(.secondary)
                         }
-                        .aspectRatio(1, contentMode: .fill)
                 }
                 .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
+                .aspectRatio(artworkAspectRatio, contentMode: .fit)
                 .clipped()
+                .onChange(of: episodeArtworkURL) { _, _ in
+                    artworkAspectRatio = PlayerArtworkAspect.defaultRatio
+                }
             }
         }
     }

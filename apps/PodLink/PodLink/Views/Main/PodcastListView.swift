@@ -36,8 +36,12 @@ struct PodcastListView: View {
     @State private var hasAttemptedInitialLoad = false
 
     @State private var renderedLayoutMode = UserDefaults.standard.string(forKey: "layoutMode") ?? "grid"
-    /// Y-axis degrees for the grid ↔ list horizontal flip (`0` = flat / facing user).
-    @State private var layoutFlipDegrees: Double = 0
+    /// 0 = current layout flat; 1 = destination layout flat. Drives interactive + animated flips.
+    @State private var layoutFlipProgress: Double = 0
+    @State private var layoutFlipDirection: MainScreenLayoutToggle.SwipeDirection = .towardList
+    @State private var isLayoutFlipInteractive = false
+    @State private var layoutFlipAxisLocked = false
+    @State private var suppressLayoutModeAnimation = false
     @State private var layoutFlipGeneration = 0
 
     @State private var titleTypeInitialY: CGFloat? = nil
@@ -91,7 +95,8 @@ struct PodcastListView: View {
 
     /// Suppressed during layout transitions so grid tiles don't flash titles.
     private var gridShowsTitles: Bool {
-        showPodcastTitlesOnMain && layoutMode == renderedLayoutMode
+        guard visibleLayoutMode == "grid", layoutFlipProgress == 0 else { return false }
+        return showPodcastTitlesOnMain
     }
 
     private var currentTapStyle: TapInteractionStyle {
@@ -121,6 +126,31 @@ struct PodcastListView: View {
         return 100
     }
 
+    private var isGridPosterStyle: Bool {
+        MainScreenLayoutToggle.isGridPosterStyle(
+            layoutMode: layoutMode,
+            showTitles: showPodcastTitlesOnMain
+        )
+    }
+
+    private var layoutFlipDegrees: Double {
+        guard layoutFlipProgress > 0 else { return 0 }
+        return MainScreenLayoutToggle.rotationDegrees(
+            progress: layoutFlipProgress,
+            direction: layoutFlipDirection
+        )
+    }
+
+    /// Content face visible during an in-flight flip (swaps at the halfway edge-on point).
+    private var visibleLayoutMode: String {
+        guard layoutFlipProgress > 0 else { return renderedLayoutMode }
+        let source = MainScreenLayoutToggle.sourceMode(for: layoutFlipDirection)
+        let destination = MainScreenLayoutToggle.destinationMode(for: layoutFlipDirection)
+        return MainScreenLayoutToggle.showsDestination(progress: layoutFlipProgress)
+            ? destination
+            : source
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ZStack {
@@ -143,7 +173,7 @@ struct PodcastListView: View {
                                 )
                                 // Hide the razor-thin edge-on frame mid-flip.
                                 .opacity(abs(layoutFlipDegrees) > 85 ? 0 : 1)
-                                .allowsHitTesting(layoutFlipDegrees == 0)
+                                .allowsHitTesting(layoutFlipProgress == 0 && !isLayoutFlipInteractive)
                         }
                     }
                     .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -159,7 +189,7 @@ struct PodcastListView: View {
                             }
                     }
                 }
-                .scrollDisabled(draggedPodcastID != nil)
+                .scrollDisabled(draggedPodcastID != nil || layoutFlipAxisLocked)
                 .simultaneousGesture(dragTrackingGesture(proxy: proxy))
                 .simultaneousGesture(layoutSwipeGesture)
 
@@ -172,6 +202,7 @@ struct PodcastListView: View {
         }
         .themeBackground()
         .onChange(of: layoutMode) { _, newValue in
+            guard !suppressLayoutModeAnimation, !isLayoutFlipInteractive else { return }
             animateLayoutSwitch(to: newValue)
         }
         .task {
@@ -209,7 +240,7 @@ struct PodcastListView: View {
 
     @ViewBuilder
     private var layoutContent: some View {
-        if renderedLayoutMode == "grid" {
+        if visibleLayoutMode == "grid" {
             gridContent
         } else {
             Color.clear
@@ -275,20 +306,85 @@ struct PodcastListView: View {
             }
     }
 
-    /// Horizontal swipe between poster grid and titled list (same as the floating toggle).
-    /// Requires clear horizontal dominance so vertical scrolling and grid reorder stay intact.
+    /// Interactive horizontal flip between poster grid and titled list.
+    /// Progress tracks finger travel; release past halfway / with enough momentum commits,
+    /// otherwise the flip cancels back to the starting layout.
     private var layoutSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 40, coordinateSpace: .local)
-            .onEnded { value in
+        DragGesture(minimumDistance: 16, coordinateSpace: .local)
+            .onChanged { value in
                 guard draggedPodcastID == nil else { return }
-                guard let direction = MainScreenLayoutToggle.swipeDirection(
-                    translation: value.translation
-                ) else { return }
-                applyMainLayoutSwipe(direction)
+                handleLayoutFlipChanged(value)
+            }
+            .onEnded { value in
+                guard draggedPodcastID == nil else {
+                    cancelLayoutFlipAxisLock()
+                    return
+                }
+                handleLayoutFlipEnded(value)
             }
     }
 
-    private func applyMainLayoutSwipe(_ direction: MainScreenLayoutToggle.SwipeDirection) {
+    private func handleLayoutFlipChanged(_ value: DragGesture.Value) {
+        if !layoutFlipAxisLocked {
+            guard let direction = MainScreenLayoutToggle.interactiveDirection(
+                translation: value.translation,
+                fromGridPoster: isGridPosterStyle
+            ) else { return }
+            layoutFlipAxisLocked = true
+            isLayoutFlipInteractive = true
+            layoutFlipDirection = direction
+            layoutFlipGeneration += 1
+        }
+
+        guard isLayoutFlipInteractive else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            layoutFlipProgress = MainScreenLayoutToggle.interactiveProgress(
+                translationWidth: value.translation.width,
+                direction: layoutFlipDirection
+            )
+        }
+    }
+
+    private func handleLayoutFlipEnded(_ value: DragGesture.Value) {
+        guard isLayoutFlipInteractive else {
+            cancelLayoutFlipAxisLock()
+            return
+        }
+
+        let commit = MainScreenLayoutToggle.shouldCommit(
+            progress: layoutFlipProgress,
+            translationWidth: value.translation.width,
+            predictedTranslationWidth: value.predictedEndTranslation.width,
+            direction: layoutFlipDirection
+        )
+        finishInteractiveLayoutFlip(commit: commit)
+    }
+
+    private func finishInteractiveLayoutFlip(commit: Bool) {
+        let direction = layoutFlipDirection
+        let generation = layoutFlipGeneration
+        let target = commit ? 1.0 : 0.0
+        isLayoutFlipInteractive = false
+        layoutFlipAxisLocked = false
+
+        withAnimation(.easeOut(duration: MainScreenLayoutToggle.flipAnimationDuration)) {
+            layoutFlipProgress = target
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.flipAnimationDuration) {
+            guard generation == layoutFlipGeneration else { return }
+            if commit {
+                commitLayoutFlip(direction)
+            } else {
+                renderedLayoutMode = MainScreenLayoutToggle.sourceMode(for: direction)
+                layoutFlipProgress = 0
+            }
+        }
+    }
+
+    private func commitLayoutFlip(_ direction: MainScreenLayoutToggle.SwipeDirection) {
         var mode = layoutMode
         var titles = showPodcastTitlesOnMain
         var art = mainScreenArtEmphasisRaw
@@ -298,9 +394,23 @@ struct PodcastListView: View {
             showTitles: &titles,
             artEmphasis: &art
         )
+        suppressLayoutModeAnimation = true
         layoutMode = mode
         showPodcastTitlesOnMain = titles
         mainScreenArtEmphasisRaw = art
+        renderedLayoutMode = mode
+        layoutFlipProgress = 0
+        DispatchQueue.main.async {
+            suppressLayoutModeAnimation = false
+        }
+    }
+
+    private func cancelLayoutFlipAxisLock() {
+        layoutFlipAxisLocked = false
+        if isLayoutFlipInteractive {
+            isLayoutFlipInteractive = false
+            layoutFlipProgress = 0
+        }
     }
 
     // MARK: - Drag Overlay (outside ScrollView)
@@ -653,32 +763,25 @@ struct PodcastListView: View {
             .accessibilityHidden(true)
     }
 
-    // MARK: - Layout Switch Animation
+    // MARK: - Layout Switch Animation (FAB / settings — non-interactive)
 
     private func animateLayoutSwitch(to newMode: String) {
-        guard newMode != renderedLayoutMode else { return }
+        guard newMode != renderedLayoutMode || layoutFlipProgress > 0 else { return }
 
+        layoutFlipDirection =
+            (renderedLayoutMode == "grid" && newMode != "grid") ? .towardList : .towardGrid
         layoutFlipGeneration += 1
         let generation = layoutFlipGeneration
-        let angles = MainScreenLayoutToggle.flipAngles(from: renderedLayoutMode, to: newMode)
-        let half = MainScreenLayoutToggle.flipHalfDuration
+        layoutFlipProgress = 0
 
-        withAnimation(.easeIn(duration: half)) {
-            layoutFlipDegrees = angles.outbound
+        withAnimation(.easeInOut(duration: MainScreenLayoutToggle.flipAnimationDuration)) {
+            layoutFlipProgress = 1
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + half) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.flipAnimationDuration) {
             guard generation == layoutFlipGeneration else { return }
-            // Snap to the opposite edge-on angle without animating through the long way around.
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                renderedLayoutMode = newMode
-                layoutFlipDegrees = angles.inbound
-            }
-            withAnimation(.easeOut(duration: half)) {
-                layoutFlipDegrees = 0
-            }
+            renderedLayoutMode = newMode
+            layoutFlipProgress = 0
         }
     }
 

@@ -36,7 +36,9 @@ struct PodcastListView: View {
     @State private var hasAttemptedInitialLoad = false
 
     @State private var renderedLayoutMode = UserDefaults.standard.string(forKey: "layoutMode") ?? "grid"
-    @State private var layoutFadeOpacity: Double = 1
+    /// Y-axis degrees for the grid ↔ list horizontal flip (`0` = flat / facing user).
+    @State private var layoutFlipDegrees: Double = 0
+    @State private var layoutFlipGeneration = 0
 
     @State private var titleTypeInitialY: CGFloat? = nil
 
@@ -132,20 +134,16 @@ struct PodcastListView: View {
                             initialLoadPlaceholder
                         } else if followedPodcasts.isEmpty {
                             emptyState
-                        } else if renderedLayoutMode == "grid" {
-                            gridContent
-                                .opacity(layoutFadeOpacity)
                         } else {
-                            Color.clear
-                                .frame(height: MinSpacing.TitleType.contentTopSpacing)
-                            ForEach(sortedListPodcasts) { podcast in
-                                listRow(for: podcast)
-                                    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                                    .padding(.bottom, DesignSystem.Spacing.sm)
-                            }
-                            .opacity(layoutFadeOpacity)
-                            Color.clear
-                                .frame(height: scrollBottomInset)
+                            layoutContent
+                                .rotation3DEffect(
+                                    .degrees(layoutFlipDegrees),
+                                    axis: (x: 0, y: 1, z: 0),
+                                    perspective: 0.55
+                                )
+                                // Hide the razor-thin edge-on frame mid-flip.
+                                .opacity(abs(layoutFlipDegrees) > 85 ? 0 : 1)
+                                .allowsHitTesting(layoutFlipDegrees == 0)
                         }
                     }
                     .padding(.top, MinSpacing.TitleType.scrollTopPadding)
@@ -204,6 +202,25 @@ struct PodcastListView: View {
             .environment(playbackService)
             .environment(downloadManager)
             .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - Layout Content (grid or list, flipped as one card)
+
+    @ViewBuilder
+    private var layoutContent: some View {
+        if renderedLayoutMode == "grid" {
+            gridContent
+        } else {
+            Color.clear
+                .frame(height: MinSpacing.TitleType.contentTopSpacing)
+            ForEach(sortedListPodcasts) { podcast in
+                listRow(for: podcast)
+                    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                    .padding(.bottom, DesignSystem.Spacing.sm)
+            }
+            Color.clear
+                .frame(height: scrollBottomInset)
         }
     }
 
@@ -639,17 +656,28 @@ struct PodcastListView: View {
     // MARK: - Layout Switch Animation
 
     private func animateLayoutSwitch(to newMode: String) {
-        withAnimation(.easeOut(duration: 0.05)) {
-            layoutFadeOpacity = 0
+        guard newMode != renderedLayoutMode else { return }
+
+        layoutFlipGeneration += 1
+        let generation = layoutFlipGeneration
+        let angles = MainScreenLayoutToggle.flipAngles(from: renderedLayoutMode, to: newMode)
+        let half = MainScreenLayoutToggle.flipHalfDuration
+
+        withAnimation(.easeIn(duration: half)) {
+            layoutFlipDegrees = angles.outbound
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0) {
-            renderedLayoutMode = newMode
-
-            DispatchQueue.main.async {
-                withAnimation(.easeIn(duration: 0.1)) {
-                    layoutFadeOpacity = 1
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + half) {
+            guard generation == layoutFlipGeneration else { return }
+            // Snap to the opposite edge-on angle without animating through the long way around.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                renderedLayoutMode = newMode
+                layoutFlipDegrees = angles.inbound
+            }
+            withAnimation(.easeOut(duration: half)) {
+                layoutFlipDegrees = 0
             }
         }
     }

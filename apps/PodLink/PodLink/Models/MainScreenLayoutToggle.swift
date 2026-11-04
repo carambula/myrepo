@@ -57,4 +57,24 @@ enum MainScreenLayoutToggle {
             apply(.towardGrid, layoutMode: &layoutMode, showTitles: &showTitles, artEmphasis: &artEmphasis)
         }
     }
+
+    /// Y-axis degrees for a horizontal card flip. Outbound rotates to edge-on; inbound
+    /// starts from the opposite edge-on so the new layout opens facing the user.
+    static func flipAngles(from fromMode: String, to toMode: String) -> (outbound: Double, inbound: Double) {
+        let direction: SwipeDirection =
+            (fromMode == "grid" && toMode != "grid") ? .towardList : .towardGrid
+        return flipAngles(for: direction)
+    }
+
+    static func flipAngles(for direction: SwipeDirection) -> (outbound: Double, inbound: Double) {
+        switch direction {
+        case .towardList:
+            // Swipe left: rotate so the right face swings away, then open from -90°.
+            return (90, -90)
+        case .towardGrid:
+            return (-90, 90)
+        }
+    }
+
+    static let flipHalfDuration: TimeInterval = 0.2
 }

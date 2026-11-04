@@ -109,4 +109,18 @@ struct MainScreenLayoutToggleTests {
         #expect(layoutMode == "grid")
         #expect(!showTitles)
     }
+
+    @Test
+    func flipAnglesMatchSwipeDirection() {
+        let toList = MainScreenLayoutToggle.flipAngles(from: "grid", to: "list")
+        #expect(toList.outbound == 90)
+        #expect(toList.inbound == -90)
+
+        let toGrid = MainScreenLayoutToggle.flipAngles(from: "list", to: "grid")
+        #expect(toGrid.outbound == -90)
+        #expect(toGrid.inbound == 90)
+
+        #expect(MainScreenLayoutToggle.flipAngles(for: .towardList).outbound == 90)
+        #expect(MainScreenLayoutToggle.flipAngles(for: .towardGrid).outbound == -90)
+    }
 }

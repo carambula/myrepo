@@ -84,6 +84,7 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
                 .onDisappear {
                     scrollObserver.onStateChange = nil
                 }
+                .edgeSwipeToDismiss()
 
             closeButton(isButtonActive)
                 .opacity(showButton ? 1 : 0.001)

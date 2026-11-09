@@ -58,15 +58,26 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--color-surface-primary);
+  background-color: var(--color-surface-primary, #1e1e1e);
+  color: var(--color-text-primary, #eee);
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  touch-action: pan-y;
+  transform-origin: center center;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.min-bottom-sheet--dragging {
+  transition: none;
   touch-action: none;
 }
 
@@ -91,10 +102,13 @@
 
 .min-bottom-sheet__handle-container {
   padding: 12px 0;
+  min-height: 44px;
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-shrink: 0;
   cursor: grab;
+  touch-action: none;
 }
 
 .min-bottom-sheet__handle-container:active {
@@ -104,7 +118,7 @@
 .min-bottom-sheet__handle {
   width: 36px;
   height: 4px;
-  background-color: var(--color-border-primary);
+  background-color: var(--color-border-primary, #555);
   border-radius: 2px;
 }
 
@@ -114,6 +128,7 @@
   overflow-x: hidden;
   padding: 0 16px 24px;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Smooth scrolling for iOS */

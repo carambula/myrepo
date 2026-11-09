@@ -26,6 +26,18 @@ export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
 export { BottomSheet } from './BottomSheet.js';
+export {
+  dismissTranslation,
+  edgeSwipeToDismissDefaults,
+  isOnSheetEdge,
+  sheetTransform,
+  shouldDismissEdgeSwipe,
+  swipeBackdropOpacity,
+  swipeDistance,
+  swipeProgress,
+  swipeScale,
+  velocityFromSamples,
+} from './edgeSwipeToDismiss.js';
 export { DismissButton } from './DismissButton.js';
 export { LoadingState, EmptyState, MAIN_APP_LOADING_CLASSNAME } from './ContentStatus.js';
 export { MainAppLoading } from './MainAppLoading.js';

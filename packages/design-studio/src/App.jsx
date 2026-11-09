@@ -6,6 +6,17 @@ import { shadows } from '../../design-system/src/tokens/shadows.js';
 import { borders } from '../../design-system/src/tokens/borders.js';
 import { lightTheme } from '../../design-system/src/themes/lightTheme.js';
 import { darkTheme } from '../../design-system/src/themes/darkTheme.js';
+import {
+  dismissTranslation,
+  edgeSwipeToDismissDefaults,
+  isOnSheetEdge,
+  sheetTransform,
+  shouldDismissEdgeSwipe,
+  swipeBackdropOpacity,
+  swipeProgress,
+  velocityFromSamples,
+} from '../../design-system/src/components/edgeSwipeToDismiss.js';
+import '../../design-system/src/components/BottomSheet.css';
 import './studio.css';
 import './swiftui-primitives.css';
 
@@ -169,7 +180,241 @@ function ShadowsPanel() {
   );
 }
 
+function pointerClientPoint(e) {
+  return {
+    x: e.clientX ?? e.touches?.[0]?.clientX ?? e.changedTouches?.[0]?.clientX ?? 0,
+    y: e.clientY ?? e.touches?.[0]?.clientY ?? e.changedTouches?.[0]?.clientY ?? 0,
+  };
+}
+
 // ── Components Panel ──
+function LiveBottomSheetDemo() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [detent, setDetent] = useState('large');
+  const [drag, setDrag] = useState(null);
+  const sheetRef = useRef(null);
+  const startRef = useRef({ x: 0, y: 0 });
+  const samplesRef = useRef([]);
+  const pendingRef = useRef(false);
+  const draggingRef = useRef(false);
+  const dismissingRef = useRef(false);
+
+  const closeSheet = useCallback(() => {
+    pendingRef.current = false;
+    draggingRef.current = false;
+    dismissingRef.current = false;
+    setDrag(null);
+    setIsOpen(false);
+  }, []);
+
+  const onPointerDown = (e) => {
+    if (!isOpen || dismissingRef.current) return;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    const point = pointerClientPoint(e);
+    const rect = sheet.getBoundingClientRect();
+    const fromHandle = Boolean(e.target.closest('.min-bottom-sheet__handle-container'));
+    const onEdge = isOnSheetEdge(point.x - rect.left, point.y - rect.top, rect.width, rect.height);
+    if (!fromHandle && !onEdge) return;
+    startRef.current = point;
+    samplesRef.current = [{ t: performance.now(), x: point.x, y: point.y }];
+    pendingRef.current = true;
+    draggingRef.current = false;
+    if (e.pointerId != null && sheet.setPointerCapture) {
+      try {
+        sheet.setPointerCapture(e.pointerId);
+      } catch {
+        // Window listeners still track the pointer if capture is unavailable.
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const onMove = (e) => {
+      if (!pendingRef.current && !draggingRef.current) return;
+      const point = pointerClientPoint(e);
+      const dx = point.x - startRef.current.x;
+      const dy = point.y - startRef.current.y;
+      if (pendingRef.current && !draggingRef.current) {
+        if (Math.hypot(dx, dy) < edgeSwipeToDismissDefaults.activationDistance) return;
+        draggingRef.current = true;
+        pendingRef.current = false;
+      }
+      if (!draggingRef.current) return;
+      if (e.cancelable) e.preventDefault();
+      const now = performance.now();
+      samplesRef.current.push({ t: now, x: point.x, y: point.y });
+      samplesRef.current = samplesRef.current.filter((s) => s.t >= now - edgeSwipeToDismissDefaults.sampleWindowMs);
+      const next = { dx, dy };
+      setDrag(next);
+      const sheet = sheetRef.current;
+      if (sheet) {
+        sheet.style.transition = 'none';
+        sheet.style.transform = sheetTransform({
+          dx,
+          dy,
+          progress: swipeProgress(dx, dy),
+        });
+      }
+    };
+
+    const onUp = (e) => {
+      pendingRef.current = false;
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      const point = pointerClientPoint(e);
+      const dx = point.x - startRef.current.x;
+      const dy = point.y - startRef.current.y;
+      const now = performance.now();
+      samplesRef.current.push({ t: now, x: point.x, y: point.y });
+      const { vx, vy } = velocityFromSamples(samplesRef.current, now);
+      const sheet = sheetRef.current;
+      if (shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
+        const fly = dismissTranslation(dx, dy, sheet?.offsetWidth || 390, sheet?.offsetHeight || 700);
+        dismissingRef.current = true;
+        setDrag({ dx, dy, dismissing: true, dismissX: fly.x, dismissY: fly.y });
+        if (sheet) {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+          sheet.style.transform = sheetTransform({
+            dismissing: true,
+            dismissX: fly.x,
+            dismissY: fly.y,
+          });
+          sheet.style.opacity = '0';
+        }
+        window.setTimeout(closeSheet, 280);
+        return;
+      }
+      setDrag(null);
+      if (sheet) {
+        sheet.style.transition = '';
+        sheet.style.transform = '';
+        sheet.style.opacity = '';
+      }
+    };
+
+    const opts = { capture: true, passive: false };
+    window.addEventListener('pointermove', onMove, opts);
+    window.addEventListener('mousemove', onMove, opts);
+    window.addEventListener('touchmove', onMove, opts);
+    window.addEventListener('pointerup', onUp, opts);
+    window.addEventListener('mouseup', onUp, opts);
+    window.addEventListener('touchend', onUp, opts);
+    window.addEventListener('pointercancel', onUp, opts);
+    return () => {
+      window.removeEventListener('pointermove', onMove, opts);
+      window.removeEventListener('mousemove', onMove, opts);
+      window.removeEventListener('touchmove', onMove, opts);
+      window.removeEventListener('pointerup', onUp, opts);
+      window.removeEventListener('mouseup', onUp, opts);
+      window.removeEventListener('touchend', onUp, opts);
+      window.removeEventListener('pointercancel', onUp, opts);
+    };
+  }, [isOpen, closeSheet]);
+
+  const progress = drag ? swipeProgress(drag.dx, drag.dy) : 0;
+  const sheetStyle = drag
+    ? {
+        transform: sheetTransform({
+          dx: drag.dx,
+          dy: drag.dy,
+          progress,
+          dismissing: Boolean(drag.dismissing),
+          dismissX: drag.dismissX,
+          dismissY: drag.dismissY,
+        }),
+        opacity: drag.dismissing ? 0 : 1,
+        transition: drag.dismissing
+          ? 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+          : 'none',
+      }
+    : undefined;
+  const backdropStyle = drag
+    ? {
+        opacity: drag.dismissing ? 0 : swipeBackdropOpacity(progress),
+        transition: drag.dismissing ? 'opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+      }
+    : undefined;
+
+  return (
+    <>
+      <div className="ds-bottomsheet-demo">
+        <div className="ds-bottomsheet-backdrop" />
+        <div className="ds-bottomsheet">
+          <div className="ds-bottomsheet__handle" />
+          <div style={{ padding: '0 16px' }}>
+            <h4 style={{ marginBottom: 8 }}>Sheet Content</h4>
+            <p className="dim" style={{ fontSize: 14 }}>
+              Grab an edge, then drag any direction. Release to snap back, or flick away to dismiss.
+            </p>
+            <button
+              className="ds-btn ds-btn--primary ds-btn--small"
+              style={{ marginTop: 8 }}
+              onClick={() => setIsOpen(true)}
+            >
+              Try edge swipe
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`min-bottom-sheet-container ds-live-sheet ${isOpen ? 'min-bottom-sheet-container--open' : ''}`}>
+        <div
+          className={`min-bottom-sheet__backdrop ${isOpen ? `min-bottom-sheet__backdrop--${detent}` : 'min-bottom-sheet__backdrop--hidden'}`}
+          style={backdropStyle}
+          onClick={closeSheet}
+        />
+        <div
+          ref={sheetRef}
+          className={`min-bottom-sheet min-bottom-sheet--${detent} ${isOpen ? '' : 'min-bottom-sheet--closed'} ${drag && !drag.dismissing ? 'min-bottom-sheet--dragging' : ''}`}
+          style={sheetStyle}
+          onPointerDown={onPointerDown}
+          onMouseDown={onPointerDown}
+        >
+          <div className="min-bottom-sheet__handle-container">
+            <div className="min-bottom-sheet__handle" />
+          </div>
+          <div className="min-bottom-sheet__content">
+            <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>Edge swipe to dismiss</h2>
+            <p className="dim" style={{ fontSize: 14, marginBottom: 12 }}>
+              Start on the grabber or any sheet edge, then drag the sheet omnidirectionally.
+              Fling it away to close, or let go to return it to rest.
+            </p>
+            <p className="dim" style={{ fontSize: 13, marginBottom: 16 }}>
+              Current detent: {detent}
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {['small', 'medium', 'large'].map((size) => (
+                <button
+                  key={size}
+                  className={`ds-btn ds-btn--small ${detent === size ? 'ds-btn--primary' : 'ds-btn--ghost'}`}
+                  onClick={() => setDetent(size)}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            {['Movie detail', 'Episode player', 'Account', 'Search'].map((label) => (
+              <div
+                key={label}
+                style={{
+                  padding: 12,
+                  marginBottom: 8,
+                  borderRadius: 8,
+                  background: 'rgba(255,255,255,0.06)',
+                }}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function ComponentPreview({ title, desc, children }) {
   return (
     <div className="comp-preview">
@@ -250,17 +495,8 @@ function ComponentsPanel() {
         </div>
       </ComponentPreview>
 
-      <ComponentPreview title="BottomSheet" desc="3 detents: small → medium → large, with backdrop blur">
-        <div className="ds-bottomsheet-demo">
-          <div className="ds-bottomsheet-backdrop" />
-          <div className="ds-bottomsheet">
-            <div className="ds-bottomsheet__handle" />
-            <div style={{ padding: '0 16px' }}>
-              <h4 style={{ marginBottom: 8 }}>Sheet Content</h4>
-              <p className="dim" style={{ fontSize: 14 }}>Backdrop blur + darkening intensifies by detent.</p>
-            </div>
-          </div>
-        </div>
+      <ComponentPreview title="BottomSheet" desc="Edge swipe from any sheet edge drags the card omnidirectionally until it dismisses or snaps back">
+        <LiveBottomSheetDemo />
       </ComponentPreview>
 
       <ComponentPreview title="LoadingState / MainAppLoading" desc="Consistent loading across all apps">
@@ -298,6 +534,14 @@ function ComponentsPanel() {
             <span style={{ fontSize: 13 }}>Priority Alerts</span>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: '#444' }} />
           </div>
+        </div>
+      </ComponentPreview>
+
+      <ComponentPreview title="EdgeSwipeToDismiss" desc="Omnidirectional edge-pan on the presented sheet card">
+        <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 12 }}>
+          <span className="dim" style={{ fontSize: 13 }}>
+            Edge start → 2D follow + scale → dismiss in swipe direction or spring back. Shared with the web BottomSheet.
+          </span>
         </div>
       </ComponentPreview>
 
@@ -468,6 +712,7 @@ function PatternsPanel() {
     { name: 'Scroll-Dismiss Button', where: 'All 4 apps', desc: 'Floating button that appears/hides based on scroll position, with configurable material and border. Single implementation in MinAppKit.', dsFile: 'DismissButton + useScrollDismiss', swift: 'MinAppKit/ScrollDismissButton.swift (shared)', status: 'unified' },
     { name: 'Scroll Offset Tracking', where: 'All 4 apps', desc: 'PreferenceKey + View extension for tracking scroll position in ScrollViews. Single implementation in MinAppKit.', dsFile: '—', swift: 'MinAppKit/ScrollOffset.swift (shared)', status: 'unified' },
     { name: 'Bottom Sheet / Pull-to-Dismiss', where: 'WatchedIt, PodLink, Cyclismo', desc: 'Shared pull-to-dismiss engine (ScrollObserver + Introspector + state machine + haptics) in MinAppKit. Each app provides its own close button styling. YourTube keeps its SwiftUI DragGesture implementation.', dsFile: 'BottomSheet.js + BottomSheet.css', swift: 'MinAppKit/PullToDismiss/ (shared engine) → per-app close button', status: 'unified' },
+    { name: 'Bottom Sheet / Edge-Swipe-to-Dismiss', where: 'All 4 apps + fit min', desc: 'Pan from a sheet edge, then drag the card omnidirectionally until it is flung away or released back to rest. Shared math in the design system; native transform lives on the presented sheet container.', dsFile: 'edgeSwipeToDismiss.js + BottomSheet.js', swift: 'MinAppKit/PullToDismiss/EdgeSwipeToDismiss.swift + Engine', status: 'unified' },
     { name: 'Cached Async Image', where: 'All 4 apps', desc: 'Remote image loading with memory + disk cache, blur-up animation, and sync cache hits. Shared implementation in MinAppKit with configurable fade/blur.', dsFile: '—', swift: 'MinAppKit/CachedAsyncImage.swift + ImageCache.swift (shared)', status: 'unified' },
     { name: 'MainContentTitle', where: 'All 4 apps', desc: `Primary page heading: ${typography.styles.mainContentTitle.fontSize} / weight ${typography.styles.mainContentTitle.fontWeight}. Must be identical everywhere.`, dsFile: 'MainContentTitle.js + .native.js', swift: 'MinMainContentTitleView (generated)', status: 'unified' },
     { name: 'Page Margins / Grid', where: 'All 4 apps', desc: `Desktop: ${spacing.page.marginLeft}/${spacing.page.marginRight}. Mobile: ${spacing.page.marginLeftMobile}/${spacing.page.marginRightMobile}. Generated native constants.`, dsFile: 'spacing.js → build-native-tokens', swift: 'MinPageMargins.swift (generated)', status: 'unified' },
@@ -595,7 +840,7 @@ function AppsPanel() {
           { file: 'Components/OnboardingPagerView.swift', from: 'Paged TabView shell + page dots + completion' },
           { file: 'Components/SettingsSheet.swift', from: 'Grouped List + Done toolbar chrome' },
           { file: 'Components/NavigationSearchPlacement.swift', from: 'Search bar position enum (PodLink + YourTube)' },
-          { file: 'Components/PullToDismiss/', from: 'ScrollObserver + Introspector + Engine (3 files)' },
+          { file: 'Components/PullToDismiss/', from: 'ScrollObserver + Introspector + Engine + edge-swipe dismiss' },
           { file: 'Components/CachedAsyncImage.swift', from: 'Remote image loading + memory/disk cache' },
           { file: 'Components/ImageCache.swift', from: 'Configurable cache directory + downscaling' },
           { file: 'Extensions/CodablePreference.swift', from: 'Protocol for JSON-in-UserDefaults load/save' },

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:native",
-    "build:native": "node scripts/build-native-tokens.js"
+    "build:native": "node scripts/build-native-tokens.js",
+    "test": "node --test src/components/edgeSwipeToDismiss.test.js"
   },
   "keywords": [
     "design-system",

@@ -213,11 +213,18 @@
       border-top-left-radius: 16px;
       border-top-right-radius: 16px;
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
                   height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      touch-action: pan-y;
+      transform-origin: center center;
+    }
+
+    .min-bottom-sheet--dragging {
+      transition: none;
+      touch-action: none;
     }
 
     .min-bottom-sheet--closed {
@@ -322,7 +329,7 @@
 <body>
   <div class="app-header">
     <h1>Bottom Sheet Demo</h1>
-    <p>Experience blur and darkening effects based on detent size</p>
+    <p>Drag from any sheet edge in any direction to dismiss, or release to snap back</p>
   </div>
 
   <div class="content-area">
@@ -332,17 +339,17 @@
       <div class="control-group">
         <label>Open Bottom Sheet</label>
         <div class="button-group">
-          <button class="btn-primary" onclick="openSheet()">Open Sheet</button>
-          <button class="btn-secondary" onclick="closeSheet()">Close Sheet</button>
+          <button class="btn-primary" id="btn-open">Open Sheet</button>
+          <button class="btn-secondary" id="btn-close">Close Sheet</button>
         </div>
       </div>
 
       <div class="control-group">
         <label>Change Detent Size</label>
         <div class="button-group">
-          <button class="btn-secondary" id="btn-small" onclick="setDetent('small')">Small</button>
-          <button class="btn-secondary active" id="btn-medium" onclick="setDetent('medium')">Medium</button>
-          <button class="btn-secondary" id="btn-large" onclick="setDetent('large')">Large</button>
+          <button class="btn-secondary" id="btn-small">Small</button>
+          <button class="btn-secondary active" id="btn-medium">Medium</button>
+          <button class="btn-secondary" id="btn-large">Large</button>
         </div>
       </div>
     </div>
@@ -368,7 +375,7 @@
   </div>
 
   <div id="bottomSheet" class="min-bottom-sheet-container">
-    <div id="backdrop" class="min-bottom-sheet__backdrop min-bottom-sheet__backdrop--hidden" onclick="closeSheet()"></div>
+        <div id="backdrop" class="min-bottom-sheet__backdrop min-bottom-sheet__backdrop--hidden"></div>
     <div id="sheet" class="min-bottom-sheet min-bottom-sheet--medium min-bottom-sheet--closed">
       <div class="min-bottom-sheet__handle-container" id="handleContainer">
         <div class="min-bottom-sheet__handle"></div>
@@ -376,6 +383,7 @@
       <div class="min-bottom-sheet__content">
         <div class="sheet-content">
           <h2>Bottom Sheet Content</h2>
+          <p>Grab the handle or any sheet edge, then drag in any direction. Fling to dismiss, or release to snap back.</p>
           <p>Notice how the backdrop blur and darkening effects change as you adjust the detent size:</p>
           <ul style="margin-left: 20px; margin-bottom: 20px; color: var(--color-text-secondary);">
             <li><strong>Small detent:</strong> Light blur (2px) and minimal darkening (10% opacity)</li>
@@ -426,110 +434,169 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import {
+      dismissTranslation,
+      edgeSwipeToDismissDefaults,
+      isOnSheetEdge,
+      sheetTransform,
+      shouldDismissEdgeSwipe,
+      swipeBackdropOpacity,
+      swipeProgress,
+      velocityFromSamples,
+    } from '../src/components/edgeSwipeToDismiss.js';
+
     let isOpen = false;
     let currentDetent = 'medium';
+    let start = { x: 0, y: 0 };
+    let current = { x: 0, y: 0 };
+    let pending = false;
+    let isDragging = false;
+    let isEdgeSwipe = false;
+    let isDismissing = false;
+    let samples = [];
 
     const container = document.getElementById('bottomSheet');
     const backdrop = document.getElementById('backdrop');
     const sheet = document.getElementById('sheet');
-    const handleContainer = document.getElementById('handleContainer');
 
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
+    function pointer(e) {
+      if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function recordSample(point) {
+      const now = performance.now();
+      samples.push({ t: now, x: point.x, y: point.y });
+      samples = samples.filter((s) => s.t >= now - edgeSwipeToDismissDefaults.sampleWindowMs);
+    }
 
     function openSheet() {
       isOpen = true;
       container.classList.add('min-bottom-sheet-container--open');
       sheet.classList.remove('min-bottom-sheet--closed');
+      sheet.style.transform = '';
+      sheet.style.opacity = '';
       updateBackdrop();
     }
 
     function closeSheet() {
       isOpen = false;
+      isDragging = false;
+      pending = false;
+      isDismissing = false;
       container.classList.remove('min-bottom-sheet-container--open');
       sheet.classList.add('min-bottom-sheet--closed');
+      sheet.classList.remove('min-bottom-sheet--dragging');
+      sheet.style.transform = '';
+      sheet.style.opacity = '';
+      backdrop.style.opacity = '';
       backdrop.classList.remove(`min-bottom-sheet__backdrop--${currentDetent}`);
       backdrop.classList.add('min-bottom-sheet__backdrop--hidden');
     }
 
     function setDetent(detent) {
       currentDetent = detent;
-      
-      ['small', 'medium', 'large'].forEach(d => {
+      ['small', 'medium', 'large'].forEach((d) => {
         sheet.classList.remove(`min-bottom-sheet--${d}`);
         document.getElementById(`btn-${d}`).classList.remove('active');
       });
-      
       sheet.classList.add(`min-bottom-sheet--${detent}`);
       document.getElementById(`btn-${detent}`).classList.add('active');
-      
-      if (isOpen) {
-        updateBackdrop();
-      }
+      if (isOpen) updateBackdrop();
     }
 
     function updateBackdrop() {
-      backdrop.classList.remove('min-bottom-sheet__backdrop--small');
-      backdrop.classList.remove('min-bottom-sheet__backdrop--medium');
-      backdrop.classList.remove('min-bottom-sheet__backdrop--large');
-      backdrop.classList.remove('min-bottom-sheet__backdrop--hidden');
+      backdrop.classList.remove(
+        'min-bottom-sheet__backdrop--small',
+        'min-bottom-sheet__backdrop--medium',
+        'min-bottom-sheet__backdrop--large',
+        'min-bottom-sheet__backdrop--hidden'
+      );
       backdrop.classList.add(`min-bottom-sheet__backdrop--${currentDetent}`);
     }
 
     function handleDragStart(e) {
-      const touch = e.type.includes('touch') ? e.touches[0] : e;
-      startY = touch.clientY;
-      currentY = touch.clientY;
-      isDragging = true;
-      sheet.style.transition = 'none';
+      if (!isOpen || isDismissing) return;
+      const point = pointer(e);
+      const rect = sheet.getBoundingClientRect();
+      const fromHandle = Boolean(e.target.closest('.min-bottom-sheet__handle-container'));
+      const onEdge = isOnSheetEdge(point.x - rect.left, point.y - rect.top, rect.width, rect.height);
+      if (!fromHandle && !onEdge) return;
+      start = point;
+      current = point;
+      samples = [];
+      recordSample(point);
+      pending = true;
+      isDragging = false;
+      isEdgeSwipe = fromHandle || onEdge;
     }
 
     function handleDragMove(e) {
+      if (!pending && !isDragging) return;
+      const point = pointer(e);
+      const dx = point.x - start.x;
+      const dy = point.y - start.y;
+      if (pending && !isDragging) {
+        if (Math.hypot(dx, dy) < edgeSwipeToDismissDefaults.activationDistance) return;
+        isDragging = true;
+        pending = false;
+        sheet.classList.add('min-bottom-sheet--dragging');
+        sheet.style.transition = 'none';
+        backdrop.style.transition = 'none';
+      }
       if (!isDragging) return;
-      
-      const touch = e.type.includes('touch') ? e.touches[0] : e;
-      currentY = touch.clientY;
-      
-      const deltaY = currentY - startY;
-      
-      if (deltaY > 0) {
-        sheet.style.transform = `translateY(${deltaY}px)`;
-        
-        const viewportHeight = window.innerHeight;
-        const dragPercentage = deltaY / viewportHeight;
-        
-        const detents = ['small', 'medium', 'large'];
-        const currentDetentIndex = detents.indexOf(currentDetent);
-        
-        if (dragPercentage > 0.1 && currentDetentIndex > 0) {
-          setDetent(detents[currentDetentIndex - 1]);
-        }
+      current = point;
+      recordSample(point);
+      if (isEdgeSwipe) {
+        if (e.cancelable) e.preventDefault();
+        const progress = swipeProgress(dx, dy);
+        sheet.style.transform = sheetTransform({ dx, dy, progress });
+        backdrop.style.opacity = String(swipeBackdropOpacity(progress));
       }
     }
 
     function handleDragEnd() {
+      pending = false;
       if (!isDragging) return;
-      
       isDragging = false;
+      const dx = current.x - start.x;
+      const dy = current.y - start.y;
+      const { vx, vy } = velocityFromSamples(samples, performance.now());
+      if (isEdgeSwipe && shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
+        const fly = dismissTranslation(dx, dy, sheet.offsetWidth, sheet.offsetHeight);
+        isDismissing = true;
+        sheet.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        sheet.style.transform = sheetTransform({ dismissing: true, dismissX: fly.x, dismissY: fly.y });
+        sheet.style.opacity = '0';
+        backdrop.style.transition = 'opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        backdrop.style.opacity = '0';
+        window.setTimeout(() => {
+          sheet.style.transition = '';
+          backdrop.style.transition = '';
+          closeSheet();
+        }, 280);
+        return;
+      }
+      sheet.classList.remove('min-bottom-sheet--dragging');
       sheet.style.transition = '';
       sheet.style.transform = '';
-      
-      const deltaY = currentY - startY;
-      const viewportHeight = window.innerHeight;
-      
-      if (deltaY > viewportHeight * 0.2) {
-        closeSheet();
-      }
+      backdrop.style.transition = '';
+      backdrop.style.opacity = '';
+      isEdgeSwipe = false;
     }
 
-    handleContainer.addEventListener('mousedown', handleDragStart);
-    handleContainer.addEventListener('touchstart', handleDragStart);
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('touchmove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
-    document.addEventListener('touchend', handleDragEnd);
+    document.getElementById('btn-open').addEventListener('click', openSheet);
+    document.getElementById('btn-close').addEventListener('click', closeSheet);
+    document.getElementById('btn-small').addEventListener('click', () => setDetent('small'));
+    document.getElementById('btn-medium').addEventListener('click', () => setDetent('medium'));
+    document.getElementById('btn-large').addEventListener('click', () => setDetent('large'));
+    backdrop.addEventListener('click', closeSheet);
+    sheet.addEventListener('pointerdown', handleDragStart);
+    document.addEventListener('pointermove', handleDragMove, { passive: false });
+    document.addEventListener('pointerup', handleDragEnd);
+    document.addEventListener('pointercancel', handleDragEnd);
   </script>
 </body>
 </html>

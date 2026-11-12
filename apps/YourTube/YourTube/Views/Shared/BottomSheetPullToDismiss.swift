@@ -77,5 +77,6 @@ struct BottomSheetPullToDismiss: ViewModifier {
 extension View {
     func bottomSheetPullToDismiss() -> some View {
         modifier(BottomSheetPullToDismiss())
+            .edgeSwipeToDismiss()
     }
 }

@@ -113,6 +113,7 @@
 .ds-bottomsheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
 .ds-bottomsheet { position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: #1e1e1e; border-radius: 16px 16px 0 0; padding: 12px 0; }
 .ds-bottomsheet__handle { width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 0 auto 16px; }
+.ds-live-sheet { --color-surface-primary: #1e1e1e; --color-border-primary: #555; --color-text-primary: #eee; color: #eee; }
 
 /* DS Loading preview */
 .ds-loading { display: flex; align-items: center; gap: 8px; color: #888; font-size: 14px; }

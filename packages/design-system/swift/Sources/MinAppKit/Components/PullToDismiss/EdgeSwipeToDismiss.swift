@@ -12,6 +12,10 @@ public struct EdgeSwipeToDismissConfiguration {
     public var minFlingDistance: CGFloat
     public var minScale: CGFloat
     public var includesBottomEdge: Bool
+    public var minFlingSpeed: CGFloat
+    public var maxFlingSpeed: CGFloat
+    public var minFlingDuration: TimeInterval
+    public var maxFlingDuration: TimeInterval
 
     public init(
         sideInset: CGFloat = 24,
@@ -21,7 +25,11 @@ public struct EdgeSwipeToDismissConfiguration {
         velocityThreshold: CGFloat = 900,
         minFlingDistance: CGFloat = 48,
         minScale: CGFloat = 0.92,
-        includesBottomEdge: Bool = false
+        includesBottomEdge: Bool = false,
+        minFlingSpeed: CGFloat = 1100,
+        maxFlingSpeed: CGFloat = 2800,
+        minFlingDuration: TimeInterval = 0.18,
+        maxFlingDuration: TimeInterval = 0.42
     ) {
         self.sideInset = sideInset
         self.topInset = topInset
@@ -31,6 +39,10 @@ public struct EdgeSwipeToDismissConfiguration {
         self.minFlingDistance = minFlingDistance
         self.minScale = minScale
         self.includesBottomEdge = includesBottomEdge
+        self.minFlingSpeed = minFlingSpeed
+        self.maxFlingSpeed = maxFlingSpeed
+        self.minFlingDuration = minFlingDuration
+        self.maxFlingDuration = maxFlingDuration
     }
 
     public static let `default` = EdgeSwipeToDismissConfiguration()
@@ -93,17 +105,49 @@ public enum EdgeSwipeToDismiss {
         return translation.width * velocity.width + translation.height * velocity.height > 0
     }
 
+    public static func flingDirection(
+        translation: CGSize,
+        velocity: CGSize
+    ) -> CGSize {
+        let speed = hypot(velocity.width, velocity.height)
+        let along = translation.width * velocity.width + translation.height * velocity.height
+        let useVelocity = speed >= 80 && along > 0
+        let x = useVelocity ? velocity.width : translation.width
+        let y = useVelocity ? velocity.height : translation.height
+        let mag = hypot(x, y)
+        guard mag >= 1 else { return CGSize(width: 0, height: 1) }
+        return CGSize(width: x / mag, height: y / mag)
+    }
+
     public static func dismissTranslation(
         _ translation: CGSize,
-        sheetSize: CGSize
+        sheetSize: CGSize,
+        velocity: CGSize = .zero
     ) -> CGSize {
-        let dist = distance(translation)
+        let dir = flingDirection(translation: translation, velocity: velocity)
         let travel = max(hypot(sheetSize.width, sheetSize.height), 1)
-        guard dist >= 1 else {
-            return CGSize(width: 0, height: travel)
-        }
-        let scale = travel / dist
-        return CGSize(width: translation.width * scale, height: translation.height * scale)
+        return CGSize(width: dir.width * travel, height: dir.height * travel)
+    }
+
+    public static func clampedFlingSpeed(
+        _ velocity: CGSize,
+        configuration: EdgeSwipeToDismissConfiguration = .default
+    ) -> CGFloat {
+        let speed = hypot(velocity.width, velocity.height)
+        return min(configuration.maxFlingSpeed, max(configuration.minFlingSpeed, speed == 0 ? configuration.minFlingSpeed : speed))
+    }
+
+    public static func flingDuration(
+        translation: CGSize,
+        velocity: CGSize,
+        sheetSize: CGSize,
+        configuration: EdgeSwipeToDismissConfiguration = .default
+    ) -> TimeInterval {
+        let target = dismissTranslation(translation, sheetSize: sheetSize, velocity: velocity)
+        let remaining = hypot(target.width - translation.width, target.height - translation.height)
+        let speed = clampedFlingSpeed(velocity, configuration: configuration)
+        let duration = TimeInterval(remaining / speed)
+        return min(configuration.maxFlingDuration, max(configuration.minFlingDuration, duration))
     }
 
     public static func transform(

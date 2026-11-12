@@ -25,6 +25,7 @@ import './BottomSheet.css';
 import {
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  flingDuration,
   isOnSheetEdge,
   sheetTransform,
   shouldDismissEdgeSwipe,
@@ -195,11 +196,13 @@ export function BottomSheet({
     if (wasEdgeSwipe && shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
       const width = sheet?.offsetWidth || window.innerHeight;
       const height = sheet?.offsetHeight || window.innerHeight;
-      const fly = dismissTranslation(dx, dy, width, height);
+      const fly = dismissTranslation(dx, dy, width, height, vx, vy);
+      const duration = flingDuration({ dx, dy, vx, vy, width, height });
+      const ms = Math.max(1, Math.round(duration * 1000));
+      const easing = `transform ${ms}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
       isDismissingRef.current = true;
       if (sheet) {
-        sheet.style.transition =
-          'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        sheet.style.transition = easing;
         sheet.style.transform = sheetTransform({
           dismissing: true,
           dismissX: fly.x,
@@ -208,14 +211,14 @@ export function BottomSheet({
         sheet.style.opacity = '0';
       }
       if (backdropRef.current) {
-        backdropRef.current.style.transition = 'opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        backdropRef.current.style.transition = `opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
         backdropRef.current.style.opacity = '0';
       }
       window.setTimeout(() => {
         isDismissingRef.current = false;
         resetSheetStyles();
         onClose?.();
-      }, 280);
+      }, ms);
       return;
     }
 

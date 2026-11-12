@@ -125,6 +125,8 @@
 .min-bottom-sheet__content {
   flex: 1;
   overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
   overflow-x: hidden;
   padding: 0 16px 24px;
   -webkit-overflow-scrolling: touch;

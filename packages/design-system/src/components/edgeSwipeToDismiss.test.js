@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  clampedFlingSpeed,
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  flingDirection,
+  flingDuration,
   isOnSheetEdge,
   sheetTransform,
   shouldDismissEdgeSwipe,
@@ -120,12 +123,61 @@ describe('dismissTranslation', () => {
     assert.equal(rest.x, 0);
     assert.ok(rest.y > 0);
   });
+
+  it('steers the fling along the drag velocity when it continues away from rest', () => {
+    const fly = dismissTranslation(40, 10, 300, 400, 1200, 400);
+    const dir = flingDirection(40, 10, 1200, 400);
+    const mag = Math.hypot(fly.x, fly.y);
+    assert.ok(Math.abs(fly.x / mag - dir.x) < 0.001);
+    assert.ok(Math.abs(fly.y / mag - dir.y) < 0.001);
+    assert.ok(Math.abs(dir.y / dir.x - 400 / 1200) < 0.001);
+  });
+});
+
+describe('clamped fling', () => {
+  it('clamps speed between the configured min and max', () => {
+    assert.equal(clampedFlingSpeed(0, 0), edgeSwipeToDismissDefaults.minFlingSpeed);
+    assert.equal(clampedFlingSpeed(200, 0), edgeSwipeToDismissDefaults.minFlingSpeed);
+    assert.equal(clampedFlingSpeed(1800, 0), 1800);
+    assert.equal(clampedFlingSpeed(4000, 0), edgeSwipeToDismissDefaults.maxFlingSpeed);
+  });
+
+  it('keeps fling duration inside the min/max window along the remaining path', () => {
+    const slow = flingDuration({
+      dx: 120,
+      dy: 0,
+      vx: 0,
+      vy: 0,
+      width: 390,
+      height: 700,
+    });
+    const fast = flingDuration({
+      dx: 80,
+      dy: 40,
+      vx: 4000,
+      vy: 2000,
+      width: 390,
+      height: 700,
+    });
+    assert.ok(slow >= edgeSwipeToDismissDefaults.minFlingDuration);
+    assert.ok(slow <= edgeSwipeToDismissDefaults.maxFlingDuration);
+    assert.ok(fast >= edgeSwipeToDismissDefaults.minFlingDuration);
+    assert.ok(fast <= edgeSwipeToDismissDefaults.maxFlingDuration);
+    assert.ok(fast <= slow);
+  });
 });
 
 describe('defaults', () => {
   it('activates after a short movement so edge taps still click', () => {
     assert.equal(edgeSwipeToDismissDefaults.activationDistance, 8);
     assert.equal(edgeSwipeToDismissDefaults.dismissDistance, 120);
+  });
+
+  it('clamps fling speed so dismiss neither crawls nor teleports', () => {
+    assert.equal(edgeSwipeToDismissDefaults.minFlingSpeed, 1100);
+    assert.equal(edgeSwipeToDismissDefaults.maxFlingSpeed, 2800);
+    assert.equal(edgeSwipeToDismissDefaults.minFlingDuration, 0.18);
+    assert.equal(edgeSwipeToDismissDefaults.maxFlingDuration, 0.42);
   });
 });
 

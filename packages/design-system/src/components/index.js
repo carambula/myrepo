@@ -27,8 +27,11 @@ export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
 export { BottomSheet } from './BottomSheet.js';
 export {
+  clampedFlingSpeed,
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  flingDirection,
+  flingDuration,
   isOnSheetEdge,
   sheetTransform,
   shouldDismissEdgeSwipe,

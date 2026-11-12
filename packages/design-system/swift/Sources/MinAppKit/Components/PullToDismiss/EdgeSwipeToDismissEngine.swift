@@ -2,8 +2,17 @@
 import SwiftUI
 import UIKit
 
-/// Invisible host that attaches an edge-pan recognizer to the presented
-/// sheet container so the whole card can be dragged omnidirectionally.
+/// Invisible host that attaches an edge-pan recognizer to the untransformed
+/// presentation container so the sheet card can follow the finger 1:1.
+///
+/// UISheetPresentationController owns the presented view's transform and will
+/// reset it during layout. Measuring translation in that view, or dismissing
+/// while it is still on-screen, produces "nothing while dragging, then fly off,
+/// snap back, and vanish." This host:
+/// - pans against the container (stable coordinate space)
+/// - moves a snapshot proxy under the finger
+/// - flings along the drag trajectory at a clamped speed
+/// - hides the card, then dismisses without animation
 struct EdgeSwipeToDismissHost: UIViewRepresentable {
     let configuration: EdgeSwipeToDismissConfiguration
     let onDismiss: () -> Void
@@ -60,10 +69,15 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         var onDismiss: () -> Void
         weak var probeView: ProbeView?
 
+        private weak var containerView: UIView?
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
         private var pan: UIPanGestureRecognizer?
+        private var dragView: UIView?
+        private var displayLink: CADisplayLink?
+        private var lastTranslation: CGSize = .zero
         private var originalDimmingAlpha: CGFloat = 1
+        private var disabledPans: [UIPanGestureRecognizer] = []
         private var crossedDismissThreshold = false
         private var isDismissing = false
         private var haptic: UIImpactFeedbackGenerator?
@@ -76,9 +90,12 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         func attachIfNeeded() {
             guard let probeView, probeView.window != nil else { return }
             guard let resolved = SheetPresentationViews.resolve(from: probeView) else { return }
-            if sheetView === resolved.sheet, pan != nil { return }
+            if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
+                return
+            }
 
             detach()
+            containerView = resolved.container
             sheetView = resolved.sheet
             dimmingView = resolved.dimming
             originalDimmingAlpha = resolved.dimming?.alpha ?? 1
@@ -87,25 +104,32 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             gesture.delegate = self
             gesture.maximumNumberOfTouches = 1
             gesture.cancelsTouchesInView = true
-            resolved.sheet.addGestureRecognizer(gesture)
+            resolved.container.addGestureRecognizer(gesture)
             pan = gesture
+            disableCompetingPans()
         }
 
         func detach() {
-            if let pan, let sheetView {
-                sheetView.removeGestureRecognizer(pan)
+            stopFollowDisplayLink()
+            restoreSheet(removeProxy: true, revealSheet: !isDismissing)
+            reenableCompetingPans()
+            if let pan {
+                pan.view?.removeGestureRecognizer(pan)
             }
             pan = nil
+            containerView = nil
             sheetView = nil
             dimmingView = nil
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            guard !isDismissing, let sheetView else { return false }
+            guard !isDismissing, let sheetView, let reference = gestureReferenceView else {
+                return false
+            }
             let location: CGPoint
             if let pan = gestureRecognizer as? UIPanGestureRecognizer {
                 let current = pan.location(in: sheetView)
-                let translation = Self.size(from: pan.translation(in: sheetView))
+                let translation = Self.size(from: pan.translation(in: reference))
                 location = CGPoint(x: current.x - translation.width, y: current.y - translation.height)
             } else {
                 location = gestureRecognizer.location(in: sheetView)
@@ -138,17 +162,24 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-            guard let sheetView else { return }
+            guard let reference = gestureReferenceView else { return }
+            let translation = Self.size(from: gesture.translation(in: reference))
+            let velocity = Self.size(from: gesture.velocity(in: reference))
+
             switch gesture.state {
             case .began:
                 crossedDismissThreshold = false
+                lastTranslation = translation
                 originalDimmingAlpha = dimmingView?.alpha ?? 1
+                disableCompetingPans()
+                startProxyIfNeeded()
+                startFollowDisplayLink()
                 prepareHaptic(style: .light)
                 haptic?.impactOccurred()
-                apply(translation: Self.size(from: gesture.translation(in: sheetView)), animated: false)
+                applyFollow(translation)
             case .changed:
-                let translation = Self.size(from: gesture.translation(in: sheetView))
-                apply(translation: translation, animated: false)
+                lastTranslation = translation
+                applyFollow(translation)
                 let progress = EdgeSwipeToDismiss.progress(
                     translation,
                     dismissDistance: configuration.dismissDistance
@@ -161,15 +192,14 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                     crossedDismissThreshold = false
                 }
             case .ended, .cancelled, .failed:
-                let translation = Self.size(from: gesture.translation(in: sheetView))
-                let velocity = Self.size(from: gesture.velocity(in: sheetView))
+                stopFollowDisplayLink()
                 let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
                     translation: translation,
                     velocity: velocity,
                     configuration: configuration
                 )
                 if shouldDismiss {
-                    dismiss(from: translation)
+                    flingAway(from: translation, velocity: velocity)
                 } else {
                     snapBack()
                 }
@@ -178,8 +208,16 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             }
         }
 
-        private func apply(translation: CGSize, animated: Bool) {
-            guard let sheetView else { return }
+        private var gestureReferenceView: UIView? {
+            containerView ?? sheetView
+        }
+
+        private var movingView: UIView? {
+            dragView ?? sheetView
+        }
+
+        private func applyFollow(_ translation: CGSize) {
+            guard let moving = movingView else { return }
             let progress = EdgeSwipeToDismiss.progress(
                 translation,
                 dismissDistance: configuration.dismissDistance
@@ -190,43 +228,82 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 configuration: configuration
             )
             let dimmingAlpha = originalDimmingAlpha * EdgeSwipeToDismiss.backdropOpacity(progress: progress)
-            let updates = {
-                sheetView.transform = transform
-                self.dimmingView?.alpha = dimmingAlpha
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            moving.transform = transform
+            dimmingView?.alpha = dimmingAlpha
+            CATransaction.commit()
+        }
+
+        private func startProxyIfNeeded() {
+            guard dragView == nil, let sheet = sheetView, let container = containerView else { return }
+            sheet.layer.removeAllAnimations()
+            let frameInContainer = sheet.convert(sheet.bounds, to: container)
+            guard let snapshot = sheet.snapshotView(afterScreenUpdates: false),
+                  snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
+                return
             }
-            if animated {
-                UIView.animate(
-                    withDuration: 0.35,
-                    delay: 0,
-                    usingSpringWithDamping: 0.86,
-                    initialSpringVelocity: 0.4,
-                    options: [.beginFromCurrentState, .allowUserInteraction]
-                ) {
-                    updates()
-                }
-            } else {
-                updates()
-            }
+            snapshot.frame = frameInContainer
+            snapshot.isUserInteractionEnabled = false
+            snapshot.layer.cornerRadius = sheet.layer.cornerRadius
+            snapshot.clipsToBounds = sheet.clipsToBounds
+            container.addSubview(snapshot)
+            dragView = snapshot
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            sheet.alpha = 0
+            CATransaction.commit()
+        }
+
+        private func startFollowDisplayLink() {
+            stopFollowDisplayLink()
+            let link = CADisplayLink(target: self, selector: #selector(tickFollow))
+            link.add(to: .main, forMode: .common)
+            displayLink = link
+        }
+
+        private func stopFollowDisplayLink() {
+            displayLink?.invalidate()
+            displayLink = nil
+        }
+
+        @objc private func tickFollow() {
+            applyFollow(lastTranslation)
         }
 
         private func snapBack() {
-            guard let sheetView else { return }
+            guard let moving = movingView else {
+                restoreSheet(removeProxy: true)
+                return
+            }
             UIView.animate(
                 withDuration: 0.38,
                 delay: 0,
                 usingSpringWithDamping: 0.82,
                 initialSpringVelocity: 0.6,
-                options: [.beginFromCurrentState, .allowUserInteraction]
+                options: [.beginFromCurrentState, .curveEaseOut]
             ) {
-                sheetView.transform = .identity
+                moving.transform = .identity
                 self.dimmingView?.alpha = self.originalDimmingAlpha
+            } completion: { _ in
+                self.restoreSheet(removeProxy: true)
             }
         }
 
-        private func dismiss(from translation: CGSize) {
-            guard let sheetView, !isDismissing else { return }
+        private func flingAway(from translation: CGSize, velocity: CGSize) {
+            guard let moving = movingView, let sheetView, !isDismissing else { return }
             isDismissing = true
-            let fly = EdgeSwipeToDismiss.dismissTranslation(translation, sheetSize: sheetView.bounds.size)
+            let fly = EdgeSwipeToDismiss.dismissTranslation(
+                translation,
+                sheetSize: sheetView.bounds.size,
+                velocity: velocity
+            )
+            let duration = EdgeSwipeToDismiss.flingDuration(
+                translation: translation,
+                velocity: velocity,
+                sheetSize: sheetView.bounds.size,
+                configuration: configuration
+            )
             let transform = EdgeSwipeToDismiss.transform(
                 translation: translation,
                 progress: 1,
@@ -235,16 +312,74 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 dismissTranslation: fly
             )
             UIView.animate(
-                withDuration: 0.28,
+                withDuration: duration,
                 delay: 0,
-                options: [.curveEaseIn, .beginFromCurrentState]
+                options: [.curveEaseOut, .beginFromCurrentState]
             ) {
-                sheetView.transform = transform
-                sheetView.alpha = 0
+                moving.transform = transform
+                moving.alpha = 0
                 self.dimmingView?.alpha = 0
             } completion: { _ in
-                self.onDismiss()
+                self.finishDismiss(sheet: sheetView)
             }
+        }
+
+        private func finishDismiss(sheet: UIView) {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            sheet.isHidden = true
+            sheet.alpha = 0
+            sheet.transform = .identity
+            dimmingView?.alpha = 0
+            CATransaction.commit()
+            restoreSheet(removeProxy: true, revealSheet: false)
+            onDismiss()
+        }
+
+        private func restoreSheet(removeProxy: Bool, revealSheet: Bool = true) {
+            if revealSheet, let sheet = sheetView {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                sheet.alpha = 1
+                sheet.isHidden = false
+                sheet.transform = .identity
+                CATransaction.commit()
+            }
+            if removeProxy {
+                dragView?.removeFromSuperview()
+                dragView = nil
+            }
+        }
+
+        private func disableCompetingPans() {
+            reenableCompetingPans()
+            var seen = Set<ObjectIdentifier>()
+            func disable(on view: UIView?) {
+                guard let view else { return }
+                for recognizer in view.gestureRecognizers ?? [] {
+                    guard let pan = recognizer as? UIPanGestureRecognizer, pan !== self.pan else { continue }
+                    if pan.view is UIScrollView { continue }
+                    let id = ObjectIdentifier(pan)
+                    guard !seen.contains(id) else { continue }
+                    seen.insert(id)
+                    if pan.isEnabled {
+                        pan.isEnabled = false
+                        disabledPans.append(pan)
+                    }
+                }
+            }
+            disable(on: containerView)
+            disable(on: sheetView)
+            for subview in containerView?.subviews ?? [] {
+                disable(on: subview)
+            }
+        }
+
+        private func reenableCompetingPans() {
+            for pan in disabledPans {
+                pan.isEnabled = true
+            }
+            disabledPans.removeAll()
         }
 
         /// UIKit pan translation/velocity are `CGPoint`; shared math uses `CGSize`.
@@ -261,12 +396,43 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 }
 
 enum SheetPresentationViews {
-    static func resolve(from start: UIView) -> (sheet: UIView, dimming: UIView?)? {
+    static func resolve(from start: UIView) -> (container: UIView, sheet: UIView, dimming: UIView?)? {
+        if let fromPresentation = resolveFromPresentation(start) {
+            return fromPresentation
+        }
+        return resolveFromHierarchy(start)
+    }
+
+    private static func resolveFromPresentation(_ start: UIView) -> (container: UIView, sheet: UIView, dimming: UIView?)? {
+        var responder: UIResponder? = start
+        var host: UIViewController?
+        while let current = responder {
+            if let viewController = current as? UIViewController {
+                host = viewController
+                break
+            }
+            responder = current.next
+        }
+
+        var node = host
+        while let viewController = node {
+            if viewController.presentingViewController != nil,
+               let presentation = viewController.presentationController,
+               let container = presentation.containerView,
+               let sheet = presentation.presentedView {
+                return (container, sheet, dimming(adjacentTo: sheet, in: container))
+            }
+            node = viewController.parent
+        }
+        return nil
+    }
+
+    private static func resolveFromHierarchy(_ start: UIView) -> (container: UIView, sheet: UIView, dimming: UIView?)? {
         var current: UIView? = start
         while let view = current {
             let name = NSStringFromClass(type(of: view))
-            if name.contains("DropShadow") {
-                return (view, dimming(adjacentTo: view))
+            if name.contains("DropShadow"), let container = view.superview {
+                return (container, view, dimming(adjacentTo: view, in: container))
             }
             current = view.superview
         }
@@ -276,7 +442,7 @@ enum SheetPresentationViews {
             if let superview = view.superview {
                 let superName = NSStringFromClass(type(of: superview))
                 if superview is UIWindow || superName.contains("Transition") {
-                    return (view, dimming(adjacentTo: view))
+                    return (superview, view, dimming(adjacentTo: view, in: superview))
                 }
             }
             current = view.superview
@@ -284,15 +450,15 @@ enum SheetPresentationViews {
         return nil
     }
 
-    static func dimming(adjacentTo sheet: UIView) -> UIView? {
-        guard let siblings = sheet.superview?.subviews else { return nil }
+    static func dimming(adjacentTo sheet: UIView, in container: UIView? = nil) -> UIView? {
+        let siblings = (container ?? sheet.superview)?.subviews ?? []
         if let named = siblings.first(where: {
             $0 !== sheet && NSStringFromClass(type(of: $0)).contains("Dimming")
         }) {
             return named
         }
         return siblings.first { sibling in
-            sibling !== sheet && sibling.bounds.size == sheet.superview?.bounds.size
+            sibling !== sheet && sibling.bounds.size == (container ?? sheet.superview)?.bounds.size
         }
     }
 }
@@ -306,26 +472,29 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        content.background(
-            EdgeSwipeToDismissHost(
-                configuration: configuration,
-                onDismiss: {
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        dismiss()
+        content
+            .interactiveDismissDisabled(true)
+            .background(
+                EdgeSwipeToDismissHost(
+                    configuration: configuration,
+                    onDismiss: {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            dismiss()
+                        }
                     }
-                }
+                )
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
             )
-            .frame(width: 0, height: 0)
-            .accessibilityHidden(true)
-        )
     }
 }
 
 extension View {
     /// Drag a presented bottom sheet omnidirectionally from its edges.
-    /// Release past the distance/velocity threshold to dismiss, or let go to snap back.
+    /// The sheet follows the finger in realtime; release past the distance or
+    /// velocity threshold flings it away along the drag, otherwise it snaps back.
     public func edgeSwipeToDismiss(
         configuration: EdgeSwipeToDismissConfiguration = .default
     ) -> some View {

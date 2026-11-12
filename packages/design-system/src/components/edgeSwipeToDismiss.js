@@ -2,9 +2,9 @@
  * Shared math for omnidirectional edge-swipe-to-dismiss on bottom sheets.
  * Used by the web BottomSheet and mirrored in MinAppKit (Swift).
  *
- * A gesture that begins on a sheet edge tracks the sheet in any direction.
- * Releasing past the distance/velocity threshold dismisses; otherwise it
- * springs back to the resting position.
+ * A gesture that begins on a sheet edge tracks the sheet 1:1 under the
+ * finger. Releasing past the distance/velocity threshold flings it away
+ * along the drag trajectory; otherwise it springs back to rest.
  */
 
 export const edgeSwipeToDismissDefaults = {
@@ -17,6 +17,10 @@ export const edgeSwipeToDismissDefaults = {
   minScale: 0.92,
   activationDistance: 8,
   sampleWindowMs: 80,
+  minFlingSpeed: 1100,
+  maxFlingSpeed: 2800,
+  minFlingDuration: 0.18,
+  maxFlingDuration: 0.42,
   edges: { top: true, right: true, bottom: true, left: true },
 };
 
@@ -85,18 +89,53 @@ export function shouldDismissEdgeSwipe({
   if (dist < minFlingDistance) return false;
   const speed = Math.hypot(vx, vy);
   if (speed < velocityThreshold) return false;
-  // Velocity must continue away from the origin, not reverse back into place.
   return dx * vx + dy * vy > 0;
 }
 
-export function dismissTranslation(dx, dy, width, height) {
-  const dist = swipeDistance(dx, dy);
+export function flingDirection(dx, dy, vx = 0, vy = 0) {
+  const speed = Math.hypot(vx, vy);
+  const along = (dx || 0) * vx + (dy || 0) * vy;
+  const useVelocity = speed >= 80 && along > 0;
+  const x = useVelocity ? vx : dx || 0;
+  const y = useVelocity ? vy : dy || 0;
+  const mag = Math.hypot(x, y);
+  if (mag < 1) return { x: 0, y: 1 };
+  return { x: x / mag, y: y / mag };
+}
+
+export function dismissTranslation(dx, dy, width, height, vx = 0, vy = 0) {
+  const dir = flingDirection(dx, dy, vx, vy);
   const travel = Math.max(Math.hypot(width || 0, height || 0), 1);
-  if (dist < 1) {
-    return { x: 0, y: travel };
-  }
-  const scale = travel / dist;
-  return { x: dx * scale, y: dy * scale };
+  return { x: dir.x * travel, y: dir.y * travel };
+}
+
+export function clampedFlingSpeed(
+  vx = 0,
+  vy = 0,
+  minSpeed = edgeSwipeToDismissDefaults.minFlingSpeed,
+  maxSpeed = edgeSwipeToDismissDefaults.maxFlingSpeed
+) {
+  const speed = Math.hypot(vx, vy);
+  return Math.min(maxSpeed, Math.max(minSpeed, speed || minSpeed));
+}
+
+export function flingDuration({
+  dx,
+  dy,
+  vx = 0,
+  vy = 0,
+  width,
+  height,
+  minSpeed = edgeSwipeToDismissDefaults.minFlingSpeed,
+  maxSpeed = edgeSwipeToDismissDefaults.maxFlingSpeed,
+  minDuration = edgeSwipeToDismissDefaults.minFlingDuration,
+  maxDuration = edgeSwipeToDismissDefaults.maxFlingDuration,
+} = {}) {
+  const target = dismissTranslation(dx, dy, width, height, vx, vy);
+  const remaining = Math.hypot((target.x || 0) - (dx || 0), (target.y || 0) - (dy || 0));
+  const speed = clampedFlingSpeed(vx, vy, minSpeed, maxSpeed);
+  const duration = remaining / speed;
+  return Math.min(maxDuration, Math.max(minDuration, duration));
 }
 
 export function sheetTransform({

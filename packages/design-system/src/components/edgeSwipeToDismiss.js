@@ -23,6 +23,7 @@ export const edgeSwipeToDismissDefaults = {
   maxFlingDuration: 0.42,
   // Higher = closer to 1:1. ~720 lets a 80pt pull move ~71pt.
   bottomSwipeStiffness: 720,
+  cardCornerRadius: 16,
   edges: { top: true, right: true, bottom: true, left: true },
 };
 

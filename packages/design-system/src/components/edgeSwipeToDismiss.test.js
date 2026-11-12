@@ -247,6 +247,7 @@ describe('defaults', () => {
     assert.equal(edgeSwipeToDismissDefaults.minFlingDuration, 0.18);
     assert.equal(edgeSwipeToDismissDefaults.maxFlingDuration, 0.42);
     assert.equal(edgeSwipeToDismissDefaults.bottomSwipeStiffness, 720);
+    assert.equal(edgeSwipeToDismissDefaults.cardCornerRadius, 16);
   });
 });
 

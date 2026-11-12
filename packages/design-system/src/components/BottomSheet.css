@@ -82,7 +82,7 @@
   /* The rest-position shadow sits in the rounded-corner cutouts once the
      sheet lifts; drop it while the card is following the finger. */
   box-shadow: none;
-  border-radius: 16px;
+  border-radius: 16px; /* matches edgeSwipeToDismissDefaults.cardCornerRadius */
 }
 
 .min-bottom-sheet--closed {

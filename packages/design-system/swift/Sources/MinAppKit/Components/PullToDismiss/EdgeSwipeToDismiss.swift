@@ -18,6 +18,8 @@ public struct EdgeSwipeToDismissConfiguration {
     public var maxFlingDuration: TimeInterval
     /// Higher = closer to 1:1. ~720 lets an 80pt pull move ~71pt.
     public var bottomSwipeStiffness: CGFloat
+    /// Continuous corner radius for the floating card (all four corners).
+    public var cardCornerRadius: CGFloat
 
     public init(
         sideInset: CGFloat = 24,
@@ -32,7 +34,8 @@ public struct EdgeSwipeToDismissConfiguration {
         maxFlingSpeed: CGFloat = 2800,
         minFlingDuration: TimeInterval = 0.18,
         maxFlingDuration: TimeInterval = 0.42,
-        bottomSwipeStiffness: CGFloat = 720
+        bottomSwipeStiffness: CGFloat = 720,
+        cardCornerRadius: CGFloat = MinCornerRadius.lg
     ) {
         self.sideInset = sideInset
         self.topInset = topInset
@@ -47,6 +50,7 @@ public struct EdgeSwipeToDismissConfiguration {
         self.minFlingDuration = minFlingDuration
         self.maxFlingDuration = maxFlingDuration
         self.bottomSwipeStiffness = bottomSwipeStiffness
+        self.cardCornerRadius = cardCornerRadius
     }
 
     public static let `default` = EdgeSwipeToDismissConfiguration()

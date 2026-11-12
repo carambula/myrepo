@@ -527,36 +527,40 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard let snapshot, snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
                 return
             }
-            snapshot.frame = frameInContainer
-            snapshot.isUserInteractionEnabled = false
-            snapshot.layer.cornerRadius = Self.resolvedCornerRadius(for: card)
-            snapshot.layer.cornerCurve = .continuous
-            snapshot.layer.maskedCorners = [
+            let radius = configuration.cardCornerRadius
+            let proxy = UIView(frame: frameInContainer)
+            proxy.backgroundColor = Self.cardFillColor(from: card)
+            proxy.isUserInteractionEnabled = false
+            proxy.layer.cornerRadius = radius
+            proxy.layer.cornerCurve = .continuous
+            proxy.layer.maskedCorners = [
                 .layerMinXMinYCorner, .layerMaxXMinYCorner,
                 .layerMinXMaxYCorner, .layerMaxXMaxYCorner
             ]
+            proxy.clipsToBounds = true
+            proxy.layer.masksToBounds = true
+            proxy.layer.shadowOpacity = 0
+            snapshot.frame = proxy.bounds
+            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            snapshot.layer.cornerRadius = 0
             snapshot.clipsToBounds = true
-            snapshot.layer.masksToBounds = true
-            snapshot.layer.shadowOpacity = 0
-            snapshot.layer.shadowRadius = 0
-            snapshot.layer.shadowPath = nil
-            container.addSubview(snapshot)
-            container.bringSubviewToFront(snapshot)
-            dragView = snapshot
+            proxy.addSubview(snapshot)
+            container.addSubview(proxy)
+            container.bringSubviewToFront(proxy)
+            dragView = proxy
             concealOriginalSheet()
         }
 
-        private static func resolvedCornerRadius(for card: UIView) -> CGFloat {
-            var current: UIView? = card
-            var depth = 0
-            while let view = current, depth < 6 {
-                if view.layer.cornerRadius > 0.5 {
-                    return view.layer.cornerRadius
-                }
-                current = view.subviews.first
-                depth += 1
+        private static func cardFillColor(from card: UIView) -> UIColor {
+            if let color = card.backgroundColor, color.cgColor.alpha > 0.5 {
+                return color
             }
-            return 10
+            for sub in card.subviews.prefix(3) {
+                if let color = sub.backgroundColor, color.cgColor.alpha > 0.5 {
+                    return color
+                }
+            }
+            return .systemBackground
         }
 
         /// Only the platter and its immediate shadow siblings — never walk the
@@ -860,6 +864,7 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .interactiveDismissDisabled(true)
+            .presentationCornerRadius(configuration.cardCornerRadius)
             .background(
                 EdgeSwipeToDismissHost(
                     configuration: configuration,

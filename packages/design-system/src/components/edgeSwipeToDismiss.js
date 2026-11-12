@@ -21,6 +21,8 @@ export const edgeSwipeToDismissDefaults = {
   maxFlingSpeed: 2800,
   minFlingDuration: 0.18,
   maxFlingDuration: 0.42,
+  // Higher = closer to 1:1. ~720 lets a 80pt pull move ~71pt.
+  bottomSwipeStiffness: 720,
   edges: { top: true, right: true, bottom: true, left: true },
 };
 
@@ -69,6 +71,34 @@ export function scrollLimitActivation({
   if (atTop && dy > 0) return 'topOverscroll';
   if (atBottom && dy < 0) return 'bottomOverscroll';
   return null;
+}
+
+/**
+ * Mild resistance so the sheet lags the finger a little. Used for the
+ * bottom-overscroll swipe so lifting the sheet off the home indicator
+ * does not feel weightless.
+ */
+export function resistOffset(offset, stiffness = edgeSwipeToDismissDefaults.bottomSwipeStiffness) {
+  if (!offset) return 0;
+  const s = Math.max(stiffness, 1);
+  return offset / (1 + Math.abs(offset) / s);
+}
+
+/**
+ * Bottom-overscroll follow is resisted (especially upward). Edge and
+ * top-overscroll stays 1:1 with the finger.
+ */
+export function visualTranslation({
+  dx = 0,
+  dy = 0,
+  activation,
+  stiffness = edgeSwipeToDismissDefaults.bottomSwipeStiffness,
+} = {}) {
+  if (activation !== 'bottomOverscroll') return { dx, dy };
+  return {
+    dx: resistOffset(dx, stiffness),
+    dy: dy < 0 ? resistOffset(dy, stiffness) : dy,
+  };
 }
 
 export function swipeDistance(dx, dy) {

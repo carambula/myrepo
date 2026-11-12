@@ -17,6 +17,8 @@ import {
   swipeProgress,
   swipeScale,
   velocityFromSamples,
+  resistOffset,
+  visualTranslation,
 } from './edgeSwipeToDismiss.js';
 
 const sheet = { width: 390, height: 700 };
@@ -206,6 +208,33 @@ describe('clamped fling', () => {
   });
 });
 
+describe('bottom swipe friction', () => {
+  it('lags the finger a little without freezing the sheet', () => {
+    const pulled = resistOffset(-80, 720);
+    assert.ok(pulled < -70);
+    assert.ok(pulled > -80);
+    assert.equal(resistOffset(0), 0);
+    assert.ok(resistOffset(80) > 0);
+  });
+
+  it('only resists bottom-overscroll follow, especially upward', () => {
+    const edge = visualTranslation({ dx: 12, dy: -80, activation: 'edge' });
+    assert.equal(edge.dx, 12);
+    assert.equal(edge.dy, -80);
+
+    const top = visualTranslation({ dx: 0, dy: 40, activation: 'topOverscroll' });
+    assert.equal(top.dy, 40);
+
+    const up = visualTranslation({ dx: 30, dy: -80, activation: 'bottomOverscroll' });
+    assert.ok(Math.abs(up.dx) < 30);
+    assert.ok(up.dy > -80);
+    assert.ok(up.dy < -70);
+
+    const down = visualTranslation({ dx: 0, dy: 40, activation: 'bottomOverscroll' });
+    assert.equal(down.dy, 40);
+  });
+});
+
 describe('defaults', () => {
   it('activates after a short movement so edge taps still click', () => {
     assert.equal(edgeSwipeToDismissDefaults.activationDistance, 8);
@@ -217,6 +246,7 @@ describe('defaults', () => {
     assert.equal(edgeSwipeToDismissDefaults.maxFlingSpeed, 2800);
     assert.equal(edgeSwipeToDismissDefaults.minFlingDuration, 0.18);
     assert.equal(edgeSwipeToDismissDefaults.maxFlingDuration, 0.42);
+    assert.equal(edgeSwipeToDismissDefaults.bottomSwipeStiffness, 720);
   });
 });
 

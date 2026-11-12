@@ -16,6 +16,8 @@ public struct EdgeSwipeToDismissConfiguration {
     public var maxFlingSpeed: CGFloat
     public var minFlingDuration: TimeInterval
     public var maxFlingDuration: TimeInterval
+    /// Higher = closer to 1:1. ~720 lets an 80pt pull move ~71pt.
+    public var bottomSwipeStiffness: CGFloat
 
     public init(
         sideInset: CGFloat = 24,
@@ -29,7 +31,8 @@ public struct EdgeSwipeToDismissConfiguration {
         minFlingSpeed: CGFloat = 1100,
         maxFlingSpeed: CGFloat = 2800,
         minFlingDuration: TimeInterval = 0.18,
-        maxFlingDuration: TimeInterval = 0.42
+        maxFlingDuration: TimeInterval = 0.42,
+        bottomSwipeStiffness: CGFloat = 720
     ) {
         self.sideInset = sideInset
         self.topInset = topInset
@@ -43,6 +46,7 @@ public struct EdgeSwipeToDismissConfiguration {
         self.maxFlingSpeed = maxFlingSpeed
         self.minFlingDuration = minFlingDuration
         self.maxFlingDuration = maxFlingDuration
+        self.bottomSwipeStiffness = bottomSwipeStiffness
     }
 
     public static let `default` = EdgeSwipeToDismissConfiguration()
@@ -84,6 +88,32 @@ public enum EdgeSwipeToDismiss {
         if atTop, translation.height > 0 { return .topOverscroll }
         if atBottom, translation.height < 0 { return .bottomOverscroll }
         return nil
+    }
+
+    /// Mild resistance so the sheet lags the finger a little.
+    public static func resistOffset(
+        _ offset: CGFloat,
+        stiffness: CGFloat = EdgeSwipeToDismissConfiguration.default.bottomSwipeStiffness
+    ) -> CGFloat {
+        guard offset != 0 else { return 0 }
+        let s = max(stiffness, 1)
+        return offset / (1 + abs(offset) / s)
+    }
+
+    /// Bottom-overscroll follow is resisted (especially upward). Edge and
+    /// top-overscroll stay 1:1 with the finger.
+    public static func visualTranslation(
+        _ translation: CGSize,
+        activation: Activation,
+        configuration: EdgeSwipeToDismissConfiguration = .default
+    ) -> CGSize {
+        guard activation == .bottomOverscroll else { return translation }
+        let stiffness = configuration.bottomSwipeStiffness
+        let x = resistOffset(translation.width, stiffness: stiffness)
+        let y = translation.height < 0
+            ? resistOffset(translation.height, stiffness: stiffness)
+            : translation.height
+        return CGSize(width: x, height: y)
     }
 
     public static func isScrollAtTop(_ offsetY: CGFloat, insetTop: CGFloat, epsilon: CGFloat = 1.5) -> Bool {

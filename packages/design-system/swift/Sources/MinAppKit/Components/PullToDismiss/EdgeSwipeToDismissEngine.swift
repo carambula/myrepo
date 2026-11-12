@@ -84,7 +84,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var dimmingView: UIView?
         private var pan: UIPanGestureRecognizer?
         private var dragView: UIView?
-        private var concealedChrome: [UIView] = []
+        private var concealedChrome: [ConcealedChrome] = []
         private var displayLink: CADisplayLink?
         private var lastTranslation: CGSize = .zero
         private var followOrigin: CGSize = .zero
@@ -218,13 +218,18 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             case .ended, .cancelled, .failed:
                 guard followActivation != nil else { return }
                 let relative = followTranslation(translation)
+                let visual = EdgeSwipeToDismiss.visualTranslation(
+                    relative,
+                    activation: followActivation ?? .edge,
+                    configuration: configuration
+                )
                 let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
                     translation: relative,
                     velocity: velocity,
                     configuration: configuration
                 )
                 if shouldDismiss {
-                    flingAway(from: relative, velocity: velocity)
+                    flingAway(from: visual, velocity: velocity)
                 } else {
                     stopFollowDisplayLink()
                     snapBack()
@@ -359,12 +364,17 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func applyFollow(_ translation: CGSize) {
             guard let moving = movingView else { return }
-            let progress = EdgeSwipeToDismiss.progress(
+            let visual = EdgeSwipeToDismiss.visualTranslation(
                 translation,
+                activation: followActivation ?? .edge,
+                configuration: configuration
+            )
+            let progress = EdgeSwipeToDismiss.progress(
+                visual,
                 dismissDistance: configuration.dismissDistance
             )
             let transform = EdgeSwipeToDismiss.transform(
-                translation: translation,
+                translation: visual,
                 progress: progress,
                 configuration: configuration
             )
@@ -375,6 +385,16 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             dimmingView?.alpha = dimmingAlpha
             concealOriginalSheet()
             CATransaction.commit()
+        }
+
+        private struct ConcealedChrome {
+            weak var view: UIView?
+            let isHidden: Bool
+            let alpha: CGFloat
+            let opacity: Float
+            let shadowOpacity: Float
+            let shadowRadius: CGFloat
+            let shadowPath: CGPath?
         }
 
         private func chromeViews() -> [UIView] {
@@ -395,41 +415,152 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         /// UISheetPresentationController will restore the live card's alpha/transform
-        /// during layout. Keep it fully gone the entire time a proxy is on screen.
+        /// during layout. Keep it fully gone the entire time a proxy is on screen,
+        /// including its drop shadow — that shadow is the "shade" behind the
+        /// rounded corners when the sheet is lifted.
         private func concealOriginalSheet() {
             guard dragView != nil else { return }
+            if let container = containerView {
+                for view in container.subviews where view !== dragView && view !== dimmingView {
+                    concealView(view)
+                }
+            }
             for view in chromeViews() {
-                view.layer.removeAllAnimations()
-                view.transform = .identity
-                view.alpha = 0
-                view.layer.opacity = 0
-                view.isHidden = true
-                if !concealedChrome.contains(where: { $0 === view }) {
-                    concealedChrome.append(view)
+                concealView(view)
+            }
+        }
+
+        private func rememberChrome(_ view: UIView) {
+            if concealedChrome.contains(where: { $0.view === view }) { return }
+            concealedChrome.append(
+                ConcealedChrome(
+                    view: view,
+                    isHidden: view.isHidden,
+                    alpha: view.alpha,
+                    opacity: view.layer.opacity,
+                    shadowOpacity: view.layer.shadowOpacity,
+                    shadowRadius: view.layer.shadowRadius,
+                    shadowPath: view.layer.shadowPath
+                )
+            )
+        }
+
+        private func concealView(_ view: UIView) {
+            rememberChrome(view)
+            view.layer.removeAllAnimations()
+            view.transform = .identity
+            view.alpha = 0
+            view.layer.opacity = 0
+            view.isHidden = true
+            view.layer.shadowOpacity = 0
+            view.layer.shadowRadius = 0
+            view.layer.shadowPath = nil
+            for sub in view.subviews {
+                let name = NSStringFromClass(type(of: sub)).lowercased()
+                if name.contains("shadow") {
+                    concealView(sub)
                 }
             }
         }
 
         private func startProxyIfNeeded() {
             guard dragView == nil, let container = containerView, let card = visualCard else { return }
+            rememberChrome(card)
+            for sub in card.subviews { rememberChrome(sub) }
             card.layer.removeAllAnimations()
+            let source = Self.snapshotSource(for: card)
+            let restorers = Self.stripShadows(from: card)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             card.transform = .identity
             CATransaction.commit()
-            let frameInContainer = card.convert(card.bounds, to: container)
-            guard let snapshot = card.snapshotView(afterScreenUpdates: false),
+            CATransaction.flush()
+
+            let frameInContainer = source.convert(source.bounds, to: container)
+            guard let snapshot = source.snapshotView(afterScreenUpdates: true),
                   snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
+                restorers.forEach { $0() }
                 return
             }
+            _ = Self.stripShadows(from: snapshot)
             snapshot.frame = frameInContainer
             snapshot.isUserInteractionEnabled = false
-            snapshot.layer.cornerRadius = card.layer.cornerRadius
-            snapshot.clipsToBounds = card.clipsToBounds
+            if let color = source.backgroundColor, color.cgColor.alpha > 0.01 {
+                snapshot.backgroundColor = color
+            }
+            snapshot.layer.cornerRadius = Self.resolvedCornerRadius(for: card)
+            snapshot.layer.cornerCurve = .continuous
+            snapshot.layer.maskedCorners = [
+                .layerMinXMinYCorner, .layerMaxXMinYCorner,
+                .layerMinXMaxYCorner, .layerMaxXMaxYCorner
+            ]
+            snapshot.clipsToBounds = true
+            snapshot.layer.masksToBounds = true
+            snapshot.layer.shadowOpacity = 0
+            snapshot.layer.shadowRadius = 0
+            snapshot.layer.shadowPath = nil
             container.addSubview(snapshot)
             container.bringSubviewToFront(snapshot)
             dragView = snapshot
             concealOriginalSheet()
+        }
+
+        private static func snapshotSource(for card: UIView) -> UIView {
+            let name = NSStringFromClass(type(of: card))
+            guard name.contains("DropShadow") else { return card }
+            return card.subviews.first { view in
+                view.bounds.width > 8
+                    && view.bounds.height > 8
+                    && !view.isHidden
+                    && !NSStringFromClass(type(of: view)).lowercased().contains("shadow")
+            } ?? card
+        }
+
+        private static func resolvedCornerRadius(for card: UIView) -> CGFloat {
+            var current: UIView? = card
+            var depth = 0
+            while let view = current, depth < 6 {
+                if view.layer.cornerRadius > 0.5 {
+                    return view.layer.cornerRadius
+                }
+                current = view.subviews.first
+                depth += 1
+            }
+            return 10
+        }
+
+        @discardableResult
+        private static func stripShadows(from root: UIView) -> [() -> Void] {
+            var restorers: [() -> Void] = []
+            func walk(_ view: UIView) {
+                let name = NSStringFromClass(type(of: view)).lowercased()
+                if name.contains("shadow"), view !== root {
+                    let hidden = view.isHidden
+                    let alpha = view.alpha
+                    view.isHidden = true
+                    view.alpha = 0
+                    restorers.append {
+                        view.isHidden = hidden
+                        view.alpha = alpha
+                    }
+                }
+                let opacity = view.layer.shadowOpacity
+                let radius = view.layer.shadowRadius
+                let path = view.layer.shadowPath
+                if opacity > 0 || path != nil {
+                    view.layer.shadowOpacity = 0
+                    view.layer.shadowRadius = 0
+                    view.layer.shadowPath = nil
+                    restorers.append {
+                        view.layer.shadowOpacity = opacity
+                        view.layer.shadowRadius = radius
+                        view.layer.shadowPath = path
+                    }
+                }
+                for sub in view.subviews { walk(sub) }
+            }
+            walk(root)
+            return restorers
         }
 
         private func startFollowDisplayLink() {
@@ -524,12 +655,24 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             if revealSheet {
-                let views = concealedChrome.isEmpty ? chromeViews() : concealedChrome
-                for view in views {
-                    view.isHidden = false
-                    view.alpha = 1
-                    view.layer.opacity = 1
-                    view.transform = .identity
+                if concealedChrome.isEmpty {
+                    for view in chromeViews() {
+                        view.isHidden = false
+                        view.alpha = 1
+                        view.layer.opacity = 1
+                        view.transform = .identity
+                    }
+                } else {
+                    for item in concealedChrome {
+                        guard let view = item.view else { continue }
+                        view.isHidden = item.isHidden
+                        view.alpha = item.alpha
+                        view.layer.opacity = item.opacity
+                        view.layer.shadowOpacity = item.shadowOpacity
+                        view.layer.shadowRadius = item.shadowRadius
+                        view.layer.shadowPath = item.shadowPath
+                        view.transform = .identity
+                    }
                 }
                 sheetView?.isHidden = false
                 sheetView?.alpha = 1

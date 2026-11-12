@@ -36,6 +36,7 @@ import {
   swipeBackdropOpacity,
   swipeProgress,
   velocityFromSamples,
+  visualTranslation,
 } from './edgeSwipeToDismiss.js';
 
 export function BottomSheet({
@@ -58,6 +59,7 @@ export function BottomSheet({
   const pendingRef = useRef(false);
   const isDraggingRef = useRef(false);
   const isEdgeSwipeRef = useRef(false);
+  const activationRef = useRef(null);
   const isDismissingRef = useRef(false);
   const pointerIdRef = useRef(null);
   const scrollRef = useRef(null);
@@ -132,6 +134,7 @@ export function BottomSheet({
       pendingRef.current = true;
       isDraggingRef.current = false;
       isEdgeSwipeRef.current = false;
+      activationRef.current = null;
       pointerIdRef.current = e.pointerId ?? null;
       return;
     }
@@ -143,6 +146,7 @@ export function BottomSheet({
     pendingRef.current = true;
     isDraggingRef.current = false;
     isEdgeSwipeRef.current = onEdge || fromHandle;
+    activationRef.current = onEdge || fromHandle ? 'edge' : null;
     pointerIdRef.current = e.pointerId ?? null;
   };
 
@@ -186,6 +190,7 @@ export function BottomSheet({
           startRef.current = point;
           currentRef.current = point;
           isEdgeSwipeRef.current = true;
+          activationRef.current = activation;
           beginDrag(sheet);
           applyFollow(0, 0);
           return;
@@ -208,7 +213,12 @@ export function BottomSheet({
 
     if (isEdgeSwipeRef.current) {
       if (e.cancelable) e.preventDefault();
-      applyFollow(dx, dy);
+      const visual = visualTranslation({
+        dx,
+        dy,
+        activation: activationRef.current,
+      });
+      applyFollow(visual.dx, visual.dy);
       return;
     }
 
@@ -229,11 +239,14 @@ export function BottomSheet({
     const { vx, vy } = velocityFromSamples(samplesRef.current, now);
     const sheet = sheetRef.current;
     const wasEdgeSwipe = isEdgeSwipeRef.current;
+    const activation = activationRef.current;
     isEdgeSwipeRef.current = false;
+    activationRef.current = null;
 
     if (wasEdgeSwipe && shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
       const width = sheet?.offsetWidth || window.innerHeight;
       const height = sheet?.offsetHeight || window.innerHeight;
+      const visual = visualTranslation({ dx, dy, activation });
       const fly = dismissTranslation(dx, dy, width, height, vx, vy);
       const duration = flingDuration({ dx, dy, vx, vy, width, height });
       const ms = Math.max(1, Math.round(duration * 1000));
@@ -242,6 +255,9 @@ export function BottomSheet({
       if (sheet) {
         sheet.style.transition = easing;
         sheet.style.transform = sheetTransform({
+          dx: visual.dx,
+          dy: visual.dy,
+          progress: 1,
           dismissing: true,
           dismissX: fly.x,
           dismissY: fly.y,
@@ -310,6 +326,8 @@ export function BottomSheet({
     if (!isOpen) {
       pendingRef.current = false;
       isDraggingRef.current = false;
+      isEdgeSwipeRef.current = false;
+      activationRef.current = null;
       isDismissingRef.current = false;
       resetSheetStyles();
     }

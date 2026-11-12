@@ -36,6 +36,7 @@ export {
   isScrollAtBottom,
   isScrollAtTop,
   nearestScrollable,
+  resistOffset,
   scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
@@ -44,6 +45,7 @@ export {
   swipeProgress,
   swipeScale,
   velocityFromSamples,
+  visualTranslation,
 } from './edgeSwipeToDismiss.js';
 export { DismissButton } from './DismissButton.js';
 export { LoadingState, EmptyState, MAIN_APP_LOADING_CLASSNAME } from './ContentStatus.js';

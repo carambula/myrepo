@@ -91,6 +91,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private var followActivation: EdgeSwipeToDismiss.Activation?
         private var originalDimmingAlpha: CGFloat = 1
         private var disabledPans: [UIPanGestureRecognizer] = []
+        private var disabledScrollPans: [UIPanGestureRecognizer] = []
+        private var cachedScrollViews: [UIScrollView] = []
+        private var gestureBeganOnEdge = false
         private var crossedDismissThreshold = false
         private var isDismissing = false
         private var haptic: UIImpactFeedbackGenerator?
@@ -122,14 +125,18 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             gesture.delegate = self
             gesture.maximumNumberOfTouches = 1
             gesture.cancelsTouchesInView = false
+            gesture.delaysTouchesBegan = false
+            gesture.delaysTouchesEnded = false
             resolved.container.addGestureRecognizer(gesture)
             pan = gesture
+            cachedScrollViews = Self.scrollViews(in: resolved.sheet)
             disableCompetingPans()
         }
 
         func detach() {
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
+            reenableScrollPans()
             reenableCompetingPans()
             if followActivation != nil, !isDismissing {
                 endFollowing()
@@ -143,42 +150,62 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             dimmingView = nil
             followActivation = nil
             followOrigin = .zero
+            gestureBeganOnEdge = false
+            cachedScrollViews = []
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let sheetView else { return true }
+            let location = touch.location(in: sheetView)
+            gestureBeganOnEdge = EdgeSwipeToDismiss.isOnSheetEdge(
+                location,
+                in: sheetView.bounds.size,
+                configuration: configuration
+            )
+            return true
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
             guard !isDismissing, let sheetView else { return false }
             let location = startLocation(in: sheetView, gesture: gestureRecognizer)
-            if EdgeSwipeToDismiss.isOnSheetEdge(
+            gestureBeganOnEdge = EdgeSwipeToDismiss.isOnSheetEdge(
                 location,
                 in: sheetView.bounds.size,
                 configuration: configuration
-            ) {
+            )
+            (gestureRecognizer as? UIPanGestureRecognizer)?.cancelsTouchesInView = gestureBeganOnEdge
+            if gestureBeganOnEdge {
                 return true
             }
             if scrollView(at: location, in: sheetView) != nil {
                 return true
             }
-            return Self.scrollViews(in: sheetView).isEmpty
+            return cachedScrollViews.isEmpty && Self.scrollViews(in: sheetView).isEmpty
         }
 
         func gestureRecognizer(
             _ gestureRecognizer: UIGestureRecognizer,
             shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
         ) -> Bool {
-            other.view is UIScrollView
+            if gestureBeganOnEdge || followActivation != nil {
+                return false
+            }
+            return other.view is UIScrollView
         }
 
         func gestureRecognizer(
             _ gestureRecognizer: UIGestureRecognizer,
             shouldBeRequiredToFailBy other: UIGestureRecognizer
         ) -> Bool {
-            guard other is UIPanGestureRecognizer, let sheetView else { return false }
-            let location = startLocation(in: sheetView, gesture: gestureRecognizer)
-            return EdgeSwipeToDismiss.isOnSheetEdge(
-                location,
-                in: sheetView.bounds.size,
-                configuration: configuration
-            )
+            guard other is UIPanGestureRecognizer else { return false }
+            return gestureBeganOnEdge
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRequireFailureOf other: UIGestureRecognizer
+        ) -> Bool {
+            false
         }
 
         @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -189,7 +216,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             switch gesture.state {
             case .began:
                 let location = startLocation(in: sheetView, gesture: gesture)
-                if EdgeSwipeToDismiss.isOnSheetEdge(
+                if gestureBeganOnEdge || EdgeSwipeToDismiss.isOnSheetEdge(
                     location,
                     in: sheetView.bounds.size,
                     configuration: configuration
@@ -216,7 +243,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 lockAllScrollViews()
                 beginFollow(translation: .zero, activation: activation)
             case .ended, .cancelled, .failed:
-                guard followActivation != nil else { return }
+                guard followActivation != nil else {
+                    gestureBeganOnEdge = false
+                    return
+                }
                 let relative = followTranslation(translation)
                 let visual = EdgeSwipeToDismiss.visualTranslation(
                     relative,
@@ -257,6 +287,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             lastTranslation = translation
             originalDimmingAlpha = dimmingView?.alpha ?? 1
             disableCompetingPans()
+            refreshScrollViews()
+            disableScrollPans()
+            lockAllScrollViews()
             onFollowingChange(true, activation)
             startProxyIfNeeded()
             startFollowDisplayLink()
@@ -306,12 +339,22 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 }
                 hit = view.superview
             }
-            return Self.scrollViews(in: sheet).first
+            return cachedScrollViews.first ?? Self.scrollViews(in: sheet).first
+        }
+
+        private func refreshScrollViews() {
+            guard let sheetView else {
+                cachedScrollViews = []
+                return
+            }
+            cachedScrollViews = Self.scrollViews(in: sheetView)
         }
 
         private func lockAllScrollViews() {
-            guard let sheetView else { return }
-            for scroll in Self.scrollViews(in: sheetView) {
+            if cachedScrollViews.isEmpty {
+                refreshScrollViews()
+            }
+            for scroll in cachedScrollViews {
                 lockScroll(scroll)
             }
         }
@@ -329,6 +372,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             let activation = followActivation ?? .edge
             followActivation = nil
             followOrigin = .zero
+            gestureBeganOnEdge = false
+            reenableScrollPans()
             onFollowingChange(false, activation)
         }
 
@@ -466,28 +511,24 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func startProxyIfNeeded() {
             guard dragView == nil, let container = containerView, let card = visualCard else { return }
             rememberChrome(card)
-            for sub in card.subviews { rememberChrome(sub) }
             card.layer.removeAllAnimations()
-            let source = Self.snapshotSource(for: card)
-            let restorers = Self.stripShadows(from: card)
+            Self.stripPlatterShadow(from: card)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             card.transform = .identity
             CATransaction.commit()
-            CATransaction.flush()
 
-            let frameInContainer = source.convert(source.bounds, to: container)
-            guard let snapshot = source.snapshotView(afterScreenUpdates: true),
-                  snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
-                restorers.forEach { $0() }
+            let frameInContainer = card.convert(card.bounds, to: container)
+            let snapshot = card.resizableSnapshotView(
+                from: card.bounds,
+                afterScreenUpdates: false,
+                withCapInsets: .zero
+            ) ?? card.snapshotView(afterScreenUpdates: false)
+            guard let snapshot, snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
                 return
             }
-            _ = Self.stripShadows(from: snapshot)
             snapshot.frame = frameInContainer
             snapshot.isUserInteractionEnabled = false
-            if let color = source.backgroundColor, color.cgColor.alpha > 0.01 {
-                snapshot.backgroundColor = color
-            }
             snapshot.layer.cornerRadius = Self.resolvedCornerRadius(for: card)
             snapshot.layer.cornerCurve = .continuous
             snapshot.layer.maskedCorners = [
@@ -505,17 +546,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             concealOriginalSheet()
         }
 
-        private static func snapshotSource(for card: UIView) -> UIView {
-            let name = NSStringFromClass(type(of: card))
-            guard name.contains("DropShadow") else { return card }
-            return card.subviews.first { view in
-                view.bounds.width > 8
-                    && view.bounds.height > 8
-                    && !view.isHidden
-                    && !NSStringFromClass(type(of: view)).lowercased().contains("shadow")
-            } ?? card
-        }
-
         private static func resolvedCornerRadius(for card: UIView) -> CGFloat {
             var current: UIView? = card
             var depth = 0
@@ -529,38 +559,17 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             return 10
         }
 
-        @discardableResult
-        private static func stripShadows(from root: UIView) -> [() -> Void] {
-            var restorers: [() -> Void] = []
-            func walk(_ view: UIView) {
-                let name = NSStringFromClass(type(of: view)).lowercased()
-                if name.contains("shadow"), view !== root {
-                    let hidden = view.isHidden
-                    let alpha = view.alpha
-                    view.isHidden = true
-                    view.alpha = 0
-                    restorers.append {
-                        view.isHidden = hidden
-                        view.alpha = alpha
-                    }
-                }
-                let opacity = view.layer.shadowOpacity
-                let radius = view.layer.shadowRadius
-                let path = view.layer.shadowPath
-                if opacity > 0 || path != nil {
-                    view.layer.shadowOpacity = 0
-                    view.layer.shadowRadius = 0
-                    view.layer.shadowPath = nil
-                    restorers.append {
-                        view.layer.shadowOpacity = opacity
-                        view.layer.shadowRadius = radius
-                        view.layer.shadowPath = path
-                    }
-                }
-                for sub in view.subviews { walk(sub) }
+        /// Only the platter and its immediate shadow siblings — never walk the
+        /// scroll content, which gets expensive after a long list.
+        private static func stripPlatterShadow(from card: UIView) {
+            card.layer.shadowOpacity = 0
+            card.layer.shadowRadius = 0
+            card.layer.shadowPath = nil
+            for sub in card.subviews where NSStringFromClass(type(of: sub)).lowercased().contains("shadow") {
+                sub.isHidden = true
+                sub.alpha = 0
+                sub.layer.shadowOpacity = 0
             }
-            walk(root)
-            return restorers
         }
 
         private func startFollowDisplayLink() {
@@ -716,6 +725,24 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 pan.isEnabled = true
             }
             disabledPans.removeAll()
+        }
+
+        private func disableScrollPans() {
+            reenableScrollPans()
+            for scroll in cachedScrollViews {
+                let pan = scroll.panGestureRecognizer
+                if pan.isEnabled {
+                    pan.isEnabled = false
+                    disabledScrollPans.append(pan)
+                }
+            }
+        }
+
+        private func reenableScrollPans() {
+            for pan in disabledScrollPans {
+                pan.isEnabled = true
+            }
+            disabledScrollPans.removeAll()
         }
 
         /// UIKit pan translation/velocity are `CGPoint`; shared math uses `CGSize`.

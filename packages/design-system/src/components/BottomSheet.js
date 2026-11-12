@@ -200,7 +200,10 @@ export function BottomSheet({
         }
         return;
       }
-      if (Math.hypot(dx, dy) < edgeSwipeToDismissDefaults.activationDistance) {
+      if (
+        activationRef.current !== 'edge' &&
+        Math.hypot(dx, dy) < edgeSwipeToDismissDefaults.activationDistance
+      ) {
         return;
       }
       beginDrag(sheet);

@@ -105,8 +105,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             let location: CGPoint
             if let pan = gestureRecognizer as? UIPanGestureRecognizer {
                 let current = pan.location(in: sheetView)
-                let translation = pan.translation(in: sheetView)
-                location = CGPoint(x: current.x - translation.x, y: current.y - translation.y)
+                let translation = Self.size(from: pan.translation(in: sheetView))
+                location = CGPoint(x: current.x - translation.width, y: current.y - translation.height)
             } else {
                 location = gestureRecognizer.location(in: sheetView)
             }
@@ -145,9 +145,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 originalDimmingAlpha = dimmingView?.alpha ?? 1
                 prepareHaptic(style: .light)
                 haptic?.impactOccurred()
-                apply(translation: gesture.translation(in: sheetView), animated: false)
+                apply(translation: Self.size(from: gesture.translation(in: sheetView)), animated: false)
             case .changed:
-                let translation = gesture.translation(in: sheetView)
+                let translation = Self.size(from: gesture.translation(in: sheetView))
                 apply(translation: translation, animated: false)
                 let progress = EdgeSwipeToDismiss.progress(
                     translation,
@@ -161,8 +161,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                     crossedDismissThreshold = false
                 }
             case .ended, .cancelled, .failed:
-                let translation = gesture.translation(in: sheetView)
-                let velocity = gesture.velocity(in: sheetView)
+                let translation = Self.size(from: gesture.translation(in: sheetView))
+                let velocity = Self.size(from: gesture.velocity(in: sheetView))
                 let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
                     translation: translation,
                     velocity: velocity,
@@ -245,6 +245,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             } completion: { _ in
                 self.onDismiss()
             }
+        }
+
+        /// UIKit pan translation/velocity are `CGPoint`; shared math uses `CGSize`.
+        private static func size(from point: CGPoint) -> CGSize {
+            CGSize(width: point.x, height: point.y)
         }
 
         private func prepareHaptic(style: UIImpactFeedbackGenerator.FeedbackStyle) {

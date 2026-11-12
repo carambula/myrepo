@@ -13,6 +13,7 @@ public struct PullToDismissScrollState {
 /// across one or more `UIScrollView` instances to detect overscroll.
 public final class PullToDismissScrollObserver: NSObject {
     public var onStateChange: ((PullToDismissScrollState) -> Void)?
+    public var isSheetFollowing = false
     public private(set) var state = PullToDismissScrollState()
 
     private var observedScrollViews: [ObjectIdentifier: UIScrollView] = [:]

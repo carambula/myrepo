@@ -83,12 +83,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
         private var pan: UIPanGestureRecognizer?
-        private var observedScrollPans: [UIPanGestureRecognizer] = []
         private var dragView: UIView?
         private var concealedChrome: [UIView] = []
         private var displayLink: CADisplayLink?
         private var lastTranslation: CGSize = .zero
-        private var scrollFollowOrigin: CGSize = .zero
+        private var followOrigin: CGSize = .zero
         private var followActivation: EdgeSwipeToDismiss.Activation?
         private var originalDimmingAlpha: CGFloat = 1
         private var disabledPans: [UIPanGestureRecognizer] = []
@@ -110,7 +109,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard let probeView, probeView.window != nil else { return }
             guard let resolved = SheetPresentationViews.resolve(from: probeView) else { return }
             if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
-                installScrollPanHandlers()
                 return
             }
 
@@ -123,10 +121,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             let gesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
             gesture.delegate = self
             gesture.maximumNumberOfTouches = 1
-            gesture.cancelsTouchesInView = true
+            gesture.cancelsTouchesInView = false
             resolved.container.addGestureRecognizer(gesture)
             pan = gesture
-            installScrollPanHandlers()
             disableCompetingPans()
         }
 
@@ -134,7 +131,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
             reenableCompetingPans()
-            removeScrollPanHandlers()
+            if followActivation != nil, !isDismissing {
+                endFollowing()
+            }
             if let pan {
                 pan.view?.removeGestureRecognizer(pan)
             }
@@ -143,32 +142,30 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             sheetView = nil
             dimmingView = nil
             followActivation = nil
+            followOrigin = .zero
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            guard !isDismissing, let sheetView, let reference = gestureReferenceView else {
-                return false
-            }
-            let location: CGPoint
-            if let pan = gestureRecognizer as? UIPanGestureRecognizer {
-                let current = pan.location(in: sheetView)
-                let translation = Self.size(from: pan.translation(in: reference))
-                location = CGPoint(x: current.x - translation.width, y: current.y - translation.height)
-            } else {
-                location = gestureRecognizer.location(in: sheetView)
-            }
-            return EdgeSwipeToDismiss.isOnSheetEdge(
+            guard !isDismissing, let sheetView else { return false }
+            let location = startLocation(in: sheetView, gesture: gestureRecognizer)
+            if EdgeSwipeToDismiss.isOnSheetEdge(
                 location,
                 in: sheetView.bounds.size,
                 configuration: configuration
-            )
+            ) {
+                return true
+            }
+            if scrollView(at: location, in: sheetView) != nil {
+                return true
+            }
+            return Self.scrollViews(in: sheetView).isEmpty
         }
 
         func gestureRecognizer(
             _ gestureRecognizer: UIGestureRecognizer,
             shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
         ) -> Bool {
-            false
+            other.view is UIScrollView
         }
 
         func gestureRecognizer(
@@ -176,7 +173,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             shouldBeRequiredToFailBy other: UIGestureRecognizer
         ) -> Bool {
             guard other is UIPanGestureRecognizer, let sheetView else { return false }
-            let location = gestureRecognizer.location(in: sheetView)
+            let location = startLocation(in: sheetView, gesture: gestureRecognizer)
             return EdgeSwipeToDismiss.isOnSheetEdge(
                 location,
                 in: sheetView.bounds.size,
@@ -185,99 +182,42 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-            guard followActivation != .topOverscroll, followActivation != .bottomOverscroll else { return }
-            guard let reference = gestureReferenceView else { return }
+            guard !isDismissing, let reference = gestureReferenceView, let sheetView else { return }
             let translation = Self.size(from: gesture.translation(in: reference))
             let velocity = Self.size(from: gesture.velocity(in: reference))
 
             switch gesture.state {
             case .began:
-                beginFollow(
-                    translation: translation,
-                    activation: .edge,
-                    useProxy: true
-                )
-            case .changed:
-                lastTranslation = translation
-                applyFollow(translation)
-                let progress = EdgeSwipeToDismiss.progress(
-                    translation,
-                    dismissDistance: configuration.dismissDistance
-                )
-                if progress >= 1, !crossedDismissThreshold {
-                    crossedDismissThreshold = true
-                    prepareHaptic(style: .medium)
-                    haptic?.impactOccurred()
-                } else if progress < 1 {
-                    crossedDismissThreshold = false
-                }
-            case .ended, .cancelled, .failed:
-                let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
-                    translation: translation,
-                    velocity: velocity,
+                let location = startLocation(in: sheetView, gesture: gesture)
+                if EdgeSwipeToDismiss.isOnSheetEdge(
+                    location,
+                    in: sheetView.bounds.size,
                     configuration: configuration
-                )
-                if shouldDismiss {
-                    flingAway(from: translation, velocity: velocity)
-                } else {
-                    stopFollowDisplayLink()
-                    snapBack()
+                ) {
+                    followOrigin = .zero
+                    beginFollow(translation: translation, activation: .edge)
                 }
-            default:
-                break
-            }
-        }
-
-        @objc private func handleScrollPan(_ gesture: UIPanGestureRecognizer) {
-            guard !isDismissing, let reference = gestureReferenceView else { return }
-            guard followActivation != .edge else { return }
-            guard let scroll = gesture.view as? UIScrollView else { return }
-            let translation = Self.size(from: gesture.translation(in: reference))
-            let velocity = Self.size(from: gesture.velocity(in: reference))
-
-            switch gesture.state {
             case .changed:
-                if followActivation == .topOverscroll || followActivation == .bottomOverscroll {
-                    lockScroll(scroll)
-                    let relative = CGSize(
-                        width: translation.width - scrollFollowOrigin.width,
-                        height: translation.height - scrollFollowOrigin.height
-                    )
-                    lastTranslation = relative
-                    applyFollow(relative)
-                    let progress = EdgeSwipeToDismiss.progress(
-                        relative,
-                        dismissDistance: configuration.dismissDistance
-                    )
-                    if progress >= 1, !crossedDismissThreshold {
-                        crossedDismissThreshold = true
-                        prepareHaptic(style: .medium)
-                        haptic?.impactOccurred()
-                    } else if progress < 1 {
-                        crossedDismissThreshold = false
-                    }
+                if followActivation != nil {
+                    lockAllScrollViews()
+                    updateFollow(translation)
                     return
                 }
-                guard scroll.isTracking else { return }
-                let atTop = Self.isScrollAtTop(scroll)
-                let atBottom = Self.isScrollAtBottom(scroll)
+                let location = startLocation(in: sheetView, gesture: gesture)
+                let scroll = scrollView(at: location, in: sheetView)
+                let atTop = scroll.map(Self.isScrollAtTop) ?? true
+                let atBottom = scroll.map(Self.isScrollAtBottom) ?? true
                 guard let activation = EdgeSwipeToDismiss.scrollLimitActivation(
                     translation: translation,
                     atTop: atTop,
                     atBottom: atBottom
                 ) else { return }
-                scrollFollowOrigin = translation
-                lastTranslation = .zero
-                lockScroll(scroll)
-                beginFollow(translation: .zero, activation: activation, useProxy: false)
+                followOrigin = translation
+                lockAllScrollViews()
+                beginFollow(translation: .zero, activation: activation)
             case .ended, .cancelled, .failed:
-                guard followActivation == .topOverscroll || followActivation == .bottomOverscroll else {
-                    return
-                }
-                let relative = CGSize(
-                    width: translation.width - scrollFollowOrigin.width,
-                    height: translation.height - scrollFollowOrigin.height
-                )
+                guard followActivation != nil else { return }
+                let relative = followTranslation(translation)
                 let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
                     translation: relative,
                     velocity: velocity,
@@ -304,8 +244,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func beginFollow(
             translation: CGSize,
-            activation: EdgeSwipeToDismiss.Activation,
-            useProxy: Bool
+            activation: EdgeSwipeToDismiss.Activation
         ) {
             guard followActivation == nil else { return }
             followActivation = activation
@@ -314,29 +253,62 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             originalDimmingAlpha = dimmingView?.alpha ?? 1
             disableCompetingPans()
             onFollowingChange(true, activation)
-            if useProxy {
-                startProxyIfNeeded()
-            }
+            startProxyIfNeeded()
             startFollowDisplayLink()
             prepareHaptic(style: .light)
             haptic?.impactOccurred()
             applyFollow(translation)
         }
 
-        private func installScrollPanHandlers() {
-            removeScrollPanHandlers()
-            guard let sheetView else { return }
-            for scroll in Self.scrollViews(in: sheetView) {
-                scroll.panGestureRecognizer.addTarget(self, action: #selector(handleScrollPan))
-                observedScrollPans.append(scroll.panGestureRecognizer)
+        private func followTranslation(_ translation: CGSize) -> CGSize {
+            CGSize(
+                width: translation.width - followOrigin.width,
+                height: translation.height - followOrigin.height
+            )
+        }
+
+        private func updateFollow(_ translation: CGSize) {
+            let relative = followTranslation(translation)
+            lastTranslation = relative
+            applyFollow(relative)
+            let progress = EdgeSwipeToDismiss.progress(
+                relative,
+                dismissDistance: configuration.dismissDistance
+            )
+            if progress >= 1, !crossedDismissThreshold {
+                crossedDismissThreshold = true
+                prepareHaptic(style: .medium)
+                haptic?.impactOccurred()
+            } else if progress < 1 {
+                crossedDismissThreshold = false
             }
         }
 
-        private func removeScrollPanHandlers() {
-            for pan in observedScrollPans {
-                pan.removeTarget(self, action: #selector(handleScrollPan))
+        private func startLocation(in sheet: UIView, gesture: UIGestureRecognizer) -> CGPoint {
+            let current = gesture.location(in: sheet)
+            guard let pan = gesture as? UIPanGestureRecognizer, let reference = gestureReferenceView else {
+                return current
             }
-            observedScrollPans.removeAll()
+            let translation = Self.size(from: pan.translation(in: reference))
+            return CGPoint(x: current.x - translation.width, y: current.y - translation.height)
+        }
+
+        private func scrollView(at point: CGPoint, in sheet: UIView) -> UIScrollView? {
+            var hit = sheet.hitTest(point, with: nil)
+            while let view = hit {
+                if let scroll = view as? UIScrollView, scroll.isScrollEnabled {
+                    return scroll
+                }
+                hit = view.superview
+            }
+            return Self.scrollViews(in: sheet).first
+        }
+
+        private func lockAllScrollViews() {
+            guard let sheetView else { return }
+            for scroll in Self.scrollViews(in: sheetView) {
+                lockScroll(scroll)
+            }
         }
 
         private func lockScroll(_ scroll: UIScrollView) {
@@ -351,6 +323,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func endFollowing() {
             let activation = followActivation ?? .edge
             followActivation = nil
+            followOrigin = .zero
             onFollowingChange(false, activation)
         }
 
@@ -427,6 +400,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard dragView != nil else { return }
             for view in chromeViews() {
                 view.layer.removeAllAnimations()
+                view.transform = .identity
                 view.alpha = 0
                 view.layer.opacity = 0
                 view.isHidden = true
@@ -439,6 +413,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func startProxyIfNeeded() {
             guard dragView == nil, let container = containerView, let card = visualCard else { return }
             card.layer.removeAllAnimations()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            card.transform = .identity
+            CATransaction.commit()
             let frameInContainer = card.convert(card.bounds, to: container)
             guard let snapshot = card.snapshotView(afterScreenUpdates: false),
                   snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {

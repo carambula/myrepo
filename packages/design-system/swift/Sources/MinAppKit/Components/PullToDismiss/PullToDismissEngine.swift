@@ -39,7 +39,6 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
     @State private var showButton: Bool = false
     @State private var isButtonActive: Bool = false
     @State private var isDismissing: Bool = false
-    @State private var isSheetFollowing: Bool = false
     @State private var hapticGenerator: UIImpactFeedbackGenerator?
 
     public let configuration: PullToDismissConfiguration
@@ -70,7 +69,7 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
                     handleOverscroll(newValue)
                 }
                 .onChange(of: isDragging) { oldValue, newValue in
-                    if !newValue && oldValue && !isSheetFollowing {
+                    if !newValue && oldValue && !scrollObserver.isSheetFollowing {
                         handleDragEnded(releasedWhileActive: isButtonActive)
                     }
                 }
@@ -85,17 +84,8 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
                 .onDisappear {
                     scrollObserver.onStateChange = nil
                 }
-                .edgeSwipeToDismiss { following, activation in
-                    isSheetFollowing = following
-                    if following, activation == .bottomOverscroll {
-                        showButton = true
-                        isButtonActive = true
-                    } else if !following, !isDismissing {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                            showButton = false
-                            isButtonActive = false
-                        }
-                    }
+                .edgeSwipeToDismiss { following, _ in
+                    scrollObserver.isSheetFollowing = following
                 }
 
             closeButton(isButtonActive)
@@ -106,7 +96,7 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
     }
 
     private func handleOverscroll(_ distance: CGFloat) {
-        guard isDragging else { return }
+        guard isDragging, !scrollObserver.isSheetFollowing else { return }
 
         if distance > configuration.pullThreshold && isAtBottom {
             if !showButton {
@@ -137,7 +127,7 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
     }
 
     private func handleDragEnded(releasedWhileActive: Bool) {
-        guard !isDismissing, !isSheetFollowing else { return }
+        guard !isDismissing, !scrollObserver.isSheetFollowing else { return }
         if releasedWhileActive {
             isDismissing = true
             dismiss()

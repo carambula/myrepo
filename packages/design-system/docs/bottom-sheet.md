@@ -186,12 +186,12 @@ When `enableDrag` is `true`:
 
 When `enableEdgeSwipe` is `true` (the default), a pan that **starts on a sheet edge** (top grabber, left, right, or bottom) takes over the sheet:
 
-1. The sheet follows the finger in any direction, not just down
+1. The sheet follows the finger in realtime in any direction, not just down
 2. The card scales down slightly and the backdrop fades as it leaves rest
-3. Releasing past 120px of travel, or flinging away from rest, dismisses in the swipe direction
+3. Releasing past 120px of travel, or flinging away from rest, sends the sheet off along the drag trajectory at a clamped speed (neither a crawl nor a teleport)
 4. Releasing earlier springs the sheet back to its original position
 
-Native min apps attach the same interaction via MinAppKit's `.edgeSwipeToDismiss()` (composed into `.pullToDismissEngine()`, and used by YourTube's sheet modifier). Native sheets activate from the top and side edges so the home indicator can still take bottom-edge swipes.
+Native min apps attach the same interaction via MinAppKit's `.edgeSwipeToDismiss()` (composed into `.pullToDismissEngine()`, and used by YourTube's sheet modifier). Native sheets activate from the top and side edges so the home indicator can still take bottom-edge swipes. System interactive dismiss is disabled so the card can track the finger without fighting UIKit's sheet controller; the presentation is hidden before SwiftUI dismisses so the card cannot snap back on screen.
 
 ## Accessibility
 

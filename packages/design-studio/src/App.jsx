@@ -9,6 +9,7 @@ import { darkTheme } from '../../design-system/src/themes/darkTheme.js';
 import {
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  flingDuration,
   isOnSheetEdge,
   sheetTransform,
   shouldDismissEdgeSwipe,
@@ -272,11 +273,15 @@ function LiveBottomSheetDemo() {
       const { vx, vy } = velocityFromSamples(samplesRef.current, now);
       const sheet = sheetRef.current;
       if (shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
-        const fly = dismissTranslation(dx, dy, sheet?.offsetWidth || 390, sheet?.offsetHeight || 700);
+        const width = sheet?.offsetWidth || 390;
+        const height = sheet?.offsetHeight || 700;
+        const fly = dismissTranslation(dx, dy, width, height, vx, vy);
+        const duration = flingDuration({ dx, dy, vx, vy, width, height });
+        const ms = Math.max(1, Math.round(duration * 1000));
         dismissingRef.current = true;
-        setDrag({ dx, dy, dismissing: true, dismissX: fly.x, dismissY: fly.y });
+        setDrag({ dx, dy, dismissing: true, dismissX: fly.x, dismissY: fly.y, durationMs: ms });
         if (sheet) {
-          sheet.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+          sheet.style.transition = `transform ${ms}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
           sheet.style.transform = sheetTransform({
             dismissing: true,
             dismissX: fly.x,
@@ -284,7 +289,7 @@ function LiveBottomSheetDemo() {
           });
           sheet.style.opacity = '0';
         }
-        window.setTimeout(closeSheet, 280);
+        window.setTimeout(closeSheet, ms);
         return;
       }
       setDrag(null);
@@ -327,14 +332,16 @@ function LiveBottomSheetDemo() {
         }),
         opacity: drag.dismissing ? 0 : 1,
         transition: drag.dismissing
-          ? 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+          ? `transform ${drag.durationMs || 280}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${drag.durationMs || 280}ms cubic-bezier(0.16, 1, 0.3, 1)`
           : 'none',
       }
     : undefined;
   const backdropStyle = drag
     ? {
         opacity: drag.dismissing ? 0 : swipeBackdropOpacity(progress),
-        transition: drag.dismissing ? 'opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+        transition: drag.dismissing
+          ? `opacity ${drag.durationMs || 280}ms cubic-bezier(0.16, 1, 0.3, 1)`
+          : 'none',
       }
     : undefined;
 
@@ -540,7 +547,7 @@ function ComponentsPanel() {
       <ComponentPreview title="EdgeSwipeToDismiss" desc="Omnidirectional edge-pan on the presented sheet card">
         <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 12 }}>
           <span className="dim" style={{ fontSize: 13 }}>
-            Edge start → 2D follow + scale → dismiss in swipe direction or spring back. Shared with the web BottomSheet.
+            Edge start → realtime 2D follow + scale → fling along the drag (clamped speed) or spring back. Shared with the web BottomSheet.
           </span>
         </div>
       </ComponentPreview>
@@ -712,7 +719,7 @@ function PatternsPanel() {
     { name: 'Scroll-Dismiss Button', where: 'All 4 apps', desc: 'Floating button that appears/hides based on scroll position, with configurable material and border. Single implementation in MinAppKit.', dsFile: 'DismissButton + useScrollDismiss', swift: 'MinAppKit/ScrollDismissButton.swift (shared)', status: 'unified' },
     { name: 'Scroll Offset Tracking', where: 'All 4 apps', desc: 'PreferenceKey + View extension for tracking scroll position in ScrollViews. Single implementation in MinAppKit.', dsFile: '—', swift: 'MinAppKit/ScrollOffset.swift (shared)', status: 'unified' },
     { name: 'Bottom Sheet / Pull-to-Dismiss', where: 'WatchedIt, PodLink, Cyclismo', desc: 'Shared pull-to-dismiss engine (ScrollObserver + Introspector + state machine + haptics) in MinAppKit. Each app provides its own close button styling. YourTube keeps its SwiftUI DragGesture implementation.', dsFile: 'BottomSheet.js + BottomSheet.css', swift: 'MinAppKit/PullToDismiss/ (shared engine) → per-app close button', status: 'unified' },
-    { name: 'Bottom Sheet / Edge-Swipe-to-Dismiss', where: 'All 4 apps + fit min', desc: 'Pan from a sheet edge, then drag the card omnidirectionally until it is flung away or released back to rest. Shared math in the design system; native transform lives on the presented sheet container.', dsFile: 'edgeSwipeToDismiss.js + BottomSheet.js', swift: 'MinAppKit/PullToDismiss/EdgeSwipeToDismiss.swift + Engine', status: 'unified' },
+    { name: 'Bottom Sheet / Edge-Swipe-to-Dismiss', where: 'All 4 apps + fit min', desc: 'Pan from a sheet edge and the card follows the finger in realtime, then flings along the drag at a clamped speed or springs back. Shared math in the design system; native follow uses a snapshot proxy on the untransformed presentation container.', dsFile: 'edgeSwipeToDismiss.js + BottomSheet.js', swift: 'MinAppKit/PullToDismiss/EdgeSwipeToDismiss.swift + Engine', status: 'unified' },
     { name: 'Cached Async Image', where: 'All 4 apps', desc: 'Remote image loading with memory + disk cache, blur-up animation, and sync cache hits. Shared implementation in MinAppKit with configurable fade/blur.', dsFile: '—', swift: 'MinAppKit/CachedAsyncImage.swift + ImageCache.swift (shared)', status: 'unified' },
     { name: 'MainContentTitle', where: 'All 4 apps', desc: `Primary page heading: ${typography.styles.mainContentTitle.fontSize} / weight ${typography.styles.mainContentTitle.fontWeight}. Must be identical everywhere.`, dsFile: 'MainContentTitle.js + .native.js', swift: 'MinMainContentTitleView (generated)', status: 'unified' },
     { name: 'Page Margins / Grid', where: 'All 4 apps', desc: `Desktop: ${spacing.page.marginLeft}/${spacing.page.marginRight}. Mobile: ${spacing.page.marginLeftMobile}/${spacing.page.marginRightMobile}. Generated native constants.`, dsFile: 'spacing.js → build-native-tokens', swift: 'MinPageMargins.swift (generated)', status: 'unified' },

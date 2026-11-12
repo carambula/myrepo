@@ -220,6 +220,8 @@
       flex-direction: column;
       touch-action: pan-y;
       transform-origin: center center;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .min-bottom-sheet--dragging {
@@ -438,6 +440,7 @@
     import {
       dismissTranslation,
       edgeSwipeToDismissDefaults,
+      flingDuration,
       isOnSheetEdge,
       sheetTransform,
       shouldDismissEdgeSwipe,
@@ -565,18 +568,27 @@
       const dy = current.y - start.y;
       const { vx, vy } = velocityFromSamples(samples, performance.now());
       if (isEdgeSwipe && shouldDismissEdgeSwipe({ dx, dy, vx, vy })) {
-        const fly = dismissTranslation(dx, dy, sheet.offsetWidth, sheet.offsetHeight);
+        const fly = dismissTranslation(dx, dy, sheet.offsetWidth, sheet.offsetHeight, vx, vy);
+        const duration = flingDuration({
+          dx,
+          dy,
+          vx,
+          vy,
+          width: sheet.offsetWidth,
+          height: sheet.offsetHeight,
+        });
+        const ms = Math.max(1, Math.round(duration * 1000));
         isDismissing = true;
-        sheet.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        sheet.style.transition = `transform ${ms}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
         sheet.style.transform = sheetTransform({ dismissing: true, dismissX: fly.x, dismissY: fly.y });
         sheet.style.opacity = '0';
-        backdrop.style.transition = 'opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1)';
+        backdrop.style.transition = `opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
         backdrop.style.opacity = '0';
         window.setTimeout(() => {
           sheet.style.transition = '';
           backdrop.style.transition = '';
           closeSheet();
-        }, 280);
+        }, ms);
         return;
       }
       sheet.classList.remove('min-bottom-sheet--dragging');

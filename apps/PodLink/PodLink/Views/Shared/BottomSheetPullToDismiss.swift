@@ -52,6 +52,16 @@ extension View {
         #endif
     }
 
+    /// Edge-swipe dismiss without the pull-to-dismiss close button, for sheets
+    /// that already provide their own close affordance.
+    func bottomSheetEdgeSwipeToDismiss() -> some View {
+        #if os(iOS)
+        self.edgeSwipeToDismiss()
+        #else
+        self
+        #endif
+    }
+
     func sheetPullToDismissScrollBottomInset(playbackService: PlaybackService) -> some View {
         let inset = SheetPullToDismissLayout.scrollContentBottomInset(playbackService: playbackService)
         return contentMargins(.bottom, inset, for: .scrollContent)

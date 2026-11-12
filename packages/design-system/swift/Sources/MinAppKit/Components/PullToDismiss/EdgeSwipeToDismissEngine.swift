@@ -54,6 +54,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 self?.coordinator?.attachIfNeeded()
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.coordinator?.attachIfNeeded()
+            }
         }
 
         override func willMove(toWindow newWindow: UIWindow?) {
@@ -74,6 +77,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var dimmingView: UIView?
         private var pan: UIPanGestureRecognizer?
         private var dragView: UIView?
+        private var concealedChrome: [UIView] = []
         private var displayLink: CADisplayLink?
         private var lastTranslation: CGSize = .zero
         private var originalDimmingAlpha: CGFloat = 1
@@ -192,7 +196,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                     crossedDismissThreshold = false
                 }
             case .ended, .cancelled, .failed:
-                stopFollowDisplayLink()
                 let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
                     translation: translation,
                     velocity: velocity,
@@ -201,6 +204,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 if shouldDismiss {
                     flingAway(from: translation, velocity: velocity)
                 } else {
+                    stopFollowDisplayLink()
                     snapBack()
                 }
             default:
@@ -232,27 +236,58 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             CATransaction.setDisableActions(true)
             moving.transform = transform
             dimmingView?.alpha = dimmingAlpha
+            concealOriginalSheet()
             CATransaction.commit()
         }
 
+        private func chromeViews() -> [UIView] {
+            var views: [UIView] = []
+            var current: UIView? = sheetView
+            while let view = current, view !== containerView {
+                views.append(view)
+                if NSStringFromClass(type(of: view)).contains("DropShadow") {
+                    break
+                }
+                current = view.superview
+            }
+            return views
+        }
+
+        private var visualCard: UIView? {
+            chromeViews().last ?? sheetView
+        }
+
+        /// UISheetPresentationController will restore the live card's alpha/transform
+        /// during layout. Keep it fully gone the entire time a proxy is on screen.
+        private func concealOriginalSheet() {
+            guard dragView != nil else { return }
+            for view in chromeViews() {
+                view.layer.removeAllAnimations()
+                view.alpha = 0
+                view.layer.opacity = 0
+                view.isHidden = true
+                if !concealedChrome.contains(where: { $0 === view }) {
+                    concealedChrome.append(view)
+                }
+            }
+        }
+
         private func startProxyIfNeeded() {
-            guard dragView == nil, let sheet = sheetView, let container = containerView else { return }
-            sheet.layer.removeAllAnimations()
-            let frameInContainer = sheet.convert(sheet.bounds, to: container)
-            guard let snapshot = sheet.snapshotView(afterScreenUpdates: false),
+            guard dragView == nil, let container = containerView, let card = visualCard else { return }
+            card.layer.removeAllAnimations()
+            let frameInContainer = card.convert(card.bounds, to: container)
+            guard let snapshot = card.snapshotView(afterScreenUpdates: false),
                   snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
                 return
             }
             snapshot.frame = frameInContainer
             snapshot.isUserInteractionEnabled = false
-            snapshot.layer.cornerRadius = sheet.layer.cornerRadius
-            snapshot.clipsToBounds = sheet.clipsToBounds
+            snapshot.layer.cornerRadius = card.layer.cornerRadius
+            snapshot.clipsToBounds = card.clipsToBounds
             container.addSubview(snapshot)
+            container.bringSubviewToFront(snapshot)
             dragView = snapshot
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            sheet.alpha = 0
-            CATransaction.commit()
+            concealOriginalSheet()
         }
 
         private func startFollowDisplayLink() {
@@ -268,6 +303,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         @objc private func tickFollow() {
+            if isDismissing {
+                concealOriginalSheet()
+                return
+            }
             applyFollow(lastTranslation)
         }
 
@@ -320,6 +359,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 moving.alpha = 0
                 self.dimmingView?.alpha = 0
             } completion: { _ in
+                self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
             }
         }
@@ -337,18 +377,27 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         private func restoreSheet(removeProxy: Bool, revealSheet: Bool = true) {
-            if revealSheet, let sheet = sheetView {
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                sheet.alpha = 1
-                sheet.isHidden = false
-                sheet.transform = .identity
-                CATransaction.commit()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            if revealSheet {
+                let views = concealedChrome.isEmpty ? chromeViews() : concealedChrome
+                for view in views {
+                    view.isHidden = false
+                    view.alpha = 1
+                    view.layer.opacity = 1
+                    view.transform = .identity
+                }
+                sheetView?.isHidden = false
+                sheetView?.alpha = 1
+                sheetView?.layer.opacity = 1
+                sheetView?.transform = .identity
             }
+            concealedChrome.removeAll()
             if removeProxy {
                 dragView?.removeFromSuperview()
                 dragView = nil
             }
+            CATransaction.commit()
         }
 
         private func disableCompetingPans() {
@@ -419,7 +468,8 @@ enum SheetPresentationViews {
             if viewController.presentingViewController != nil,
                let presentation = viewController.presentationController,
                let container = presentation.containerView,
-               let sheet = presentation.presentedView {
+               let presented = presentation.presentedView {
+                let sheet = visualCard(from: presented, in: container)
                 return (container, sheet, dimming(adjacentTo: sheet, in: container))
             }
             node = viewController.parent
@@ -448,6 +498,23 @@ enum SheetPresentationViews {
             current = view.superview
         }
         return nil
+    }
+
+    /// Prefer the drop-shadow platter so we hide the real card, not an inner host.
+    static func visualCard(from presented: UIView, in container: UIView) -> UIView {
+        var current: UIView? = presented
+        while let view = current, view !== container {
+            if NSStringFromClass(type(of: view)).contains("DropShadow") {
+                return view
+            }
+            current = view.superview
+        }
+        if let child = presented.subviews.first(where: {
+            NSStringFromClass(type(of: $0)).contains("DropShadow")
+        }) {
+            return child
+        }
+        return presented
     }
 
     static func dimming(adjacentTo sheet: UIView, in container: UIView? = nil) -> UIView? {

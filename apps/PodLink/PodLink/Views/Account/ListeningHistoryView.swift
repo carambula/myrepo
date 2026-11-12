@@ -106,7 +106,6 @@ struct ListeningHistoryView: View {
                 .environment(playbackService)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
-                .bottomSheetPullToDismiss()
                 .sheetPullToDismissScrollBottomInset(playbackService: playbackService)
         }
     }

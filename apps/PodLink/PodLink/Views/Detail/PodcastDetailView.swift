@@ -182,6 +182,7 @@ struct PodcastDetailView: View {
             }
         }
         .themeBackground()
+        .bottomSheetEdgeSwipeToDismiss()
         .onChange(of: isSearchActive) { _, active in
             if active {
                 playbackService.pushSearchUISession()

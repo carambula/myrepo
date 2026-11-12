@@ -7,6 +7,9 @@ import {
   flingDirection,
   flingDuration,
   isOnSheetEdge,
+  isScrollAtBottom,
+  isScrollAtTop,
+  scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
   swipeBackdropOpacity,
@@ -48,6 +51,42 @@ describe('isOnSheetEdge', () => {
   it('rejects empty frames', () => {
     assert.equal(isOnSheetEdge(0, 0, 0, 100), false);
     assert.equal(isOnSheetEdge(Number.NaN, 0, 100, 100), false);
+  });
+});
+
+describe('scrollLimitActivation', () => {
+  it('takes over when pulling down past the top of content', () => {
+    assert.equal(
+      scrollLimitActivation({ dx: 0, dy: 20, atTop: true, atBottom: false }),
+      'topOverscroll'
+    );
+  });
+
+  it('takes over when pulling up past the bottom of content', () => {
+    assert.equal(
+      scrollLimitActivation({ dx: 0, dy: -20, atTop: false, atBottom: true }),
+      'bottomOverscroll'
+    );
+  });
+
+  it('lets interior scrolling continue', () => {
+    assert.equal(
+      scrollLimitActivation({ dx: 0, dy: 20, atTop: false, atBottom: false }),
+      null
+    );
+    assert.equal(
+      scrollLimitActivation({ dx: 0, dy: -20, atTop: true, atBottom: false }),
+      null
+    );
+    assert.equal(
+      scrollLimitActivation({ dx: 30, dy: 10, atTop: true, atBottom: false }),
+      null
+    );
+  });
+
+  it('treats a non-scrollable surface as both limits', () => {
+    assert.equal(isScrollAtTop(null), true);
+    assert.equal(isScrollAtBottom(null), true);
   });
 });
 

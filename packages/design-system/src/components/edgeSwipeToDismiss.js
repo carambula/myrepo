@@ -40,6 +40,37 @@ export function isOnSheetEdge(x, y, width, height, options = {}) {
   return onLeft || onRight || onTop || onBottom;
 }
 
+export function nearestScrollable(node, root) {
+  let el = node;
+  while (el && el !== root) {
+    if (el.scrollHeight > el.clientHeight + 1) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+export function isScrollAtTop(el) {
+  if (!el) return true;
+  return el.scrollTop <= 1;
+}
+
+export function isScrollAtBottom(el) {
+  if (!el) return true;
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+}
+
+export function scrollLimitActivation({
+  dx = 0,
+  dy = 0,
+  atTop = false,
+  atBottom = false,
+} = {}) {
+  if (Math.abs(dy) < Math.abs(dx)) return null;
+  if (atTop && dy > 0) return 'topOverscroll';
+  if (atBottom && dy < 0) return 'bottomOverscroll';
+  return null;
+}
+
 export function swipeDistance(dx, dy) {
   return Math.hypot(dx || 0, dy || 0);
 }

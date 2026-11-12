@@ -68,6 +68,44 @@ public enum EdgeSwipeToDismiss {
         return onLeft || onRight || onTop || onBottom
     }
 
+    public enum Activation: Equatable {
+        case edge
+        case topOverscroll
+        case bottomOverscroll
+    }
+
+    /// Once content cannot scroll farther, remaining movement can take over the sheet.
+    public static func scrollLimitActivation(
+        translation: CGSize,
+        atTop: Bool,
+        atBottom: Bool
+    ) -> Activation? {
+        guard abs(translation.height) >= abs(translation.width) else { return nil }
+        if atTop, translation.height > 0 { return .topOverscroll }
+        if atBottom, translation.height < 0 { return .bottomOverscroll }
+        return nil
+    }
+
+    public static func isScrollAtTop(_ offsetY: CGFloat, insetTop: CGFloat, epsilon: CGFloat = 1.5) -> Bool {
+        offsetY <= -insetTop + epsilon
+    }
+
+    public static func isScrollAtBottom(
+        offsetY: CGFloat,
+        contentHeight: CGFloat,
+        boundsHeight: CGFloat,
+        insetTop: CGFloat,
+        insetBottom: CGFloat,
+        epsilon: CGFloat = 1.5
+    ) -> Bool {
+        let minY = -insetTop
+        let maxY = max(minY, contentHeight - boundsHeight + insetBottom)
+        let visible = boundsHeight - insetTop - insetBottom
+        let scrollable = contentHeight > visible + 0.5
+        if !scrollable { return true }
+        return offsetY >= maxY - epsilon
+    }
+
     public static func distance(_ translation: CGSize) -> CGFloat {
         hypot(translation.width, translation.height)
     }

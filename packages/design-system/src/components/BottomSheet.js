@@ -27,6 +27,10 @@ import {
   edgeSwipeToDismissDefaults,
   flingDuration,
   isOnSheetEdge,
+  isScrollAtBottom,
+  isScrollAtTop,
+  nearestScrollable,
+  scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
   swipeBackdropOpacity,
@@ -56,6 +60,7 @@ export function BottomSheet({
   const isEdgeSwipeRef = useRef(false);
   const isDismissingRef = useRef(false);
   const pointerIdRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const resetSheetStyles = () => {
     const sheet = sheetRef.current;
@@ -116,8 +121,20 @@ export function BottomSheet({
     const onEdge =
       enableEdgeSwipe &&
       isOnSheetEdge(localX, localY, rect.width, rect.height);
+    const scroll = nearestScrollable(e.target, sheet);
+    scrollRef.current = scroll;
 
-    if (!fromHandle && !onEdge) return;
+    if (!fromHandle && !onEdge) {
+      startRef.current = point;
+      currentRef.current = point;
+      samplesRef.current = [];
+      recordSample(point);
+      pendingRef.current = true;
+      isDraggingRef.current = false;
+      isEdgeSwipeRef.current = false;
+      pointerIdRef.current = e.pointerId ?? null;
+      return;
+    }
 
     startRef.current = point;
     currentRef.current = point;
@@ -157,6 +174,27 @@ export function BottomSheet({
     const dy = point.y - startRef.current.y;
 
     if (pendingRef.current && !isDraggingRef.current) {
+      if (!isEdgeSwipeRef.current) {
+        const scroll = scrollRef.current;
+        const activation = scrollLimitActivation({
+          dx,
+          dy,
+          atTop: isScrollAtTop(scroll),
+          atBottom: isScrollAtBottom(scroll),
+        });
+        if (activation) {
+          startRef.current = point;
+          currentRef.current = point;
+          isEdgeSwipeRef.current = true;
+          beginDrag(sheet);
+          applyFollow(0, 0);
+          return;
+        }
+        if (Math.hypot(dx, dy) >= edgeSwipeToDismissDefaults.activationDistance) {
+          pendingRef.current = false;
+        }
+        return;
+      }
       if (Math.hypot(dx, dy) < edgeSwipeToDismissDefaults.activationDistance) {
         return;
       }

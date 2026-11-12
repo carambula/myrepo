@@ -16,9 +16,14 @@ import UIKit
 struct EdgeSwipeToDismissHost: UIViewRepresentable {
     let configuration: EdgeSwipeToDismissConfiguration
     let onDismiss: () -> Void
+    let onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(configuration: configuration, onDismiss: onDismiss)
+        Coordinator(
+            configuration: configuration,
+            onDismiss: onDismiss,
+            onFollowingChange: onFollowingChange
+        )
     }
 
     func makeUIView(context: Context) -> ProbeView {
@@ -30,6 +35,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
     func updateUIView(_ uiView: ProbeView, context: Context) {
         context.coordinator.configuration = configuration
         context.coordinator.onDismiss = onDismiss
+        context.coordinator.onFollowingChange = onFollowingChange
         uiView.coordinator = context.coordinator
     }
 
@@ -70,31 +76,41 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var configuration: EdgeSwipeToDismissConfiguration
         var onDismiss: () -> Void
+        var onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
         weak var probeView: ProbeView?
 
         private weak var containerView: UIView?
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
         private var pan: UIPanGestureRecognizer?
+        private var observedScrollPans: [UIPanGestureRecognizer] = []
         private var dragView: UIView?
         private var concealedChrome: [UIView] = []
         private var displayLink: CADisplayLink?
         private var lastTranslation: CGSize = .zero
+        private var scrollFollowOrigin: CGSize = .zero
+        private var followActivation: EdgeSwipeToDismiss.Activation?
         private var originalDimmingAlpha: CGFloat = 1
         private var disabledPans: [UIPanGestureRecognizer] = []
         private var crossedDismissThreshold = false
         private var isDismissing = false
         private var haptic: UIImpactFeedbackGenerator?
 
-        init(configuration: EdgeSwipeToDismissConfiguration, onDismiss: @escaping () -> Void) {
+        init(
+            configuration: EdgeSwipeToDismissConfiguration,
+            onDismiss: @escaping () -> Void,
+            onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void
+        ) {
             self.configuration = configuration
             self.onDismiss = onDismiss
+            self.onFollowingChange = onFollowingChange
         }
 
         func attachIfNeeded() {
             guard let probeView, probeView.window != nil else { return }
             guard let resolved = SheetPresentationViews.resolve(from: probeView) else { return }
             if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
+                installScrollPanHandlers()
                 return
             }
 
@@ -110,6 +126,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             gesture.cancelsTouchesInView = true
             resolved.container.addGestureRecognizer(gesture)
             pan = gesture
+            installScrollPanHandlers()
             disableCompetingPans()
         }
 
@@ -117,6 +134,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
             reenableCompetingPans()
+            removeScrollPanHandlers()
             if let pan {
                 pan.view?.removeGestureRecognizer(pan)
             }
@@ -124,6 +142,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             containerView = nil
             sheetView = nil
             dimmingView = nil
+            followActivation = nil
         }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -166,21 +185,18 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+            guard followActivation != .topOverscroll, followActivation != .bottomOverscroll else { return }
             guard let reference = gestureReferenceView else { return }
             let translation = Self.size(from: gesture.translation(in: reference))
             let velocity = Self.size(from: gesture.velocity(in: reference))
 
             switch gesture.state {
             case .began:
-                crossedDismissThreshold = false
-                lastTranslation = translation
-                originalDimmingAlpha = dimmingView?.alpha ?? 1
-                disableCompetingPans()
-                startProxyIfNeeded()
-                startFollowDisplayLink()
-                prepareHaptic(style: .light)
-                haptic?.impactOccurred()
-                applyFollow(translation)
+                beginFollow(
+                    translation: translation,
+                    activation: .edge,
+                    useProxy: true
+                )
             case .changed:
                 lastTranslation = translation
                 applyFollow(translation)
@@ -212,12 +228,160 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             }
         }
 
+        @objc private func handleScrollPan(_ gesture: UIPanGestureRecognizer) {
+            guard !isDismissing, let reference = gestureReferenceView else { return }
+            guard followActivation != .edge else { return }
+            guard let scroll = gesture.view as? UIScrollView else { return }
+            let translation = Self.size(from: gesture.translation(in: reference))
+            let velocity = Self.size(from: gesture.velocity(in: reference))
+
+            switch gesture.state {
+            case .changed:
+                if followActivation == .topOverscroll || followActivation == .bottomOverscroll {
+                    lockScroll(scroll)
+                    let relative = CGSize(
+                        width: translation.width - scrollFollowOrigin.width,
+                        height: translation.height - scrollFollowOrigin.height
+                    )
+                    lastTranslation = relative
+                    applyFollow(relative)
+                    let progress = EdgeSwipeToDismiss.progress(
+                        relative,
+                        dismissDistance: configuration.dismissDistance
+                    )
+                    if progress >= 1, !crossedDismissThreshold {
+                        crossedDismissThreshold = true
+                        prepareHaptic(style: .medium)
+                        haptic?.impactOccurred()
+                    } else if progress < 1 {
+                        crossedDismissThreshold = false
+                    }
+                    return
+                }
+                guard scroll.isTracking else { return }
+                let atTop = Self.isScrollAtTop(scroll)
+                let atBottom = Self.isScrollAtBottom(scroll)
+                guard let activation = EdgeSwipeToDismiss.scrollLimitActivation(
+                    translation: translation,
+                    atTop: atTop,
+                    atBottom: atBottom
+                ) else { return }
+                scrollFollowOrigin = translation
+                lastTranslation = .zero
+                lockScroll(scroll)
+                beginFollow(translation: .zero, activation: activation, useProxy: false)
+            case .ended, .cancelled, .failed:
+                guard followActivation == .topOverscroll || followActivation == .bottomOverscroll else {
+                    return
+                }
+                let relative = CGSize(
+                    width: translation.width - scrollFollowOrigin.width,
+                    height: translation.height - scrollFollowOrigin.height
+                )
+                let shouldDismiss = gesture.state == .ended && EdgeSwipeToDismiss.shouldDismiss(
+                    translation: relative,
+                    velocity: velocity,
+                    configuration: configuration
+                )
+                if shouldDismiss {
+                    flingAway(from: relative, velocity: velocity)
+                } else {
+                    stopFollowDisplayLink()
+                    snapBack()
+                }
+            default:
+                break
+            }
+        }
+
         private var gestureReferenceView: UIView? {
             containerView ?? sheetView
         }
 
         private var movingView: UIView? {
-            dragView ?? sheetView
+            dragView ?? visualCard ?? sheetView
+        }
+
+        private func beginFollow(
+            translation: CGSize,
+            activation: EdgeSwipeToDismiss.Activation,
+            useProxy: Bool
+        ) {
+            guard followActivation == nil else { return }
+            followActivation = activation
+            crossedDismissThreshold = false
+            lastTranslation = translation
+            originalDimmingAlpha = dimmingView?.alpha ?? 1
+            disableCompetingPans()
+            onFollowingChange(true, activation)
+            if useProxy {
+                startProxyIfNeeded()
+            }
+            startFollowDisplayLink()
+            prepareHaptic(style: .light)
+            haptic?.impactOccurred()
+            applyFollow(translation)
+        }
+
+        private func installScrollPanHandlers() {
+            removeScrollPanHandlers()
+            guard let sheetView else { return }
+            for scroll in Self.scrollViews(in: sheetView) {
+                scroll.panGestureRecognizer.addTarget(self, action: #selector(handleScrollPan))
+                observedScrollPans.append(scroll.panGestureRecognizer)
+            }
+        }
+
+        private func removeScrollPanHandlers() {
+            for pan in observedScrollPans {
+                pan.removeTarget(self, action: #selector(handleScrollPan))
+            }
+            observedScrollPans.removeAll()
+        }
+
+        private func lockScroll(_ scroll: UIScrollView) {
+            let inset = scroll.adjustedContentInset
+            let minY = -inset.top
+            let maxY = max(minY, scroll.contentSize.height - scroll.bounds.height + inset.bottom)
+            var offset = scroll.contentOffset
+            offset.y = min(max(offset.y, minY), maxY)
+            scroll.setContentOffset(offset, animated: false)
+        }
+
+        private func endFollowing() {
+            let activation = followActivation ?? .edge
+            followActivation = nil
+            onFollowingChange(false, activation)
+        }
+
+        private static func isScrollAtTop(_ scroll: UIScrollView) -> Bool {
+            EdgeSwipeToDismiss.isScrollAtTop(
+                scroll.contentOffset.y,
+                insetTop: scroll.adjustedContentInset.top
+            )
+        }
+
+        private static func isScrollAtBottom(_ scroll: UIScrollView) -> Bool {
+            let inset = scroll.adjustedContentInset
+            return EdgeSwipeToDismiss.isScrollAtBottom(
+                offsetY: scroll.contentOffset.y,
+                contentHeight: scroll.contentSize.height,
+                boundsHeight: scroll.bounds.height,
+                insetTop: inset.top,
+                insetBottom: inset.bottom
+            )
+        }
+
+        private static func scrollViews(in root: UIView) -> [UIScrollView] {
+            var stack: [UIView] = [root]
+            var result: [UIScrollView] = []
+            while let current = stack.popLast() {
+                if let scroll = current as? UIScrollView, scroll.isScrollEnabled, scroll.bounds.height > 44 {
+                    result.append(scroll)
+                }
+                stack.append(contentsOf: current.subviews)
+            }
+            return result
         }
 
         private func applyFollow(_ translation: CGSize) {
@@ -326,6 +490,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 self.dimmingView?.alpha = self.originalDimmingAlpha
             } completion: { _ in
                 self.restoreSheet(removeProxy: true)
+                self.endFollowing()
             }
         }
 
@@ -373,6 +538,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             dimmingView?.alpha = 0
             CATransaction.commit()
             restoreSheet(removeProxy: true, revealSheet: false)
+            endFollowing()
             onDismiss()
         }
 
@@ -533,9 +699,14 @@ enum SheetPresentationViews {
 public struct EdgeSwipeToDismissModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
     public let configuration: EdgeSwipeToDismissConfiguration
+    public let onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
 
-    public init(configuration: EdgeSwipeToDismissConfiguration = .default) {
+    public init(
+        configuration: EdgeSwipeToDismissConfiguration = .default,
+        onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void = { _, _ in }
+    ) {
         self.configuration = configuration
+        self.onFollowingChange = onFollowingChange
     }
 
     public func body(content: Content) -> some View {
@@ -550,7 +721,8 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
                         withTransaction(transaction) {
                             dismiss()
                         }
-                    }
+                    },
+                    onFollowingChange: onFollowingChange
                 )
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
@@ -559,13 +731,18 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
 }
 
 extension View {
-    /// Drag a presented bottom sheet omnidirectionally from its edges.
-    /// The sheet follows the finger in realtime; release past the distance or
-    /// velocity threshold flings it away along the drag, otherwise it snaps back.
+    /// Drag a presented bottom sheet from its edges, or by pulling past the
+    /// scroll limit of the content. The sheet follows the finger in realtime;
+    /// release past the distance or velocity threshold flings it away along
+    /// the drag, otherwise it snaps back.
     public func edgeSwipeToDismiss(
-        configuration: EdgeSwipeToDismissConfiguration = .default
+        configuration: EdgeSwipeToDismissConfiguration = .default,
+        onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void = { _, _ in }
     ) -> some View {
-        modifier(EdgeSwipeToDismissModifier(configuration: configuration))
+        modifier(EdgeSwipeToDismissModifier(
+            configuration: configuration,
+            onFollowingChange: onFollowingChange
+        ))
     }
 }
 #endif

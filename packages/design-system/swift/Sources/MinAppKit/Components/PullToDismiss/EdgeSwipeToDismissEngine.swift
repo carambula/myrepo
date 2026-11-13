@@ -440,6 +440,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             let shadowOpacity: Float
             let shadowRadius: CGFloat
             let shadowPath: CGPath?
+            let cornerRadius: CGFloat
+            let cornerCurve: CALayerCornerCurve
+            let maskedCorners: CACornerMask
+            let clipsToBounds: Bool
+            let masksToBounds: Bool
         }
 
         private func chromeViews() -> [UIView] {
@@ -485,7 +490,12 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                     opacity: view.layer.opacity,
                     shadowOpacity: view.layer.shadowOpacity,
                     shadowRadius: view.layer.shadowRadius,
-                    shadowPath: view.layer.shadowPath
+                    shadowPath: view.layer.shadowPath,
+                    cornerRadius: view.layer.cornerRadius,
+                    cornerCurve: view.layer.cornerCurve,
+                    maskedCorners: view.layer.maskedCorners,
+                    clipsToBounds: view.clipsToBounds,
+                    masksToBounds: view.layer.masksToBounds
                 )
             )
         }
@@ -493,7 +503,15 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func concealView(_ view: UIView) {
             rememberChrome(view)
             view.layer.removeAllAnimations()
-            view.transform = .identity
+            // Park far offscreen. UIKit sometimes un-hides the platter during
+            // layout; square bottom corners must not peek under the scaled,
+            // all-four-corners proxy (that nesting is the dark rim in corners).
+            if let container = containerView {
+                let dy = container.bounds.height + view.bounds.height + 80
+                view.transform = CGAffineTransform(translationX: 0, y: dy)
+            } else {
+                view.transform = .identity
+            }
             view.alpha = 0
             view.layer.opacity = 0
             view.isHidden = true
@@ -512,43 +530,97 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard dragView == nil, let container = containerView, let card = visualCard else { return }
             rememberChrome(card)
             card.layer.removeAllAnimations()
-            Self.stripPlatterShadow(from: card)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             card.transform = .identity
             CATransaction.commit()
 
-            let frameInContainer = card.convert(card.bounds, to: container)
-            let snapshot = card.resizableSnapshotView(
-                from: card.bounds,
-                afterScreenUpdates: false,
-                withCapInsets: .zero
-            ) ?? card.snapshotView(afterScreenUpdates: false)
-            guard let snapshot, snapshot.layer.contents != nil || !snapshot.subviews.isEmpty else {
-                return
-            }
             let radius = EdgeSwipeToDismiss.effectiveCardCornerRadius(
                 configured: configuration.cardCornerRadius,
                 platter: Self.platterCornerRadius(for: card)
             )
-            snapshot.frame = frameInContainer
-            snapshot.isUserInteractionEnabled = false
-            snapshot.backgroundColor = .clear
-            snapshot.layer.cornerRadius = radius
-            snapshot.layer.cornerCurve = .continuous
-            snapshot.layer.maskedCorners = [
+            // Round all four corners on the live platter before capture so the
+            // bitmap itself has one continuous radius — no square bottoms that
+            // can nest under a second clip.
+            Self.applyFloatingCardCorners(to: card, radius: radius)
+            Self.stripPlatterShadow(from: card)
+            card.layoutIfNeeded()
+            CATransaction.flush()
+
+            let frameInContainer = card.convert(card.bounds, to: container)
+            guard let proxy = Self.makeDragProxy(
+                from: card,
+                frameInContainer: frameInContainer,
+                radius: radius
+            ) else { return }
+
+            container.addSubview(proxy)
+            container.bringSubviewToFront(proxy)
+            dragView = proxy
+            concealOriginalSheet()
+        }
+
+        /// Single flat image (or fallback snapshot) clipped once — avoids nested
+        /// UIVisualEffect / hierarchical snapshot radii fighting each other.
+        private static func makeDragProxy(
+            from card: UIView,
+            frameInContainer: CGRect,
+            radius: CGFloat
+        ) -> UIView? {
+            let proxy: UIView
+            if let image = flatSnapshotImage(of: card) {
+                let imageView = UIImageView(image: image)
+                imageView.contentMode = .scaleToFill
+                proxy = imageView
+            } else if let snapshot = card.resizableSnapshotView(
+                from: card.bounds,
+                afterScreenUpdates: true,
+                withCapInsets: .zero
+            ) ?? card.snapshotView(afterScreenUpdates: true) {
+                proxy = snapshot
+            } else {
+                return nil
+            }
+
+            proxy.frame = frameInContainer
+            proxy.isUserInteractionEnabled = false
+            proxy.backgroundColor = .clear
+            applyFloatingCardCorners(to: proxy, radius: radius)
+            proxy.layer.shadowOpacity = 0
+            proxy.layer.shadowRadius = 0
+            proxy.layer.shadowPath = nil
+            return proxy
+        }
+
+        private static func flatSnapshotImage(of view: UIView) -> UIImage? {
+            let size = view.bounds.size
+            guard size.width > 1, size.height > 1 else { return nil }
+            let format = UIGraphicsImageRendererFormat()
+            format.opaque = false
+            format.scale = view.traitCollection.displayScale
+            let renderer = UIGraphicsImageRenderer(size: size, format: format)
+            let image = renderer.image { _ in
+                let drawn = view.drawHierarchy(
+                    in: CGRect(origin: .zero, size: size),
+                    afterScreenUpdates: true
+                )
+                if !drawn, let ctx = UIGraphicsGetCurrentContext() {
+                    view.layer.render(in: ctx)
+                }
+            }
+            guard image.size.width > 1, image.size.height > 1 else { return nil }
+            return image
+        }
+
+        private static func applyFloatingCardCorners(to view: UIView, radius: CGFloat) {
+            view.layer.cornerRadius = radius
+            view.layer.cornerCurve = .continuous
+            view.layer.maskedCorners = [
                 .layerMinXMinYCorner, .layerMaxXMinYCorner,
                 .layerMinXMaxYCorner, .layerMaxXMaxYCorner
             ]
-            snapshot.clipsToBounds = true
-            snapshot.layer.masksToBounds = true
-            snapshot.layer.shadowOpacity = 0
-            snapshot.layer.shadowRadius = 0
-            snapshot.layer.shadowPath = nil
-            container.addSubview(snapshot)
-            container.bringSubviewToFront(snapshot)
-            dragView = snapshot
-            concealOriginalSheet()
+            view.clipsToBounds = true
+            view.layer.masksToBounds = true
         }
 
         /// Read the presentation platter only — never walk into scroll content,
@@ -690,6 +762,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                         view.layer.shadowOpacity = item.shadowOpacity
                         view.layer.shadowRadius = item.shadowRadius
                         view.layer.shadowPath = item.shadowPath
+                        view.layer.cornerRadius = item.cornerRadius
+                        view.layer.cornerCurve = item.cornerCurve
+                        view.layer.maskedCorners = item.maskedCorners
+                        view.clipsToBounds = item.clipsToBounds
+                        view.layer.masksToBounds = item.masksToBounds
                         view.transform = .identity
                     }
                 }

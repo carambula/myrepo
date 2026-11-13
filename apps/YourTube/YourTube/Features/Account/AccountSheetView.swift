@@ -172,6 +172,7 @@ struct AccountSheetView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .bottomSheetPullToDismiss()
             }
             .sheet(isPresented: $showsNotificationPreferences) {
                 NavigationStack {
@@ -179,6 +180,7 @@ struct AccountSheetView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .bottomSheetPullToDismiss()
             }
         }
         .bottomSheetPullToDismiss()

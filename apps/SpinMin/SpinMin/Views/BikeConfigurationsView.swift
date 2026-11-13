@@ -234,6 +234,7 @@ struct AddBikeConfigurationView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func saveBike() {

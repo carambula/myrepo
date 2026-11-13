@@ -2167,6 +2167,7 @@ private struct AccountSheetView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .bottomSheetPullToDismiss()
             }
             .navigationDestination(isPresented: $isShowingCalendarAppearance) {
                 CalendarRaceAppearanceSettingsView()
@@ -2175,6 +2176,7 @@ private struct AccountSheetView: View {
                 FontOverrideSettingsView()
             }
         }
+        .bottomSheetPullToDismiss()
     }
 }
 

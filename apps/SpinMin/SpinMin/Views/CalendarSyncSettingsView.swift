@@ -103,6 +103,7 @@ struct CalendarSyncSettingsView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func instructionRow(platform: String, steps: String) -> some View {

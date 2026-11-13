@@ -119,6 +119,7 @@ struct AddTireTrackingView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private var existingTire: TireTracking? {

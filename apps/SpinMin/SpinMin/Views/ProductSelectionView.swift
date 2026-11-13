@@ -363,6 +363,7 @@ struct ManualTireEntryView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
 }
 

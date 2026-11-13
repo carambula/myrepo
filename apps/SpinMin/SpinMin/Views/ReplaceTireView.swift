@@ -119,6 +119,7 @@ struct ReplaceTireView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func replaceTire() {

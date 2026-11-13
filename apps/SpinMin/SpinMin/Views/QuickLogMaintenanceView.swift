@@ -106,6 +106,7 @@ struct QuickLogMaintenanceView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private var canSave: Bool {

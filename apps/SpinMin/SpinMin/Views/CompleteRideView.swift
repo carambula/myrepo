@@ -83,6 +83,7 @@ struct CompleteRideView: View {
             }
             .onAppear { prefill() }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func prefill() {

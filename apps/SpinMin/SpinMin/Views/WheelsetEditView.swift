@@ -113,6 +113,7 @@ struct WheelsetEditView: View {
             }
             .onAppear { prefill() }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func prefill() {

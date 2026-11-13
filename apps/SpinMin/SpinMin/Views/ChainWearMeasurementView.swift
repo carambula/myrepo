@@ -99,6 +99,7 @@ struct ChainWearMeasurementView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private var verdictText: String {

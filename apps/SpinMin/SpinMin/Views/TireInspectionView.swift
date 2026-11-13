@@ -124,6 +124,7 @@ struct TireInspectionView: View {
                 loadCurrentValues()
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func loadCurrentValues() {

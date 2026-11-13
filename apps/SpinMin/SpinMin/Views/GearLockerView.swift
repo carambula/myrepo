@@ -470,6 +470,7 @@ struct AddGearView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func addGear() {
@@ -579,6 +580,7 @@ struct RetiredGearView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
 }
 

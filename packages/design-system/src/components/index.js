@@ -41,6 +41,7 @@ export {
   scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
+  swipeBackdropBlurPx,
   swipeBackdropOpacity,
   swipeDistance,
   swipeProgress,

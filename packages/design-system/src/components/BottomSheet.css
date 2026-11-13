@@ -1,6 +1,6 @@
 /**
  * BottomSheet Component Styles
- * Provides blur and darkening effects that intensify with detent size
+ * Provides darkening that intensifies with detent size
  */
 
 .min-bottom-sheet-container {
@@ -30,21 +30,22 @@
 
 /* Backdrop states based on detent size */
 .min-bottom-sheet__backdrop--small {
-  background-color: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.28);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .min-bottom-sheet__backdrop--medium {
-  background-color: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .min-bottom-sheet__backdrop--large {
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* Dim only — blur was expensive and rarely read as frost on sheet chrome. */
+  background-color: rgba(0, 0, 0, 0.62);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .min-bottom-sheet__backdrop--hidden {

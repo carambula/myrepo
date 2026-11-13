@@ -33,7 +33,6 @@ import {
   scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
-  swipeBackdropBlurPx,
   swipeBackdropOpacity,
   swipeProgress,
   velocityFromSamples,
@@ -77,8 +76,6 @@ export function BottomSheet({
     if (backdrop) {
       backdrop.style.transition = '';
       backdrop.style.opacity = '';
-      backdrop.style.backdropFilter = '';
-      backdrop.style.webkitBackdropFilter = '';
     }
   };
 
@@ -89,11 +86,7 @@ export function BottomSheet({
     const progress = swipeProgress(dx, dy);
     sheet.style.transform = sheetTransform({ dx, dy, progress });
     if (backdrop) {
-      const opacity = swipeBackdropOpacity(progress);
-      const blurPx = swipeBackdropBlurPx(progress);
-      backdrop.style.opacity = String(opacity);
-      backdrop.style.backdropFilter = `blur(${blurPx}px)`;
-      backdrop.style.webkitBackdropFilter = `blur(${blurPx}px)`;
+      backdrop.style.opacity = String(swipeBackdropOpacity(progress));
     }
   };
 

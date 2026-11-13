@@ -21,9 +21,9 @@ public struct EdgeSwipeToDismissConfiguration {
     /// Continuous corner radius for the floating card (all four corners).
     /// `0` uses the live sheet platter's system radius.
     public var cardCornerRadius: CGFloat
-    /// When true, the dismiss host installs a dim+blur backdrop behind the
+    /// When true, the dismiss host installs a darker dim plate behind the
     /// sheet and fades it with drag progress (shared across all min apps).
-    public var usesDimBlurBackdrop: Bool
+    public var usesDimBackdrop: Bool
 
     public init(
         sideInset: CGFloat = 24,
@@ -40,7 +40,7 @@ public struct EdgeSwipeToDismissConfiguration {
         maxFlingDuration: TimeInterval = 0.42,
         bottomSwipeStiffness: CGFloat = 720,
         cardCornerRadius: CGFloat = 0,
-        usesDimBlurBackdrop: Bool = true
+        usesDimBackdrop: Bool = true
     ) {
         self.sideInset = sideInset
         self.topInset = topInset
@@ -56,7 +56,7 @@ public struct EdgeSwipeToDismissConfiguration {
         self.maxFlingDuration = maxFlingDuration
         self.bottomSwipeStiffness = bottomSwipeStiffness
         self.cardCornerRadius = cardCornerRadius
-        self.usesDimBlurBackdrop = usesDimBlurBackdrop
+        self.usesDimBackdrop = usesDimBackdrop
     }
 
     /// Fallback when the presentation platter has not published a radius yet.
@@ -179,7 +179,7 @@ public enum EdgeSwipeToDismiss {
         return 1 - (1 - minScale) * clamped
     }
 
-    /// 1 at rest → 0 when fully dragged away. Drives dim + blur strength.
+    /// 1 at rest → 0 when fully dragged away. Drives dim plate strength.
     public static func backdropOpacity(progress: CGFloat) -> CGFloat {
         max(0, 1 - min(1, max(0, progress)))
     }

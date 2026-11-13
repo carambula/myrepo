@@ -83,8 +83,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
         private var backdropView: SheetDismissBackdropView?
-        /// Presenting view (preferred) or presentation container hosting the backdrop.
-        private weak var backdropHost: UIView?
+        private var lastBackdropStrength: CGFloat = 1
         private var pan: UIPanGestureRecognizer?
         private var dragView: UIView?
         private var concealedChrome: [ConcealedChrome] = []
@@ -441,70 +440,44 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         private func applyBackdropStrength(_ strength: CGFloat) {
+            let clamped = min(1, max(0, strength))
+            // Skip tiny updates — backdrop alpha changes every display tick were a
+            // noticeable source of drag jitter.
+            guard abs(clamped - lastBackdropStrength) >= 0.01 else { return }
+            lastBackdropStrength = clamped
             if let backdropView {
-                backdropView.strength = strength
-                // Custom dim+blur owns the look; keep the system dimmer hidden.
+                backdropView.strength = clamped
                 dimmingView?.alpha = 0
             } else {
-                dimmingView?.alpha = originalDimmingAlpha * strength
+                dimmingView?.alpha = originalDimmingAlpha * clamped
             }
         }
 
         private func ensureBackdrop() {
-            guard configuration.usesDimBlurBackdrop else { return }
-            guard let host = preferredBackdropHost() else { return }
-            if let backdropView, backdropView.superview === host {
-                backdropView.frame = host.bounds
+            guard configuration.usesDimBackdrop else { return }
+            guard let container = containerView else { return }
+            if let backdropView, backdropView.superview === container {
+                lastBackdropStrength = 1
                 backdropView.strength = 1
                 hideSystemDimming()
                 return
             }
             backdropView?.removeFromSuperview()
-            let backdrop = SheetDismissBackdropView(frame: host.bounds)
+            let backdrop = SheetDismissBackdropView(frame: container.bounds)
             backdrop.strength = 1
-            if host === containerView {
-                // Presentation container: keep the plate under the sheet card.
-                if let dimming = dimmingView, dimming.superview === host {
-                    host.insertSubview(backdrop, aboveSubview: dimming)
-                } else if let sheet = sheetView, sheet.superview === host {
-                    host.insertSubview(backdrop, belowSubview: sheet)
-                } else {
-                    host.insertSubview(backdrop, at: 0)
-                }
+            // Stay in the presentation container under the sheet card — never
+            // overlay the presenting view (that made the layer below look like
+            // it was floating and hurt scroll/drag performance).
+            if let dimming = dimmingView, dimming.superview === container {
+                container.insertSubview(backdrop, aboveSubview: dimming)
+            } else if let sheet = sheetView, sheet.superview === container {
+                container.insertSubview(backdrop, belowSubview: sheet)
             } else {
-                // Presenting view: cover its chrome so the live blur samples it.
-                host.addSubview(backdrop)
+                container.insertSubview(backdrop, at: 0)
             }
             backdropView = backdrop
-            backdropHost = host
+            lastBackdropStrength = 1
             hideSystemDimming()
-        }
-
-        /// Prefer the presenting view so UIVisualEffectView samples real chrome
-        /// (blur inside the presentation container often cannot see through).
-        private func preferredBackdropHost() -> UIView? {
-            if let sheet = sheetView,
-               let sheetVC = Self.nearestViewController(from: sheet) {
-                // Walk presenting chain so nested sheets blur the chrome below.
-                if let presenterView = sheetVC.presentingViewController?.view {
-                    return presenterView
-                }
-                if let parentPresenter = sheetVC.parent?.presentingViewController?.view {
-                    return parentPresenter
-                }
-            }
-            return containerView
-        }
-
-        private static func nearestViewController(from view: UIView) -> UIViewController? {
-            var responder: UIResponder? = view
-            while let current = responder {
-                if let viewController = current as? UIViewController {
-                    return viewController
-                }
-                responder = current.next
-            }
-            return nil
         }
 
         private func hideSystemDimming() {
@@ -520,7 +493,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func removeBackdrop(restoreSystemDimming: Bool) {
             backdropView?.removeFromSuperview()
             backdropView = nil
-            backdropHost = nil
+            lastBackdropStrength = 1
             defer {
                 systemDimmingWasHidden = false
                 didCaptureSystemDimmingHidden = false

@@ -309,6 +309,7 @@ struct LogMaintenanceView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func saveMaintenance() {
@@ -409,6 +410,7 @@ struct AddComponentTrackingView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func addComponent() {
@@ -514,6 +516,7 @@ struct ChainSelectionView: View {
                 performSearch()
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func performSearch() {

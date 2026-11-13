@@ -78,7 +78,7 @@ struct ContentView: View {
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
-            .interactiveDismissDisabled()
+            .bottomSheetPullToDismiss()
         }
         .sheet(item: $timerPresentation) { presentation in
             SetTimerDetailSheet(

@@ -196,6 +196,7 @@ struct AccountSheetView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .bottomSheetPullToDismiss()
             }
         }
         .bottomSheetPullToDismiss()

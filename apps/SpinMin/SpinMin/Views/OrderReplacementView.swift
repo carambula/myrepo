@@ -73,6 +73,7 @@ struct OrderReplacementSheet: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private var emptyStateView: some View {

@@ -443,6 +443,7 @@ struct AddRideView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func saveRide() {
@@ -536,6 +537,7 @@ struct PreRidePreparationView: View {
                 loadPreparation()
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func prepHeader(_ prep: PreRidePreparation) -> some View {

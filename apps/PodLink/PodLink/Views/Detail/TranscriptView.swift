@@ -62,8 +62,10 @@ struct TranscriptView: View {
             .searchable(text: $searchText, prompt: "Search transcript")
             .sheet(isPresented: $showingMetadata) {
                 metadataSheet
+                    .bottomSheetPullToDismiss()
             }
         }
+        .bottomSheetPullToDismiss()
     }
 
     private func segmentedTranscriptList(segments: [TranscriptSegment]) -> some View {

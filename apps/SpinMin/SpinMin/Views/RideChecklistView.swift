@@ -339,6 +339,7 @@ struct CreateChecklistView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private func createChecklist() {

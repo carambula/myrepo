@@ -48,6 +48,7 @@ struct LogRideView: View {
                 }
             }
         }
+        .bottomSheetPullToDismiss()
     }
     
     private var rideDetailsSection: some View {

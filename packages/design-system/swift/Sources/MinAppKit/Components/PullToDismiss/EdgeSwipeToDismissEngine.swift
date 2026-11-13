@@ -82,6 +82,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var containerView: UIView?
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
+        private var backdropView: SheetDismissBackdropView?
         private var pan: UIPanGestureRecognizer?
         private var dragView: UIView?
         private var concealedChrome: [ConcealedChrome] = []
@@ -90,6 +91,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private var followOrigin: CGSize = .zero
         private var followActivation: EdgeSwipeToDismiss.Activation?
         private var originalDimmingAlpha: CGFloat = 1
+        private var systemDimmingWasHidden = false
+        private var didCaptureSystemDimmingHidden = false
         private var disabledPans: [UIPanGestureRecognizer] = []
         private var disabledScrollPans: [UIPanGestureRecognizer] = []
         private var cachedScrollViews: [UIScrollView] = []
@@ -112,6 +115,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard let probeView, probeView.window != nil else { return }
             guard let resolved = SheetPresentationViews.resolve(from: probeView) else { return }
             if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
+                ensureBackdrop()
                 return
             }
 
@@ -131,11 +135,13 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             pan = gesture
             cachedScrollViews = Self.scrollViews(in: resolved.sheet)
             disableCompetingPans()
+            ensureBackdrop()
         }
 
         func detach() {
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
+            removeBackdrop(restoreSystemDimming: !isDismissing)
             reenableScrollPans()
             reenableCompetingPans()
             if followActivation != nil, !isDismissing {
@@ -423,13 +429,67 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 progress: progress,
                 configuration: configuration
             )
-            let dimmingAlpha = originalDimmingAlpha * EdgeSwipeToDismiss.backdropOpacity(progress: progress)
+            let strength = EdgeSwipeToDismiss.backdropOpacity(progress: progress)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             moving.transform = transform
-            dimmingView?.alpha = dimmingAlpha
+            applyBackdropStrength(strength)
             concealOriginalSheet()
             CATransaction.commit()
+        }
+
+        private func applyBackdropStrength(_ strength: CGFloat) {
+            if let backdropView {
+                backdropView.strength = strength
+                // Custom dim+blur owns the look; keep the system dimmer hidden.
+                dimmingView?.alpha = 0
+            } else {
+                dimmingView?.alpha = originalDimmingAlpha * strength
+            }
+        }
+
+        private func ensureBackdrop() {
+            guard configuration.usesDimBlurBackdrop else { return }
+            guard let container = containerView else { return }
+            if let backdropView, backdropView.superview === container {
+                backdropView.strength = 1
+                hideSystemDimming()
+                return
+            }
+            backdropView?.removeFromSuperview()
+            let backdrop = SheetDismissBackdropView(frame: container.bounds)
+            backdrop.strength = 1
+            if let dimming = dimmingView, dimming.superview === container {
+                container.insertSubview(backdrop, aboveSubview: dimming)
+            } else if let sheet = sheetView, sheet.superview === container {
+                container.insertSubview(backdrop, belowSubview: sheet)
+            } else {
+                container.insertSubview(backdrop, at: 0)
+            }
+            backdropView = backdrop
+            hideSystemDimming()
+        }
+
+        private func hideSystemDimming() {
+            guard let dimmingView else { return }
+            if !didCaptureSystemDimmingHidden {
+                systemDimmingWasHidden = dimmingView.isHidden
+                didCaptureSystemDimmingHidden = true
+            }
+            dimmingView.alpha = 0
+            dimmingView.isHidden = true
+        }
+
+        private func removeBackdrop(restoreSystemDimming: Bool) {
+            backdropView?.removeFromSuperview()
+            backdropView = nil
+            defer {
+                systemDimmingWasHidden = false
+                didCaptureSystemDimmingHidden = false
+            }
+            guard restoreSystemDimming, let dimmingView else { return }
+            dimmingView.isHidden = systemDimmingWasHidden
+            dimmingView.alpha = originalDimmingAlpha
         }
 
         private struct ConcealedChrome {
@@ -471,7 +531,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func concealOriginalSheet() {
             guard dragView != nil else { return }
             if let container = containerView {
-                for view in container.subviews where view !== dragView && view !== dimmingView {
+                for view in container.subviews
+                where view !== dragView && view !== dimmingView && view !== backdropView {
                     concealView(view)
                 }
             }
@@ -687,7 +748,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 options: [.beginFromCurrentState, .curveEaseOut]
             ) {
                 moving.transform = .identity
-                self.dimmingView?.alpha = self.originalDimmingAlpha
+                self.applyBackdropStrength(1)
             } completion: { _ in
                 self.restoreSheet(removeProxy: true)
                 self.endFollowing()
@@ -722,7 +783,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             ) {
                 moving.transform = transform
                 moving.alpha = 0
-                self.dimmingView?.alpha = 0
+                self.applyBackdropStrength(0)
             } completion: { _ in
                 self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
@@ -735,9 +796,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             sheet.isHidden = true
             sheet.alpha = 0
             sheet.transform = .identity
-            dimmingView?.alpha = 0
+            applyBackdropStrength(0)
             CATransaction.commit()
             restoreSheet(removeProxy: true, revealSheet: false)
+            removeBackdrop(restoreSystemDimming: false)
             endFollowing()
             onDismiss()
         }

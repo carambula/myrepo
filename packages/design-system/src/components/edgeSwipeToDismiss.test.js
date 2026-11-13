@@ -13,6 +13,7 @@ import {
   scrollLimitActivation,
   sheetTransform,
   shouldDismissEdgeSwipe,
+  swipeBackdropBlurPx,
   swipeBackdropOpacity,
   swipeDistance,
   swipeProgress,
@@ -108,6 +109,9 @@ describe('progress and visual follow', () => {
     assert.equal(swipeBackdropOpacity(0), 1);
     assert.equal(swipeBackdropOpacity(1), 0);
     assert.equal(swipeBackdropOpacity(0.25), 0.75);
+    assert.equal(swipeBackdropBlurPx(0), 16);
+    assert.equal(swipeBackdropBlurPx(1), 0);
+    assert.equal(swipeBackdropBlurPx(0.25), 12);
   });
 
   it('builds a 2D transform that follows the finger', () => {

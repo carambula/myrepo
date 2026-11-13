@@ -83,6 +83,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private weak var sheetView: UIView?
         private weak var dimmingView: UIView?
         private var backdropView: SheetDismissBackdropView?
+        /// Presenting view (preferred) or presentation container hosting the backdrop.
+        private weak var backdropHost: UIView?
         private var pan: UIPanGestureRecognizer?
         private var dragView: UIView?
         private var concealedChrome: [ConcealedChrome] = []
@@ -450,24 +452,59 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func ensureBackdrop() {
             guard configuration.usesDimBlurBackdrop else { return }
-            guard let container = containerView else { return }
-            if let backdropView, backdropView.superview === container {
+            guard let host = preferredBackdropHost() else { return }
+            if let backdropView, backdropView.superview === host {
+                backdropView.frame = host.bounds
                 backdropView.strength = 1
                 hideSystemDimming()
                 return
             }
             backdropView?.removeFromSuperview()
-            let backdrop = SheetDismissBackdropView(frame: container.bounds)
+            let backdrop = SheetDismissBackdropView(frame: host.bounds)
             backdrop.strength = 1
-            if let dimming = dimmingView, dimming.superview === container {
-                container.insertSubview(backdrop, aboveSubview: dimming)
-            } else if let sheet = sheetView, sheet.superview === container {
-                container.insertSubview(backdrop, belowSubview: sheet)
+            if host === containerView {
+                // Presentation container: keep the plate under the sheet card.
+                if let dimming = dimmingView, dimming.superview === host {
+                    host.insertSubview(backdrop, aboveSubview: dimming)
+                } else if let sheet = sheetView, sheet.superview === host {
+                    host.insertSubview(backdrop, belowSubview: sheet)
+                } else {
+                    host.insertSubview(backdrop, at: 0)
+                }
             } else {
-                container.insertSubview(backdrop, at: 0)
+                // Presenting view: cover its chrome so the live blur samples it.
+                host.addSubview(backdrop)
             }
             backdropView = backdrop
+            backdropHost = host
             hideSystemDimming()
+        }
+
+        /// Prefer the presenting view so UIVisualEffectView samples real chrome
+        /// (blur inside the presentation container often cannot see through).
+        private func preferredBackdropHost() -> UIView? {
+            if let sheet = sheetView,
+               let sheetVC = Self.nearestViewController(from: sheet) {
+                // Walk presenting chain so nested sheets blur the chrome below.
+                if let presenterView = sheetVC.presentingViewController?.view {
+                    return presenterView
+                }
+                if let parentPresenter = sheetVC.parent?.presentingViewController?.view {
+                    return parentPresenter
+                }
+            }
+            return containerView
+        }
+
+        private static func nearestViewController(from view: UIView) -> UIViewController? {
+            var responder: UIResponder? = view
+            while let current = responder {
+                if let viewController = current as? UIViewController {
+                    return viewController
+                }
+                responder = current.next
+            }
+            return nil
         }
 
         private func hideSystemDimming() {
@@ -483,6 +520,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func removeBackdrop(restoreSystemDimming: Bool) {
             backdropView?.removeFromSuperview()
             backdropView = nil
+            backdropHost = nil
             defer {
                 systemDimmingWasHidden = false
                 didCaptureSystemDimmingHidden = false

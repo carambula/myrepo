@@ -30,6 +30,7 @@ export {
   clampedFlingSpeed,
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  effectiveCardCornerRadius,
   flingDirection,
   flingDuration,
   isOnSheetEdge,

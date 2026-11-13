@@ -4,6 +4,7 @@ import {
   clampedFlingSpeed,
   dismissTranslation,
   edgeSwipeToDismissDefaults,
+  effectiveCardCornerRadius,
   flingDirection,
   flingDuration,
   isOnSheetEdge,
@@ -205,6 +206,18 @@ describe('clamped fling', () => {
     assert.ok(fast >= edgeSwipeToDismissDefaults.minFlingDuration);
     assert.ok(fast <= edgeSwipeToDismissDefaults.maxFlingDuration);
     assert.ok(fast <= slow);
+  });
+});
+
+describe('card corner radius', () => {
+  it('uses the live platter when no override is set', () => {
+    assert.equal(effectiveCardCornerRadius(0, 38), 38);
+    assert.equal(effectiveCardCornerRadius(0, 10), 10);
+    assert.equal(effectiveCardCornerRadius(16, 38), 16);
+  });
+
+  it('falls back to the system sheet radius when the platter has none', () => {
+    assert.equal(effectiveCardCornerRadius(0, 0), 38);
   });
 });
 

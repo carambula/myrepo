@@ -19,6 +19,7 @@ public struct EdgeSwipeToDismissConfiguration {
     /// Higher = closer to 1:1. ~720 lets an 80pt pull move ~71pt.
     public var bottomSwipeStiffness: CGFloat
     /// Continuous corner radius for the floating card (all four corners).
+    /// `0` uses the live sheet platter's system radius.
     public var cardCornerRadius: CGFloat
 
     public init(
@@ -35,7 +36,7 @@ public struct EdgeSwipeToDismissConfiguration {
         minFlingDuration: TimeInterval = 0.18,
         maxFlingDuration: TimeInterval = 0.42,
         bottomSwipeStiffness: CGFloat = 720,
-        cardCornerRadius: CGFloat = MinCornerRadius.lg
+        cardCornerRadius: CGFloat = 0
     ) {
         self.sideInset = sideInset
         self.topInset = topInset
@@ -52,6 +53,9 @@ public struct EdgeSwipeToDismissConfiguration {
         self.bottomSwipeStiffness = bottomSwipeStiffness
         self.cardCornerRadius = cardCornerRadius
     }
+
+    /// Fallback when the presentation platter has not published a radius yet.
+    public static let systemSheetCornerRadius: CGFloat = 38
 
     public static let `default` = EdgeSwipeToDismissConfiguration()
 }
@@ -92,6 +96,16 @@ public enum EdgeSwipeToDismiss {
         if atTop, translation.height > 0 { return .topOverscroll }
         if atBottom, translation.height < 0 { return .bottomOverscroll }
         return nil
+    }
+
+    /// Prefer an explicit override, otherwise the live platter's system radius.
+    public static func effectiveCardCornerRadius(
+        configured: CGFloat,
+        platter: CGFloat
+    ) -> CGFloat {
+        if configured > 0.5 { return configured }
+        if platter > 0.5 { return platter }
+        return EdgeSwipeToDismissConfiguration.systemSheetCornerRadius
     }
 
     /// Mild resistance so the sheet lags the finger a little.

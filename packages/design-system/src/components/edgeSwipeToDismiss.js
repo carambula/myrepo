@@ -23,6 +23,7 @@ export const edgeSwipeToDismissDefaults = {
   maxFlingDuration: 0.42,
   // Higher = closer to 1:1. ~720 lets a 80pt pull move ~71pt.
   bottomSwipeStiffness: 720,
+  // Web sheet spec (native uses the live presentation platter).
   cardCornerRadius: 16,
   edges: { top: true, right: true, bottom: true, left: true },
 };
@@ -60,6 +61,16 @@ export function isScrollAtTop(el) {
 export function isScrollAtBottom(el) {
   if (!el) return true;
   return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+}
+
+export function effectiveCardCornerRadius(
+  configured = 0,
+  platter = 0,
+  fallback = 38
+) {
+  if (configured > 0.5) return configured;
+  if (platter > 0.5) return platter;
+  return fallback;
 }
 
 export function scrollLimitActivation({

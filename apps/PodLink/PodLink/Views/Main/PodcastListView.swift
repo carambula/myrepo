@@ -93,10 +93,23 @@ struct PodcastListView: View {
 
     private var gridHorizontalPadding: CGFloat { DesignSystem.Spacing.screenHorizontalPadding }
 
-    /// Suppressed during layout transitions so grid tiles don't flash titles.
+    /// Settled titled-grid only — never mid-swipe / never after FAB flipped to list.
     private var gridShowsTitles: Bool {
-        guard renderedLayoutMode == "grid", cardSwipeProgress == 0 else { return false }
-        return showPodcastTitlesOnMain
+        MainScreenLayoutToggle.gridShowsTitles(
+            renderedMode: renderedLayoutMode,
+            layoutMode: layoutMode,
+            showTitles: showPodcastTitlesOnMain,
+            isSwipeActive: isCardSwipeActive
+        )
+    }
+
+    /// List cards show titles during a peel even before AppStorage commits.
+    private var listShowsTitles: Bool {
+        MainScreenLayoutToggle.listShowsTitles(
+            cardMode: "list",
+            showTitles: showPodcastTitlesOnMain,
+            isSwipeActive: isCardSwipeActive
+        )
     }
 
     private var currentTapStyle: TapInteractionStyle {
@@ -227,16 +240,15 @@ struct PodcastListView: View {
     private var cardSwipeStack: some View {
         if isCardSwipeActive {
             ZStack(alignment: .top) {
-                layoutCard(for: underLayoutMode)
-                layoutCard(for: renderedLayoutMode)
+                // Under card: lazy so revealing list/grid doesn't mount every row at once.
+                layoutCard(for: underLayoutMode, lazyList: true)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+
+                layoutCard(for: renderedLayoutMode, lazyList: true)
                     .background(DesignSystem.Colors.background)
                     .offset(x: cardSwipeOffset)
-                    .shadow(
-                        color: Color.black.opacity(0.12 * cardSwipeProgress),
-                        radius: 8,
-                        x: -cardSwipeSign * 4,
-                        y: 0
-                    )
+                    // Skip live shadows while dragging — they were a major frame-drop source.
             }
             .clipped()
         } else {
@@ -252,32 +264,41 @@ struct PodcastListView: View {
             .frame(height: MinSpacing.TitleType.contentTopSpacing)
             .allowsHitTesting(false)
 
-        layoutRows(for: renderedLayoutMode)
+        layoutRows(for: renderedLayoutMode, lazyList: false)
     }
 
-    private func layoutCard(for mode: String) -> some View {
+    private func layoutCard(for mode: String, lazyList: Bool) -> some View {
         VStack(spacing: 0) {
             Color.clear
                 .frame(height: MinSpacing.TitleType.contentTopSpacing)
                 .allowsHitTesting(false)
-            layoutRows(for: mode)
+            layoutRows(for: mode, lazyList: lazyList)
         }
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
     @ViewBuilder
-    private func layoutRows(for mode: String) -> some View {
+    private func layoutRows(for mode: String, lazyList: Bool) -> some View {
         if mode == "grid" {
             gridContent
-        } else {
-            ForEach(sortedListPodcasts) { podcast in
-                listRow(for: podcast)
-                    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                    .padding(.bottom, DesignSystem.Spacing.sm)
+        } else if lazyList {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                listRows
             }
-            Color.clear
-                .frame(height: scrollBottomInset)
+        } else {
+            listRows
         }
+    }
+
+    @ViewBuilder
+    private var listRows: some View {
+        ForEach(sortedListPodcasts) { podcast in
+            listRow(for: podcast)
+                .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                .padding(.bottom, DesignSystem.Spacing.sm)
+        }
+        Color.clear
+            .frame(height: scrollBottomInset)
     }
 
     // MARK: - Grid Content (inside ScrollView)
@@ -291,17 +312,22 @@ struct PodcastListView: View {
                         beginGridDragIfNeeded(for: podcast)
                     }
                     .background {
-                        GeometryReader { geo in
-                            Color.clear
-                                .preference(
-                                    key: PodcastGridFramesPreferenceKey.self,
-                                    value: [podcast.id: geo.frame(in: .global)]
-                                )
+                        if !isCardSwipeActive {
+                            GeometryReader { geo in
+                                Color.clear
+                                    .preference(
+                                        key: PodcastGridFramesPreferenceKey.self,
+                                        value: [podcast.id: geo.frame(in: .global)]
+                                    )
+                            }
                         }
                     }
             }
         }
         .onPreferenceChange(PodcastGridFramesPreferenceKey.self) { frames in
+            // Skip preference fan-out while the layout card is sliding — it's unused
+            // for reorder then and was contributing to swipe jank.
+            guard !isCardSwipeActive else { return }
             gridFrameCache.frames = frames
             if draggedPodcastID != nil {
                 gridItemFrames = frames
@@ -361,14 +387,18 @@ struct PodcastListView: View {
         }
 
         guard isCardSwipeInteractive else { return }
+        let newOffset = value.translation.width
+        let newProgress = MainScreenLayoutToggle.cardSwipeProgress(translationWidth: newOffset)
+        // Throttle sub-point churn so SwiftUI isn't invalidating every touch sample.
+        guard abs(newOffset - cardSwipeOffset) >= 1 || abs(newProgress - cardSwipeProgress) >= 0.02 else {
+            return
+        }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             // Follow the finger; keep the locked sign so a mid-gesture reverse cancels.
-            cardSwipeOffset = value.translation.width
-            cardSwipeProgress = MainScreenLayoutToggle.cardSwipeProgress(
-                translationWidth: value.translation.width
-            )
+            cardSwipeOffset = newOffset
+            cardSwipeProgress = newProgress
         }
     }
 
@@ -693,7 +723,7 @@ struct PodcastListView: View {
         PodcastRowView(
             podcast: podcast,
             latestEpisode: latestEpisodes[podcast.id],
-            showTitles: showPodcastTitlesOnMain,
+            showTitles: listShowsTitles,
             artEmphasis: mainScreenArtEmphasis,
             badgeMode: badgeMode,
             tapStyle: currentTapStyle,
@@ -816,6 +846,9 @@ struct PodcastListView: View {
         cardSwipeUnderMode = newMode
         cardSwipeGeneration += 1
         let generation = cardSwipeGeneration
+        // Mark active before storage-driven title flags settle so list keeps titles
+        // and grid doesn't expand on the first frame of the FAB peel.
+        isCardSwipeInteractive = true
         cardSwipeOffset = 0
         cardSwipeProgress = 0
 
@@ -827,6 +860,7 @@ struct PodcastListView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
             guard generation == cardSwipeGeneration else { return }
             renderedLayoutMode = newMode
+            isCardSwipeInteractive = false
             cardSwipeOffset = 0
             cardSwipeProgress = 0
             cardSwipeUnderMode = nil

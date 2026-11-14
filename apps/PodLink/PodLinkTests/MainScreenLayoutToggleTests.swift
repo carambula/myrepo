@@ -101,4 +101,60 @@ struct MainScreenLayoutToggleTests {
         #expect(layoutMode == "grid")
         #expect(!showTitles)
     }
+
+    @Test
+    func gridTitlesStayOffDuringSwipeAndAfterFABFlipsToList() {
+        // Settled titled grid.
+        #expect(
+            MainScreenLayoutToggle.gridShowsTitles(
+                renderedMode: "grid",
+                layoutMode: "grid",
+                showTitles: true,
+                isSwipeActive: false
+            )
+        )
+        // Mid-swipe must not expand tiles.
+        #expect(
+            !MainScreenLayoutToggle.gridShowsTitles(
+                renderedMode: "grid",
+                layoutMode: "grid",
+                showTitles: true,
+                isSwipeActive: true
+            )
+        )
+        // FAB already wrote list+titles while top card is still grid.
+        #expect(
+            !MainScreenLayoutToggle.gridShowsTitles(
+                renderedMode: "grid",
+                layoutMode: "list",
+                showTitles: true,
+                isSwipeActive: false
+            )
+        )
+    }
+
+    @Test
+    func listTitlesShowDuringSwipeEvenBeforeStorageCommit() {
+        #expect(
+            MainScreenLayoutToggle.listShowsTitles(
+                cardMode: "list",
+                showTitles: false,
+                isSwipeActive: true
+            )
+        )
+        #expect(
+            !MainScreenLayoutToggle.listShowsTitles(
+                cardMode: "list",
+                showTitles: false,
+                isSwipeActive: false
+            )
+        )
+        #expect(
+            !MainScreenLayoutToggle.listShowsTitles(
+                cardMode: "grid",
+                showTitles: true,
+                isSwipeActive: true
+            )
+        )
+    }
 }

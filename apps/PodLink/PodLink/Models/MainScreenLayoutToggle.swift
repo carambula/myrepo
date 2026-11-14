@@ -89,4 +89,30 @@ enum MainScreenLayoutToggle {
     ) {
         applyToggle(layoutMode: &layoutMode, showTitles: &showTitles, artEmphasis: &artEmphasis)
     }
+
+    /// Grid tile titles — only when a titled grid is settled. Never mid-swipe, and never
+    /// after the FAB/storage already flipped toward list while the top card is still grid.
+    static func gridShowsTitles(
+        renderedMode: String,
+        layoutMode: String,
+        showTitles: Bool,
+        isSwipeActive: Bool
+    ) -> Bool {
+        guard renderedMode == "grid" else { return false }
+        guard !isSwipeActive, layoutMode == "grid" else { return false }
+        return showTitles
+    }
+
+    /// List row titles for a layout card. During a peel, always show titles so the
+    /// list side doesn't wait for AppStorage commit (and so FAB flips don't blank
+    /// the peeling list card).
+    static func listShowsTitles(
+        cardMode: String,
+        showTitles: Bool,
+        isSwipeActive: Bool
+    ) -> Bool {
+        guard cardMode == "list" else { return false }
+        if isSwipeActive { return true }
+        return showTitles
+    }
 }

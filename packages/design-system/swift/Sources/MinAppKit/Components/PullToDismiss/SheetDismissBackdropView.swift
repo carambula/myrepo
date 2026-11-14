@@ -7,7 +7,7 @@ import UIKit
 final class SheetDismissBackdropView: UIView {
     /// Rest-state black dim. Darker than the system sheet scrim so the
     /// underlying chrome clearly recedes.
-    static let restDimAlpha: CGFloat = 0.62
+    static let restDimAlpha: CGFloat = MinOpacity.sheetDimRest
 
     var strength: CGFloat = 1 {
         didSet {

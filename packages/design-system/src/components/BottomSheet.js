@@ -1,7 +1,7 @@
 /**
  * BottomSheet Component
- * A bottom sheet component with backdrop blur and darkening effects
- * that intensify as the sheet approaches large detent size.
+ * A bottom sheet with a dim-only backdrop that intensifies as the sheet
+ * approaches large detent size (no blur).
  *
  * Edge swipes (from the sheet's top, sides, or bottom) drag the sheet
  * omnidirectionally until it is flung away or released back to rest.

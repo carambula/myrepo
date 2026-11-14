@@ -26,8 +26,8 @@ export const edgeSwipeToDismissDefaults = {
   // Web sheet spec. Native reads the live presentation platter and flattens
   // the drag proxy to a single continuous clip so nested radii cannot peek.
   cardCornerRadius: 16,
-  // Large-detent backdrop blur; faded with dim via swipeBackdropBlurPx.
-  restBackdropBlurPx: 16,
+  // Dim-only backdrops (blur removed — was expensive and rarely visible).
+  restBackdropBlurPx: 0,
   edges: { top: true, right: true, bottom: true, left: true },
 };
 
@@ -134,7 +134,7 @@ export function swipeBackdropOpacity(progress) {
   return Math.max(0, 1 - Math.min(1, Math.max(0, progress || 0)));
 }
 
-/** Rest blur scaled by the same progress as dim opacity. */
+/** @deprecated Dim-only sheets — always returns 0. Kept for API compatibility. */
 export function swipeBackdropBlurPx(
   progress,
   restBlurPx = edgeSwipeToDismissDefaults.restBackdropBlurPx

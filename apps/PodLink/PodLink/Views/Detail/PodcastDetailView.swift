@@ -299,14 +299,6 @@ struct PodcastDetailView: View {
         .padding(.vertical, DesignSystem.Spacing.xs)
     }
 
-    private var shareURL: URL {
-        if let feed = podcast.feedURL, let url = URL(string: feed) {
-            return url
-        }
-        return URL(string: "https://podcasts.apple.com")!
-    }
-
-
     /// Diagnostic: what the ad analyzer found for the current episode.
     private var adDetectionStatusLine: String {
         guard let episode = playbackService.state.currentEpisode else {

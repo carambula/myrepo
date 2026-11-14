@@ -14,6 +14,10 @@ private final class PodcastGridFrameCache {
 }
 
 struct PodcastListView: View {
+    /// Anchor for pinning the peel at the top — nested lazy grid/list goes blank
+    /// if the card stack remounts while the outer ScrollView is still scrolled down.
+    private static let layoutSwipeScrollTopID = "podcast-layout-swipe-top"
+
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
     @Environment(DownloadManager.self) private var downloadManager
@@ -164,6 +168,7 @@ struct PodcastListView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         scrollPinnedTopChrome
+                            .id(Self.layoutSwipeScrollTopID)
 
                         if !hasAttemptedInitialLoad {
                             initialLoadPlaceholder
@@ -187,11 +192,15 @@ struct PodcastListView: View {
                             }
                     }
                 }
-                .scrollDisabled(draggedPodcastID != nil || cardSwipeAxisLocked)
+                .scrollDisabled(draggedPodcastID != nil || cardSwipeAxisLocked || isCardSwipeActive)
                 .simultaneousGesture(dragTrackingGesture(proxy: proxy))
-                .simultaneousGesture(layoutSwipeGesture)
+                .simultaneousGesture(layoutSwipeGesture(proxy: proxy))
 
                 dragOverlay
+            }
+            .onChange(of: layoutMode) { _, newValue in
+                guard !suppressLayoutModeAnimation, !isCardSwipeInteractive else { return }
+                animateLayoutSwitch(to: newValue, proxy: proxy)
             }
         }
         .safeAreaPadding(.top, floatingMiniTopInset)
@@ -199,10 +208,6 @@ struct PodcastListView: View {
             await refreshFeeds()
         }
         .themeBackground()
-        .onChange(of: layoutMode) { _, newValue in
-            guard !suppressLayoutModeAnimation, !isCardSwipeInteractive else { return }
-            animateLayoutSwitch(to: newValue)
-        }
         .task {
             await loadPodcasts()
             await loadLatestEpisodes()
@@ -359,11 +364,11 @@ struct PodcastListView: View {
     /// Interactive card peel: swipe either way to slide the current layout off and
     /// reveal the other underneath. Release past halfway / with momentum commits;
     /// otherwise the card springs back.
-    private var layoutSwipeGesture: some Gesture {
+    private func layoutSwipeGesture(proxy: ScrollViewProxy) -> some Gesture {
         DragGesture(minimumDistance: 16, coordinateSpace: .local)
             .onChanged { value in
                 guard draggedPodcastID == nil else { return }
-                handleCardSwipeChanged(value)
+                handleCardSwipeChanged(value, proxy: proxy)
             }
             .onEnded { value in
                 guard draggedPodcastID == nil else {
@@ -374,16 +379,33 @@ struct PodcastListView: View {
             }
     }
 
-    private func handleCardSwipeChanged(_ value: DragGesture.Value) {
+    /// Jump to the top before remounting the card stack. Nested lazy content is blank
+    /// when the peel starts while the outer scroll offset is still deep.
+    private func pinLayoutSwipeToTop(proxy: ScrollViewProxy) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(Self.layoutSwipeScrollTopID, anchor: .top)
+        }
+    }
+
+    private func handleCardSwipeChanged(_ value: DragGesture.Value, proxy: ScrollViewProxy) {
         if !cardSwipeAxisLocked {
             guard let sign = MainScreenLayoutToggle.cardSwipeSign(
                 translation: value.translation
             ) else { return }
             cardSwipeAxisLocked = true
-            isCardSwipeInteractive = true
             cardSwipeSign = sign
             cardSwipeUnderMode = destinationLayoutMode
             cardSwipeGeneration += 1
+            let generation = cardSwipeGeneration
+            pinLayoutSwipeToTop(proxy: proxy)
+            // Activate the card stack on the next turn so scroll offset lands first.
+            DispatchQueue.main.async {
+                guard generation == cardSwipeGeneration, cardSwipeUnderMode != nil else { return }
+                isCardSwipeInteractive = true
+            }
+            return
         }
 
         guard isCardSwipeInteractive else { return }
@@ -839,31 +861,36 @@ struct PodcastListView: View {
 
     // MARK: - Layout Switch Animation (FAB / settings — non-interactive)
 
-    private func animateLayoutSwitch(to newMode: String) {
+    private func animateLayoutSwitch(to newMode: String, proxy: ScrollViewProxy) {
         guard newMode != renderedLayoutMode || isCardSwipeActive else { return }
 
         cardSwipeSign = -1
         cardSwipeUnderMode = newMode
         cardSwipeGeneration += 1
         let generation = cardSwipeGeneration
-        // Mark active before storage-driven title flags settle so list keeps titles
-        // and grid doesn't expand on the first frame of the FAB peel.
-        isCardSwipeInteractive = true
         cardSwipeOffset = 0
         cardSwipeProgress = 0
+        pinLayoutSwipeToTop(proxy: proxy)
 
-        withAnimation(.easeInOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
-            cardSwipeOffset = cardSwipeSign * MainScreenLayoutToggle.dismissDistance
-            cardSwipeProgress = 1
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
+        // Peel only after scroll is pinned — otherwise the remounted card stack is blank.
+        DispatchQueue.main.async {
             guard generation == cardSwipeGeneration else { return }
-            renderedLayoutMode = newMode
-            isCardSwipeInteractive = false
-            cardSwipeOffset = 0
-            cardSwipeProgress = 0
-            cardSwipeUnderMode = nil
+            // Mark active before storage-driven title flags settle so list keeps titles
+            // and grid doesn't expand on the first frame of the FAB peel.
+            isCardSwipeInteractive = true
+            withAnimation(.easeInOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
+                cardSwipeOffset = cardSwipeSign * MainScreenLayoutToggle.dismissDistance
+                cardSwipeProgress = 1
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
+                guard generation == cardSwipeGeneration else { return }
+                renderedLayoutMode = newMode
+                isCardSwipeInteractive = false
+                cardSwipeOffset = 0
+                cardSwipeProgress = 0
+                cardSwipeUnderMode = nil
+            }
         }
     }
 

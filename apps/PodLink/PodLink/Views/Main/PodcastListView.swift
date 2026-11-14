@@ -13,11 +13,17 @@ private final class PodcastGridFrameCache {
     var frames: [String: CGRect] = [:]
 }
 
-struct PodcastListView: View {
-    /// Anchor for pinning the peel at the top — nested lazy grid/list goes blank
-    /// if the card stack remounts while the outer ScrollView is still scrolled down.
-    private static let layoutSwipeScrollTopID = "podcast-layout-swipe-top"
+private struct GridPageScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
 
+private struct ListPageScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+struct PodcastListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
     @Environment(DownloadManager.self) private var downloadManager
@@ -39,16 +45,16 @@ struct PodcastListView: View {
     @State private var selectedLatestEpisode: LatestEpisodeSelection?
     @State private var hasAttemptedInitialLoad = false
 
+    /// Settled page: `"grid"` | `"list"`. Both pages stay mounted so scroll is preserved.
     @State private var renderedLayoutMode = UserDefaults.standard.string(forKey: "layoutMode") ?? "grid"
-    /// Top-card horizontal offset while sliding either direction to reveal the other layout.
-    @State private var cardSwipeOffset: CGFloat = 0
-    @State private var cardSwipeProgress: Double = 0
-    @State private var cardSwipeSign: CGFloat = -1
-    @State private var cardSwipeUnderMode: String?
-    @State private var isCardSwipeInteractive = false
-    @State private var cardSwipeAxisLocked = false
+    @State private var pageWidth: CGFloat = 0
+    @State private var pagerDragTranslation: CGFloat = 0
+    @State private var isPagerDragging = false
+    @State private var pagerAxisLocked = false
     @State private var suppressLayoutModeAnimation = false
-    @State private var cardSwipeGeneration = 0
+    @State private var pagerGeneration = 0
+    @State private var gridScrollOffset: CGFloat = 0
+    @State private var listScrollOffset: CGFloat = 0
 
     // MARK: - Drag & Drop State
     @State private var draggedPodcastID: String?
@@ -97,23 +103,49 @@ struct PodcastListView: View {
 
     private var gridHorizontalPadding: CGFloat { DesignSystem.Spacing.screenHorizontalPadding }
 
-    /// Settled titled-grid only — never mid-swipe / never after FAB flipped to list.
+    private var isPagerActive: Bool {
+        isPagerDragging || pagerAxisLocked || abs(pagerDragTranslation) > 0.5
+    }
+
     private var gridShowsTitles: Bool {
         MainScreenLayoutToggle.gridShowsTitles(
-            renderedMode: renderedLayoutMode,
             layoutMode: layoutMode,
             showTitles: showPodcastTitlesOnMain,
-            isSwipeActive: isCardSwipeActive
+            isPagerActive: isPagerActive
         )
     }
 
-    /// List cards show titles during a peel even before AppStorage commits.
     private var listShowsTitles: Bool {
-        MainScreenLayoutToggle.listShowsTitles(
-            cardMode: "list",
-            showTitles: showPodcastTitlesOnMain,
-            isSwipeActive: isCardSwipeActive
+        MainScreenLayoutToggle.listShowsTitles(isListPage: true)
+    }
+
+    private var settledPageIndex: CGFloat {
+        MainScreenLayoutToggle.pageIndex(forLayoutMode: renderedLayoutMode)
+    }
+
+    private var displayedPagerOffset: CGFloat {
+        MainScreenLayoutToggle.clampedPagerOffset(
+            settledIndex: settledPageIndex,
+            dragTranslation: pagerDragTranslation,
+            pageWidth: pageWidth
         )
+    }
+
+    private var layoutPagerProgress: CGFloat {
+        MainScreenLayoutToggle.pagerProgress(offset: displayedPagerOffset, pageWidth: pageWidth)
+    }
+
+    private var chromeBlurProgress: CGFloat {
+        MainScreenLayoutToggle.blendedChromeBlurProgress(
+            gridScrollOffset: gridScrollOffset,
+            listScrollOffset: listScrollOffset,
+            pagerProgress: layoutPagerProgress,
+            blurDistance: MinSpacing.TitleType.blurDistance
+        )
+    }
+
+    private var pageTopContentInset: CGFloat {
+        MinSpacing.TopControls.buttonSize + MinSpacing.TitleType.contentTopSpacing
     }
 
     private var currentTapStyle: TapInteractionStyle {
@@ -150,63 +182,53 @@ struct PodcastListView: View {
         )
     }
 
-    private var destinationLayoutMode: String {
-        MainScreenLayoutToggle.otherMode(fromGridPoster: isGridPosterStyle)
-    }
-
-    private var underLayoutMode: String {
-        cardSwipeUnderMode ?? destinationLayoutMode
-    }
-
-    private var isCardSwipeActive: Bool {
-        isCardSwipeInteractive || cardSwipeProgress > 0 || cardSwipeOffset != 0
-    }
-
     var body: some View {
-        ScrollViewReader { proxy in
-            ZStack {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        scrollPinnedTopChrome
-                            .id(Self.layoutSwipeScrollTopID)
+        ZStack(alignment: .top) {
+            // Chrome behind pages — content scrolls over it; blur tracks pager + scroll.
+            topChrome
+                .padding(.top, MinSpacing.TopControls.verticalPadding)
+                .zIndex(0)
 
-                        if !hasAttemptedInitialLoad {
-                            initialLoadPlaceholder
-                        } else if followedPodcasts.isEmpty {
-                            emptyState
-                        } else {
-                            cardSwipeStack
-                                .allowsHitTesting(!isCardSwipeActive)
-                        }
+            Group {
+                if !hasAttemptedInitialLoad {
+                    ScrollView {
+                        initialLoadPlaceholder
+                            .padding(.top, pageTopContentInset)
                     }
-                    .padding(.top, MinSpacing.TopControls.verticalPadding)
-                }
-                .scrollClipDisabled()
-                .coordinateSpace(name: "podcastListScroll")
-                .background {
-                    GeometryReader { geometry in
-                        Color.clear
-                            .onAppear { scrollViewportFrameGlobal = geometry.frame(in: .global) }
-                            .onChange(of: geometry.frame(in: .global)) { _, newValue in
-                                scrollViewportFrameGlobal = newValue
-                            }
+                } else if followedPodcasts.isEmpty {
+                    ScrollView {
+                        emptyState
+                            .padding(.top, pageTopContentInset)
                     }
+                } else {
+                    layoutPager
                 }
-                .scrollDisabled(draggedPodcastID != nil || cardSwipeAxisLocked || isCardSwipeActive)
-                .simultaneousGesture(dragTrackingGesture(proxy: proxy))
-                .simultaneousGesture(layoutSwipeGesture(proxy: proxy))
+            }
+            .zIndex(1)
 
-                dragOverlay
+            dragOverlay
+                .zIndex(2)
+        }
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        pageWidth = geometry.size.width
+                        scrollViewportFrameGlobal = geometry.frame(in: .global)
+                    }
+                    .onChange(of: geometry.size.width) { _, newValue in
+                        pageWidth = newValue
+                    }
+                    .onChange(of: geometry.frame(in: .global)) { _, newValue in
+                        scrollViewportFrameGlobal = newValue
+                    }
             }
-            .onChange(of: layoutMode) { _, newValue in
-                guard !suppressLayoutModeAnimation, !isCardSwipeInteractive else { return }
-                animateLayoutSwitch(to: newValue, proxy: proxy)
-            }
+        }
+        .onChange(of: layoutMode) { _, newValue in
+            guard !suppressLayoutModeAnimation, !isPagerDragging else { return }
+            animateLayoutSwitch(to: newValue)
         }
         .safeAreaPadding(.top, floatingMiniTopInset)
-        .refreshable {
-            await refreshFeeds()
-        }
         .themeBackground()
         .task {
             await loadPodcasts()
@@ -239,60 +261,81 @@ struct PodcastListView: View {
         }
     }
 
-    // MARK: - Layout Content (card slide: either direction reveals the other)
+    // MARK: - Side-by-side layout pager (grid | list)
 
-    @ViewBuilder
-    private var cardSwipeStack: some View {
-        if isCardSwipeActive {
-            ZStack(alignment: .top) {
-                // Under card: lazy so revealing list/grid doesn't mount every row at once.
-                layoutCard(for: underLayoutMode, lazyList: true)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-
-                layoutCard(for: renderedLayoutMode, lazyList: true)
-                    .background(DesignSystem.Colors.background)
-                    .offset(x: cardSwipeOffset)
-                    // Skip live shadows while dragging — they were a major frame-drop source.
+    private var layoutPager: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            HStack(spacing: 0) {
+                gridPage
+                    .frame(width: width)
+                listPage
+                    .frame(width: width)
             }
-            .clipped()
-        } else {
-            // Flat into the outer LazyVStack so grid/list stay lazy when idle.
-            layoutContentFlat
+            .frame(width: width * 2, alignment: .leading)
+            .offset(
+                x: MainScreenLayoutToggle.clampedPagerOffset(
+                    settledIndex: settledPageIndex,
+                    dragTranslation: pagerDragTranslation,
+                    pageWidth: width
+                )
+            )
+            .onAppear { pageWidth = width }
+            .onChange(of: width) { _, newValue in pageWidth = newValue }
+        }
+        .clipped()
+        .simultaneousGesture(layoutPagerGesture)
+    }
+
+    private var gridPage: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    Color.clear
+                        .frame(height: pageTopContentInset)
+                        .allowsHitTesting(false)
+                    gridContent
+                }
+                .background {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: GridPageScrollOffsetKey.self,
+                            value: max(0, -geo.frame(in: .named("gridLayoutPage")).minY)
+                        )
+                    }
+                }
+            }
+            .coordinateSpace(name: "gridLayoutPage")
+            .scrollDisabled(draggedPodcastID != nil || pagerAxisLocked || isPagerDragging)
+            .scrollClipDisabled()
+            .refreshable { await refreshFeeds() }
+            .onPreferenceChange(GridPageScrollOffsetKey.self) { gridScrollOffset = $0 }
+            .simultaneousGesture(dragTrackingGesture(proxy: proxy))
         }
     }
 
-    @ViewBuilder
-    private var layoutContentFlat: some View {
-        // Non-hit-testing gap so the overhanging Account control stays tappable.
-        Color.clear
-            .frame(height: MinSpacing.TitleType.contentTopSpacing)
-            .allowsHitTesting(false)
-
-        layoutRows(for: renderedLayoutMode, lazyList: false)
-    }
-
-    private func layoutCard(for mode: String, lazyList: Bool) -> some View {
-        VStack(spacing: 0) {
-            Color.clear
-                .frame(height: MinSpacing.TitleType.contentTopSpacing)
-                .allowsHitTesting(false)
-            layoutRows(for: mode, lazyList: lazyList)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-    }
-
-    @ViewBuilder
-    private func layoutRows(for mode: String, lazyList: Bool) -> some View {
-        if mode == "grid" {
-            gridContent
-        } else if lazyList {
+    private var listPage: some View {
+        ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
+                Color.clear
+                    .frame(height: pageTopContentInset)
+                    .allowsHitTesting(false)
                 listRows
             }
-        } else {
-            listRows
+            .background {
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: ListPageScrollOffsetKey.self,
+                        value: max(0, -geo.frame(in: .named("listLayoutPage")).minY)
+                    )
+                }
+            }
         }
+        .coordinateSpace(name: "listLayoutPage")
+        .scrollDisabled(pagerAxisLocked || isPagerDragging)
+        .scrollClipDisabled()
+        .refreshable { await refreshFeeds() }
+        .onPreferenceChange(ListPageScrollOffsetKey.self) { listScrollOffset = $0 }
     }
 
     @ViewBuilder
@@ -317,7 +360,7 @@ struct PodcastListView: View {
                         beginGridDragIfNeeded(for: podcast)
                     }
                     .background {
-                        if !isCardSwipeActive {
+                        if !isPagerActive {
                             GeometryReader { geo in
                                 Color.clear
                                     .preference(
@@ -330,9 +373,7 @@ struct PodcastListView: View {
             }
         }
         .onPreferenceChange(PodcastGridFramesPreferenceKey.self) { frames in
-            // Skip preference fan-out while the layout card is sliding — it's unused
-            // for reorder then and was contributing to swipe jank.
-            guard !isCardSwipeActive else { return }
+            guard !isPagerActive else { return }
             gridFrameCache.frames = frames
             if draggedPodcastID != nil {
                 gridItemFrames = frames
@@ -361,140 +402,128 @@ struct PodcastListView: View {
             }
     }
 
-    /// Interactive card peel: swipe either way to slide the current layout off and
-    /// reveal the other underneath. Release past halfway / with momentum commits;
-    /// otherwise the card springs back.
-    private func layoutSwipeGesture(proxy: ScrollViewProxy) -> some Gesture {
+    /// Horizontal pager drag — grid | list stay abutted; each keeps its scroll offset.
+    private var layoutPagerGesture: some Gesture {
         DragGesture(minimumDistance: 16, coordinateSpace: .local)
             .onChanged { value in
                 guard draggedPodcastID == nil else { return }
-                handleCardSwipeChanged(value, proxy: proxy)
+                handlePagerChanged(value)
             }
             .onEnded { value in
                 guard draggedPodcastID == nil else {
-                    cancelCardSwipeAxisLock()
+                    cancelPagerAxisLock()
                     return
                 }
-                handleCardSwipeEnded(value)
+                handlePagerEnded(value)
             }
     }
 
-    /// Jump to the top before remounting the card stack. Nested lazy content is blank
-    /// when the peel starts while the outer scroll offset is still deep.
-    private func pinLayoutSwipeToTop(proxy: ScrollViewProxy) {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            proxy.scrollTo(Self.layoutSwipeScrollTopID, anchor: .top)
-        }
-    }
-
-    private func handleCardSwipeChanged(_ value: DragGesture.Value, proxy: ScrollViewProxy) {
-        if !cardSwipeAxisLocked {
-            guard let sign = MainScreenLayoutToggle.cardSwipeSign(
+    private func handlePagerChanged(_ value: DragGesture.Value) {
+        if !pagerAxisLocked {
+            guard MainScreenLayoutToggle.pagerAxisLockTranslation(
                 translation: value.translation
-            ) else { return }
-            cardSwipeAxisLocked = true
-            cardSwipeSign = sign
-            cardSwipeUnderMode = destinationLayoutMode
-            cardSwipeGeneration += 1
-            let generation = cardSwipeGeneration
-            pinLayoutSwipeToTop(proxy: proxy)
-            // Activate the card stack on the next turn so scroll offset lands first.
-            DispatchQueue.main.async {
-                guard generation == cardSwipeGeneration, cardSwipeUnderMode != nil else { return }
-                isCardSwipeInteractive = true
-            }
-            return
+            ) != nil else { return }
+            pagerAxisLocked = true
+            isPagerDragging = true
+            pagerGeneration += 1
         }
 
-        guard isCardSwipeInteractive else { return }
-        let newOffset = value.translation.width
-        let newProgress = MainScreenLayoutToggle.cardSwipeProgress(translationWidth: newOffset)
-        // Throttle sub-point churn so SwiftUI isn't invalidating every touch sample.
-        guard abs(newOffset - cardSwipeOffset) >= 1 || abs(newProgress - cardSwipeProgress) >= 0.02 else {
-            return
-        }
+        guard isPagerDragging else { return }
+        let translation = value.translation.width
+        guard abs(translation - pagerDragTranslation) >= 1 else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            // Follow the finger; keep the locked sign so a mid-gesture reverse cancels.
-            cardSwipeOffset = newOffset
-            cardSwipeProgress = newProgress
+            pagerDragTranslation = translation
         }
     }
 
-    private func handleCardSwipeEnded(_ value: DragGesture.Value) {
-        guard isCardSwipeInteractive else {
-            cancelCardSwipeAxisLock()
+    private func handlePagerEnded(_ value: DragGesture.Value) {
+        guard isPagerDragging else {
+            cancelPagerAxisLock()
             return
         }
 
-        let commit = MainScreenLayoutToggle.shouldCommitCardSwipe(
-            progress: cardSwipeProgress,
-            translationWidth: value.translation.width,
-            predictedTranslationWidth: value.predictedEndTranslation.width,
-            lockedSign: cardSwipeSign
+        let width = max(pageWidth, 1)
+        let currentOffset = MainScreenLayoutToggle.clampedPagerOffset(
+            settledIndex: settledPageIndex,
+            dragTranslation: value.translation.width,
+            pageWidth: width
         )
-        finishInteractiveCardSwipe(commit: commit)
+        let predictedOffset = MainScreenLayoutToggle.clampedPagerOffset(
+            settledIndex: settledPageIndex,
+            dragTranslation: value.predictedEndTranslation.width,
+            pageWidth: width
+        )
+        let commit = MainScreenLayoutToggle.shouldCommitPagerSwipe(
+            fromIndex: settledPageIndex,
+            toOffset: currentOffset,
+            predictedOffset: predictedOffset,
+            pageWidth: width
+        )
+        finishPagerSwipe(commit: commit)
     }
 
-    private func finishInteractiveCardSwipe(commit: Bool) {
-        let sign = cardSwipeSign
-        let generation = cardSwipeGeneration
-        let targetOffset: CGFloat = commit
-            ? sign * MainScreenLayoutToggle.dismissDistance
-            : 0
-        let targetProgress: Double = commit ? 1 : 0
-        isCardSwipeInteractive = false
-        cardSwipeAxisLocked = false
+    private func finishPagerSwipe(commit: Bool) {
+        let generation = pagerGeneration
+        let destinationMode: String = {
+            if commit {
+                return renderedLayoutMode == "list" ? "grid" : "list"
+            }
+            return renderedLayoutMode
+        }()
+        let targetTranslation: CGFloat = {
+            let targetIndex = MainScreenLayoutToggle.pageIndex(forLayoutMode: destinationMode)
+            return (settledPageIndex - targetIndex) * max(pageWidth, 1)
+        }()
 
+        pagerAxisLocked = false
         withAnimation(.easeOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
-            cardSwipeOffset = targetOffset
-            cardSwipeProgress = targetProgress
+            pagerDragTranslation = targetTranslation
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
-            guard generation == cardSwipeGeneration else { return }
+            guard generation == pagerGeneration else { return }
             if commit {
-                commitCardSwipe()
+                commitPagerSwipe(to: destinationMode)
             } else {
-                cardSwipeOffset = 0
-                cardSwipeProgress = 0
-                cardSwipeUnderMode = nil
+                isPagerDragging = false
+                pagerDragTranslation = 0
             }
         }
     }
 
-    private func commitCardSwipe() {
-        var mode = layoutMode
+    private func commitPagerSwipe(to mode: String) {
+        var layout = layoutMode
         var titles = showPodcastTitlesOnMain
         var art = mainScreenArtEmphasisRaw
-        MainScreenLayoutToggle.applyToggle(
-            layoutMode: &mode,
-            showTitles: &titles,
-            artEmphasis: &art
-        )
+        // Drive storage to match the destination page (poster grid ↔ titled list).
+        if mode == "list" {
+            layout = "list"
+            titles = true
+        } else {
+            layout = "grid"
+            titles = false
+        }
+        art = MainScreenArtEmphasis.largeArt.rawValue
+
         suppressLayoutModeAnimation = true
-        layoutMode = mode
+        layoutMode = layout
         showPodcastTitlesOnMain = titles
         mainScreenArtEmphasisRaw = art
         renderedLayoutMode = mode
-        cardSwipeOffset = 0
-        cardSwipeProgress = 0
-        cardSwipeUnderMode = nil
+        isPagerDragging = false
+        pagerDragTranslation = 0
         DispatchQueue.main.async {
             suppressLayoutModeAnimation = false
         }
     }
 
-    private func cancelCardSwipeAxisLock() {
-        cardSwipeAxisLocked = false
-        if isCardSwipeInteractive {
-            isCardSwipeInteractive = false
-            cardSwipeOffset = 0
-            cardSwipeProgress = 0
-            cardSwipeUnderMode = nil
+    private func cancelPagerAxisLock() {
+        pagerAxisLocked = false
+        if isPagerDragging {
+            isPagerDragging = false
+            pagerDragTranslation = 0
         }
     }
 
@@ -808,12 +837,12 @@ struct PodcastListView: View {
         .padding(.bottom, scrollBottomInset)
     }
 
-    // MARK: - Scroll-Pinned Top Chrome (Title + Account)
+    // MARK: - Top Chrome (wordmark + account)
     //
-    // Height matches the 56pt account control so glass stays inside the bounds
-    // that `minScrollPinnedChrome` / `visualEffect` rasterizes.
+    // Lives under the pager pages. Blur/fade follow the blended scroll offsets of
+    // the grid and list pages as the pager moves.
 
-    private var scrollPinnedTopChrome: some View {
+    private var topChrome: some View {
         ZStack(alignment: .topLeading) {
             Image("Title Type")
                 .renderingMode(.template)
@@ -837,8 +866,14 @@ struct PodcastListView: View {
         .frame(maxWidth: .infinity)
         .frame(height: MinSpacing.TopControls.buttonSize)
         .offset(y: MinSpacing.TitleType.markOffsetY)
-        .minScrollPinnedChrome(coordinateSpace: "podcastListScroll")
+        .compositingGroup()
+        .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
+        .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
         .accessibilityElement(children: .contain)
+        .animation(
+            isPagerActive ? nil : .easeOut(duration: 0.12),
+            value: chromeBlurProgress
+        )
     }
 
     private var accountButton: some View {
@@ -861,36 +896,26 @@ struct PodcastListView: View {
 
     // MARK: - Layout Switch Animation (FAB / settings — non-interactive)
 
-    private func animateLayoutSwitch(to newMode: String, proxy: ScrollViewProxy) {
-        guard newMode != renderedLayoutMode || isCardSwipeActive else { return }
+    private func animateLayoutSwitch(to newMode: String) {
+        guard newMode != renderedLayoutMode || isPagerActive else { return }
 
-        cardSwipeSign = -1
-        cardSwipeUnderMode = newMode
-        cardSwipeGeneration += 1
-        let generation = cardSwipeGeneration
-        cardSwipeOffset = 0
-        cardSwipeProgress = 0
-        pinLayoutSwipeToTop(proxy: proxy)
+        pagerGeneration += 1
+        let generation = pagerGeneration
+        let fromIndex = settledPageIndex
+        let toIndex = MainScreenLayoutToggle.pageIndex(forLayoutMode: newMode)
+        let width = max(pageWidth, 1)
+        isPagerDragging = true
+        pagerDragTranslation = 0
 
-        // Peel only after scroll is pinned — otherwise the remounted card stack is blank.
-        DispatchQueue.main.async {
-            guard generation == cardSwipeGeneration else { return }
-            // Mark active before storage-driven title flags settle so list keeps titles
-            // and grid doesn't expand on the first frame of the FAB peel.
-            isCardSwipeInteractive = true
-            withAnimation(.easeInOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
-                cardSwipeOffset = cardSwipeSign * MainScreenLayoutToggle.dismissDistance
-                cardSwipeProgress = 1
-            }
+        withAnimation(.easeInOut(duration: MainScreenLayoutToggle.swipeAnimationDuration)) {
+            pagerDragTranslation = (fromIndex - toIndex) * width
+        }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
-                guard generation == cardSwipeGeneration else { return }
-                renderedLayoutMode = newMode
-                isCardSwipeInteractive = false
-                cardSwipeOffset = 0
-                cardSwipeProgress = 0
-                cardSwipeUnderMode = nil
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + MainScreenLayoutToggle.swipeAnimationDuration) {
+            guard generation == pagerGeneration else { return }
+            renderedLayoutMode = newMode
+            isPagerDragging = false
+            pagerDragTranslation = 0
         }
     }
 

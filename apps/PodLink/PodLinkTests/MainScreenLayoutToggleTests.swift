@@ -18,63 +18,125 @@ struct MainScreenLayoutToggleTests {
     }
 
     @Test
-    func cardSwipeSignAllowsEitherHorizontalDirection() {
+    func pageIndexMapsGridAndList() {
+        #expect(MainScreenLayoutToggle.pageIndex(forLayoutMode: "grid") == 0)
+        #expect(MainScreenLayoutToggle.pageIndex(forLayoutMode: "list") == 1)
+    }
+
+    @Test
+    func pagerAxisLockRequiresHorizontalDominance() {
         #expect(
-            MainScreenLayoutToggle.cardSwipeSign(translation: CGSize(width: -40, height: 5)) == -1
+            MainScreenLayoutToggle.pagerAxisLockTranslation(
+                translation: CGSize(width: -40, height: 5)
+            ) == -40
         )
         #expect(
-            MainScreenLayoutToggle.cardSwipeSign(translation: CGSize(width: 40, height: 5)) == 1
+            MainScreenLayoutToggle.pagerAxisLockTranslation(
+                translation: CGSize(width: 40, height: 5)
+            ) == 40
         )
         #expect(
-            MainScreenLayoutToggle.cardSwipeSign(translation: CGSize(width: -40, height: 50)) == nil
+            MainScreenLayoutToggle.pagerAxisLockTranslation(
+                translation: CGSize(width: -40, height: 50)
+            ) == nil
         )
         #expect(
-            MainScreenLayoutToggle.cardSwipeSign(translation: CGSize(width: 10, height: 0)) == nil
+            MainScreenLayoutToggle.pagerAxisLockTranslation(
+                translation: CGSize(width: 10, height: 0)
+            ) == nil
         )
     }
 
     @Test
-    func cardSwipeProgressUsesAbsoluteTravel() {
-        let distance = MainScreenLayoutToggle.interactiveSwipeDistance
-        #expect(MainScreenLayoutToggle.cardSwipeProgress(translationWidth: -distance / 2) == 0.5)
-        #expect(MainScreenLayoutToggle.cardSwipeProgress(translationWidth: distance) == 1)
-        #expect(MainScreenLayoutToggle.cardSwipeProgress(translationWidth: distance / 2) == 0.5)
+    func pagerProgressAndClampStayWithinPageBounds() {
+        let width: CGFloat = 390
+        #expect(MainScreenLayoutToggle.pagerProgress(offset: 0, pageWidth: width) == 0)
+        #expect(MainScreenLayoutToggle.pagerProgress(offset: -width / 2, pageWidth: width) == 0.5)
+        #expect(MainScreenLayoutToggle.pagerProgress(offset: -width, pageWidth: width) == 1)
+
+        #expect(
+            MainScreenLayoutToggle.clampedPagerOffset(
+                settledIndex: 0,
+                dragTranslation: -100,
+                pageWidth: width
+            ) == -100
+        )
+        #expect(
+            MainScreenLayoutToggle.clampedPagerOffset(
+                settledIndex: 0,
+                dragTranslation: -500,
+                pageWidth: width
+            ) == -width
+        )
+        #expect(
+            MainScreenLayoutToggle.clampedPagerOffset(
+                settledIndex: 1,
+                dragTranslation: 100,
+                pageWidth: width
+            ) == -width + 100
+        )
     }
 
     @Test
-    func shouldCommitUsesHalfwayPredictedMomentumAndCancelOnReverse() {
-        let distance = MainScreenLayoutToggle.interactiveSwipeDistance
+    func shouldCommitPagerSwipeUsesHalfwayAndPrediction() {
+        let width: CGFloat = 390
         #expect(
-            MainScreenLayoutToggle.shouldCommitCardSwipe(
-                progress: 0.6,
-                translationWidth: -distance * 0.6,
-                predictedTranslationWidth: -distance * 0.6,
-                lockedSign: -1
+            MainScreenLayoutToggle.shouldCommitPagerSwipe(
+                fromIndex: 0,
+                toOffset: -width * 0.6,
+                predictedOffset: -width * 0.6,
+                pageWidth: width
             )
         )
         #expect(
-            !MainScreenLayoutToggle.shouldCommitCardSwipe(
-                progress: 0.3,
-                translationWidth: -distance * 0.3,
-                predictedTranslationWidth: -distance * 0.3,
-                lockedSign: -1
+            !MainScreenLayoutToggle.shouldCommitPagerSwipe(
+                fromIndex: 0,
+                toOffset: -width * 0.3,
+                predictedOffset: -width * 0.3,
+                pageWidth: width
             )
         )
         #expect(
-            MainScreenLayoutToggle.shouldCommitCardSwipe(
-                progress: 0.3,
-                translationWidth: -distance * 0.3,
-                predictedTranslationWidth: -distance,
-                lockedSign: -1
+            MainScreenLayoutToggle.shouldCommitPagerSwipe(
+                fromIndex: 0,
+                toOffset: -width * 0.3,
+                predictedOffset: -width,
+                pageWidth: width
             )
         )
         #expect(
-            !MainScreenLayoutToggle.shouldCommitCardSwipe(
-                progress: 0.4,
-                translationWidth: 30,
-                predictedTranslationWidth: 60,
-                lockedSign: -1
+            MainScreenLayoutToggle.shouldCommitPagerSwipe(
+                fromIndex: 1,
+                toOffset: -width * 0.4,
+                predictedOffset: -width * 0.4,
+                pageWidth: width
             )
+        )
+    }
+
+    @Test
+    func chromeBlurBlendsBetweenPageScrollOffsets() {
+        #expect(
+            MainScreenLayoutToggle.scrollBlurProgress(scrollOffset: 0, blurDistance: 80) == 0
+        )
+        #expect(
+            MainScreenLayoutToggle.scrollBlurProgress(scrollOffset: 40, blurDistance: 80) == 0.5
+        )
+        #expect(
+            MainScreenLayoutToggle.blendedChromeBlurProgress(
+                gridScrollOffset: 0,
+                listScrollOffset: 80,
+                pagerProgress: 0.5,
+                blurDistance: 80
+            ) == 0.5
+        )
+        #expect(
+            MainScreenLayoutToggle.blendedChromeBlurProgress(
+                gridScrollOffset: 0,
+                listScrollOffset: 80,
+                pagerProgress: 1,
+                blurDistance: 80
+            ) == 1
         )
     }
 
@@ -103,58 +165,22 @@ struct MainScreenLayoutToggleTests {
     }
 
     @Test
-    func gridTitlesStayOffDuringSwipeAndAfterFABFlipsToList() {
-        // Settled titled grid.
+    func gridTitlesStayOffDuringPagerSwipe() {
         #expect(
             MainScreenLayoutToggle.gridShowsTitles(
-                renderedMode: "grid",
                 layoutMode: "grid",
                 showTitles: true,
-                isSwipeActive: false
+                isPagerActive: false
             )
         )
-        // Mid-swipe must not expand tiles.
         #expect(
             !MainScreenLayoutToggle.gridShowsTitles(
-                renderedMode: "grid",
                 layoutMode: "grid",
                 showTitles: true,
-                isSwipeActive: true
+                isPagerActive: true
             )
         )
-        // FAB already wrote list+titles while top card is still grid.
-        #expect(
-            !MainScreenLayoutToggle.gridShowsTitles(
-                renderedMode: "grid",
-                layoutMode: "list",
-                showTitles: true,
-                isSwipeActive: false
-            )
-        )
-    }
-
-    @Test
-    func listTitlesShowDuringSwipeEvenBeforeStorageCommit() {
-        #expect(
-            MainScreenLayoutToggle.listShowsTitles(
-                cardMode: "list",
-                showTitles: false,
-                isSwipeActive: true
-            )
-        )
-        #expect(
-            !MainScreenLayoutToggle.listShowsTitles(
-                cardMode: "list",
-                showTitles: false,
-                isSwipeActive: false
-            )
-        )
-        #expect(
-            !MainScreenLayoutToggle.listShowsTitles(
-                cardMode: "grid",
-                showTitles: true,
-                isSwipeActive: true
-            )
-        )
+        #expect(MainScreenLayoutToggle.listShowsTitles(isListPage: true))
+        #expect(!MainScreenLayoutToggle.listShowsTitles(isListPage: false))
     }
 }

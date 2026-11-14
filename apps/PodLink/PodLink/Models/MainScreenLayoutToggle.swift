@@ -4,16 +4,16 @@ import CoreGraphics
 /// Shared grid ↔ list switching for the main followed-podcasts screen.
 /// Matches the floating toggle: poster grid (no titles) ↔ titled list.
 ///
-/// Swipe uses a card-slide reveal: either horizontal direction peels the current
-/// layout away and shows the other underneath.
+/// Layouts sit side-by-side in a horizontal pager (grid | list). Each page
+/// keeps its own scroll position. Shared chrome blur lerps between the two
+/// pages' scroll offsets while the pager moves.
 enum MainScreenLayoutToggle {
-    /// Horizontal travel (points) that maps to a full 0→1 card reveal.
-    static let interactiveSwipeDistance: CGFloat = 160
-    /// Progress at which release commits to the other layout.
+    /// Horizontal travel (as a fraction of page width) that commits on release.
     static let commitProgress: Double = 0.5
-    static let swipeAnimationDuration: TimeInterval = 0.25
-    /// How far the top card travels off-screen when a swipe commits.
-    static let dismissDistance: CGFloat = 420
+    static let swipeAnimationDuration: TimeInterval = 0.28
+    /// Minimum horizontal movement before the pager steals the gesture from scroll.
+    static let axisLockMinimum: CGFloat = 24
+    static let horizontalDominance: CGFloat = 1.4
 
     static func isGridPosterStyle(layoutMode: String, showTitles: Bool) -> Bool {
         layoutMode == "grid" && !showTitles
@@ -24,47 +24,80 @@ enum MainScreenLayoutToggle {
         fromGridPoster ? "list" : "grid"
     }
 
-    /// Locks onto either left or right when horizontal motion dominates.
-    /// Returns `-1` (left) or `+1` (right), or `nil` if the gesture looks like a scroll.
-    static func cardSwipeSign(
+    /// Page index in the abutted pager: grid = 0, list = 1.
+    static func pageIndex(forLayoutMode mode: String) -> CGFloat {
+        mode == "list" ? 1 : 0
+    }
+
+    /// Locks onto horizontal motion when it dominates vertical scroll.
+    /// Returns the translation width once locked, or `nil` if still a scroll.
+    static func pagerAxisLockTranslation(
         translation: CGSize,
-        axisLockMinimum: CGFloat = 24,
-        horizontalDominance: CGFloat = 1.4
+        axisLockMinimum: CGFloat = axisLockMinimum,
+        horizontalDominance: CGFloat = horizontalDominance
     ) -> CGFloat? {
         let dx = translation.width
         let dy = translation.height
         guard abs(dx) >= axisLockMinimum else { return nil }
         guard abs(dx) >= abs(dy) * horizontalDominance else { return nil }
-        return dx < 0 ? -1 : 1
+        return dx
     }
 
-    /// 0…1 reveal progress from absolute horizontal travel.
-    static func cardSwipeProgress(
-        translationWidth: CGFloat,
-        distance: CGFloat = interactiveSwipeDistance
-    ) -> Double {
-        guard distance > 0 else { return 0 }
-        return min(1, Double(abs(translationWidth) / distance))
+    /// 0…1 how far the pager has moved from grid toward list.
+    static func pagerProgress(offset: CGFloat, pageWidth: CGFloat) -> CGFloat {
+        guard pageWidth > 0 else { return 0 }
+        return min(1, max(0, -offset / pageWidth))
     }
 
-    /// Commit past halfway or with enough predicted momentum in the locked direction.
-    /// Releasing early or reversing cancels.
-    static func shouldCommitCardSwipe(
-        progress: Double,
-        translationWidth: CGFloat,
-        predictedTranslationWidth: CGFloat,
-        lockedSign: CGFloat,
-        distance: CGFloat = interactiveSwipeDistance
+    /// Clamp the HStack offset so pages stay abutted within [−width, 0].
+    static func clampedPagerOffset(
+        settledIndex: CGFloat,
+        dragTranslation: CGFloat,
+        pageWidth: CGFloat
+    ) -> CGFloat {
+        guard pageWidth > 0 else { return 0 }
+        let raw = -settledIndex * pageWidth + dragTranslation
+        return min(0, max(-pageWidth, raw))
+    }
+
+    /// Commit when released past halfway (or with predicted momentum past halfway).
+    static func shouldCommitPagerSwipe(
+        fromIndex: CGFloat,
+        toOffset: CGFloat,
+        predictedOffset: CGFloat,
+        pageWidth: CGFloat,
+        commitProgress: Double = commitProgress
     ) -> Bool {
-        if progress >= commitProgress { return true }
-        let predictedSameDirection = predictedTranslationWidth * lockedSign > 0
-        let predictedProgress = cardSwipeProgress(
-            translationWidth: predictedTranslationWidth,
-            distance: distance
-        )
-        if predictedSameDirection, predictedProgress >= commitProgress { return true }
-        if translationWidth * lockedSign < 0 { return false }
-        return false
+        guard pageWidth > 0 else { return false }
+        let currentProgress = Double(pagerProgress(offset: toOffset, pageWidth: pageWidth))
+        let predictedProgress = Double(pagerProgress(offset: predictedOffset, pageWidth: pageWidth))
+        let targetIsList = fromIndex < 0.5
+        if targetIsList {
+            return currentProgress >= commitProgress || predictedProgress >= commitProgress
+        }
+        return currentProgress <= (1 - commitProgress) || predictedProgress <= (1 - commitProgress)
+    }
+
+    /// Chrome blur/fade progress from a page's scroll offset.
+    static func scrollBlurProgress(
+        scrollOffset: CGFloat,
+        blurDistance: CGFloat = 80
+    ) -> CGFloat {
+        guard blurDistance > 0 else { return 0 }
+        return min(1, max(0, scrollOffset / blurDistance))
+    }
+
+    /// Blend chrome blur between the two pages using pager progress (0 = grid, 1 = list).
+    static func blendedChromeBlurProgress(
+        gridScrollOffset: CGFloat,
+        listScrollOffset: CGFloat,
+        pagerProgress: CGFloat,
+        blurDistance: CGFloat = 80
+    ) -> CGFloat {
+        let grid = scrollBlurProgress(scrollOffset: gridScrollOffset, blurDistance: blurDistance)
+        let list = scrollBlurProgress(scrollOffset: listScrollOffset, blurDistance: blurDistance)
+        let t = min(1, max(0, pagerProgress))
+        return grid + (list - grid) * t
     }
 
     static func applyToggle(
@@ -90,29 +123,18 @@ enum MainScreenLayoutToggle {
         applyToggle(layoutMode: &layoutMode, showTitles: &showTitles, artEmphasis: &artEmphasis)
     }
 
-    /// Grid tile titles — only when a titled grid is settled. Never mid-swipe, and never
-    /// after the FAB/storage already flipped toward list while the top card is still grid.
+    /// Grid tile titles — settled titled-grid only; never mid-pager swipe.
     static func gridShowsTitles(
-        renderedMode: String,
         layoutMode: String,
         showTitles: Bool,
-        isSwipeActive: Bool
+        isPagerActive: Bool
     ) -> Bool {
-        guard renderedMode == "grid" else { return false }
-        guard !isSwipeActive, layoutMode == "grid" else { return false }
+        guard layoutMode == "grid", !isPagerActive else { return false }
         return showTitles
     }
 
-    /// List row titles for a layout card. During a peel, always show titles so the
-    /// list side doesn't wait for AppStorage commit (and so FAB flips don't blank
-    /// the peeling list card).
-    static func listShowsTitles(
-        cardMode: String,
-        showTitles: Bool,
-        isSwipeActive: Bool
-    ) -> Bool {
-        guard cardMode == "list" else { return false }
-        if isSwipeActive { return true }
-        return showTitles
+    /// List page always shows titles (poster ↔ titled-list toggle).
+    static func listShowsTitles(isListPage: Bool) -> Bool {
+        isListPage
     }
 }

@@ -24,7 +24,6 @@ struct PodcastDetailView: View {
     @State private var episodes: [Episode] = []
     @State private var isLoading = true
     @State private var isFollowed: Bool = false
-    @State private var showDescription = false
     @State private var hasAttemptedInitialDeepLinkResolve = false
 
     @State private var searchText = ""
@@ -69,22 +68,6 @@ struct PodcastDetailView: View {
                     }
                     .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
                     .padding(.bottom, DesignSystem.Spacing.lg)
-
-                    if !podcast.description.isEmpty {
-                        Button {
-                            withAnimation { showDescription.toggle() }
-                        } label: {
-                            Text(podcast.description.strippingHTML)
-                                .font(DesignSystem.Typography.bodyMedium())
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
-                                .lineLimit(showDescription ? nil : 3)
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
-                        .padding(.bottom, DesignSystem.Spacing.lg)
-                    }
 
                     actionBar
                         .padding(.bottom, DesignSystem.Spacing.lg)
@@ -250,30 +233,35 @@ struct PodcastDetailView: View {
     }
 
     // MARK: - Action Bar
+    // Icon-only size matches the episode player utility row under transport.
+
+    private static let actionIconSize: CGFloat = 22
+    private static let actionHitSize: CGFloat = 44
 
     private var actionBar: some View {
         let activeAccent = themeManager.currentTheme.accentColor
-        return HStack(spacing: DesignSystem.Spacing.md) {
+        return HStack(spacing: DesignSystem.Spacing.xxl) {
             Button {
                 applyFollow(!isFollowed)
             } label: {
                 Image(systemName: isFollowed ? "minus.circle" : "plus.circle")
-                    .font(.system(size: 24))
-                    .foregroundStyle(isFollowed ? activeAccent : DesignSystem.Colors.textPrimary)
-                    .frame(width: 60, height: 60)
+                    .font(.system(size: Self.actionIconSize))
+                    .foregroundStyle(isFollowed ? activeAccent : DesignSystem.Colors.textSecondary)
+                    .frame(width: Self.actionHitSize, height: Self.actionHitSize)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.liquidGlassCompact)
+            .buttonStyle(.plain)
             .accessibilityLabel(isFollowed ? "Remove podcast from library" : "Add podcast to library")
 
-            Button {
-                // Share podcast
-            } label: {
+            ShareLink(item: podcast.feedURL) {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 24))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .frame(width: 60, height: 60)
+                    .font(.system(size: Self.actionIconSize))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .frame(width: Self.actionHitSize, height: Self.actionHitSize)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.liquidGlassCompact)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Share podcast")
 
             Menu {
                 Toggle("Auto-skip ads", isOn: $adProfile.autoSkipEnabled)
@@ -295,11 +283,12 @@ struct PodcastDetailView: View {
                     .foregroundStyle(.secondary)
             } label: {
                 Image(systemName: "gear")
-                    .font(.system(size: 24))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .frame(width: 60, height: 60)
+                    .font(.system(size: Self.actionIconSize))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .frame(width: Self.actionHitSize, height: Self.actionHitSize)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.liquidGlassCompact)
+            .buttonStyle(.plain)
             .accessibilityLabel("Ad settings")
             .onChange(of: adProfile.autoSkipEnabled) { _, _ in saveAdProfile() }
             .onChange(of: adProfile.introTrimSeconds) { _, _ in saveAdProfile() }
@@ -309,7 +298,6 @@ struct PodcastDetailView: View {
         .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
         .padding(.vertical, DesignSystem.Spacing.xs)
     }
-
 
     /// Diagnostic: what the ad analyzer found for the current episode.
     private var adDetectionStatusLine: String {

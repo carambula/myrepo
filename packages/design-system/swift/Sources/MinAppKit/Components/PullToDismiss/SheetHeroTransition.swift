@@ -171,7 +171,7 @@ private struct SheetHeroSourceModifier: ViewModifier {
                 // can snapshot the tile. Cover opacity sits inside it.
                 sourced.matchedTransitionSource(id: id, in: namespace) { source in
                     source
-                        .background(.background)
+                        .background(Color(uiColor: .systemBackground))
                         .clipShape(
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         )

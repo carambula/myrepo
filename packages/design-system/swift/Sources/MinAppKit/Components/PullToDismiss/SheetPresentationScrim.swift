@@ -74,6 +74,8 @@ final class SheetScrimGuardView: UIView {
     private var hideUntil: CFTimeInterval = 0
     private weak var backdropView: SheetDismissBackdropView?
     private var didAnimateBackdropIn = false
+    private var didFadeBackdropOut = false
+    private var lifecycleHook: SheetPresentationLifecycleHook?
     private lazy var hideLinkProxy = HideLinkProxy(owner: self)
 
     private final class HideLinkProxy: NSObject {
@@ -146,13 +148,63 @@ final class SheetScrimGuardView: UIView {
 
     private func handlePresented(_ presented: UIViewController?) {
         guard let presented else {
+            fadeBackdropOut(with: presentingViewController())
             didAnimateBackdropIn = false
+            removeLifecycleHook()
             stopHideLink()
             return
         }
+        didFadeBackdropOut = false
+        didAnimateBackdropIn = false
         SheetPresentationScrim.suppressSystemDimming(for: presented)
         beginHidingSystemDimming()
         installBackdrop(for: presented)
+        installLifecycleHook(on: presented)
+    }
+
+    private func fadeBackdropOut(with viewController: UIViewController?) {
+        guard !didFadeBackdropOut else { return }
+        guard let backdrop = backdropView else { return }
+        didFadeBackdropOut = true
+        let animations = {
+            backdrop.strength = 0
+        }
+        let coordinator = viewController?.transitionCoordinator
+            ?? viewController?.presentedViewController?.transitionCoordinator
+        if let coordinator, coordinator.isAnimated,
+           coordinator.animate(alongsideTransition: { _ in animations() }) {
+            return
+        }
+        UIView.animate(
+            withDuration: SheetHeroMotion.openDuration,
+            delay: 0,
+            options: [.curveEaseOut, .beginFromCurrentState],
+            animations: animations
+        )
+    }
+
+    private func installLifecycleHook(on presented: UIViewController) {
+        guard lifecycleHook == nil else { return }
+        let hook = SheetPresentationLifecycleHook()
+        hook.onWillDisappear = { [weak self, weak presented] _ in
+            self?.fadeBackdropOut(with: presented)
+        }
+        presented.addChild(hook)
+        hook.view.isHidden = true
+        hook.view.frame = .zero
+        hook.view.isUserInteractionEnabled = false
+        presented.view.insertSubview(hook.view, at: 0)
+        hook.didMove(toParent: presented)
+        lifecycleHook = hook
+    }
+
+    private func removeLifecycleHook() {
+        guard let hook = lifecycleHook else { return }
+        hook.onWillDisappear = nil
+        hook.willMove(toParent: nil)
+        hook.view.removeFromSuperview()
+        hook.removeFromParent()
+        lifecycleHook = nil
     }
 
     private func installBackdrop(for presented: UIViewController) {
@@ -172,20 +224,24 @@ final class SheetScrimGuardView: UIView {
             backdrop = created
         }
         backdropView = backdrop
+        if didFadeBackdropOut { return }
         if didAnimateBackdropIn || backdrop.strength > 0.95 { return }
         didAnimateBackdropIn = true
         let animations = { backdrop.strength = 1 }
-        if let coordinator = presented.transitionCoordinator, coordinator.isAnimated {
-            backdrop.strength = 0
-            coordinator.animate(alongsideTransition: { _ in animations() })
-        } else if presented.isBeingPresented {
-            backdrop.strength = 0
+        backdrop.strength = 0
+        if let coordinator = presented.transitionCoordinator, coordinator.isAnimated,
+           coordinator.animate(alongsideTransition: { _ in animations() }) {
+            return
+        }
+        if presented.isBeingPresented {
             UIView.animate(
                 withDuration: SheetHeroMotion.openDuration,
                 delay: 0,
                 options: [.curveEaseOut, .beginFromCurrentState],
                 animations: animations
             )
+        } else {
+            animations()
         }
     }
 
@@ -205,8 +261,12 @@ final class SheetScrimGuardView: UIView {
         if let presented = presentingViewController()?.presentedViewController {
             SheetPresentationScrim.suppressSystemDimming(for: presented)
             installBackdrop(for: presented)
+            if presented.isBeingDismissed {
+                fadeBackdropOut(with: presented)
+            }
         }
-        if CACurrentMediaTime() >= hideUntil {
+        let presented = presentingViewController()?.presentedViewController
+        if presented == nil, CACurrentMediaTime() >= hideUntil {
             stopHideLink()
         }
     }
@@ -219,6 +279,7 @@ final class SheetScrimGuardView: UIView {
     deinit {
         presentedObservation?.invalidate()
         hideLink?.invalidate()
+        lifecycleHook?.onWillDisappear = nil
     }
 }
 

@@ -201,15 +201,8 @@ struct MovieDetailHeaderLayout: View {
                 SplitHeaderLayout(movie: movie, parameters: parameters)
             case .posterFocus:
                 PosterFocusHeaderLayout(movie: movie, parameters: parameters)
-            case .cinematic:
+            case .cinematic, .cinematicWithTransition:
                 CinematicHeaderLayout(movie: movie, parameters: parameters)
-            case .cinematicWithTransition:
-                CinematicHeaderLayout(
-                    movie: movie,
-                    parameters: parameters,
-                    enablePosterTransition: true,
-                    transitionSource: transitionSource
-                )
             }
         }
         .frame(maxWidth: .infinity)
@@ -237,7 +230,11 @@ struct ClassicHeaderLayout: View {
             if let backdropPath = movie.backdropPath, !backdropPath.isEmpty {
                 let backdropURL = backdropPath.hasPrefix("http") ? backdropPath : MovieDataService.shared.getBackdropURL(path: backdropPath) ?? backdropPath
                 if let url = URL(string: backdropURL), url.scheme != nil {
-                    CachedAsyncImage(url: url) { image in
+                    CachedAsyncImage(
+                        url: url,
+                        fadeInOnLoad: false,
+                        initialBlurRadius: 0
+                    ) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -252,22 +249,15 @@ struct ClassicHeaderLayout: View {
                     .ignoresSafeArea(edges: .top)
                 }
             } else if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                if let url = URL(string: posterURL), url.scheme != nil {
-                    CachedAsyncImage(url: url) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle()
-                            .fill(DesignSystem.Color.surface)
-                            .overlay(ProgressView())
-                    }
-                    .frame(width: viewportWidth, height: parameters.classicPosterHeight)
-                    .clipped()
-                    .padding(.top, -60)
-                    .ignoresSafeArea(edges: .top)
+                MovieHeroPoster(path: posterPath) {
+                    Rectangle()
+                        .fill(DesignSystem.Color.surface)
+                        .overlay(ProgressView())
                 }
+                .frame(width: viewportWidth, height: parameters.classicPosterHeight)
+                .clipped()
+                .padding(.top, -60)
+                .ignoresSafeArea(edges: .top)
             }
         }
         .frame(height: headerHeight)
@@ -286,7 +276,11 @@ struct CompactHeaderLayout: View {
             if let backdropPath = movie.backdropPath, !backdropPath.isEmpty {
                 let backdropURL = backdropPath.hasPrefix("http") ? backdropPath : MovieDataService.shared.getBackdropURL(path: backdropPath) ?? backdropPath
                 if let url = URL(string: backdropURL), url.scheme != nil {
-                    CachedAsyncImage(url: url) { image in
+                    CachedAsyncImage(
+                        url: url,
+                        fadeInOnLoad: false,
+                        initialBlurRadius: 0
+                    ) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -306,19 +300,12 @@ struct CompactHeaderLayout: View {
             // Poster on left
             HStack(alignment: .top, spacing: DesignSystem.Spacing.lg) {
                 if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                    let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                    if let url = URL(string: posterURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle().fill(DesignSystem.Color.surface)
-                        }
-                        .frame(width: parameters.compactPosterWidth, height: parameters.compactPosterHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
-                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                    MovieHeroPoster(path: posterPath) {
+                        Rectangle().fill(DesignSystem.Color.surface)
                     }
+                    .frame(width: parameters.compactPosterWidth, height: parameters.compactPosterHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 
                 Spacer()
@@ -340,25 +327,22 @@ struct SplitHeaderLayout: View {
             HStack(spacing: 0) {
                 // Poster on left
                 if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                    let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                    if let url = URL(string: posterURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle().fill(DesignSystem.Color.surface)
-                        }
-                        .frame(width: parameters.splitPosterWidth)
-                        .clipped()
+                    MovieHeroPoster(path: posterPath) {
+                        Rectangle().fill(DesignSystem.Color.surface)
                     }
+                    .frame(width: parameters.splitPosterWidth)
+                    .clipped()
                 }
                 
                 // Backdrop on right
                 if let backdropPath = movie.backdropPath, !backdropPath.isEmpty {
                     let backdropURL = backdropPath.hasPrefix("http") ? backdropPath : MovieDataService.shared.getBackdropURL(path: backdropPath) ?? backdropPath
                     if let url = URL(string: backdropURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
+                        CachedAsyncImage(
+                            url: url,
+                            fadeInOnLoad: false,
+                            initialBlurRadius: 0
+                        ) { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -388,38 +372,31 @@ struct PosterFocusHeaderLayout: View {
         if parameters.posterFocusFullBleed {
             VStack(spacing: 0) {
                 if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                    let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                    if let url = URL(string: posterURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                        } placeholder: {
-                            Rectangle()
-                                .fill(DesignSystem.Color.surface)
-                                .overlay(ProgressView())
-                                .aspectRatio(2.0 / 3.0, contentMode: .fit)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .overlay(alignment: .bottom) {
-                            if parameters.posterFocusFadePercentage > 0 {
-                                GeometryReader { proxy in
-                                    let fadeHeight = proxy.size.height * CGFloat(parameters.posterFocusFadePercentage / 100)
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.clear,
-                                            DesignSystem.Color.background
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                    .frame(height: fadeHeight)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                                }
+                    MovieHeroPoster(path: posterPath, contentMode: .fit) {
+                        Rectangle()
+                            .fill(DesignSystem.Color.surface)
+                            .overlay(ProgressView())
+                            .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .bottom) {
+                        if parameters.posterFocusFadePercentage > 0 {
+                            GeometryReader { proxy in
+                                let fadeHeight = proxy.size.height * CGFloat(parameters.posterFocusFadePercentage / 100)
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.clear,
+                                        DesignSystem.Color.background
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .frame(height: fadeHeight)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                             }
                         }
-                        .ignoresSafeArea(edges: .top)
                     }
+                    .ignoresSafeArea(edges: .top)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -427,23 +404,16 @@ struct PosterFocusHeaderLayout: View {
         } else {
             VStack(spacing: 0) {
                 if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                    let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                    if let url = URL(string: posterURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle()
-                                .fill(DesignSystem.Color.surface)
-                                .overlay(ProgressView())
-                        }
-                        .frame(width: parameters.posterFocusWidth, height: parameters.posterFocusHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
-                        .shadow(color: .black.opacity(0.4), radius: parameters.posterFocusShadowRadius, x: 0, y: 10)
-                        .padding(.top, DesignSystem.Spacing.xl)
-                        .padding(.bottom, DesignSystem.Spacing.lg)
+                    MovieHeroPoster(path: posterPath) {
+                        Rectangle()
+                            .fill(DesignSystem.Color.surface)
+                            .overlay(ProgressView())
                     }
+                    .frame(width: parameters.posterFocusWidth, height: parameters.posterFocusHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg))
+                    .shadow(color: .black.opacity(0.4), radius: parameters.posterFocusShadowRadius, x: 0, y: 10)
+                    .padding(.top, DesignSystem.Spacing.xl)
+                    .padding(.bottom, DesignSystem.Spacing.lg)
                 }
             }
             .frame(height: parameters.posterFocusHeight)
@@ -458,9 +428,6 @@ struct PosterFocusHeaderLayout: View {
 struct CinematicHeaderLayout: View {
     let movie: Movie
     let parameters: MovieDetailLayoutParameters
-    var enablePosterTransition: Bool = false
-    var transitionSource: MovieDetailTransitionSource = .unknown
-    @State private var hasCompletedTransition = false
     
     private var posterWidth: CGFloat {
         140 * parameters.cinematicPosterScale
@@ -483,7 +450,11 @@ struct CinematicHeaderLayout: View {
                 if let backdropPath = movie.backdropPath, !backdropPath.isEmpty {
                     let backdropURL = backdropPath.hasPrefix("http") ? backdropPath : MovieDataService.shared.getBackdropURL(path: backdropPath) ?? backdropPath
                     if let url = URL(string: backdropURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
+                        CachedAsyncImage(
+                            url: url,
+                            fadeInOnLoad: false,
+                            initialBlurRadius: 0
+                        ) { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -510,32 +481,12 @@ struct CinematicHeaderLayout: View {
                 
                 // Floating poster card
                 if let posterPath = movie.posterPath, !posterPath.isEmpty {
-                    let posterURL = posterPath.hasPrefix("http") ? posterPath : MovieDataService.shared.getLargePosterURL(path: posterPath) ?? posterPath
-                    if let url = URL(string: posterURL), url.scheme != nil {
-                        CachedAsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Rectangle().fill(DesignSystem.Color.surface)
-                        }
-                        .frame(width: posterWidth, height: posterHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
-                        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-                        .scaleEffect(currentPosterScale)
-                        .opacity(currentPosterOpacity)
-                        .offset(
-                            x: currentPosterOffset.width,
-                            y: posterVerticalOffset + currentPosterOffset.height
-                        )
-                        .onAppear {
-                            guard enablePosterTransition else { return }
-                            hasCompletedTransition = false
-                            withAnimation(.spring(response: 0.48, dampingFraction: 0.84, blendDuration: 0.12)) {
-                                hasCompletedTransition = true
-                            }
-                        }
+                    MovieHeroPoster(path: posterPath) {
+                        Rectangle().fill(DesignSystem.Color.surface)
                     }
+                    .frame(width: posterWidth, height: posterHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                    .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
                 }
             }
             .frame(width: viewportWidth, height: parameters.cinematicBackdropHeight + posterVerticalOffset)
@@ -545,20 +496,5 @@ struct CinematicHeaderLayout: View {
         .clipped()
         .padding(.top, -20)
         .ignoresSafeArea(edges: .top)
-    }
-
-    private var currentPosterOffset: CGSize {
-        guard enablePosterTransition, !hasCompletedTransition else { return .zero }
-        return transitionSource.initialPosterOffset
-    }
-
-    private var currentPosterScale: CGFloat {
-        guard enablePosterTransition, !hasCompletedTransition else { return 1.0 }
-        return transitionSource.initialPosterScale
-    }
-
-    private var currentPosterOpacity: Double {
-        guard enablePosterTransition, !hasCompletedTransition else { return 1.0 }
-        return 0.72
     }
 }

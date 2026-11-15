@@ -47,7 +47,6 @@ struct EpisodeRowView: View {
                     .frame(width: 60, height: 60)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-                    .sheetHeroSource(id: SheetHeroID.episode(episode.id))
 
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         EpisodeRowTitle(episode: episode)
@@ -73,6 +72,7 @@ struct EpisodeRowView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .sheetHeroSource(id: SheetHeroID.episode(episode.id))
 
             EpisodeRowPlayButton(episode: episode, podcast: podcast)
 

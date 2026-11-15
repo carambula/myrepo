@@ -871,10 +871,6 @@ private struct SearchResultRow: View {
                     }
                     .frame(width: 50, height: 74)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
-                    .sheetHeroSource(
-                        id: SheetHeroID.movie(movie.id),
-                        cornerRadius: DesignSystem.CornerRadius.sm
-                    )
                 } else {
                     Rectangle()
                         .fill(DesignSystem.Color.surface)
@@ -920,6 +916,10 @@ private struct SearchResultRow: View {
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
         }
         .buttonStyle(.plain)
+        .sheetHeroSource(
+            id: SheetHeroID.movie(movie.id),
+            cornerRadius: DesignSystem.CornerRadius.sm
+        )
     }
 
     private var primaryMetadataLine: String {

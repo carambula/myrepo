@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -5,11 +6,9 @@ import UIKit
 
 /// Shared motion for zooming a sheet out of a matching key image.
 public enum SheetHeroMotion {
-    /// Open zoom and scrim fade-in.
+    /// Open zoom, close zoom, and scrim fade — one shared duration so
+    /// stacked layers, the flying image, and shade move together.
     public static let openDuration: TimeInterval = 0.42
-    /// After the flying image lands, fade it out so the real thumbnail
-    /// (and anything on top of it) can appear through it.
-    public static let overlayFadeDuration: TimeInterval = 0.16
 }
 
 /// Stable ids for a source image and the sheet it opens. The two must match.
@@ -27,6 +26,7 @@ public enum SheetHeroID {
 public enum SheetHeroGeometry {
     private static var frames: [String: CGRect] = [:]
     private static var radii: [String: CGFloat] = [:]
+    private static var namespaceStack: [Namespace.ID] = []
 
     public static func update(id: String, frame: CGRect, cornerRadius: CGFloat) {
         guard frame.width > 1, frame.height > 1 else { return }
@@ -41,6 +41,53 @@ public enum SheetHeroGeometry {
     public static func cornerRadius(for id: String) -> CGFloat {
         radii[id] ?? MinCornerRadius.artTile
     }
+
+    static var currentNamespace: Namespace.ID? {
+        namespaceStack.last
+    }
+
+    /// Keep the live container namespace on top even before `onAppear`.
+    static func activate(_ namespace: Namespace.ID) {
+        if namespaceStack.last == namespace { return }
+        if let index = namespaceStack.lastIndex(of: namespace) {
+            namespaceStack.remove(at: index)
+        }
+        namespaceStack.append(namespace)
+    }
+
+    static func pushNamespace(_ namespace: Namespace.ID) {
+        activate(namespace)
+    }
+
+    static func popNamespace(_ namespace: Namespace.ID) {
+        if let index = namespaceStack.lastIndex(of: namespace) {
+            namespaceStack.remove(at: index)
+        }
+    }
+}
+
+/// Hides the real tile while its matching sheet is the flying object so the
+/// morph is one picture, not a copy over a still-visible thumbnail.
+@MainActor
+@Observable
+final class SheetHeroSession {
+    static let shared = SheetHeroSession()
+
+    private(set) var coveredIDs: Set<String> = []
+
+    func cover(_ id: String?) {
+        guard let id, !id.isEmpty else { return }
+        coveredIDs.insert(id)
+    }
+
+    func uncover(_ id: String?) {
+        guard let id else { return }
+        coveredIDs.remove(id)
+    }
+
+    func isCovered(_ id: String) -> Bool {
+        coveredIDs.contains(id)
+    }
 }
 
 private struct SheetHeroNamespaceKey: EnvironmentKey {
@@ -52,7 +99,10 @@ private struct SheetHeroPresentedIDKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var sheetHeroNamespace: Namespace.ID? {
+    /// Shared zoom namespace for a source image and the sheet it opens.
+    /// Presented sheet content should re-apply this; SwiftUI does not always
+    /// carry custom environment values across `.sheet` / `.fullScreenCover`.
+    public var sheetHeroNamespace: Namespace.ID? {
         get { self[SheetHeroNamespaceKey.self] }
         set { self[SheetHeroNamespaceKey.self] = newValue }
     }
@@ -67,8 +117,11 @@ private struct SheetHeroContainerModifier: ViewModifier {
     @Namespace private var namespace
 
     func body(content: Content) -> some View {
-        content
+        SheetHeroGeometry.activate(namespace)
+        return content
             .environment(\.sheetHeroNamespace, namespace)
+            .onAppear { SheetHeroGeometry.pushNamespace(namespace) }
+            .onDisappear { SheetHeroGeometry.popNamespace(namespace) }
             #if os(iOS)
             .background(
                 SheetScrimGuard()
@@ -80,48 +133,49 @@ private struct SheetHeroContainerModifier: ViewModifier {
 }
 
 private struct SheetHeroSourceModifier: ViewModifier {
-    @Environment(\.sheetHeroNamespace) private var namespace
+    @Environment(\.sheetHeroNamespace) private var environmentNamespace
     let id: String
     let cornerRadius: CGFloat
 
+    private var namespace: Namespace.ID? {
+        environmentNamespace ?? SheetHeroGeometry.currentNamespace
+    }
+
     func body(content: Content) -> some View {
-        let sourced = content.background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        SheetHeroGeometry.update(
-                            id: id,
-                            frame: proxy.frame(in: .global),
-                            cornerRadius: cornerRadius
-                        )
-                    }
-                    .onChange(of: proxy.frame(in: .global)) { _, frame in
-                        SheetHeroGeometry.update(
-                            id: id,
-                            frame: frame,
-                            cornerRadius: cornerRadius
-                        )
-                    }
+        let sourced = content
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear {
+                            SheetHeroGeometry.update(
+                                id: id,
+                                frame: proxy.frame(in: .global),
+                                cornerRadius: cornerRadius
+                            )
+                        }
+                        .onChange(of: proxy.frame(in: .global)) { _, frame in
+                            SheetHeroGeometry.update(
+                                id: id,
+                                frame: frame,
+                                cornerRadius: cornerRadius
+                            )
+                        }
+                }
             }
-        }
+            .modifier(SheetHeroCoverOpacity(id: id))
+
         #if os(iOS)
         if let namespace {
             if #available(iOS 18.0, *) {
-                // `matchedTransitionSource` hides its view for the morph. Keep a
-                // persistent copy on top so the real thumbnail (and badges on
-                // it) stay visible under the flying snapshot.
-                sourced
-                    .matchedTransitionSource(id: id, in: namespace) { source in
-                        source.clipShape(
+                // Keep matchedTransitionSource outermost so the system zoom
+                // can snapshot the tile. Cover opacity sits inside it.
+                sourced.matchedTransitionSource(id: id, in: namespace) { source in
+                    source
+                        .background(.background)
+                        .clipShape(
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         )
-                    }
-                    .overlay {
-                        content
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                            .id("sheet-hero-persistent-\(id)")
-                    }
+                }
             } else {
                 sourced
             }
@@ -134,28 +188,69 @@ private struct SheetHeroSourceModifier: ViewModifier {
     }
 }
 
-private struct SheetHeroDestinationModifier: ViewModifier {
-    @Environment(\.sheetHeroNamespace) private var namespace
+private struct SheetHeroCoverOpacity: ViewModifier {
     let id: String
+    var session = SheetHeroSession.shared
 
     func body(content: Content) -> some View {
-        let tagged = content.environment(\.sheetHeroPresentedID, id)
+        content
+            .opacity(session.isCovered(id) ? 0 : 1)
+            .transaction { $0.animation = nil }
+    }
+}
+
+private struct SheetHeroDestinationModifier: ViewModifier {
+    @Environment(\.sheetHeroNamespace) private var environmentNamespace
+    let id: String
+
+    private var namespace: Namespace.ID? {
+        environmentNamespace ?? SheetHeroGeometry.currentNamespace
+    }
+
+    func body(content: Content) -> some View {
+        let tagged = content
+            .environment(\.sheetHeroPresentedID, id)
+            .environment(\.sheetHeroNamespace, namespace)
         #if os(iOS)
-        // Paint the transition host so the zoom snapshot cannot fall
-        // through to the system black presentation layer.
-        let painted = tagged.background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        if let namespace {
-            if #available(iOS 18.0, *) {
-                painted.navigationTransition(.zoom(sourceID: id, in: namespace))
-            } else {
-                painted
+        applyZoom(
+            tagged
+                .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        )
+        .onAppear {
+            // After the system has snapshotted the source for the open zoom.
+            DispatchQueue.main.async {
+                SheetHeroSession.shared.cover(id)
             }
-        } else {
-            painted
+        }
+        .onDisappear {
+            SheetHeroSession.shared.uncover(id)
         }
         #else
         tagged
         #endif
+    }
+
+    @ViewBuilder
+    private func applyZoom<V: View>(_ view: V) -> some View {
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            if let namespace {
+                view.navigationTransition(.zoom(sourceID: id, in: namespace))
+            } else {
+                view
+            }
+        } else {
+            view
+        }
+        #else
+        view
+        #endif
+    }
+}
+
+private struct SheetHeroPresentedModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content.environment(\.sheetHeroNamespace, SheetHeroGeometry.currentNamespace)
     }
 }
 
@@ -164,6 +259,13 @@ extension View {
     /// can morph as one persistent picture.
     public func sheetHeroContainer() -> some View {
         modifier(SheetHeroContainerModifier())
+    }
+
+    /// Re-applies the presenting container's zoom namespace onto presented
+    /// sheet or full-screen cover content. SwiftUI often does not carry the
+    /// presenting environment across the presentation boundary.
+    public func sheetHeroPresented() -> some View {
+        modifier(SheetHeroPresentedModifier())
     }
 
     /// Marks a key image as the origin of a sheet. Pair with

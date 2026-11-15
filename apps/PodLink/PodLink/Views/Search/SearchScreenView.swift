@@ -269,6 +269,7 @@ struct SearchScreenView: View {
                 urlLookupError = "Discover search is unavailable while offline."
             }
         }
+        .sheetHeroContainer()
         .bottomSheetPullToDismiss()
         .sheet(item: $selectedPodcast) { podcast in
             PodcastDetailView(podcast: podcast)
@@ -287,6 +288,7 @@ struct SearchScreenView: View {
                 .environment(downloadManager)
                 .environment(networkStatusService)
                 .sheetHeroPresented()
+                .sheetHeroDestination(id: SheetHeroID.episode(result.episode.id))
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showPrivateFeedSheet) {

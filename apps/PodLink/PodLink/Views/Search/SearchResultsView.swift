@@ -16,51 +16,53 @@ struct SearchResultsView: View {
         LazyVStack(spacing: DesignSystem.Spacing.sm) {
             ForEach(results) { podcast in
                     HStack(spacing: DesignSystem.Spacing.md) {
-                        Button {
-                            onSelectPodcast(podcast)
-                        } label: {
-                            HStack(spacing: DesignSystem.Spacing.md) {
-                                AsyncCachedImage(url: podcast.displayArtworkURL) { image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                } placeholder: {
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
-                                        .fill(Color(.tertiarySystemFill))
-                                        .overlay {
-                                            Image(systemName: "mic.fill")
-                                                .foregroundStyle(.secondary)
-                                        }
-                                }
-                                .frame(width: 60, height: 60)
-                                .clipped()
-                                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                                    Text(podcast.title)
-                                        .font(DesignSystem.Typography.headlineSmall())
-                                        .foregroundColor(DesignSystem.Colors.textPrimary)
-                                        .lineLimit(1)
-
-                                    Text(podcast.author)
-                                        .font(DesignSystem.Typography.bodySmall())
-                                        .foregroundColor(DesignSystem.Colors.textSecondary)
-                                        .lineLimit(1)
-
-                                    if !podcast.categories.isEmpty {
-                                        Text(podcast.categories.joined(separator: "   "))
-                                            .font(DesignSystem.Typography.caption())
-                                            .foregroundColor(themeManager.currentTheme.accentColor)
-                                            .lineLimit(1)
+                        HStack(spacing: DesignSystem.Spacing.md) {
+                            AsyncCachedImage(url: podcast.displayArtworkURL) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } placeholder: {
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
+                                    .fill(Color(.tertiarySystemFill))
+                                    .overlay {
+                                        Image(systemName: "mic.fill")
+                                            .foregroundStyle(.secondary)
                                     }
-                                }
-
-                                Spacer(minLength: 0)
-
                             }
+                            .frame(width: 60, height: 60)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                            .sheetHeroSource(
+                                id: SheetHeroID.podcast(podcast.id),
+                                cornerRadius: DesignSystem.CornerRadius.artTile
+                            )
+
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                                Text(podcast.title)
+                                    .font(DesignSystem.Typography.headlineSmall())
+                                    .foregroundColor(DesignSystem.Colors.textPrimary)
+                                    .lineLimit(1)
+
+                                Text(podcast.author)
+                                    .font(DesignSystem.Typography.bodySmall())
+                                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                                    .lineLimit(1)
+
+                                if !podcast.categories.isEmpty {
+                                    Text(podcast.categories.joined(separator: "   "))
+                                        .font(DesignSystem.Typography.caption())
+                                        .foregroundColor(themeManager.currentTheme.accentColor)
+                                        .lineLimit(1)
+                                }
+                            }
+
+                            Spacer(minLength: 0)
                         }
-                        .buttonStyle(.plain)
-                        .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSelectPodcast(podcast)
+                        }
+                        .accessibilityAddTraits(.isButton)
 
                         Button {
                             onToggleFollow(podcast)

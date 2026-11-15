@@ -34,45 +34,47 @@ struct EpisodeRowView: View {
 
     private var rowContent: some View {
         HStack(spacing: DesignSystem.Spacing.md) {
-            Button(action: onTap) {
-                HStack(spacing: DesignSystem.Spacing.md) {
-                    AsyncCachedImage(url: episode.artworkURL ?? podcast.displayArtworkURL) { image in
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
-                            .fill(Color(.tertiarySystemFill))
-                    }
-                    .frame(width: 60, height: 60)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+            HStack(spacing: DesignSystem.Spacing.md) {
+                AsyncCachedImage(url: episode.artworkURL ?? podcast.displayArtworkURL) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile)
+                        .fill(Color(.tertiarySystemFill))
+                }
+                .frame(width: 60, height: 60)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                .sheetHeroSource(
+                    id: SheetHeroID.episode(episode.id),
+                    cornerRadius: DesignSystem.CornerRadius.artTile
+                )
 
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                        EpisodeRowTitle(episode: episode)
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    EpisodeRowTitle(episode: episode)
 
-                        HStack(spacing: DesignSystem.Spacing.sm) {
-                            Text(episode.publishDate, style: .date)
-                                .font(DesignSystem.Typography.captionMedium())
-                                .foregroundColor(DesignSystem.Colors.textSecondary)
+                    HStack(spacing: DesignSystem.Spacing.sm) {
+                        Text(episode.publishDate, style: .date)
+                            .font(DesignSystem.Typography.captionMedium())
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
 
-                            EpisodeRowDurationMeta(episode: episode)
+                        EpisodeRowDurationMeta(episode: episode)
 
-                            if episode.hasVideo {
-                                Image(systemName: "video.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(themeManager.currentTheme.accentColor)
-                            }
+                        if episode.hasVideo {
+                            Image(systemName: "video.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(themeManager.currentTheme.accentColor)
                         }
                     }
-
-                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, DesignSystem.Spacing.sm)
-                .contentShape(Rectangle())
+
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .sheetHeroSource(id: SheetHeroID.episode(episode.id))
+            .padding(.vertical, DesignSystem.Spacing.sm)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onTap)
+            .accessibilityAddTraits(.isButton)
 
             EpisodeRowPlayButton(episode: episode, podcast: podcast)
 

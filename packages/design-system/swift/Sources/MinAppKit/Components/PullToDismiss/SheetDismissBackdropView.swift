@@ -9,7 +9,7 @@ final class SheetDismissBackdropView: UIView {
     /// underlying chrome clearly recedes.
     static let restDimAlpha: CGFloat = MinOpacity.sheetDimRest
 
-    var strength: CGFloat = 1 {
+    var strength: CGFloat = 0 {
         didSet {
             let clamped = min(1, max(0, strength))
             alpha = Self.restDimAlpha * clamped
@@ -18,11 +18,14 @@ final class SheetDismissBackdropView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        isUserInteractionEnabled = false
+        // Swallow taps so `largestUndimmedDetentIdentifier` does not let
+        // the presenting view receive hits through the fade plate.
+        isUserInteractionEnabled = true
         isAccessibilityElement = false
         backgroundColor = .black
         autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        alpha = Self.restDimAlpha
+        alpha = 0
+        strength = 0
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) {

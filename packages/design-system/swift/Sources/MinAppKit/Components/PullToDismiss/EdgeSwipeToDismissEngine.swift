@@ -57,6 +57,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             fatalError("init(coder:) has not been implemented")
         }
 
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            coordinator?.notePossibleDismissal()
+        }
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
             coordinator?.attachIfNeeded()
@@ -104,6 +109,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private var gestureBeganOnEdge = false
         private var crossedDismissThreshold = false
         private var isDismissing = false
+        private var didRevealBackdrop = false
+        private var didFadeBackdropOut = false
+        private var lifecycleHook: SheetPresentationLifecycleHook?
         private var haptic: UIImpactFeedbackGenerator?
 
         init(
@@ -123,6 +131,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard let resolved = SheetPresentationViews.resolve(from: probeView) else { return }
             if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
                 ensureBackdrop()
+                installLifecycleHook()
                 return
             }
 
@@ -143,12 +152,14 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             cachedScrollViews = Self.scrollViews(in: resolved.sheet)
             disableCompetingPans()
             ensureBackdrop()
+            installLifecycleHook()
         }
 
         func detach() {
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
-            removeBackdrop(restoreSystemDimming: !isDismissing)
+            removeBackdrop(restoreSystemDimming: false)
+            removeLifecycleHook()
             reenableScrollPans()
             reenableCompetingPans()
             if followActivation != nil, !isDismissing {
@@ -165,6 +176,20 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             followOrigin = .zero
             gestureBeganOnEdge = false
             cachedScrollViews = []
+            if !isDismissing {
+                didRevealBackdrop = false
+                didFadeBackdropOut = false
+            }
+        }
+
+        private func presentedController() -> UIViewController? {
+            if let sheetView {
+                return SheetPresentationScrim.presentedViewController(from: sheetView)
+            }
+            if let probeView {
+                return SheetPresentationScrim.presentedViewController(from: probeView)
+            }
+            return nil
         }
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
@@ -462,15 +487,18 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func ensureBackdrop() {
             guard configuration.usesDimBackdrop else { return }
             guard let container = containerView else { return }
+            suppressSystemDimming()
+            if let existing = container.subviews.compactMap({ $0 as? SheetDismissBackdropView }).first {
+                backdropView = existing
+                revealBackdropIfNeeded()
+                return
+            }
             if let backdropView, backdropView.superview === container {
-                lastBackdropStrength = 1
-                backdropView.strength = 1
-                hideSystemDimming()
+                revealBackdropIfNeeded()
                 return
             }
             backdropView?.removeFromSuperview()
             let backdrop = SheetDismissBackdropView(frame: container.bounds)
-            backdrop.strength = 1
             // Stay in the presentation container under the sheet card — never
             // overlay the presenting view (that made the layer below look like
             // it was floating and hurt scroll/drag performance).
@@ -482,7 +510,17 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 container.insertSubview(backdrop, at: 0)
             }
             backdropView = backdrop
-            lastBackdropStrength = 1
+            lastBackdropStrength = 0
+            revealBackdropIfNeeded()
+        }
+
+        private func suppressSystemDimming() {
+            if let presented = presentedController() {
+                SheetPresentationScrim.suppressSystemDimming(for: presented)
+            }
+            if let container = containerView {
+                SheetPresentationScrim.hideSystemSheetDimming(in: container)
+            }
             hideSystemDimming()
         }
 
@@ -494,6 +532,97 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             }
             dimmingView.alpha = 0
             dimmingView.isHidden = true
+        }
+
+        private func revealBackdropIfNeeded() {
+            guard configuration.usesDimBackdrop, let backdropView else { return }
+            suppressSystemDimming()
+            if backdropView.strength > 0.01 {
+                didRevealBackdrop = true
+                lastBackdropStrength = backdropView.strength
+                return
+            }
+            guard !didRevealBackdrop else { return }
+            didRevealBackdrop = true
+            let presented = presentedController()
+            let coordinator = presented?.transitionCoordinator
+            let animateIn = presented?.isBeingPresented == true || coordinator?.isAnimated == true
+            if animateIn {
+                backdropView.strength = 0
+                lastBackdropStrength = 0
+                let animations = {
+                    backdropView.strength = 1
+                    self.lastBackdropStrength = 1
+                }
+                if let coordinator, coordinator.isAnimated {
+                    coordinator.animate(alongsideTransition: { _ in animations() })
+                } else {
+                    UIView.animate(
+                        withDuration: SheetHeroMotion.openDuration,
+                        delay: 0,
+                        options: [.curveEaseOut, .beginFromCurrentState],
+                        animations: animations
+                    )
+                }
+            } else {
+                backdropView.strength = 1
+                lastBackdropStrength = 1
+            }
+        }
+
+        func notePossibleDismissal() {
+            if presentedController()?.isBeingDismissed == true {
+                fadeBackdropOutIfNeeded(animated: true)
+            }
+        }
+
+        private func fadeBackdropOutIfNeeded(animated: Bool) {
+            guard !didFadeBackdropOut else { return }
+            didFadeBackdropOut = true
+            suppressSystemDimming()
+            let animations = {
+                self.backdropView?.strength = 0
+                self.lastBackdropStrength = 0
+                self.dimmingView?.alpha = 0
+            }
+            let presented = presentedController()
+            if animated, let coordinator = presented?.transitionCoordinator, coordinator.isAnimated {
+                coordinator.animate(alongsideTransition: { _ in animations() })
+            } else if animated {
+                UIView.animate(
+                    withDuration: SheetHeroMotion.openDuration,
+                    delay: 0,
+                    options: [.curveEaseOut, .beginFromCurrentState],
+                    animations: animations
+                )
+            } else {
+                animations()
+            }
+        }
+
+        private func installLifecycleHook() {
+            guard lifecycleHook == nil else { return }
+            guard let presented = presentedController() else { return }
+            let hook = SheetPresentationLifecycleHook()
+            hook.onWillDisappear = { [weak self] animated in
+                self?.fadeBackdropOutIfNeeded(animated: animated)
+            }
+            presented.addChild(hook)
+            hook.view.isHidden = true
+            hook.view.frame = .zero
+            hook.view.isUserInteractionEnabled = false
+            presented.view.insertSubview(hook.view, at: 0)
+            hook.didMove(toParent: presented)
+            lifecycleHook = hook
+        }
+
+        private func removeLifecycleHook() {
+            guard let hook = lifecycleHook else { return }
+            hook.onWillDisappear = nil
+            hook.willMove(toParent: nil)
+            hook.view.removeFromSuperview()
+            hook.removeFromParent()
+            lifecycleHook = nil
         }
 
         private func removeBackdrop(restoreSystemDimming: Bool) {
@@ -792,6 +921,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         /// like it is flying back into its thumbnail.
         private func flingToHero(sourceInWindow: CGRect, radius: CGFloat, velocity: CGSize) {
             isDismissing = true
+            didFadeBackdropOut = true
             startProxyIfNeeded()
             guard let proxy = dragView ?? movingView,
                   let sheetView,
@@ -857,14 +987,23 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
                 self.applyBackdropStrength(0)
             } completion: { _ in
-                self.stopFollowDisplayLink()
-                self.finishDismiss(sheet: sheetView)
+                UIView.animate(
+                    withDuration: SheetHeroMotion.overlayFadeDuration,
+                    delay: 0,
+                    options: [.curveEaseOut, .beginFromCurrentState]
+                ) {
+                    clip.alpha = 0
+                } completion: { _ in
+                    self.stopFollowDisplayLink()
+                    self.finishDismiss(sheet: sheetView)
+                }
             }
         }
 
         private func flingOffscreen(from translation: CGSize, velocity: CGSize) {
             guard let moving = movingView, let sheetView, !isDismissing else { return }
             isDismissing = true
+            didFadeBackdropOut = true
             let fly = EdgeSwipeToDismiss.dismissTranslation(
                 translation,
                 sheetSize: sheetView.bounds.size,

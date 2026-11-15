@@ -3,8 +3,24 @@
  * that image back into its thumbnail. Mirrors MinAppKit SheetHeroTransition.
  */
 
+export const heroOpenDuration = 0.42;
+export const heroOverlayFadeDuration = 0.16;
+
 export function sheetHeroID(kind, id) {
   return `${kind}:${id}`;
+}
+
+/** Move the flying sheet, then fade it so the thumbnail can show through. */
+export function heroDismissTiming({
+  from,
+  to,
+  speed,
+  minDuration = 0.18,
+  maxDuration = 0.42,
+  fadeDuration = heroOverlayFadeDuration,
+} = {}) {
+  const move = heroReturnDuration({ from, to, speed, minDuration, maxDuration });
+  return { move, fade: fadeDuration, total: move + fadeDuration };
 }
 
 export function heroReturnScale(currentWidth, sourceWidth) {

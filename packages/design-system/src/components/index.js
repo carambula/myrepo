@@ -50,7 +50,10 @@ export {
   visualTranslation,
 } from './edgeSwipeToDismiss.js';
 export {
+  heroDismissTiming,
+  heroOpenDuration,
   heroOpenTransform,
+  heroOverlayFadeDuration,
   heroReturnDuration,
   heroReturnScale,
   sheetHeroID,

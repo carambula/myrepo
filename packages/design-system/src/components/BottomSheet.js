@@ -21,7 +21,7 @@
  * </BottomSheet>
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import './BottomSheet.css';
 import {
   dismissTranslation,
@@ -39,7 +39,13 @@ import {
   velocityFromSamples,
   visualTranslation,
 } from './edgeSwipeToDismiss.js';
-import { heroOpenTransform, heroReturnDuration, heroReturnScale } from './sheetHero.js';
+import {
+  heroOpenDuration,
+  heroOpenTransform,
+  heroOverlayFadeDuration,
+  heroReturnDuration,
+  heroReturnScale,
+} from './sheetHero.js';
 
 export function BottomSheet({
   isOpen = false,
@@ -263,19 +269,24 @@ export function BottomSheet({
         });
         const scale = heroReturnScale(rect.width, heroSourceRect.width);
         const ms = Math.max(1, Math.round(duration * 1000));
+        const fadeMs = Math.max(1, Math.round(heroOverlayFadeDuration * 1000));
+        const ease = 'cubic-bezier(0.16, 1, 0.3, 1)';
         sheet.style.transformOrigin = 'top left';
-        sheet.style.transition = `transform ${ms}ms cubic-bezier(0.16, 1, 0.3, 1), border-radius ${ms}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${ms}ms`;
+        sheet.style.transition = `transform ${ms}ms ${ease}, border-radius ${ms}ms ${ease}`;
         sheet.style.transform = `translate(${heroSourceRect.x - rect.left}px, ${heroSourceRect.y - rect.top}px) scale(${scale})`;
         sheet.style.borderRadius = `${heroSourceRect.radius ?? 8}px`;
-        sheet.style.opacity = '0';
         if (backdropRef.current) {
-          backdropRef.current.style.transition = `opacity ${ms}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+          backdropRef.current.style.transition = `opacity ${ms}ms ${ease}`;
           backdropRef.current.style.opacity = '0';
         }
         window.setTimeout(() => {
-          isDismissingRef.current = false;
-          resetSheetStyles();
-          onClose?.();
+          sheet.style.transition = `opacity ${fadeMs}ms ${ease}`;
+          sheet.style.opacity = '0';
+          window.setTimeout(() => {
+            isDismissingRef.current = false;
+            resetSheetStyles();
+            onClose?.();
+          }, fadeMs);
         }, ms);
         return;
       }
@@ -353,7 +364,7 @@ export function BottomSheet({
     };
   }, [isOpen, enableDrag, enableEdgeSwipe]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) {
       pendingRef.current = false;
       isDraggingRef.current = false;
@@ -372,15 +383,25 @@ export function BottomSheet({
       width: rect.width,
       height: rect.height,
     });
+    const ms = Math.max(1, Math.round(heroOpenDuration * 1000));
+    const ease = `${ms}ms cubic-bezier(0.32, 0.72, 0, 1)`;
     sheet.style.transformOrigin = 'top left';
     sheet.style.transition = 'none';
     sheet.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
     sheet.style.borderRadius = `${heroSourceRect.radius ?? 8}px`;
+    const backdrop = backdropRef.current;
+    if (backdrop) {
+      backdrop.style.transition = 'none';
+      backdrop.style.opacity = '0';
+    }
     const frame = requestAnimationFrame(() => {
-      sheet.style.transition =
-        'transform 420ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 420ms cubic-bezier(0.32, 0.72, 0, 1)';
+      sheet.style.transition = `transform ${ease}, border-radius ${ease}`;
       sheet.style.transform = '';
       sheet.style.borderRadius = '';
+      if (backdrop) {
+        backdrop.style.transition = `opacity ${ease}`;
+        backdrop.style.opacity = '1';
+      }
     });
     return () => cancelAnimationFrame(frame);
   }, [isOpen, heroSourceRect]);

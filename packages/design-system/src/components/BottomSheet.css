@@ -23,8 +23,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+              background-color 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Backdrop states based on detent size */

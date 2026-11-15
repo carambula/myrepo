@@ -96,6 +96,7 @@ struct PodLinkApp: App {
                     MiniPlayerOverlaySceneAnchor(
                         themeManager: themeManager,
                         playbackService: playbackService,
+                        downloadManager: downloadManager,
                         networkStatusService: networkStatusService,
                         miniPlayerFloatSnapAtTop: miniPlayerFloatSnapAtTop,
                         isMicroplayerMode: isMicroplayerMode

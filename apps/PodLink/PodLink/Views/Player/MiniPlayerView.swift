@@ -188,7 +188,7 @@ struct MiniPlayerView: View {
                                 .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                                 .sheetHeroSource(
-                                    id: SheetHeroID.episode(episode.id),
+                                    id: SheetHeroID.miniPlayer(episode.id),
                                     cornerRadius: DesignSystem.CornerRadius.md
                                 )
 
@@ -299,7 +299,7 @@ struct MiniPlayerView: View {
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                     .sheetHeroSource(
-                        id: SheetHeroID.episode(episode.id),
+                        id: SheetHeroID.miniPlayer(episode.id),
                         cornerRadius: DesignSystem.CornerRadius.md
                     )
 
@@ -390,7 +390,7 @@ struct MiniPlayerView: View {
                             .clipped()
                             .clipShape(artClipShape)
                             .sheetHeroSource(
-                                id: SheetHeroID.episode(episode.id),
+                                id: SheetHeroID.miniPlayer(episode.id),
                                 cornerRadius: isSquare ? DesignSystem.CornerRadius.md : DesignSystem.CornerRadius.round
                             )
                         }
@@ -868,7 +868,7 @@ struct MiniPlayerView: View {
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
         .sheetHeroSource(
-            id: SheetHeroID.episode(episode.id),
+            id: SheetHeroID.miniPlayer(episode.id),
             cornerRadius: DesignSystem.CornerRadius.md
         )
     }
@@ -886,12 +886,12 @@ struct MainScreenDockedMiniPlayerSlot: View {
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
 
+    /// Keep mounted while the player sheet is up so zoom can return to this thumb.
     private var shouldShow: Bool {
         hasCompletedOnboarding
             && miniPlayerDockMode == MiniPlayerDockMode.docked.rawValue
             && miniPlayerSize != MiniPlayerSize.microplayer.rawValue
             && playbackService.state.currentEpisode != nil
-            && !playbackService.isEpisodePlayerUIVisible
     }
 
     var body: some View {
@@ -905,6 +905,8 @@ struct MainScreenDockedMiniPlayerSlot: View {
                 .environment(playbackService)
                 .environment(networkStatusService)
                 .frame(maxWidth: .infinity)
+                .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
+                .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                 .transition(.offset(y: -UIScreen.main.bounds.height))
             }
         }

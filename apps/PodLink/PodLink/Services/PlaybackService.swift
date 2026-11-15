@@ -46,6 +46,10 @@ class PlaybackService {
     /// Drives the app-level now-playing `EpisodePlayerSheet` (over the main stack or over another root sheet).
     var isNowPlayingSheetPresented = false
 
+    /// Set when now-playing (e.g. from the floating overlay window) asks to open a show;
+    /// `ContentView` consumes this into `rootSheet`.
+    var pendingPodcastPresentation: Podcast?
+
     /// Nested `onAppear` / `onDisappear` from every `EpisodePlayerSheet`; hides the mini player while > 0.
     private(set) var episodePlayerUIPresentationDepth = 0
 

@@ -107,6 +107,11 @@ struct PodcastRowView: View {
                             .accessibilityLabel("Unplayed latest episode")
                     }
                 }
+                .sheetHeroSource(
+                    id: latestEpisode.map { SheetHeroID.episode($0.id) }
+                        ?? SheetHeroID.podcast(podcast.id),
+                    cornerRadius: DesignSystem.CornerRadius.artTile
+                )
 
                 if showTitles {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
@@ -148,10 +153,6 @@ struct PodcastRowView: View {
             .tapInteraction(style: tapStyle) {
                 onRowTap()
             }
-            .sheetHeroSource(
-                id: latestEpisode.map { SheetHeroID.episode($0.id) }
-                    ?? SheetHeroID.podcast(podcast.id)
-            )
 
             PodcastRowPlayButton(podcast: podcast, latestEpisode: latestEpisode)
         }

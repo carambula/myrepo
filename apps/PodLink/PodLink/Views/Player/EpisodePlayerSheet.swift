@@ -302,9 +302,7 @@ struct EpisodePlayerSheet: View {
                     onImageSizeChange: { size in
                         let next = PlayerArtworkAspect.clamped(size: size)
                         guard abs(next - artworkAspectRatio) > 0.01 else { return }
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            artworkAspectRatio = next
-                        }
+                        artworkAspectRatio = next
                     }
                 ) { image in
                     image

@@ -7,7 +7,6 @@ struct PodcastRowView: View {
     var showTitles: Bool = true
     var artEmphasis: MainScreenArtEmphasis = .standard
     var badgeMode: NewEpisodeBadgeMode = .notStartedLatest
-    var tapStyle: TapInteractionStyle = .bounce
     var onRowTap: () -> Void = {}
 
     @Environment(ThemeManager.self) private var themeManager
@@ -150,9 +149,7 @@ struct PodcastRowView: View {
                 }
             }
             .contentShape(Rectangle())
-            .tapInteraction(style: tapStyle) {
-                onRowTap()
-            }
+            .onTapGesture(perform: onRowTap)
 
             PodcastRowPlayButton(podcast: podcast, latestEpisode: latestEpisode)
         }

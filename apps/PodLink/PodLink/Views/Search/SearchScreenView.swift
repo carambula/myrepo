@@ -269,9 +269,8 @@ struct SearchScreenView: View {
                 urlLookupError = "Discover search is unavailable while offline."
             }
         }
-        .sheetHeroContainer()
         .bottomSheetPullToDismiss()
-        .sheet(item: $selectedPodcast) { podcast in
+        .sheetFromHero(item: $selectedPodcast) { podcast in
             PodcastDetailView(podcast: podcast)
                 .environment(themeManager)
                 .environment(playbackService)
@@ -281,7 +280,7 @@ struct SearchScreenView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(item: $selectedEpisodeResult) { result in
+        .sheetFromHero(item: $selectedEpisodeResult) { result in
             EpisodePlayerSheet(episode: result.episode, fallbackPodcast: result.podcast)
                 .environment(themeManager)
                 .environment(playbackService)
@@ -316,6 +315,7 @@ struct SearchScreenView: View {
             .bottomSheetPullToDismiss()
             .sheetPullToDismissScrollBottomInset(playbackService: playbackService)
         }
+        .sheetHeroContainer()
     }
 
     private var libraryFilters: LibrarySearchFilters {

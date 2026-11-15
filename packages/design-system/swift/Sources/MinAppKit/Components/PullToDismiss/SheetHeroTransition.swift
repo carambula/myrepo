@@ -46,12 +46,11 @@ public enum SheetHeroGeometry {
         namespaceStack.last
     }
 
-    /// Keep the live container namespace on top even before `onAppear`.
+    /// Register a container namespace. A parent that is already on the stack
+    /// stays put so its body refreshes cannot steal the top from a nested
+    /// search or show sheet that is currently presenting.
     static func activate(_ namespace: Namespace.ID) {
-        if namespaceStack.last == namespace { return }
-        if let index = namespaceStack.lastIndex(of: namespace) {
-            namespaceStack.remove(at: index)
-        }
+        if namespaceStack.contains(where: { $0 == namespace }) { return }
         namespaceStack.append(namespace)
     }
 
@@ -249,8 +248,31 @@ private struct SheetHeroDestinationModifier: ViewModifier {
 }
 
 private struct SheetHeroPresentedModifier: ViewModifier {
+    @Environment(\.sheetHeroNamespace) private var environmentNamespace
+
     func body(content: Content) -> some View {
-        content.environment(\.sheetHeroNamespace, SheetHeroGeometry.currentNamespace)
+        content.environment(
+            \.sheetHeroNamespace,
+            environmentNamespace ?? SheetHeroGeometry.currentNamespace
+        )
+    }
+}
+
+/// Captures the presenting view's zoom namespace and injects it into sheet
+/// content. SwiftUI does not carry that environment across `.sheet`, and the
+/// global stack is wrong when a parent container re-renders.
+private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
+    @Environment(\.sheetHeroNamespace) private var namespace
+    @Binding var item: Item?
+    var onDismiss: (() -> Void)?
+    @ViewBuilder var sheetContent: (Item) -> SheetContent
+
+    func body(content: Content) -> some View {
+        let captured = namespace ?? SheetHeroGeometry.currentNamespace
+        content.sheet(item: $item, onDismiss: onDismiss) { value in
+            sheetContent(value)
+                .environment(\.sheetHeroNamespace, captured)
+        }
     }
 }
 
@@ -266,6 +288,22 @@ extension View {
     /// presenting environment across the presentation boundary.
     public func sheetHeroPresented() -> some View {
         modifier(SheetHeroPresentedModifier())
+    }
+
+    /// Presents a sheet and forwards this view's zoom namespace into it so a
+    /// nested search or show sheet still morphs from its own artwork.
+    public func sheetFromHero<Item: Identifiable, SheetContent: View>(
+        item: Binding<Item?>,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> SheetContent
+    ) -> some View {
+        modifier(
+            SheetFromHeroModifier(
+                item: item,
+                onDismiss: onDismiss,
+                sheetContent: content
+            )
+        )
     }
 
     /// Marks a key image as the origin of a sheet. Pair with

@@ -38,6 +38,7 @@ struct ContentView: View {
     }
 
     @State private var rootSheet: ContentRootSheet?
+    @State private var selectedLatestEpisode: LatestEpisodeSelection?
     @State private var autoQueueRefreshTask: Task<Void, Never>?
     @State private var isSearchSheetPresented = false
     @State private var deepLinkEpisodeHint: PodLinkEpisodeHint?
@@ -97,6 +98,7 @@ struct ContentView: View {
             get: {
                 playbackService.isNowPlayingSheetPresented
                     && rootSheet == nil
+                    && selectedLatestEpisode == nil
                     && !isSearchSheetPresented
                     && playbackService.state.currentEpisode != nil
             },
@@ -126,7 +128,10 @@ struct ContentView: View {
                 NavigationStack {
                     VStack(spacing: 0) {
                         MainScreenDockedMiniPlayerSlot()
-                        PodcastListView(rootSheet: $rootSheet)
+                        PodcastListView(
+                            rootSheet: $rootSheet,
+                            selectedLatestEpisode: $selectedLatestEpisode
+                        )
                     }
                     .overlay(alignment: .bottomLeading) {
                         containedTopControlButton(
@@ -164,6 +169,18 @@ struct ContentView: View {
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
             }
+        }
+        .sheetFromHero(item: $selectedLatestEpisode) { selection in
+            EpisodePlayerSheet(
+                episode: selection.episode,
+                fallbackPodcast: selection.podcast
+            )
+            .environment(themeManager)
+            .environment(playbackService)
+            .environment(downloadManager)
+            .sheetHeroPresented()
+            .sheetHeroDestination(id: SheetHeroID.episode(selection.episode.id))
+            .presentationDragIndicator(.visible)
         }
         .sheetHeroContainer()
         .task(id: hasCompletedOnboarding) {
@@ -218,18 +235,19 @@ struct ContentView: View {
                 nowPlayingSheetContent
             }
         }
-        .sheet(isPresented: $isSearchSheetPresented) {
+        .fullScreenCover(isPresented: $isSearchSheetPresented) {
             SearchScreenView(focusOnOpen: true)
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
                 .environment(networkStatusService)
                 .sheetHeroPresented()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .sheet(isPresented: nowPlayingOverRootModal) {
-                    nowPlayingSheetContent
-                }
+        }
+        .onChange(of: rootSheet) { _, newValue in
+            if case .search = newValue {
+                rootSheet = nil
+                isSearchSheetPresented = true
+            }
         }
         .onOpenURL { url in
             Task { await handleIncomingDeepLink(url) }

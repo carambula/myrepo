@@ -8,7 +8,7 @@ public struct AnyInsettableShape: InsettableShape {
     private let _inset: (CGFloat) -> AnyInsettableShape
 
     public init<S: InsettableShape>(_ shape: S) {
-        _path = { rect in It's a strange I was going to ask you what animal this was. Hi. One sec, honey. Mama. How are you? You just had send a quick text Hey, Claire, we were just out, right? Ew. Is this new? Oh my goodness. So cute. It does have a cat on it. It's like a cat. That's so cute though. Oh wait. There you are. Yeah.Toes. Yeah. Yeah. This is an accident or is it? Destiny. Quinn. Oh my god. Quinn! Let's go. Yeah. Yeah, um, they haven't written back. Hey, we're heading out team. Papa. Awesome. Donut. Super cool. No. Awesome. I don't know. I don't think they're even in school. Peace out. Girl Scout. What? How crazy does this look? shape.path(in: rect) }
+        _path = { rect in shape.path(in: rect) }
         _inset = { amount in AnyInsettableShape(shape.inset(by: amount)) }
     }
 

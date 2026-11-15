@@ -1,4 +1,16 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+
+/// Shared motion for zooming a sheet out of a matching key image.
+public enum SheetHeroMotion {
+    /// Open zoom and scrim fade-in.
+    public static let openDuration: TimeInterval = 0.42
+    /// After the flying image lands, fade it out so the real thumbnail
+    /// (and anything on top of it) can appear through it.
+    public static let overlayFadeDuration: TimeInterval = 0.16
+}
 
 /// Stable ids for a source image and the sheet it opens. The two must match.
 public enum SheetHeroID {
@@ -55,7 +67,15 @@ private struct SheetHeroContainerModifier: ViewModifier {
     @Namespace private var namespace
 
     func body(content: Content) -> some View {
-        content.environment(\.sheetHeroNamespace, namespace)
+        content
+            .environment(\.sheetHeroNamespace, namespace)
+            #if os(iOS)
+            .background(
+                SheetScrimGuard()
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            )
+            #endif
     }
 }
 
@@ -87,7 +107,21 @@ private struct SheetHeroSourceModifier: ViewModifier {
         #if os(iOS)
         if let namespace {
             if #available(iOS 18.0, *) {
-                sourced.matchedTransitionSource(id: id, in: namespace)
+                // `matchedTransitionSource` hides its view for the morph. Keep a
+                // persistent copy on top so the real thumbnail (and badges on
+                // it) stay visible under the flying snapshot.
+                sourced
+                    .matchedTransitionSource(id: id, in: namespace) { source in
+                        source.clipShape(
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        )
+                    }
+                    .overlay {
+                        content
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .id("sheet-hero-persistent-\(id)")
+                    }
             } else {
                 sourced
             }
@@ -107,14 +141,17 @@ private struct SheetHeroDestinationModifier: ViewModifier {
     func body(content: Content) -> some View {
         let tagged = content.environment(\.sheetHeroPresentedID, id)
         #if os(iOS)
+        // Paint the transition host so the zoom snapshot cannot fall
+        // through to the system black presentation layer.
+        let painted = tagged.background(Color(uiColor: .systemBackground).ignoresSafeArea())
         if let namespace {
             if #available(iOS 18.0, *) {
-                tagged.navigationTransition(.zoom(sourceID: id, in: namespace))
+                painted.navigationTransition(.zoom(sourceID: id, in: namespace))
             } else {
-                tagged
+                painted
             }
         } else {
-            tagged
+            painted
         }
         #else
         tagged

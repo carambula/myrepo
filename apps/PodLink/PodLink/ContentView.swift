@@ -92,11 +92,19 @@ struct ContentView: View {
 
     private var topControlSize: CGFloat { MinSpacing.TopControls.buttonSize }
 
+    /// Docked mini lives in this window; floating/microplayer now-playing is
+    /// presented from `MiniPlayerOverlayRoot` so zoom shares that window.
+    private var ownsDockedNowPlayingPresentation: Bool {
+        miniPlayerDockMode == MiniPlayerDockMode.docked.rawValue
+            && miniPlayerSize != MiniPlayerSize.microplayer.rawValue
+    }
+
     /// Now-playing sheet over the main `NavigationStack` (no podcast/search/account sheet open).
     private var nowPlayingOverNavigationStack: Binding<Bool> {
         Binding(
             get: {
-                playbackService.isNowPlayingSheetPresented
+                ownsDockedNowPlayingPresentation
+                    && playbackService.isNowPlayingSheetPresented
                     && rootSheet == nil
                     && selectedLatestEpisode == nil
                     && !isSearchSheetPresented
@@ -163,7 +171,7 @@ struct ContentView: View {
                     }
                 }
                 .themeBackground()
-                .sheet(isPresented: nowPlayingOverNavigationStack) {
+                .sheetFromHero(isPresented: nowPlayingOverNavigationStack) {
                     nowPlayingSheetContent
                 }
             } else {
@@ -248,6 +256,11 @@ struct ContentView: View {
                 rootSheet = nil
                 isSearchSheetPresented = true
             }
+        }
+        .onChange(of: playbackService.pendingPodcastPresentation?.id) { _, _ in
+            guard let podcast = playbackService.pendingPodcastPresentation else { return }
+            playbackService.pendingPodcastPresentation = nil
+            rootSheet = .podcast(podcast)
         }
         .onOpenURL { url in
             Task { await handleIncomingDeepLink(url) }
@@ -478,7 +491,8 @@ struct ContentView: View {
                 onOpenPodcast: { podcast in
                     playbackService.isNowPlayingSheetPresented = false
                     rootSheet = .podcast(podcast)
-                }
+                },
+                sheetHeroSourceID: SheetHeroID.miniPlayer(episode.id)
             )
                 .environment(themeManager)
                 .environment(playbackService)

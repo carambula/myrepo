@@ -15,6 +15,9 @@ public enum SheetHeroMotion {
 public enum SheetHeroID {
     public static func podcast(_ id: String) -> String { "podcast:\(id)" }
     public static func episode(_ id: String) -> String { "episode:\(id)" }
+    /// Mini-player artwork ↔ now-playing sheet. Distinct from `episode` so
+    /// list/grid thumbs of the same episode are never the zoom source or cover target.
+    public static func miniPlayer(_ id: String) -> String { "miniPlayer:\(id)" }
     public static func movie(_ id: String) -> String { "movie:\(id)" }
     public static func video(_ id: String) -> String { "video:\(id)" }
     public static func channel(_ id: String) -> String { "channel:\(id)" }
@@ -490,6 +493,24 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
     }
 }
 
+private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier {
+    @Environment(\.sheetHeroNamespace) private var namespace
+    @Environment(\.sheetHeroAllowsZoom) private var allowsZoom
+    @Binding var isPresented: Bool
+    var onDismiss: (() -> Void)?
+    @ViewBuilder var sheetContent: () -> SheetContent
+
+    func body(content: Content) -> some View {
+        let captured = namespace ?? SheetHeroGeometry.currentNamespace
+        let capturedAllowsZoom = allowsZoom && !SheetHeroGeometry.isInsidePresentedSheet
+        content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
+            sheetContent()
+                .environment(\.sheetHeroNamespace, captured)
+                .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
+        }
+    }
+}
+
 extension View {
     /// Installs a shared zoom namespace so source images and presented sheets
     /// can morph as one persistent picture.
@@ -514,6 +535,21 @@ extension View {
         modifier(
             SheetFromHeroModifier(
                 item: item,
+                onDismiss: onDismiss,
+                sheetContent: content
+            )
+        )
+    }
+
+    /// Bool-presented variant of `sheetFromHero(item:)` — same namespace forwarding.
+    public func sheetFromHero<SheetContent: View>(
+        isPresented: Binding<Bool>,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> SheetContent
+    ) -> some View {
+        modifier(
+            SheetFromHeroPresentedModifier(
+                isPresented: isPresented,
                 onDismiss: onDismiss,
                 sheetContent: content
             )

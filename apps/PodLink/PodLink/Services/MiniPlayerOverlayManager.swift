@@ -6,19 +6,40 @@ import UIKit
 private struct MiniPlayerOverlayRoot: View {
     @Bindable var themeManager: ThemeManager
     @Bindable var playbackService: PlaybackService
+    @Bindable var downloadManager: DownloadManager
     @Bindable var networkStatusService: NetworkStatusService
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
 
-    /// Floating mini player only; docked mode is laid out inside the main `NavigationStack`.
-    private var showMiniPlayer: Bool {
+    /// Floating / microplayer chrome ownership for this overlay window.
+    private var ownsFloatingMini: Bool {
         hasCompletedOnboarding
             && (miniPlayerDockMode != MiniPlayerDockMode.docked.rawValue
                 || miniPlayerSize == MiniPlayerSize.microplayer.rawValue)
+    }
+
+    /// Keep the mini mounted while now-playing is up so zoom can return here.
+    /// Hide visually (and from hit-testing) so it does not sit above the player.
+    private var showMiniPlayer: Bool {
+        ownsFloatingMini
             && playbackService.state.currentEpisode != nil
-            && !playbackService.isEpisodePlayerUIVisible
             && !playbackService.isSearchUIVisible
+    }
+
+    /// Present now-playing from this window so the mini thumb and player share
+    /// one zoom namespace (floating mini is not in the main `ContentView` window).
+    private var presentNowPlayingFromOverlay: Binding<Bool> {
+        Binding(
+            get: {
+                ownsFloatingMini
+                    && playbackService.isNowPlayingSheetPresented
+                    && playbackService.state.currentEpisode != nil
+            },
+            set: { presented in
+                if !presented { playbackService.isNowPlayingSheetPresented = false }
+            }
+        )
     }
 
     var body: some View {
@@ -29,6 +50,8 @@ private struct MiniPlayerOverlayRoot: View {
                     .environment(playbackService)
                     .environment(networkStatusService)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
+                    .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                     .transition(.offset(y: UIScreen.main.bounds.height))
             }
         }
@@ -36,6 +59,24 @@ private struct MiniPlayerOverlayRoot: View {
         .animation(.spring(response: 0.35), value: playbackService.isEpisodePlayerUIVisible)
         .animation(.spring(response: 0.35), value: playbackService.isSearchUIVisible)
         .animation(.spring(response: 0.35), value: miniPlayerDockMode)
+        .sheetFromHero(isPresented: presentNowPlayingFromOverlay) {
+            if let episode = playbackService.state.currentEpisode {
+                EpisodePlayerSheet(
+                    episode: episode,
+                    onOpenPodcast: { podcast in
+                        playbackService.isNowPlayingSheetPresented = false
+                        playbackService.pendingPodcastPresentation = podcast
+                    },
+                    sheetHeroSourceID: SheetHeroID.miniPlayer(episode.id)
+                )
+                .environment(themeManager)
+                .environment(playbackService)
+                .environment(downloadManager)
+                .environment(networkStatusService)
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .sheetHeroContainer()
     }
 }
 
@@ -47,7 +88,6 @@ private final class MiniPlayerOverlayWindow: UIWindow {
     override init(windowScene: UIWindowScene) {
         super.init(windowScene: windowScene)
         backgroundColor = .clear
-        windowLevel = UIWindow.Level(rawValue: UIWindow.Level.alert.rawValue + 1)
     }
 
     @available(*, unavailable)
@@ -56,6 +96,12 @@ private final class MiniPlayerOverlayWindow: UIWindow {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // Now-playing (and any other modal) presented from this window must
+        // receive normal hits; the mini-only passthrough would eat the sheet.
+        if rootViewController?.presentedViewController != nil {
+            return super.hitTest(point, with: event)
+        }
+
         guard let root = rootViewController?.view,
               let host = miniPlayerHostView,
               host.superview != nil,
@@ -91,6 +137,7 @@ final class MiniPlayerOverlayManager {
         windowScene: UIWindowScene,
         themeManager: ThemeManager,
         playbackService: PlaybackService,
+        downloadManager: DownloadManager,
         networkStatusService: NetworkStatusService,
         miniPlayerFloatSnapAtTop: Bool,
         isMicroplayerMode: Bool
@@ -98,6 +145,7 @@ final class MiniPlayerOverlayManager {
         let root = MiniPlayerOverlayRoot(
             themeManager: themeManager,
             playbackService: playbackService,
+            downloadManager: downloadManager,
             networkStatusService: networkStatusService
         )
 
@@ -199,6 +247,7 @@ final class MiniPlayerOverlayManager {
 struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
     var themeManager: ThemeManager
     var playbackService: PlaybackService
+    var downloadManager: DownloadManager
     var networkStatusService: NetworkStatusService
     /// Drives overlay strip pin (UIKit); must mirror `miniPlayerFloatVerticalSnap` AppStorage.
     var miniPlayerFloatSnapAtTop: Bool
@@ -208,6 +257,7 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
         Coordinator(
             themeManager: themeManager,
             playbackService: playbackService,
+            downloadManager: downloadManager,
             networkStatusService: networkStatusService,
             miniPlayerFloatSnapAtTop: miniPlayerFloatSnapAtTop,
             isMicroplayerMode: isMicroplayerMode
@@ -224,6 +274,7 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
     func updateUIView(_ uiView: SceneAnchorView, context: Context) {
         context.coordinator.themeManager = themeManager
         context.coordinator.playbackService = playbackService
+        context.coordinator.downloadManager = downloadManager
         context.coordinator.networkStatusService = networkStatusService
         context.coordinator.miniPlayerFloatSnapAtTop = miniPlayerFloatSnapAtTop
         context.coordinator.isMicroplayerMode = isMicroplayerMode
@@ -233,6 +284,7 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
     final class Coordinator {
         var themeManager: ThemeManager
         var playbackService: PlaybackService
+        var downloadManager: DownloadManager
         var networkStatusService: NetworkStatusService
         var miniPlayerFloatSnapAtTop: Bool
         var isMicroplayerMode: Bool
@@ -240,12 +292,14 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
         init(
             themeManager: ThemeManager,
             playbackService: PlaybackService,
+            downloadManager: DownloadManager,
             networkStatusService: NetworkStatusService,
             miniPlayerFloatSnapAtTop: Bool,
             isMicroplayerMode: Bool
         ) {
             self.themeManager = themeManager
             self.playbackService = playbackService
+            self.downloadManager = downloadManager
             self.networkStatusService = networkStatusService
             self.miniPlayerFloatSnapAtTop = miniPlayerFloatSnapAtTop
             self.isMicroplayerMode = isMicroplayerMode
@@ -264,6 +318,7 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
                 windowScene: scene,
                 themeManager: themeManager,
                 playbackService: playbackService,
+                downloadManager: downloadManager,
                 networkStatusService: networkStatusService,
                 miniPlayerFloatSnapAtTop: miniPlayerFloatSnapAtTop,
                 isMicroplayerMode: isMicroplayerMode

@@ -2647,7 +2647,6 @@ struct MovieListView: View {
             }
             .frame(width: inspirationPosterWidth, height: inspirationPosterHeight)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
             .overlay(alignment: .bottomLeading) {
                 if !badgeSourceIds.isEmpty {
                     podcastArtworkBadgeStack(for: badgeSourceIds)
@@ -2655,6 +2654,7 @@ struct MovieListView: View {
                         .padding(.bottom, podcastBadgeInset)
                 }
             }
+            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
         } else {
             Rectangle()
                 .fill(DesignSystem.Color.surface)
@@ -4674,6 +4674,10 @@ struct MovieRowView: View {
                     }
                     .frame(width: 50, height: 74)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                    .sheetHeroSource(
+                        id: SheetHeroID.movie(movie.id),
+                        cornerRadius: DesignSystem.CornerRadius.sm
+                    )
                 } else {
                     Rectangle()
                         .fill(DesignSystem.Color.surface)

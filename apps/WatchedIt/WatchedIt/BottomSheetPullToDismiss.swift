@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MinAppKit
 
 #if os(iOS)
 import UIKit
@@ -53,17 +54,25 @@ struct MovieDetailPresentationModifier<SheetContent: View>: ViewModifier {
     let onDismiss: () -> Void
     let content: (Movie) -> SheetContent
 
+    private static func heroID(for movie: Movie) -> String? {
+        movie.posterPath == nil ? nil : SheetHeroID.movie(movie.id)
+    }
+
     func body(content base: Content) -> some View {
         switch style {
         case .default:
             base.sheet(item: $selectedMovie, onDismiss: onDismiss) { movie in
                 self.content(movie)
+                    .sheetHeroPresented()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+                    .sheetHeroDestination(id: Self.heroID(for: movie))
             }
         case .fullBleed:
             base.fullScreenCover(item: $selectedMovie, onDismiss: onDismiss) { movie in
                 self.content(movie)
+                    .sheetHeroPresented()
+                    .sheetHeroDestination(id: Self.heroID(for: movie))
             }
         }
     }

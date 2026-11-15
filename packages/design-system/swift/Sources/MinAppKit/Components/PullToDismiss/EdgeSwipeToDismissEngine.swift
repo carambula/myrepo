@@ -987,15 +987,19 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
                 self.applyBackdropStrength(0)
             } completion: { _ in
-                UIView.animate(
-                    withDuration: SheetHeroMotion.overlayFadeDuration,
-                    delay: 0,
-                    options: [.curveEaseOut, .beginFromCurrentState]
-                ) {
-                    clip.alpha = 0
-                } completion: { _ in
-                    self.stopFollowDisplayLink()
-                    self.finishDismiss(sheet: sheetView)
+                SheetHeroReveal.shared.reveal(self.heroID)
+                DispatchQueue.main.async {
+                    UIView.animate(
+                        withDuration: SheetHeroMotion.overlayFadeDuration,
+                        delay: 0,
+                        options: [.curveEaseOut, .beginFromCurrentState]
+                    ) {
+                        clip.alpha = 0
+                    } completion: { _ in
+                        self.stopFollowDisplayLink()
+                        self.finishDismiss(sheet: sheetView)
+                        SheetHeroReveal.shared.reset(self.heroID)
+                    }
                 }
             }
         }

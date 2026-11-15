@@ -152,6 +152,7 @@ struct RootContentView: View {
                         selectedVideoForDetail = nil
                     }
                 )
+                .sheetHeroPresented()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
@@ -168,6 +169,7 @@ struct RootContentView: View {
                         selectedVideoForPlayer = video
                     }
                 )
+                .sheetHeroPresented()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }

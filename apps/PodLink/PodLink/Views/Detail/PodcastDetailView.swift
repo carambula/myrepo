@@ -185,6 +185,7 @@ struct PodcastDetailView: View {
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
+                .sheetHeroPresented()
                 .presentationDragIndicator(.visible)
         }
         .sheet(item: $episodeForTranscript) { episode in

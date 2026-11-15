@@ -257,6 +257,7 @@ struct PodcastListView: View {
             .environment(themeManager)
             .environment(playbackService)
             .environment(downloadManager)
+            .sheetHeroPresented()
             .presentationDragIndicator(.visible)
         }
     }

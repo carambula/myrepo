@@ -22,6 +22,12 @@ import {
   resistOffset,
   visualTranslation,
 } from './edgeSwipeToDismiss.js';
+import {
+  heroOpenTransform,
+  heroReturnDuration,
+  heroReturnScale,
+  sheetHeroID,
+} from './sheetHero.js';
 
 const sheet = { width: 390, height: 700 };
 
@@ -210,6 +216,42 @@ describe('clamped fling', () => {
     assert.ok(fast >= edgeSwipeToDismissDefaults.minFlingDuration);
     assert.ok(fast <= edgeSwipeToDismissDefaults.maxFlingDuration);
     assert.ok(fast <= slow);
+  });
+});
+
+describe('sheet hero zoom', () => {
+  it('builds stable ids and scales the sheet onto the source image', () => {
+    assert.equal(sheetHeroID('podcast', 'abc'), 'podcast:abc');
+    assert.equal(heroReturnScale(390, 160), 160 / 390);
+    assert.equal(heroReturnScale(0, 160), 1);
+  });
+
+  it('flings back faster when the remaining distance is short', () => {
+    const far = heroReturnDuration({
+      from: { x: 0, y: 0, width: 390, height: 700 },
+      to: { x: 24, y: 200, width: 160, height: 160 },
+      speed: 400,
+      minDuration: 0.05,
+      maxDuration: 2,
+    });
+    const near = heroReturnDuration({
+      from: { x: 20, y: 190, width: 170, height: 170 },
+      to: { x: 24, y: 200, width: 160, height: 160 },
+      speed: 400,
+      minDuration: 0.05,
+      maxDuration: 2,
+    });
+    assert.ok(near < far);
+  });
+
+  it('opens from the source rect toward the sheet frame', () => {
+    const transform = heroOpenTransform(
+      { x: 24, y: 120, width: 160, height: 160 },
+      { x: 0, y: 80, width: 390, height: 700 }
+    );
+    assert.equal(transform.x, 24);
+    assert.equal(transform.y, 40);
+    assert.equal(transform.scale, 160 / 390);
   });
 });
 

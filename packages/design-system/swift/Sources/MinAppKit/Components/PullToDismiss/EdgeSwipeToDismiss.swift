@@ -242,6 +242,25 @@ public enum EdgeSwipeToDismiss {
         return min(configuration.maxFlingDuration, max(configuration.minFlingDuration, duration))
     }
 
+    /// Uniform scale so a floating sheet's width lands on the source image.
+    public static func heroReturnScale(currentWidth: CGFloat, sourceWidth: CGFloat) -> CGFloat {
+        guard currentWidth > 1 else { return 1 }
+        return sourceWidth / currentWidth
+    }
+
+    /// Fling duration from the current card frame back to the source image.
+    public static func heroReturnDuration(
+        from: CGRect,
+        to: CGRect,
+        velocity: CGSize,
+        configuration: EdgeSwipeToDismissConfiguration = .default
+    ) -> TimeInterval {
+        let distance = hypot(to.midX - from.midX, to.midY - from.midY)
+        let speed = clampedFlingSpeed(velocity, configuration: configuration)
+        let duration = TimeInterval(distance / max(speed, 1))
+        return min(configuration.maxFlingDuration, max(configuration.minFlingDuration, duration))
+    }
+
     public static func transform(
         translation: CGSize,
         progress: CGFloat,

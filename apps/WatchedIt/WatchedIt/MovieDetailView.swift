@@ -1553,6 +1553,7 @@ struct MovieDetailView: View {
             await refreshLiveStreamingProviders()
         }
         .bottomSheetPullToDismiss()
+        .sheetHeroDestination(id: movie.posterPath == nil ? nil : SheetHeroID.movie(movie.id))
 //        .toolbar {
 //            ToolbarItem(placement: .navigationBarLeading) {
 //                Button("Done") {

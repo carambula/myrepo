@@ -756,6 +756,7 @@ struct PodcastListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+            .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
 
             if overlayBadgeOnArt, unplayed {
                 Circle()

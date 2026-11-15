@@ -35,6 +35,7 @@ struct SearchResultsView: View {
                                 .frame(width: 60, height: 60)
                                 .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                                .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
 
                                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                                     Text(podcast.title)

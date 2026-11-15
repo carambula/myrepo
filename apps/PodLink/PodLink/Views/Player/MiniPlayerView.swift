@@ -187,6 +187,10 @@ struct MiniPlayerView: View {
                                 .frame(width: 52, height: 52)
                                 .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                                .sheetHeroSource(
+                                    id: SheetHeroID.episode(episode.id),
+                                    cornerRadius: DesignSystem.CornerRadius.md
+                                )
 
                                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                                     Text(episode.title)
@@ -294,6 +298,10 @@ struct MiniPlayerView: View {
                     .frame(width: 44, height: 44)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+                    .sheetHeroSource(
+                        id: SheetHeroID.episode(episode.id),
+                        cornerRadius: DesignSystem.CornerRadius.md
+                    )
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(episode.title)
@@ -381,6 +389,10 @@ struct MiniPlayerView: View {
                             )
                             .clipped()
                             .clipShape(artClipShape)
+                            .sheetHeroSource(
+                                id: SheetHeroID.episode(episode.id),
+                                cornerRadius: isSquare ? DesignSystem.CornerRadius.md : DesignSystem.CornerRadius.round
+                            )
                         }
                         .frame(width: microplayerArtworkOuterSize, height: microplayerArtworkOuterSize)
                         .scaleEffect(artworkBufferThrob ? 0.85 : 1.0)
@@ -855,6 +867,10 @@ struct MiniPlayerView: View {
         .frame(width: size, height: size)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .sheetHeroSource(
+            id: SheetHeroID.episode(episode.id),
+            cornerRadius: DesignSystem.CornerRadius.md
+        )
     }
 }
 

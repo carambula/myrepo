@@ -2647,6 +2647,7 @@ struct MovieListView: View {
             }
             .frame(width: inspirationPosterWidth, height: inspirationPosterHeight)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
             .overlay(alignment: .bottomLeading) {
                 if !badgeSourceIds.isEmpty {
                     podcastArtworkBadgeStack(for: badgeSourceIds)
@@ -4166,6 +4167,7 @@ struct MovieListView: View {
     
     private var contentWithSheets: some View {
         baseContentView
+            .sheetHeroContainer()
             .sheet(isPresented: $showAccountSheet) {
                 AccountSheetView()
                     .presentationDragIndicator(.visible)

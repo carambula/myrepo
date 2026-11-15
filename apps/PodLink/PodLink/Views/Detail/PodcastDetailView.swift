@@ -166,6 +166,7 @@ struct PodcastDetailView: View {
         }
         .themeBackground()
         .bottomSheetEdgeSwipeToDismiss()
+        .sheetHeroDestination(id: SheetHeroID.podcast(podcast.id))
         .onChange(of: isSearchActive) { _, active in
             if active {
                 playbackService.pushSearchUISession()

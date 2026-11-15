@@ -75,6 +75,7 @@ struct VideoDetailView: View {
             }
         }
         .bottomSheetPullToDismiss()
+        .sheetHeroDestination(id: SheetHeroID.video(video.videoID))
         .onChange(of: scenePhase) {
             if scenePhase == .background, backgroundPlaybackBehavior == .pausePlayback {
                 pauseSignal += 1

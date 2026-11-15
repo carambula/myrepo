@@ -93,6 +93,10 @@ struct PodcastRowView: View {
                     .frame(width: listArtSize, height: listArtSize)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                    .sheetHeroSource(
+                        id: latestEpisode.map { SheetHeroID.episode($0.id) }
+                            ?? SheetHeroID.podcast(podcast.id)
+                    )
                     .overlay(alignment: .bottomLeading) {
                         if showPodcastInsetThumbnail {
                             podcastInsetThumbnail

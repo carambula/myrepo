@@ -17,12 +17,14 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
     let configuration: EdgeSwipeToDismissConfiguration
     let onDismiss: () -> Void
     let onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
+    var heroID: String?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             configuration: configuration,
             onDismiss: onDismiss,
-            onFollowingChange: onFollowingChange
+            onFollowingChange: onFollowingChange,
+            heroID: heroID
         )
     }
 
@@ -36,6 +38,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         context.coordinator.configuration = configuration
         context.coordinator.onDismiss = onDismiss
         context.coordinator.onFollowingChange = onFollowingChange
+        context.coordinator.heroID = heroID
         uiView.coordinator = context.coordinator
     }
 
@@ -77,6 +80,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         var configuration: EdgeSwipeToDismissConfiguration
         var onDismiss: () -> Void
         var onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
+        var heroID: String?
         weak var probeView: ProbeView?
 
         private weak var containerView: UIView?
@@ -105,11 +109,13 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         init(
             configuration: EdgeSwipeToDismissConfiguration,
             onDismiss: @escaping () -> Void,
-            onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void
+            onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void,
+            heroID: String?
         ) {
             self.configuration = configuration
             self.onDismiss = onDismiss
             self.onFollowingChange = onFollowingChange
+            self.heroID = heroID
         }
 
         func attachIfNeeded() {
@@ -767,6 +773,96 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         private func flingAway(from translation: CGSize, velocity: CGSize) {
+            guard movingView != nil, !isDismissing else { return }
+            if let heroID,
+               let source = SheetHeroGeometry.frame(for: heroID),
+               source.width > 2,
+               source.height > 2 {
+                flingToHero(
+                    sourceInWindow: source,
+                    radius: SheetHeroGeometry.cornerRadius(for: heroID),
+                    velocity: velocity
+                )
+                return
+            }
+            flingOffscreen(from: translation, velocity: velocity)
+        }
+
+        /// Shrink the floating card onto the source image so the key art looks
+        /// like it is flying back into its thumbnail.
+        private func flingToHero(sourceInWindow: CGRect, radius: CGFloat, velocity: CGSize) {
+            isDismissing = true
+            startProxyIfNeeded()
+            guard let proxy = dragView ?? movingView,
+                  let sheetView,
+                  let container = containerView ?? proxy.superview else {
+                isDismissing = false
+                flingOffscreen(from: lastTranslation, velocity: velocity)
+                return
+            }
+
+            let visual = proxy.convert(proxy.bounds, to: container)
+            let source = container.convert(sourceInWindow, from: nil)
+            let originalSize = proxy.bounds.size
+            guard visual.width > 2, source.width > 2, originalSize.width > 2 else {
+                isDismissing = false
+                flingOffscreen(from: lastTranslation, velocity: velocity)
+                return
+            }
+
+            let clip = UIView(frame: visual)
+            clip.isUserInteractionEnabled = false
+            clip.clipsToBounds = true
+            clip.layer.masksToBounds = true
+            clip.layer.cornerCurve = .continuous
+            clip.layer.cornerRadius = max(proxy.layer.cornerRadius, 1)
+            clip.layer.maskedCorners = [
+                .layerMinXMinYCorner, .layerMaxXMinYCorner,
+                .layerMinXMaxYCorner, .layerMaxXMaxYCorner
+            ]
+
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            proxy.layer.removeAllAnimations()
+            proxy.transform = .identity
+            proxy.removeFromSuperview()
+            proxy.layer.anchorPoint = CGPoint(x: 0, y: 0)
+            proxy.frame = CGRect(origin: .zero, size: originalSize)
+            let liveScale = visual.width / originalSize.width
+            proxy.transform = CGAffineTransform(scaleX: liveScale, y: liveScale)
+            clip.addSubview(proxy)
+            container.addSubview(clip)
+            container.bringSubviewToFront(clip)
+            dragView = clip
+            CATransaction.commit()
+
+            let scale = EdgeSwipeToDismiss.heroReturnScale(
+                currentWidth: originalSize.width,
+                sourceWidth: source.width
+            )
+            let duration = EdgeSwipeToDismiss.heroReturnDuration(
+                from: visual,
+                to: source,
+                velocity: velocity,
+                configuration: configuration
+            )
+
+            UIView.animate(
+                withDuration: duration,
+                delay: 0,
+                options: [.curveEaseOut, .beginFromCurrentState]
+            ) {
+                clip.frame = source
+                clip.layer.cornerRadius = radius
+                proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
+                self.applyBackdropStrength(0)
+            } completion: { _ in
+                self.stopFollowDisplayLink()
+                self.finishDismiss(sheet: sheetView)
+            }
+        }
+
+        private func flingOffscreen(from translation: CGSize, velocity: CGSize) {
             guard let moving = movingView, let sheetView, !isDismissing else { return }
             isDismissing = true
             let fly = EdgeSwipeToDismiss.dismissTranslation(
@@ -1006,6 +1102,7 @@ enum SheetPresentationViews {
 
 public struct EdgeSwipeToDismissModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.sheetHeroPresentedID) private var heroID
     public let configuration: EdgeSwipeToDismissConfiguration
     public let onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
 
@@ -1030,7 +1127,8 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
                             dismiss()
                         }
                     },
-                    onFollowingChange: onFollowingChange
+                    onFollowingChange: onFollowingChange,
+                    heroID: heroID
                 )
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)

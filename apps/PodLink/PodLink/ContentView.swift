@@ -165,6 +165,7 @@ struct ContentView: View {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
             }
         }
+        .sheetHeroContainer()
         .task(id: hasCompletedOnboarding) {
             guard hasCompletedOnboarding else { return }
             // Resume state has already been hydrated synchronously in `PlaybackService.init()`,

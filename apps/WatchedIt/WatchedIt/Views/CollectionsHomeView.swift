@@ -173,6 +173,7 @@ private struct CollectionsHomeContentView: View {
                 AccountSheetView()
                     .presentationDragIndicator(.visible)
             }
+            .sheetHeroContainer()
             .modifier(MovieDetailPresentationModifier(
                 selectedMovie: $selectedMovie,
                 style: bottomSheetStyle,
@@ -1033,6 +1034,7 @@ private struct CollectionMovieCard: View {
             }
             .frame(width: posterWidth, height: posterHeight)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
             .overlay(alignment: .bottomLeading) { badgeStack }
         } else {
             Rectangle()

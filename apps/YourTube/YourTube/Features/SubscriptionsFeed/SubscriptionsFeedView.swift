@@ -311,6 +311,7 @@ private struct VideoRowView: View {
                 }
                 .frame(width: 146, height: 82)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile, style: .continuous))
+                .sheetHeroSource(id: SheetHeroID.video(video.videoID))
 
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(video.title.decodedHTMLEntities)
@@ -366,6 +367,7 @@ private struct ChannelTileView: View {
             .contentShape(Rectangle())
             .aspectRatio(1, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile, style: .continuous))
+            .sheetHeroSource(id: SheetHeroID.channel(channel.channelID))
             .onTapGesture {
                 onOpenDetail()
             }

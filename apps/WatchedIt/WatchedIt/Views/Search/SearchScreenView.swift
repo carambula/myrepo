@@ -103,6 +103,7 @@ struct SearchScreenView: View {
             .safeAreaInset(edge: .top) {
                 persistentSheetHandle
             }
+            .sheetHeroContainer()
             .modifier(MovieDetailPresentationModifier(
                 selectedMovie: $selectedMovie,
                 style: bottomSheetStyle,
@@ -870,6 +871,10 @@ private struct SearchResultRow: View {
                     }
                     .frame(width: 50, height: 74)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                    .sheetHeroSource(
+                        id: SheetHeroID.movie(movie.id),
+                        cornerRadius: DesignSystem.CornerRadius.sm
+                    )
                 } else {
                     Rectangle()
                         .fill(DesignSystem.Color.surface)

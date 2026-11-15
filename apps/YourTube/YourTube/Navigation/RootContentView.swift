@@ -97,6 +97,7 @@ struct RootContentView: View {
                 }
             }
             .themeBackground(using: themeManager.currentTheme)
+            .sheetHeroContainer()
             .navigationBarHidden(true)
             .overlay(alignment: .top) {
                 // Account / me is scroll-pinned inside the feed. Keep search (and

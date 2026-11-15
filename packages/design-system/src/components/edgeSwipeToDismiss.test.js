@@ -257,17 +257,17 @@ describe('sheet hero zoom', () => {
     assert.equal(transform.scale, 160 / 390);
   });
 
-  it('fades the flying overlay after it lands on the thumbnail', () => {
+  it('runs hero dismiss in one motion with the shade', () => {
     assert.equal(heroOpenDuration, 0.42);
-    assert.equal(heroOverlayFadeDuration, 0.16);
+    assert.equal(heroOverlayFadeDuration, 0);
     const timing = heroDismissTiming({
       from: { x: 0, y: 0, width: 390, height: 700 },
       to: { x: 24, y: 200, width: 160, height: 160 },
       speed: 2000,
     });
-    assert.equal(timing.fade, heroOverlayFadeDuration);
+    assert.equal(timing.fade, 0);
     assert.ok(timing.move > 0);
-    assert.equal(timing.total, timing.move + timing.fade);
+    assert.equal(timing.total, timing.move);
   });
 });
 

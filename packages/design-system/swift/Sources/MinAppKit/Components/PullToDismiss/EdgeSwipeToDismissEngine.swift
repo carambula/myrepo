@@ -922,6 +922,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func flingToHero(sourceInWindow: CGRect, radius: CGFloat, velocity: CGSize) {
             isDismissing = true
             didFadeBackdropOut = true
+            SheetHeroSession.shared.cover(heroID)
             startProxyIfNeeded()
             guard let proxy = dragView ?? movingView,
                   let sheetView,
@@ -987,16 +988,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
                 self.applyBackdropStrength(0)
             } completion: { _ in
-                UIView.animate(
-                    withDuration: SheetHeroMotion.overlayFadeDuration,
-                    delay: 0,
-                    options: [.curveEaseOut, .beginFromCurrentState]
-                ) {
-                    clip.alpha = 0
-                } completion: { _ in
-                    self.stopFollowDisplayLink()
-                    self.finishDismiss(sheet: sheetView)
-                }
+                self.stopFollowDisplayLink()
+                self.finishDismiss(sheet: sheetView)
             }
         }
 
@@ -1037,6 +1030,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         private func finishDismiss(sheet: UIView) {
+            SheetHeroSession.shared.uncover(heroID)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             sheet.isHidden = true
@@ -1044,10 +1038,15 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             sheet.transform = .identity
             applyBackdropStrength(0)
             CATransaction.commit()
-            restoreSheet(removeProxy: true, revealSheet: false)
-            removeBackdrop(restoreSystemDimming: false)
-            endFollowing()
-            onDismiss()
+            // Let the real tile paint under the flying clip before the clip
+            // is removed, so the swap is one object instead of a hole.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.restoreSheet(removeProxy: true, revealSheet: false)
+                self.removeBackdrop(restoreSystemDimming: false)
+                self.endFollowing()
+                self.onDismiss()
+            }
         }
 
         private func restoreSheet(removeProxy: Bool, revealSheet: Bool = true) {

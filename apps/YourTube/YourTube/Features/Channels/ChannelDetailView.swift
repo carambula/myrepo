@@ -82,7 +82,6 @@ struct ChannelDetailView: View {
             }
         }
         .bottomSheetPullToDismiss()
-        .sheetHeroDestination(id: SheetHeroID.channel(channel.channelID))
     }
 
     private var channelHero: some View {

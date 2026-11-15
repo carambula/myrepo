@@ -243,6 +243,7 @@ struct EpisodePlayerSheet: View {
         .background((themeManager.currentTheme.backgroundTint ?? .clear).opacity(0.5))
         .overlay(alignment: .top) { adSkipToast }
         .bottomSheetPullToDismiss()
+        .sheetHeroPresented()
         .sheetHeroDestination(id: SheetHeroID.episode(episode.id))
         .sheet(item: $overlaySheet) { sheet in
             switch sheet {

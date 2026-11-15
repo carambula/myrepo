@@ -166,7 +166,6 @@ struct PodcastDetailView: View {
         }
         .themeBackground()
         .bottomSheetEdgeSwipeToDismiss()
-        .sheetHeroDestination(id: SheetHeroID.podcast(podcast.id))
         .onChange(of: isSearchActive) { _, active in
             if active {
                 playbackService.pushSearchUISession()
@@ -185,6 +184,7 @@ struct PodcastDetailView: View {
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
+                .sheetHeroPresented()
                 .presentationDragIndicator(.visible)
         }
         .sheet(item: $episodeForTranscript) { episode in

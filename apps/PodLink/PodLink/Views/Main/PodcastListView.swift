@@ -257,6 +257,7 @@ struct PodcastListView: View {
             .environment(themeManager)
             .environment(playbackService)
             .environment(downloadManager)
+            .sheetHeroPresented()
             .presentationDragIndicator(.visible)
         }
     }
@@ -733,9 +734,11 @@ struct PodcastListView: View {
         return stack
             .modifier(PodcastGridCellAccessibility(showTitles: gridShowsTitles, podcastTitle: podcast.title))
             .opacity(draggedPodcastID == podcast.id ? 0 : 1)
-            .tapInteraction(style: currentTapStyle) {
+            .contentShape(Rectangle())
+            .onTapGesture {
                 rootSheet = .podcast(podcast)
             }
+            .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
     }
 
     private func gridArtwork(podcast: Podcast, unplayed: Bool, overlayBadgeOnArt: Bool) -> some View {
@@ -756,7 +759,6 @@ struct PodcastListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-            .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
 
             if overlayBadgeOnArt, unplayed {
                 Circle()

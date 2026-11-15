@@ -42,7 +42,6 @@ import {
 import {
   heroOpenDuration,
   heroOpenTransform,
-  heroOverlayFadeDuration,
   heroReturnDuration,
   heroReturnScale,
 } from './sheetHero.js';
@@ -269,7 +268,6 @@ export function BottomSheet({
         });
         const scale = heroReturnScale(rect.width, heroSourceRect.width);
         const ms = Math.max(1, Math.round(duration * 1000));
-        const fadeMs = Math.max(1, Math.round(heroOverlayFadeDuration * 1000));
         const ease = 'cubic-bezier(0.16, 1, 0.3, 1)';
         sheet.style.transformOrigin = 'top left';
         sheet.style.transition = `transform ${ms}ms ${ease}, border-radius ${ms}ms ${ease}`;
@@ -280,13 +278,9 @@ export function BottomSheet({
           backdropRef.current.style.opacity = '0';
         }
         window.setTimeout(() => {
-          sheet.style.transition = `opacity ${fadeMs}ms ${ease}`;
-          sheet.style.opacity = '0';
-          window.setTimeout(() => {
-            isDismissingRef.current = false;
-            resetSheetStyles();
-            onClose?.();
-          }, fadeMs);
+          isDismissingRef.current = false;
+          resetSheetStyles();
+          onClose?.();
         }, ms);
         return;
       }
@@ -414,6 +408,7 @@ export function BottomSheet({
   const sheetClasses = [
     'min-bottom-sheet',
     `min-bottom-sheet--${detent}`,
+    heroSourceRect && 'min-bottom-sheet--hero',
     !isOpen && 'min-bottom-sheet--closed',
   ].filter(Boolean).join(' ');
 

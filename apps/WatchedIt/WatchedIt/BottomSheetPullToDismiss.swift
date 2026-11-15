@@ -58,12 +58,16 @@ struct MovieDetailPresentationModifier<SheetContent: View>: ViewModifier {
         case .default:
             base.sheet(item: $selectedMovie, onDismiss: onDismiss) { movie in
                 self.content(movie)
+                    .sheetHeroPresented()
+                    .sheetHeroDestination(id: SheetHeroID.movie(movie.id))
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
         case .fullBleed:
             base.fullScreenCover(item: $selectedMovie, onDismiss: onDismiss) { movie in
                 self.content(movie)
+                    .sheetHeroPresented()
+                    .sheetHeroDestination(id: SheetHeroID.movie(movie.id))
             }
         }
     }

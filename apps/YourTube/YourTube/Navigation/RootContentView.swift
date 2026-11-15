@@ -152,6 +152,8 @@ struct RootContentView: View {
                         selectedVideoForDetail = nil
                     }
                 )
+                .sheetHeroPresented()
+                .sheetHeroDestination(id: SheetHeroID.video(video.videoID))
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
@@ -168,6 +170,8 @@ struct RootContentView: View {
                         selectedVideoForPlayer = video
                     }
                 )
+                .sheetHeroPresented()
+                .sheetHeroDestination(id: SheetHeroID.channel(channel.channelID))
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }

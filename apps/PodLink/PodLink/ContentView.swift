@@ -210,6 +210,8 @@ struct ContentView: View {
             .environment(playbackService)
             .environment(downloadManager)
             .environment(networkStatusService)
+            .sheetHeroPresented()
+            .sheetHeroDestination(id: sheet.sheetHeroID)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .sheet(isPresented: nowPlayingOverRootModal) {
@@ -222,6 +224,7 @@ struct ContentView: View {
                 .environment(playbackService)
                 .environment(downloadManager)
                 .environment(networkStatusService)
+                .sheetHeroPresented()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .sheet(isPresented: nowPlayingOverRootModal) {

@@ -4,13 +4,14 @@
  */
 
 export const heroOpenDuration = 0.42;
-export const heroOverlayFadeDuration = 0.16;
+/** Kept at 0 so shade, stacked layers, and the image share one motion. */
+export const heroOverlayFadeDuration = 0;
 
 export function sheetHeroID(kind, id) {
   return `${kind}:${id}`;
 }
 
-/** Move the flying sheet, then fade it so the thumbnail can show through. */
+/** One shared duration: the flying sheet and shade finish together. */
 export function heroDismissTiming({
   from,
   to,

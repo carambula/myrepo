@@ -1034,8 +1034,8 @@ private struct CollectionMovieCard: View {
             }
             .frame(width: posterWidth, height: posterHeight)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
-            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
             .overlay(alignment: .bottomLeading) { badgeStack }
+            .sheetHeroSource(id: SheetHeroID.movie(movie.id))
         } else {
             Rectangle()
                 .fill(DesignSystem.Color.surface)

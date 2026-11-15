@@ -20,18 +20,30 @@ public enum SheetHeroID {
     public static func channel(_ id: String) -> String { "channel:\(id)" }
 }
 
-/// Last on-screen frames of hero sources, used to fling a sheet back into the
-/// thumbnail when the system zoom transition is not driving dismiss.
+/// Last frames, radii, and snapshots of hero sources, used to fling a sheet
+/// back into the thumbnail when the system zoom transition is not driving
+/// dismiss. Off-screen sources keep their last frame and image so the
+/// returning card can still land and fill with the key art.
 @MainActor
 public enum SheetHeroGeometry {
     private static var frames: [String: CGRect] = [:]
     private static var radii: [String: CGFloat] = [:]
+    private static var onScreenIDs: Set<String> = []
+    #if os(iOS)
+    private static var images: [String: UIImage] = [:]
+    #endif
     private static var namespaceStack: [Namespace.ID] = []
+    private static var presentedSheetCount = 0
 
-    public static func update(id: String, frame: CGRect, cornerRadius: CGFloat) {
+    public static func update(id: String, frame: CGRect, cornerRadius: CGFloat, onScreen: Bool) {
         guard frame.width > 1, frame.height > 1 else { return }
         frames[id] = frame
         radii[id] = cornerRadius
+        if onScreen {
+            onScreenIDs.insert(id)
+        } else {
+            onScreenIDs.remove(id)
+        }
     }
 
     public static func frame(for id: String) -> CGRect? {
@@ -40,6 +52,43 @@ public enum SheetHeroGeometry {
 
     public static func cornerRadius(for id: String) -> CGFloat {
         radii[id] ?? MinCornerRadius.artTile
+    }
+
+    public static func isOnScreen(_ id: String) -> Bool {
+        onScreenIDs.contains(id)
+    }
+
+    public static func setOnScreen(_ id: String, _ onScreen: Bool) {
+        if onScreen {
+            onScreenIDs.insert(id)
+        } else {
+            onScreenIDs.remove(id)
+        }
+    }
+
+    #if os(iOS)
+    public static func setImage(_ image: UIImage?, for id: String) {
+        guard let image, image.size.width > 8, image.size.height > 8 else { return }
+        images[id] = image
+    }
+
+    public static func image(for id: String) -> UIImage? {
+        images[id]
+    }
+    #endif
+
+    /// True when a sheet (or full-screen cover) is already presented, so a
+    /// sheet opened from it must not zoom — only the root sheet over home.
+    static var isInsidePresentedSheet: Bool {
+        presentedSheetCount > 0
+    }
+
+    static func enterPresentedSheet() {
+        presentedSheetCount += 1
+    }
+
+    static func leavePresentedSheet() {
+        presentedSheetCount = max(0, presentedSheetCount - 1)
     }
 
     static var currentNamespace: Namespace.ID? {
@@ -73,6 +122,7 @@ final class SheetHeroSession {
     static let shared = SheetHeroSession()
 
     private(set) var coveredIDs: Set<String> = []
+    private var dismissHandlers: [() -> Void] = []
 
     func cover(_ id: String?) {
         guard let id, !id.isEmpty else { return }
@@ -87,6 +137,26 @@ final class SheetHeroSession {
     func isCovered(_ id: String) -> Bool {
         coveredIDs.contains(id)
     }
+
+    /// Edge-swipe hosts push a handler so close / pull-to-dismiss can fling
+    /// through the same motion (including off-screen image fill) instead of
+    /// the system zoom, which breaks when the source cell is gone.
+    func pushDismissHandler(_ handler: @escaping () -> Void) {
+        dismissHandlers.append(handler)
+    }
+
+    func popDismissHandler() {
+        if !dismissHandlers.isEmpty {
+            dismissHandlers.removeLast()
+        }
+    }
+
+    @discardableResult
+    func requestInteractiveDismiss() -> Bool {
+        guard let handler = dismissHandlers.last else { return false }
+        handler()
+        return true
+    }
 }
 
 private struct SheetHeroNamespaceKey: EnvironmentKey {
@@ -95,6 +165,10 @@ private struct SheetHeroNamespaceKey: EnvironmentKey {
 
 private struct SheetHeroPresentedIDKey: EnvironmentKey {
     static let defaultValue: String? = nil
+}
+
+private struct SheetHeroAllowsZoomKey: EnvironmentKey {
+    static let defaultValue: Bool = true
 }
 
 extension EnvironmentValues {
@@ -109,6 +183,12 @@ extension EnvironmentValues {
     var sheetHeroPresentedID: String? {
         get { self[SheetHeroPresentedIDKey.self] }
         set { self[SheetHeroPresentedIDKey.self] = newValue }
+    }
+
+    /// Root home↔sheet morphs. A sheet sitting on another sheet does not.
+    public var sheetHeroAllowsZoom: Bool {
+        get { self[SheetHeroAllowsZoomKey.self] }
+        set { self[SheetHeroAllowsZoomKey.self] = newValue }
     }
 }
 
@@ -131,8 +211,17 @@ private struct SheetHeroContainerModifier: ViewModifier {
     }
 }
 
+#if os(iOS)
+private func sheetHeroFrameIsOnScreen(_ frame: CGRect) -> Bool {
+    let screen = UIScreen.main.bounds
+    let visible = screen.intersection(frame)
+    return visible.width > 8 && visible.height > 8
+}
+#endif
+
 private struct SheetHeroSourceModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
+    @Environment(\.sheetHeroAllowsZoom) private var allowsZoom
     let id: String
     let cornerRadius: CGFloat
 
@@ -144,27 +233,31 @@ private struct SheetHeroSourceModifier: ViewModifier {
         let sourced = content
             .background {
                 GeometryReader { proxy in
+                    let frame = proxy.frame(in: .global)
                     Color.clear
-                        .onAppear {
-                            SheetHeroGeometry.update(
-                                id: id,
-                                frame: proxy.frame(in: .global),
-                                cornerRadius: cornerRadius
-                            )
+                        .onAppear { record(frame) }
+                        .onChange(of: frame) { _, newFrame in
+                            record(newFrame)
                         }
-                        .onChange(of: proxy.frame(in: .global)) { _, frame in
-                            SheetHeroGeometry.update(
-                                id: id,
-                                frame: frame,
-                                cornerRadius: cornerRadius
-                            )
+                        .onDisappear {
+                            SheetHeroGeometry.setOnScreen(id, false)
                         }
+                        #if os(iOS)
+                        .overlay {
+                            SheetHeroImageCapture(id: id)
+                                .frame(width: 0, height: 0)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                        #endif
                 }
             }
             .modifier(SheetHeroCoverOpacity(id: id))
 
         #if os(iOS)
-        if let namespace {
+        // Nested sheets skip matchedTransitionSource — zooming a sheet that
+        // sits on another sheet is too complex, so those present normally.
+        if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 // Keep matchedTransitionSource outermost so the system zoom
                 // can snapshot the tile. Cover opacity sits inside it.
@@ -185,7 +278,109 @@ private struct SheetHeroSourceModifier: ViewModifier {
         sourced
         #endif
     }
+
+    private func record(_ frame: CGRect) {
+        #if os(iOS)
+        let onScreen = sheetHeroFrameIsOnScreen(frame)
+        #else
+        let onScreen = true
+        #endif
+        SheetHeroGeometry.update(
+            id: id,
+            frame: frame,
+            cornerRadius: cornerRadius,
+            onScreen: onScreen
+        )
+    }
 }
+
+#if os(iOS)
+/// Walks the source tile for a UIImage so dismiss can fade that art into the
+/// returning card when the live thumbnail has scrolled off-screen.
+private struct SheetHeroImageCapture: UIViewRepresentable {
+    let id: String
+
+    func makeUIView(context: Context) -> CaptureView {
+        let view = CaptureView()
+        view.heroID = id
+        return view
+    }
+
+    func updateUIView(_ uiView: CaptureView, context: Context) {
+        uiView.heroID = id
+        uiView.captureSoon()
+    }
+
+    final class CaptureView: UIView {
+        var heroID: String = ""
+        private var pending: DispatchWorkItem?
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            isAccessibilityElement = false
+            backgroundColor = .clear
+        }
+
+        @available(*, unavailable) required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            captureSoon()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            captureSoon()
+        }
+
+        func captureSoon() {
+            pending?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.capture()
+            }
+            pending = work
+            DispatchQueue.main.async(execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: DispatchWorkItem { [weak self] in
+                self?.capture()
+            })
+        }
+
+        private func capture() {
+            guard !heroID.isEmpty else { return }
+            if SheetHeroGeometry.image(for: heroID) != nil { return }
+            var node: UIView? = superview
+            var hops = 0
+            while let view = node, hops < 8 {
+                if let image = firstImage(in: view) {
+                    SheetHeroGeometry.setImage(image, for: heroID)
+                    return
+                }
+                node = view.superview
+                hops += 1
+            }
+        }
+
+        private func firstImage(in root: UIView) -> UIImage? {
+            var stack = [root]
+            var visited = 0
+            while let view = stack.popLast(), visited < 48 {
+                visited += 1
+                if let imageView = view as? UIImageView,
+                   let image = imageView.image,
+                   image.size.width > 8,
+                   image.size.height > 8 {
+                    return image
+                }
+                stack.append(contentsOf: view.subviews)
+            }
+            return nil
+        }
+    }
+}
+#endif
 
 private struct SheetHeroCoverOpacity: ViewModifier {
     let id: String
@@ -201,21 +396,33 @@ private struct SheetHeroCoverOpacity: ViewModifier {
 private struct SheetHeroDestinationModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
     let id: String
+    /// Captured when this destination is first inserted. A parent sheet's
+    /// `onAppear` must not later steal zoom from the root sheet.
+    @State private var allowsZoom: Bool = !SheetHeroGeometry.isInsidePresentedSheet
 
     private var namespace: Namespace.ID? {
         environmentNamespace ?? SheetHeroGeometry.currentNamespace
+    }
+
+    private var shouldZoom: Bool {
+        // Captured at insert time. Do not AND with environmentAllowsZoom:
+        // `sheetHeroPresented` sits inside this modifier and forces that
+        // value false so nested sources skip matching.
+        allowsZoom
     }
 
     func body(content: Content) -> some View {
         let tagged = content
             .environment(\.sheetHeroPresentedID, id)
             .environment(\.sheetHeroNamespace, namespace)
+            .environment(\.sheetHeroAllowsZoom, shouldZoom)
         #if os(iOS)
         applyZoom(
             tagged
                 .background(Color(uiColor: .systemBackground).ignoresSafeArea())
         )
         .onAppear {
+            guard shouldZoom else { return }
             // After the system has snapshotted the source for the open zoom.
             DispatchQueue.main.async {
                 SheetHeroSession.shared.cover(id)
@@ -232,12 +439,8 @@ private struct SheetHeroDestinationModifier: ViewModifier {
     @ViewBuilder
     private func applyZoom<V: View>(_ view: V) -> some View {
         #if os(iOS)
-        if #available(iOS 18.0, *) {
-            if let namespace {
-                view.navigationTransition(.zoom(sourceID: id, in: namespace))
-            } else {
-                view
-            }
+        if #available(iOS 18.0, *), shouldZoom, let namespace {
+            view.navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             view
         }
@@ -251,10 +454,17 @@ private struct SheetHeroPresentedModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
 
     func body(content: Content) -> some View {
-        content.environment(
-            \.sheetHeroNamespace,
-            environmentNamespace ?? SheetHeroGeometry.currentNamespace
-        )
+        content
+            .environment(
+                \.sheetHeroNamespace,
+                environmentNamespace ?? SheetHeroGeometry.currentNamespace
+            )
+            // Sources and nested sheets inside this presentation must not
+            // zoom. The destination modifier (outside this one) still zooms
+            // the root sheet itself.
+            .environment(\.sheetHeroAllowsZoom, false)
+            .onAppear { SheetHeroGeometry.enterPresentedSheet() }
+            .onDisappear { SheetHeroGeometry.leavePresentedSheet() }
     }
 }
 
@@ -263,15 +473,19 @@ private struct SheetHeroPresentedModifier: ViewModifier {
 /// global stack is wrong when a parent container re-renders.
 private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
+    @Environment(\.sheetHeroAllowsZoom) private var allowsZoom
     @Binding var item: Item?
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
     func body(content: Content) -> some View {
         let captured = namespace ?? SheetHeroGeometry.currentNamespace
+        // Nested presenters (search, show) already flipped allowsZoom off.
+        let capturedAllowsZoom = allowsZoom && !SheetHeroGeometry.isInsidePresentedSheet
         content.sheet(item: $item, onDismiss: onDismiss) { value in
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
+                .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
         }
     }
 }
@@ -290,8 +504,8 @@ extension View {
         modifier(SheetHeroPresentedModifier())
     }
 
-    /// Presents a sheet and forwards this view's zoom namespace into it so a
-    /// nested search or show sheet still morphs from its own artwork.
+    /// Presents a sheet and forwards this view's zoom namespace into it.
+    /// Nested sheets (already sitting on another sheet) skip the zoom.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         onDismiss: (() -> Void)? = nil,
@@ -316,7 +530,8 @@ extension View {
     }
 
     /// Morphs this presented sheet out of the matching source image, and back
-    /// into it on a regular dismiss.
+    /// into it on a regular dismiss. No-ops when this sheet sits on another
+    /// sheet — only the root presentation over home zooms.
     @ViewBuilder
     public func sheetHeroDestination(id: String?) -> some View {
         if let id, !id.isEmpty {

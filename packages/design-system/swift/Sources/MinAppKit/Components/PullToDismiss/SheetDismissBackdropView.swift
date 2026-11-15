@@ -9,11 +9,19 @@ final class SheetDismissBackdropView: UIView {
     /// underlying chrome clearly recedes.
     static let restDimAlpha: CGFloat = MinOpacity.sheetDimRest
 
+    /// True while an edge-swipe / hero fling is fading this plate with the
+    /// card. Guard / lifecycle must not start a second fade.
+    var isGestureDrivenFade = false
+
     var strength: CGFloat = 0 {
         didSet {
             let clamped = min(1, max(0, strength))
             alpha = Self.restDimAlpha * clamped
         }
+    }
+
+    var isVisuallyClear: Bool {
+        alpha < 0.02 || strength < 0.02
     }
 
     override init(frame: CGRect) {

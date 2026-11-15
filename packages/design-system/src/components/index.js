@@ -51,12 +51,16 @@ export {
 } from './edgeSwipeToDismiss.js';
 export {
   heroDismissTiming,
+  heroFillOpacity,
   heroOpenDuration,
   heroOpenTransform,
   heroOverlayFadeDuration,
   heroReturnDuration,
   heroReturnScale,
+  heroSourceVisibleOverlap,
+  isHeroSourceVisible,
   sheetHeroID,
+  shouldHeroZoomSheet,
 } from './sheetHero.js';
 export { DismissButton } from './DismissButton.js';
 export { LoadingState, EmptyState, MAIN_APP_LOADING_CLASSNAME } from './ContentStatus.js';

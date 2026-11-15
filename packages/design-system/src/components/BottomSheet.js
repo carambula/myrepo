@@ -44,6 +44,8 @@ import {
   heroOpenTransform,
   heroReturnDuration,
   heroReturnScale,
+  isHeroSourceVisible,
+  shouldHeroZoomSheet,
 } from './sheetHero.js';
 
 export function BottomSheet({
@@ -56,6 +58,8 @@ export function BottomSheet({
   children,
   className = '',
   heroSourceRect = null,
+  heroImageSrc = null,
+  nestedSheet = false,
   ...props
 }) {
   const containerRef = useRef(null);
@@ -72,7 +76,7 @@ export function BottomSheet({
   const pointerIdRef = useRef(null);
   const scrollRef = useRef(null);
 
-  const resetSheetStyles = () => {
+  const resetSheetStyles = ({ keepBackdropHidden = false } = {}) => {
     const sheet = sheetRef.current;
     const backdrop = backdropRef.current;
     if (sheet) {
@@ -80,10 +84,14 @@ export function BottomSheet({
       sheet.style.transform = '';
       sheet.style.opacity = '';
       sheet.classList.remove('min-bottom-sheet--dragging');
+      const fill = sheet.querySelector('.min-bottom-sheet__hero-fill');
+      fill?.remove();
     }
     if (backdrop) {
       backdrop.style.transition = '';
-      backdrop.style.opacity = '';
+      // Clearing inline opacity before `--hidden` applies flashes the rest
+      // dim as a second shade step. Keep it at 0 through teardown.
+      backdrop.style.opacity = keepBackdropHidden ? '0' : '';
     }
   };
 
@@ -259,7 +267,11 @@ export function BottomSheet({
       const height = sheet?.offsetHeight || window.innerHeight;
       const visual = visualTranslation({ dx, dy, activation });
       isDismissingRef.current = true;
-      if (sheet && heroSourceRect) {
+      const canHeroZoom =
+        sheet &&
+        heroSourceRect &&
+        shouldHeroZoomSheet({ nested: nestedSheet });
+      if (canHeroZoom) {
         const rect = sheet.getBoundingClientRect();
         const duration = heroReturnDuration({
           from: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
@@ -269,6 +281,23 @@ export function BottomSheet({
         const scale = heroReturnScale(rect.width, heroSourceRect.width);
         const ms = Math.max(1, Math.round(duration * 1000));
         const ease = 'cubic-bezier(0.16, 1, 0.3, 1)';
+        const viewport = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+        const sourceVisible = isHeroSourceVisible(heroSourceRect, viewport);
+        if (!sourceVisible && heroImageSrc) {
+          let fill = sheet.querySelector('.min-bottom-sheet__hero-fill');
+          if (!fill) {
+            fill = document.createElement('img');
+            fill.className = 'min-bottom-sheet__hero-fill';
+            fill.alt = '';
+            sheet.appendChild(fill);
+          }
+          fill.src = heroImageSrc;
+          fill.style.opacity = '0';
+          fill.style.transition = `opacity ${ms}ms ${ease}`;
+          requestAnimationFrame(() => {
+            fill.style.opacity = '1';
+          });
+        }
         sheet.style.transformOrigin = 'top left';
         sheet.style.transition = `transform ${ms}ms ${ease}, border-radius ${ms}ms ${ease}`;
         sheet.style.transform = `translate(${heroSourceRect.x - rect.left}px, ${heroSourceRect.y - rect.top}px) scale(${scale})`;
@@ -278,9 +307,9 @@ export function BottomSheet({
           backdropRef.current.style.opacity = '0';
         }
         window.setTimeout(() => {
-          isDismissingRef.current = false;
-          resetSheetStyles();
           onClose?.();
+          isDismissingRef.current = false;
+          resetSheetStyles({ keepBackdropHidden: true });
         }, ms);
         return;
       }
@@ -305,9 +334,9 @@ export function BottomSheet({
         backdropRef.current.style.opacity = '0';
       }
       window.setTimeout(() => {
-        isDismissingRef.current = false;
-        resetSheetStyles();
         onClose?.();
+        isDismissingRef.current = false;
+        resetSheetStyles({ keepBackdropHidden: true });
       }, ms);
       return;
     }
@@ -369,7 +398,9 @@ export function BottomSheet({
       return undefined;
     }
     const sheet = sheetRef.current;
-    if (!sheet || !heroSourceRect) return undefined;
+    if (!sheet || !heroSourceRect || !shouldHeroZoomSheet({ nested: nestedSheet })) {
+      return undefined;
+    }
     const rect = sheet.getBoundingClientRect();
     const transform = heroOpenTransform(heroSourceRect, {
       x: rect.left,
@@ -398,7 +429,7 @@ export function BottomSheet({
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [isOpen, heroSourceRect]);
+  }, [isOpen, heroSourceRect, nestedSheet]);
 
   const backdropClasses = [
     'min-bottom-sheet__backdrop',
@@ -408,7 +439,9 @@ export function BottomSheet({
   const sheetClasses = [
     'min-bottom-sheet',
     `min-bottom-sheet--${detent}`,
-    heroSourceRect && 'min-bottom-sheet--hero',
+    heroSourceRect &&
+      shouldHeroZoomSheet({ nested: nestedSheet }) &&
+      'min-bottom-sheet--hero',
     !isOpen && 'min-bottom-sheet--closed',
   ].filter(Boolean).join(' ');
 

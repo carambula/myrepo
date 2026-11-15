@@ -190,7 +190,7 @@ private struct SheetHeroSourceModifier: ViewModifier {
 
 private struct SheetHeroCoverOpacity: ViewModifier {
     let id: String
-    private var session = SheetHeroSession.shared
+    var session = SheetHeroSession.shared
 
     func body(content: Content) -> some View {
         content

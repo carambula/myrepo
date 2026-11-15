@@ -64,99 +64,96 @@ struct SearchScreenView: View {
     private let horizontalToolbarInset: CGFloat = DesignSystem.Spacing.lg
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                DesignSystem.Color.background
-                    .ignoresSafeArea()
+        ZStack {
+            DesignSystem.Color.background
+                .ignoresSafeArea()
 
-                if let session {
-                    SearchResultsContent(
-                        session: session,
-                        context: context,
-                        onTapMovie: { movie in
-                            selectedMovie = movie
-                        },
-                        allDataSources: allDataSources,
-                        onTapActiveSearchToken: clearActiveSearchToken(_:in:)
-                    )
-                    .environment(\.preferredSearchStreamingServices, preferredStreamingServices)
-                } else {
-                    ProgressView("Preparing search…")
-                        .foregroundColor(DesignSystem.Color.textSecondary)
-                }
+            if let session {
+                SearchResultsContent(
+                    session: session,
+                    context: context,
+                    onTapMovie: { movie in
+                        selectedMovie = movie
+                    },
+                    allDataSources: allDataSources,
+                    onTapActiveSearchToken: clearActiveSearchToken(_:in:)
+                )
+                .environment(\.preferredSearchStreamingServices, preferredStreamingServices)
+            } else {
+                ProgressView("Preparing search…")
+                    .foregroundColor(DesignSystem.Color.textSecondary)
             }
-            .coordinateSpace(name: "searchScrollArea")
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                handleScrollOffset(value)
+        }
+        .coordinateSpace(name: "searchScrollArea")
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            handleScrollOffset(value)
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let session {
+                dynamicSearchControls(session: session)
+                    .opacity(isPullToDismissVisible ? 0 : 1)
+                    .offset(y: isPullToDismissVisible ? 120 : 0)
+                    .allowsHitTesting(!isPullToDismissVisible)
+                    .animation(DesignSystem.Animation.springQuick, value: isPullToDismissVisible)
             }
-            .navigationBarHidden(true)
-            .safeAreaInset(edge: .bottom) {
-                if let session {
-                    dynamicSearchControls(session: session)
-                        .opacity(isPullToDismissVisible ? 0 : 1)
-                        .offset(y: isPullToDismissVisible ? 120 : 0)
-                        .allowsHitTesting(!isPullToDismissVisible)
-                        .animation(DesignSystem.Animation.springQuick, value: isPullToDismissVisible)
-                }
+        }
+        .animation(DesignSystem.Animation.springStandard, value: toolbarScrollState.isMinimized)
+        .safeAreaInset(edge: .top) {
+            persistentSheetHandle
+        }
+        .onAppear {
+            if session == nil {
+                rebuildSession(preservingState: false)
             }
-            .animation(DesignSystem.Animation.springStandard, value: toolbarScrollState.isMinimized)
-            .safeAreaInset(edge: .top) {
-                persistentSheetHandle
-            }
-            .sheetHeroContainer()
-            .modifier(MovieDetailPresentationModifier(
-                selectedMovie: $selectedMovie,
-                style: bottomSheetStyle,
-                onDismiss: {
-                    applyPendingPersonSearchFromDetails()
-                },
-                content: { movie in
-                    MovieDetailView(
-                        movie: movie,
-                        presentationSource: .searchList,
-                        onCreditPersonTapped: startPersonSearchFromDetails,
-                        onYearTapped: startYearSearchFromDetails,
-                        onGenreTapped: startGenreSearchFromDetails,
-                        onRatingTapped: startRatingSearchFromDetails,
-                        onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
-                        onTheatricalTapped: startTheatricalSearchFromDetails
-                    )
-                }
-            ))
-            .onAppear {
-                if session == nil {
-                    rebuildSession(preservingState: false)
-                }
-                if context.focusSearchOnOpen {
-                    forceCompactSearchControls = true
-                    Task { @MainActor in
-                        await Task.yield()
-                        isSearchFieldFocused = true
-                    }
-                }
-            }
-            .onChange(of: localDB.movies.count) { _, _ in
-                guard localDB.movies.count > 0 else { return }
-                rebuildSession(preservingState: true)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-                isKeyboardVisible = true
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                isKeyboardVisible = false
-            }
-            .onChange(of: isSearchFieldFocused) { _, isFocused in
-                if !isFocused, !isKeyboardVisible, isSearchQueryEmpty {
-                    forceCompactSearchControls = false
-                }
-            }
-            .onChange(of: isKeyboardVisible) { _, visible in
-                if !visible, !isSearchFieldFocused, isSearchQueryEmpty {
-                    forceCompactSearchControls = false
+            if context.focusSearchOnOpen {
+                forceCompactSearchControls = true
+                Task { @MainActor in
+                    await Task.yield()
+                    isSearchFieldFocused = true
                 }
             }
         }
+        .onChange(of: localDB.movies.count) { _, _ in
+            guard localDB.movies.count > 0 else { return }
+            rebuildSession(preservingState: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
+        .onChange(of: isSearchFieldFocused) { _, isFocused in
+            if !isFocused, !isKeyboardVisible, isSearchQueryEmpty {
+                forceCompactSearchControls = false
+            }
+        }
+        .onChange(of: isKeyboardVisible) { _, visible in
+            if !visible, !isSearchFieldFocused, isSearchQueryEmpty {
+                forceCompactSearchControls = false
+            }
+        }
+        .sheetHeroContainer()
         .bottomSheetPullToDismiss()
+        .modifier(MovieDetailPresentationModifier(
+            selectedMovie: $selectedMovie,
+            style: bottomSheetStyle,
+            onDismiss: {
+                applyPendingPersonSearchFromDetails()
+            },
+            content: { movie in
+                MovieDetailView(
+                    movie: movie,
+                    presentationSource: .searchList,
+                    onCreditPersonTapped: startPersonSearchFromDetails,
+                    onYearTapped: startYearSearchFromDetails,
+                    onGenreTapped: startGenreSearchFromDetails,
+                    onRatingTapped: startRatingSearchFromDetails,
+                    onPhysicalMediaTapped: startPhysicalMediaSearchFromDetails,
+                    onTheatricalTapped: startTheatricalSearchFromDetails
+                )
+            }
+        ))
     }
 
     private func rebuildSession(preservingState: Bool) {
@@ -857,69 +854,69 @@ private struct SearchResultRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: DesignSystem.Spacing.md) {
-                if let posterPath = movie.posterPath,
-                   let posterURL = MovieDataService.shared.getThumbnailURL(path: posterPath),
-                   let url = URL(string: posterURL) {
-                    CachedAsyncImage(url: url) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle().fill(DesignSystem.Color.surface)
-                    }
+        HStack(spacing: DesignSystem.Spacing.md) {
+            if let posterPath = movie.posterPath,
+               let posterURL = MovieDataService.shared.getThumbnailURL(path: posterPath),
+               let url = URL(string: posterURL) {
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle().fill(DesignSystem.Color.surface)
+                }
+                .frame(width: 50, height: 74)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                .sheetHeroSource(
+                    id: SheetHeroID.movie(movie.id),
+                    cornerRadius: DesignSystem.CornerRadius.sm
+                )
+            } else {
+                Rectangle()
+                    .fill(DesignSystem.Color.surface)
                     .frame(width: 50, height: 74)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
-                } else {
-                    Rectangle()
-                        .fill(DesignSystem.Color.surface)
-                        .frame(width: 50, height: 74)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
-                }
+            }
 
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text(movie.title)
-                        .headlineSmall()
-                        .foregroundColor(DesignSystem.Color.textPrimary)
-                        .lineLimit(2)
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(movie.title)
+                    .headlineSmall()
+                    .foregroundColor(DesignSystem.Color.textPrimary)
+                    .lineLimit(2)
 
-                    Text(primaryMetadataLine)
+                Text(primaryMetadataLine)
+                    .bodySmall()
+                    .foregroundColor(DesignSystem.Color.textSecondary)
+                    .lineLimit(1)
+
+                if let sourcesAndListsLine, !sourcesAndListsLine.isEmpty {
+                    Text(sourcesAndListsLine)
                         .bodySmall()
                         .foregroundColor(DesignSystem.Color.textSecondary)
                         .lineLimit(1)
-
-                    if let sourcesAndListsLine, !sourcesAndListsLine.isEmpty {
-                        Text(sourcesAndListsLine)
-                            .bodySmall()
-                            .foregroundColor(DesignSystem.Color.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-
-                HStack(spacing: DesignSystem.Spacing.sm) {
-                    if movie.isListened {
-                        DesignSystemIcon(DesignSystem.Icon.listenCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
-                    }
-                    if movie.isRewatched {
-                        DesignSystemIcon(DesignSystem.Icon.rewatchCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
-                    }
-                    if movie.isSaved {
-                        DesignSystemIcon(DesignSystem.Icon.bookmarkCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
-                    }
                 }
             }
-            .padding(.horizontal, DesignSystem.Spacing.sm)
-            .padding(.vertical, DesignSystem.Spacing.sm)
-            .background(DesignSystem.Color.background)
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+            Spacer(minLength: 0)
+
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                if movie.isListened {
+                    DesignSystemIcon(DesignSystem.Icon.listenCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
+                }
+                if movie.isRewatched {
+                    DesignSystemIcon(DesignSystem.Icon.rewatchCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
+                }
+                if movie.isSaved {
+                    DesignSystemIcon(DesignSystem.Icon.bookmarkCircleFill, size: DesignSystem.IconSize.lg, color: DesignSystem.Color.accent)
+                }
+            }
         }
-        .buttonStyle(.plain)
-        .sheetHeroSource(
-            id: SheetHeroID.movie(movie.id),
-            cornerRadius: DesignSystem.CornerRadius.sm
-        )
+        .padding(.horizontal, DesignSystem.Spacing.sm)
+        .padding(.vertical, DesignSystem.Spacing.sm)
+        .background(DesignSystem.Color.background)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .contentShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
+        .onTapGesture(perform: onTap)
+        .accessibilityAddTraits(.isButton)
     }
 
     private var primaryMetadataLine: String {

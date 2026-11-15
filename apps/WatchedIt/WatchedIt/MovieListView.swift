@@ -2980,29 +2980,27 @@ struct MovieListView: View {
             return getRankForMovie(movie, in: selectedList)
         }()
 
-        return Button(action: {
+        return MovieRowView(
+            movie: movie,
+            selectedList: selectedList,
+            rank: movieRank,
+            topPreferredStreamingService: topPreferredStreamingService(for: movie),
+            sourcesAndListsText: sourcesAndListsText(for: movie)
+        )
+        .id(movie.id)
+        .contentShape(Rectangle())
+        .onAppear {
+            let hasSearchQuery = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if !hasSearchQuery && !isSearchFiltering {
+                prefetchUpcomingImages(startingFrom: index, in: paginatedMovies)
+            }
+        }
+        .onTapGesture {
             movieDetailOpenRequestedAt = ProcessInfo.processInfo.systemUptime
             movieDetailOpenRequestedMovieID = movie.id
             selectedMovie = movie
-        }) {
-            MovieRowView(
-                movie: movie,
-                selectedList: selectedList,
-                rank: movieRank,
-                topPreferredStreamingService: topPreferredStreamingService(for: movie),
-                sourcesAndListsText: sourcesAndListsText(for: movie)
-            )
-                .id(movie.id)
-                .contentShape(Rectangle())
-                .onAppear {
-                    let hasSearchQuery = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    if !hasSearchQuery && !isSearchFiltering {
-                        prefetchUpcomingImages(startingFrom: index, in: paginatedMovies)
-                    }
-                }
         }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
+        .accessibilityAddTraits(.isButton)
         .listRowInsets(EdgeInsets(
             top: DesignSystem.Spacing.xs,
             leading: DesignSystem.Spacing.md + DesignSystem.Spacing.xs,
@@ -4674,6 +4672,10 @@ struct MovieRowView: View {
                     }
                     .frame(width: 50, height: 74)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm))
+                    .sheetHeroSource(
+                        id: SheetHeroID.movie(movie.id),
+                        cornerRadius: DesignSystem.CornerRadius.sm
+                    )
                 } else {
                     Rectangle()
                         .fill(DesignSystem.Color.surface)

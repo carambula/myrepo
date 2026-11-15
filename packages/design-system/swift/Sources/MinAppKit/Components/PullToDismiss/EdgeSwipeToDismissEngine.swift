@@ -586,9 +586,13 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 self.dimmingView?.alpha = 0
             }
             let presented = presentedController()
-            if animated, let coordinator = presented?.transitionCoordinator, coordinator.isAnimated {
-                coordinator.animate(alongsideTransition: { _ in animations() })
-            } else if animated {
+            if animated,
+               let coordinator = presented?.transitionCoordinator,
+               coordinator.isAnimated,
+               coordinator.animate(alongsideTransition: { _ in animations() }) {
+                return
+            }
+            if animated {
                 UIView.animate(
                     withDuration: SheetHeroMotion.openDuration,
                     delay: 0,

@@ -7,7 +7,6 @@ struct PodcastRowView: View {
     var showTitles: Bool = true
     var artEmphasis: MainScreenArtEmphasis = .standard
     var badgeMode: NewEpisodeBadgeMode = .notStartedLatest
-    var tapStyle: TapInteractionStyle = .bounce
     var onRowTap: () -> Void = {}
 
     @Environment(ThemeManager.self) private var themeManager
@@ -107,6 +106,11 @@ struct PodcastRowView: View {
                             .accessibilityLabel("Unplayed latest episode")
                     }
                 }
+                .sheetHeroSource(
+                    id: latestEpisode.map { SheetHeroID.episode($0.id) }
+                        ?? SheetHeroID.podcast(podcast.id),
+                    cornerRadius: DesignSystem.CornerRadius.artTile
+                )
 
                 if showTitles {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
@@ -145,13 +149,7 @@ struct PodcastRowView: View {
                 }
             }
             .contentShape(Rectangle())
-            .tapInteraction(style: tapStyle) {
-                onRowTap()
-            }
-            .sheetHeroSource(
-                id: latestEpisode.map { SheetHeroID.episode($0.id) }
-                    ?? SheetHeroID.podcast(podcast.id)
-            )
+            .onTapGesture(perform: onRowTap)
 
             PodcastRowPlayButton(podcast: podcast, latestEpisode: latestEpisode)
         }

@@ -29,10 +29,10 @@ struct PodcastListView: View {
     @Environment(DownloadManager.self) private var downloadManager
 
     @Binding var rootSheet: ContentRootSheet?
+    @Binding var selectedLatestEpisode: LatestEpisodeSelection?
 
     @AppStorage("posterSize") private var posterSize = "plus60"
     @AppStorage("layoutMode") private var layoutMode = "grid"
-    @AppStorage("tapInteraction") private var tapInteraction = "bounce"
     @AppStorage("mainScreenArtEmphasis") private var mainScreenArtEmphasisRaw = MainScreenArtEmphasis.largeArt.rawValue
     @AppStorage("showPodcastTitlesOnMain") private var showPodcastTitlesOnMain = false
     @AppStorage("newEpisodeBadgeMode") private var newEpisodeBadgeMode = NewEpisodeBadgeMode.notStartedLatest.rawValue
@@ -42,7 +42,6 @@ struct PodcastListView: View {
     @State private var followedPodcasts: [Podcast] = []
     @State private var latestEpisodes: [String: Episode] = [:]
     @State private var sortedListPodcasts: [Podcast] = []
-    @State private var selectedLatestEpisode: LatestEpisodeSelection?
     @State private var hasAttemptedInitialLoad = false
 
     /// Settled page: `"grid"` | `"list"`. Both pages stay mounted so scroll is preserved.
@@ -148,10 +147,6 @@ struct PodcastListView: View {
         MinSpacing.TopControls.buttonSize + MinSpacing.TitleType.contentTopSpacing
     }
 
-    private var currentTapStyle: TapInteractionStyle {
-        TapInteractionStyle(rawValue: tapInteraction) ?? .bounce
-    }
-
     private var badgeMode: NewEpisodeBadgeMode {
         NewEpisodeBadgeMode(rawValue: newEpisodeBadgeMode) ?? .notStartedLatest
     }
@@ -248,17 +243,6 @@ struct PodcastListView: View {
         }
         .onChange(of: latestEpisodes) { _, _ in
             rebuildSortedListPodcasts()
-        }
-        .sheet(item: $selectedLatestEpisode) { selection in
-            EpisodePlayerSheet(
-                episode: selection.episode,
-                fallbackPodcast: selection.podcast
-            )
-            .environment(themeManager)
-            .environment(playbackService)
-            .environment(downloadManager)
-            .sheetHeroPresented()
-            .presentationDragIndicator(.visible)
         }
     }
 
@@ -738,7 +722,6 @@ struct PodcastListView: View {
             .onTapGesture {
                 rootSheet = .podcast(podcast)
             }
-            .sheetHeroSource(id: SheetHeroID.podcast(podcast.id))
     }
 
     private func gridArtwork(podcast: Podcast, unplayed: Bool, overlayBadgeOnArt: Bool) -> some View {
@@ -759,6 +742,10 @@ struct PodcastListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+            .sheetHeroSource(
+                id: SheetHeroID.podcast(podcast.id),
+                cornerRadius: DesignSystem.CornerRadius.artTile
+            )
 
             if overlayBadgeOnArt, unplayed {
                 Circle()
@@ -780,7 +767,6 @@ struct PodcastListView: View {
             showTitles: listShowsTitles,
             artEmphasis: mainScreenArtEmphasis,
             badgeMode: badgeMode,
-            tapStyle: currentTapStyle,
             onRowTap: {
                 if let latest = latestEpisodes[podcast.id] {
                     selectedLatestEpisode = LatestEpisodeSelection(
@@ -997,7 +983,7 @@ struct PodcastListView: View {
     }
 }
 
-private struct LatestEpisodeSelection: Identifiable {
+struct LatestEpisodeSelection: Identifiable {
     let episode: Episode
     let podcast: Podcast
 

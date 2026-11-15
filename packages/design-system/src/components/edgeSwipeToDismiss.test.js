@@ -24,12 +24,15 @@ import {
 } from './edgeSwipeToDismiss.js';
 import {
   heroDismissTiming,
+  heroFillOpacity,
   heroOpenDuration,
   heroOpenTransform,
   heroOverlayFadeDuration,
   heroReturnDuration,
   heroReturnScale,
+  isHeroSourceVisible,
   sheetHeroID,
+  shouldHeroZoomSheet,
 } from './sheetHero.js';
 
 const sheet = { width: 390, height: 700 };
@@ -268,6 +271,36 @@ describe('sheet hero zoom', () => {
     assert.equal(timing.fade, 0);
     assert.ok(timing.move > 0);
     assert.equal(timing.total, timing.move);
+  });
+
+  it('zooms only the root sheet, never a sheet sitting on another sheet', () => {
+    assert.equal(shouldHeroZoomSheet({}), true);
+    assert.equal(shouldHeroZoomSheet({ nested: false }), true);
+    assert.equal(shouldHeroZoomSheet({ nested: true }), false);
+  });
+
+  it('treats a scrolled-away thumbnail as off-screen', () => {
+    const viewport = { x: 0, y: 0, width: 390, height: 700 };
+    assert.equal(
+      isHeroSourceVisible({ x: 24, y: 120, width: 160, height: 160 }, viewport),
+      true
+    );
+    assert.equal(
+      isHeroSourceVisible({ x: 24, y: -200, width: 160, height: 160 }, viewport),
+      false
+    );
+    assert.equal(
+      isHeroSourceVisible({ x: 24, y: 800, width: 160, height: 160 }, viewport),
+      false
+    );
+  });
+
+  it('fades the key image into the returning card when the source is gone', () => {
+    assert.equal(heroFillOpacity(0, { sourceVisible: true }), 1);
+    assert.equal(heroFillOpacity(1, { sourceVisible: true }), 1);
+    assert.equal(heroFillOpacity(0, { sourceVisible: false }), 0);
+    assert.equal(heroFillOpacity(0.5, { sourceVisible: false }), 0.5);
+    assert.equal(heroFillOpacity(1, { sourceVisible: false }), 1);
   });
 });
 

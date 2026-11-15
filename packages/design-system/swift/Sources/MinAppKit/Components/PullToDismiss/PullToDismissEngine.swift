@@ -130,6 +130,9 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
         guard !isDismissing, !scrollObserver.isSheetFollowing else { return }
         if releasedWhileActive {
             isDismissing = true
+            if SheetHeroSession.shared.requestInteractiveDismiss() {
+                return
+            }
             dismiss()
             return
         }

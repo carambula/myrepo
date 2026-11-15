@@ -111,6 +111,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private var isDismissing = false
         private var didRevealBackdrop = false
         private var didFadeBackdropOut = false
+        private var didRegisterDismissHandler = false
         private var lifecycleHook: SheetPresentationLifecycleHook?
         private var haptic: UIImpactFeedbackGenerator?
 
@@ -132,6 +133,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             if containerView === resolved.container, sheetView === resolved.sheet, pan != nil {
                 ensureBackdrop()
                 installLifecycleHook()
+                registerDismissHandlerIfNeeded()
                 return
             }
 
@@ -153,9 +155,22 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             disableCompetingPans()
             ensureBackdrop()
             installLifecycleHook()
+            registerDismissHandlerIfNeeded()
+        }
+
+        private func registerDismissHandlerIfNeeded() {
+            guard !didRegisterDismissHandler else { return }
+            didRegisterDismissHandler = true
+            SheetHeroSession.shared.pushDismissHandler { [weak self] in
+                self?.beginProgrammaticDismiss()
+            }
         }
 
         func detach() {
+            if didRegisterDismissHandler {
+                SheetHeroSession.shared.popDismissHandler()
+                didRegisterDismissHandler = false
+            }
             stopFollowDisplayLink()
             restoreSheet(removeProxy: true, revealSheet: !isDismissing)
             removeBackdrop(restoreSystemDimming: false)
@@ -470,14 +485,20 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             CATransaction.commit()
         }
 
-        private func applyBackdropStrength(_ strength: CGFloat) {
+        private func applyBackdropStrength(_ strength: CGFloat, force: Bool = false) {
             let clamped = min(1, max(0, strength))
             // Skip tiny updates — backdrop alpha changes every display tick were a
-            // noticeable source of drag jitter.
-            guard abs(clamped - lastBackdropStrength) >= 0.01 else { return }
+            // noticeable source of drag jitter. Always apply rest and clear so
+            // the shade does not linger as a second pop after the card lands.
+            if !force, abs(clamped - lastBackdropStrength) < 0.01, clamped > 0.02, clamped < 0.98 {
+                return
+            }
             lastBackdropStrength = clamped
             if let backdropView {
                 backdropView.strength = clamped
+                if force, clamped == 0 {
+                    backdropView.alpha = 0
+                }
                 dimmingView?.alpha = 0
             } else {
                 dimmingView?.alpha = originalDimmingAlpha * clamped
@@ -571,17 +592,25 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         }
 
         func notePossibleDismissal() {
+            if isDismissing { return }
             if presentedController()?.isBeingDismissed == true {
                 fadeBackdropOutIfNeeded(animated: true)
             }
         }
 
         private func fadeBackdropOutIfNeeded(animated: Bool) {
+            if isDismissing { return }
+            if backdropView?.isGestureDrivenFade == true || backdropView?.isVisuallyClear == true {
+                didFadeBackdropOut = true
+                applyBackdropStrength(0, force: true)
+                return
+            }
             guard !didFadeBackdropOut else { return }
             didFadeBackdropOut = true
             suppressSystemDimming()
             let animations = {
                 self.backdropView?.strength = 0
+                self.backdropView?.alpha = 0
                 self.lastBackdropStrength = 0
                 self.dimmingView?.alpha = 0
             }
@@ -609,7 +638,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             guard let presented = presentedController() else { return }
             let hook = SheetPresentationLifecycleHook()
             hook.onWillDisappear = { [weak self] animated in
-                self?.fadeBackdropOutIfNeeded(animated: animated)
+                guard let self, !self.isDismissing else { return }
+                self.fadeBackdropOutIfNeeded(animated: animated)
             }
             presented.addChild(hook)
             hook.view.isHidden = true
@@ -898,16 +928,49 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 options: [.beginFromCurrentState, .curveEaseOut]
             ) {
                 moving.transform = .identity
-                self.applyBackdropStrength(1)
+                self.applyBackdropStrength(1, force: true)
             } completion: { _ in
                 self.restoreSheet(removeProxy: true)
                 self.endFollowing()
             }
         }
 
+        private func isNestedSheet() -> Bool {
+            guard let presented = presentedController() else { return false }
+            return presented.presentingViewController?.presentingViewController != nil
+        }
+
+        private func beginProgrammaticDismiss() {
+            guard !isDismissing else { return }
+            if followActivation == nil {
+                followActivation = .edge
+                onFollowingChange(true, .edge)
+                startProxyIfNeeded()
+            }
+            if movingView == nil {
+                isDismissing = true
+                beginGestureDrivenFade()
+                applyBackdropStrength(0, force: true)
+                if let sheetView {
+                    finishDismiss(sheet: sheetView)
+                } else {
+                    onDismiss()
+                }
+                return
+            }
+            flingAway(from: lastTranslation, velocity: .zero)
+        }
+
+        private func beginGestureDrivenFade() {
+            backdropView?.isGestureDrivenFade = true
+            didFadeBackdropOut = true
+        }
+
         private func flingAway(from translation: CGSize, velocity: CGSize) {
             guard movingView != nil, !isDismissing else { return }
-            if let heroID,
+            // A sheet sitting on another sheet uses ordinary dismiss, not zoom.
+            if !isNestedSheet(),
+               let heroID,
                let source = SheetHeroGeometry.frame(for: heroID),
                source.width > 2,
                source.height > 2 {
@@ -925,7 +988,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         /// like it is flying back into its thumbnail.
         private func flingToHero(sourceInWindow: CGRect, radius: CGFloat, velocity: CGSize) {
             isDismissing = true
-            didFadeBackdropOut = true
+            beginGestureDrivenFade()
             SheetHeroSession.shared.cover(heroID)
             startProxyIfNeeded()
             guard let proxy = dragView ?? movingView,
@@ -971,6 +1034,22 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             dragView = clip
             CATransaction.commit()
 
+            let sourceOnScreen = heroID.map { SheetHeroGeometry.isOnScreen($0) } ?? false
+            let fillImage = heroID.flatMap { SheetHeroGeometry.image(for: $0) }
+            let fillView: UIImageView?
+            if !sourceOnScreen, let fillImage {
+                let imageView = UIImageView(image: fillImage)
+                imageView.contentMode = .scaleAspectFill
+                imageView.clipsToBounds = true
+                imageView.frame = clip.bounds
+                imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                imageView.alpha = 0
+                clip.addSubview(imageView)
+                fillView = imageView
+            } else {
+                fillView = nil
+            }
+
             let scale = EdgeSwipeToDismiss.heroReturnScale(
                 currentWidth: originalSize.width,
                 sourceWidth: source.width
@@ -990,7 +1069,8 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 clip.frame = source
                 clip.layer.cornerRadius = radius
                 proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
-                self.applyBackdropStrength(0)
+                fillView?.alpha = 1
+                self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
@@ -1000,7 +1080,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func flingOffscreen(from translation: CGSize, velocity: CGSize) {
             guard let moving = movingView, let sheetView, !isDismissing else { return }
             isDismissing = true
-            didFadeBackdropOut = true
+            beginGestureDrivenFade()
             let fly = EdgeSwipeToDismiss.dismissTranslation(
                 translation,
                 sheetSize: sheetView.bounds.size,
@@ -1026,7 +1106,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             ) {
                 moving.transform = transform
                 moving.alpha = 0
-                self.applyBackdropStrength(0)
+                self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
@@ -1040,7 +1120,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             sheet.isHidden = true
             sheet.alpha = 0
             sheet.transform = .identity
-            applyBackdropStrength(0)
+            applyBackdropStrength(0, force: true)
             CATransaction.commit()
             // Let the real tile paint under the flying clip before the clip
             // is removed, so the swap is one object instead of a hole.

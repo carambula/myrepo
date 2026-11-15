@@ -165,9 +165,18 @@ final class SheetScrimGuardView: UIView {
     private func fadeBackdropOut(with viewController: UIViewController?) {
         guard !didFadeBackdropOut else { return }
         guard let backdrop = backdropView else { return }
+        // Swipe/hero already fading this plate with the card — don't start a
+        // second shade animation that pops after the sheet has landed.
+        if backdrop.isGestureDrivenFade || backdrop.isVisuallyClear {
+            didFadeBackdropOut = true
+            backdrop.strength = 0
+            backdrop.alpha = 0
+            return
+        }
         didFadeBackdropOut = true
         let animations = {
             backdrop.strength = 0
+            backdrop.alpha = 0
         }
         let coordinator = viewController?.transitionCoordinator
             ?? viewController?.presentedViewController?.transitionCoordinator
@@ -260,7 +269,9 @@ final class SheetScrimGuardView: UIView {
         }
         if let presented = presentingViewController()?.presentedViewController {
             SheetPresentationScrim.suppressSystemDimming(for: presented)
-            installBackdrop(for: presented)
+            if backdropView?.isGestureDrivenFade != true {
+                installBackdrop(for: presented)
+            }
             if presented.isBeingDismissed {
                 fadeBackdropOut(with: presented)
             }

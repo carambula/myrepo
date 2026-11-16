@@ -58,7 +58,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Appearance") {
+                Section {
                     NavigationLink {
                         ThemeSelectionView()
                     } label: {
@@ -74,6 +74,8 @@ struct SettingsView: View {
                     }
 
                     MinRadiusSettingsPicker()
+                } header: {
+                    Text("Appearance")
                 } footer: {
                     Text(MinRadiusStyle.sectionFooter)
                 }

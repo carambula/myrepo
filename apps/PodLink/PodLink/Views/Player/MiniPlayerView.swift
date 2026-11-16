@@ -145,25 +145,16 @@ struct MiniPlayerView: View {
 
     // MARK: - Floating (rounded rectangle + drag / fling snap)
 
-    /// Lays out inside the overlay’s short UIKit strip (pinned top or bottom); avoids a full-screen SwiftUI layer that eats all touches.
+    /// Card only — the overlay window pins this host to the top or bottom safe
+    /// edge. Expanding Spacers previously inflated the hit target and blocked
+    /// account / search / FABs in the main window.
     private var floatingPlayerView: some View {
         let pinnedBottom = floatVerticalSnap == .bottom
-        return VStack(spacing: 0) {
-            if pinnedBottom {
-                Spacer(minLength: 0)
-                floatingRoundedRectangleCard
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.bottom, DesignSystem.Spacing.sm)
-                    .offset(y: floatingDragOffsetY)
-            } else {
-                floatingRoundedRectangleCard
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.top, DesignSystem.Spacing.sm)
-                    .offset(y: floatingDragOffsetY)
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: pinnedBottom ? .bottom : .top)
+        return floatingRoundedRectangleCard
+            .padding(.horizontal, DesignSystem.Spacing.sm)
+            .padding(.bottom, pinnedBottom ? DesignSystem.Spacing.sm : 0)
+            .padding(.top, pinnedBottom ? 0 : DesignSystem.Spacing.sm)
+            .offset(y: floatingDragOffsetY)
     }
 
     /// Matches the pre-merge floating chrome: material rounded rect, artwork + title + play, progress inside the card.
@@ -489,20 +480,10 @@ struct MiniPlayerView: View {
 
     private var floatingMicroplayerView: some View {
         let pinnedBottom = floatVerticalSnap == .bottom
-        return VStack(spacing: 0) {
-            if pinnedBottom {
-                Spacer(minLength: 0)
-                microplayerRow
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.bottom, DesignSystem.Spacing.sm)
-            } else {
-                microplayerRow
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.top, DesignSystem.Spacing.sm)
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: pinnedBottom ? .bottom : .top)
+        return microplayerRow
+            .padding(.horizontal, DesignSystem.Spacing.sm)
+            .padding(.bottom, pinnedBottom ? DesignSystem.Spacing.sm : 0)
+            .padding(.top, pinnedBottom ? 0 : DesignSystem.Spacing.sm)
     }
 
     private var microplayerDockedPlayer: some View {

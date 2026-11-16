@@ -53,6 +53,7 @@ struct WatchedItApp: App {
     var body: some Scene {
         WindowGroup {
             rootContent
+                .minRadiusStyle()
                 .preferredColorScheme(themeManager.currentTheme.supportsLightMode ? nil : .dark)
                 .environmentObject(ThemeManager.shared)
                 .task {

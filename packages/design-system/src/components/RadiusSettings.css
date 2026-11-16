@@ -1,0 +1,46 @@
+/**
+ * Radii appearance setting styles
+ */
+
+.min-radius-settings {
+  padding: var(--spacing-page-margin-top, 24px) var(--spacing-page-margin-side, 16px);
+  max-width: 800px;
+}
+
+.min-radius-settings-header {
+  margin-bottom: 16px;
+}
+
+.min-radius-settings-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text-primary);
+}
+
+.min-radius-settings-description,
+.min-radius-settings-detail {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.min-radius-settings-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.min-radius-settings-select {
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 12px;
+  font-size: 16px;
+  border-radius: var(--min-radius-control, 8px);
+  border: 1px solid var(--color-border-primary, #ccc);
+  background-color: var(--color-background-secondary, transparent);
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}

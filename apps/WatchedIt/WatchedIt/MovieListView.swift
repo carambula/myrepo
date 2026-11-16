@@ -4992,6 +4992,13 @@ struct AccountSheetView: View {
                         .pickerStyle(.menu)
                     }
 
+                    HStack {
+                        Label("Radii", systemImage: "square.dashed")
+                            .foregroundStyle(DesignSystem.Color.textPrimary)
+                        Spacer()
+                        MinRadiusSettingsPicker("")
+                    }
+
                     NavigationLink(destination: LoadingScreenStyleView()) {
                         Label("Loading Screen Style", systemImage: "sparkles.rectangle.stack")
                             .foregroundStyle(DesignSystem.Color.textPrimary)

@@ -90,6 +90,8 @@ struct AccountSheetView: View {
                     }
                     .pickerStyle(.menu)
 
+                    MinRadiusSettingsPicker()
+
                     NavigationLink {
                         FontOverrideSettingsView()
                             .environment(themeManager)

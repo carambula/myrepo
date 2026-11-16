@@ -2113,6 +2113,8 @@ private struct AccountSheetView: View {
                         }
                     }
                     .pickerStyle(.menu)
+
+                    MinRadiusSettingsPicker()
                 }
                 .designSystemGroupedListRow()
 
@@ -2256,13 +2258,13 @@ private struct CalendarRaceAppearanceSettingsView: View {
                 Rectangle()
                     .fill(DesignSystem.Color.textSecondary.opacity(0.25))
                     .frame(width: 120, height: 6)
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                     .fill(DesignSystem.Color.surfaceElevated)
                     .frame(height: 60)
             }
         case .raceNameOverlay:
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                     .fill(DesignSystem.Color.surfaceElevated)
                     .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 LinearGradient(
@@ -2270,7 +2272,7 @@ private struct CalendarRaceAppearanceSettingsView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
                 Rectangle()
                     .fill(.white.opacity(0.9))
                     .frame(width: 130, height: 6)
@@ -2278,7 +2280,7 @@ private struct CalendarRaceAppearanceSettingsView: View {
             }
         case .fullOverlay:
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                     .fill(DesignSystem.Color.surfaceElevated)
                     .aspectRatio(4.0 / 3.0, contentMode: .fit)
                 LinearGradient(
@@ -2286,7 +2288,7 @@ private struct CalendarRaceAppearanceSettingsView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
                 VStack(alignment: .leading, spacing: 4) {
                     Rectangle().fill(.white.opacity(0.95)).frame(width: 130, height: 6)
                     Rectangle().fill(.white.opacity(0.8)).frame(width: 110, height: 5)
@@ -2297,7 +2299,7 @@ private struct CalendarRaceAppearanceSettingsView: View {
         case .boldOverlay:
             VStack(alignment: .leading, spacing: 4) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                         .fill(DesignSystem.Color.surfaceElevated)
                         .aspectRatio(3.0 / 1.0, contentMode: .fit)
                     Rectangle()

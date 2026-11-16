@@ -47,7 +47,7 @@ export function DismissButton({
     left: ${spacing.page.marginLeft};
     width: ${currentSize};
     height: ${currentSize};
-    border-radius: ${borders.radii.md};
+    border-radius: ${borders.radii.control};
     border: none;
     background-color: var(--color-surface-primary);
     color: var(--color-text-primary);

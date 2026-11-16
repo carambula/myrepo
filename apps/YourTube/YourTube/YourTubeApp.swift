@@ -78,6 +78,7 @@ struct YourTubeApp: App {
                 syncStore: syncStore,
                 deepLinkVideoID: $deepLinkVideoID
             )
+            .minRadiusStyle()
             .ideasRageShake(app: .vid)
             .onOpenURL { url in
                 deepLinkVideoID = DeepLinkHandler.videoID(from: url)

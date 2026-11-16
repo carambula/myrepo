@@ -167,13 +167,13 @@ enum DesignSystem {
     // MARK: - Corner Radius Tokens (values from MinAppKit)
 
     enum CornerRadius {
-        static let artTile: CGFloat = MinCornerRadius.artTile
-        static let xs: CGFloat = MinCornerRadius.xs
-        static let sm: CGFloat = MinCornerRadius.sm
-        static let md: CGFloat = MinCornerRadius.md
-        static let lg: CGFloat = MinCornerRadius.lg
-        static let xl: CGFloat = MinCornerRadius.xl
-        static let round: CGFloat = MinCornerRadius.round
+        static var artTile: CGFloat { MinCornerRadius.artTile }
+        static var xs: CGFloat { MinCornerRadius.xs }
+        static var sm: CGFloat { MinCornerRadius.sm }
+        static var md: CGFloat { MinCornerRadius.md }
+        static var lg: CGFloat { MinCornerRadius.lg }
+        static var xl: CGFloat { MinCornerRadius.xl }
+        static var round: CGFloat { MinCornerRadius.round }
     }
 
     // MARK: - Icon Size Tokens

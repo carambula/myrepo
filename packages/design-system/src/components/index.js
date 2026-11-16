@@ -25,6 +25,7 @@ export { FeatureHighlight } from './FeatureHighlight.js';
 export { PermissionRequest } from './PermissionRequest.js';
 export { OnboardingContainer } from './OnboardingContainer.js';
 export { FontOverrideSettings } from './FontOverrideSettings.js';
+export { RadiusSettings } from './RadiusSettings.js';
 export { BottomSheet } from './BottomSheet.js';
 export {
   clampedFlingSpeed,
@@ -91,6 +92,7 @@ export default {
   PermissionRequest,
   OnboardingContainer,
   FontOverrideSettings,
+  RadiusSettings,
   BottomSheet,
   DismissButton,
   LoadingState,

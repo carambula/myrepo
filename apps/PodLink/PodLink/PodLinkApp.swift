@@ -87,6 +87,7 @@ struct PodLinkApp: App {
         WindowGroup {
             ContentView()
                 .environment(themeManager)
+                .minRadiusStyle()
                 .environment(playbackService)
                 .environment(downloadManager)
                 .environment(networkStatusService)

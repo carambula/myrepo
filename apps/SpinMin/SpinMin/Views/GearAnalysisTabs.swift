@@ -83,12 +83,12 @@ struct OverviewTab: View {
                     
                     ZStack(alignment: .leading) {
                         // Background bar
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                             .fill(DesignSystem.Color.surface)
                             .frame(height: 24)
                         
                         // Range bar
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                             .fill(LinearGradient(
                                 colors: [DesignSystem.Color.accent.opacity(0.6), DesignSystem.Color.accent],
                                 startPoint: .leading,

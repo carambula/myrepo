@@ -18,6 +18,7 @@ struct AppearanceSettingsView: View {
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
     @AppStorage("miniPlayerDockPresentation") private var miniPlayerDockPresentation = MiniPlayerDockPresentation.fullBleed.rawValue
     @Bindable private var affordanceStyle = MinAffordanceStyle.shared
+    @Bindable private var radiusStyle = MinRadiusStyle.shared
 
     var body: some View {
         List {
@@ -33,6 +34,15 @@ struct AppearanceSettingsView: View {
                 Text("Controls")
             } footer: {
                 Text("Border adds an outline to buttons, inputs, and players. Shape switches between round (capsule/circle) and square (rounded rectangle) geometry.")
+            }
+            .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
+
+            Section {
+                MinRadiusSettingsPicker()
+            } header: {
+                Text("Radii")
+            } footer: {
+                Text("\(radiusStyle.mode.detail) \(MinRadiusStyle.sectionFooter)")
             }
             .listRowBackground(DesignSystem.Colors.groupedListCardBackground)
 

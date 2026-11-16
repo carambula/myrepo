@@ -85,6 +85,7 @@ struct SpinMinApp: App {
         WindowGroup {
             ContentView()
                 .environment(themeManager)
+                .minRadiusStyle()
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : nil)
                 .ideasRageShake(app: .spin)
                 .onAppear {

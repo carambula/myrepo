@@ -8,7 +8,8 @@ import Foundation
 ///
 /// ## Tokens Provided
 /// - `MinSpacing`: Spacing scale and semantic spacing values
-/// - `MinCornerRadius`: Corner radius tokens for UI elements
+/// - `MinCornerRadius`: Corner radius tokens for UI elements (follow `MinRadiusStyle`)
+/// - `MinRadiusStyle`: Appearance setting that scales rounded corners
 /// - `MinOpacity`: Opacity values for various states
 /// - `MinAffordanceStyle`: Shared styling for buttons and interactive elements
 /// - `minScrollPinnedChrome`: Shared title-mark / account scroll-pin + blur modifier

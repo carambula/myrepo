@@ -60,8 +60,8 @@
   bottom: 0;
   background-color: var(--color-surface-primary, #1e1e1e);
   color: var(--color-text-primary, #eee);
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
+  border-top-left-radius: var(--min-radius-lg, 16px);
+  border-top-right-radius: var(--min-radius-lg, 16px);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
   transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1),
               height 0.42s cubic-bezier(0.32, 0.72, 0, 1),
@@ -96,7 +96,7 @@
   /* The rest-position shadow sits in the rounded-corner cutouts once the
      sheet lifts; drop it while the card is following the finger. */
   box-shadow: none;
-  border-radius: 16px;
+  border-radius: var(--min-radius-lg, 16px);
 }
 
 .min-bottom-sheet--closed {

@@ -39,7 +39,7 @@ export function Input({
     color: var(--color-text-primary);
     background-color: var(--color-surface-primary);
     border: ${borders.widths.thin} ${borders.styles.solid} var(--color-border-primary);
-    border-radius: ${borders.radii.md};
+    border-radius: ${borders.radii.control};
     transition: ${transitions.all};
     outline: none;
     ${fullWidth ? 'width: 100%;' : ''}

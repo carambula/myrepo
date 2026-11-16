@@ -262,15 +262,25 @@ private struct SheetHeroSourceModifier: ViewModifier {
         // sits on another sheet is too complex, so those present normally.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
-                // Keep matchedTransitionSource outermost so the system zoom
-                // can snapshot the tile. Cover opacity sits inside it.
-                sourced.matchedTransitionSource(id: id, in: namespace) { source in
-                    source
-                        .background(Color(uiColor: .systemBackground))
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        )
-                }
+                // `matchedTransitionSource` hides its live view while (and
+                // sometimes after) the morph — especially in a secondary
+                // overlay window like the floating mini player. Keep a
+                // hit-test-free copy on top so artwork stays visible when
+                // idle; cover opacity hides that copy during the flight.
+                sourced
+                    .matchedTransitionSource(id: id, in: namespace) { source in
+                        source
+                            .background(Color(uiColor: .systemBackground))
+                            .clipShape(
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            )
+                    }
+                    .overlay {
+                        content
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .modifier(SheetHeroCoverOpacity(id: id))
+                    }
             } else {
                 sourced
             }

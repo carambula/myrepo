@@ -179,9 +179,10 @@ struct PodcastListView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Chrome behind pages — content scrolls over it; blur tracks pager + scroll.
-            topChrome
+            // Wordmark behind pages — content scrolls over it; blur tracks pager + scroll.
+            topWordmark
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
+                .allowsHitTesting(false)
                 .zIndex(0)
 
             Group {
@@ -203,6 +204,11 @@ struct PodcastListView: View {
 
             dragOverlay
                 .zIndex(2)
+
+            // Account sits above the pager so it stays tappable; same blur as the wordmark.
+            topAccountChrome
+                .padding(.top, MinSpacing.TopControls.verticalPadding)
+                .zIndex(3)
         }
         .background {
             GeometryReader { geometry in
@@ -826,14 +832,25 @@ struct PodcastListView: View {
         .padding(.bottom, scrollBottomInset)
     }
 
-    // MARK: - Top Chrome (wordmark + account)
+    // MARK: - Top Chrome (wordmark under pages; account above for taps)
     //
-    // Lives under the pager pages. Blur/fade follow the blended scroll offsets of
-    // the grid and list pages as the pager moves.
+    // Wordmark lives under the pager so content can scroll over it. Account is
+    // layered above so the control stays tappable. Both share the same blur.
 
-    private var topChrome: some View {
-        ZStack(alignment: .topLeading) {
-            Image("Title Type")
+    @ViewBuilder
+    private func applyChromeBlur<Content: View>(to content: Content) -> some View {
+        content
+            .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
+            .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
+            .animation(
+                isPagerActive ? nil : .easeOut(duration: 0.12),
+                value: chromeBlurProgress
+            )
+    }
+
+    private var topWordmark: some View {
+        applyChromeBlur(
+            to: Image("Title Type")
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
@@ -844,24 +861,26 @@ struct PodcastListView: View {
                        alignment: .leading)
                 .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
                 .padding(.leading, MinSpacing.TitleType.horizontalPadding)
+                .frame(maxWidth: .infinity)
+                .frame(height: MinSpacing.TopControls.buttonSize)
+                .offset(y: MinSpacing.TitleType.markOffsetY)
+                .compositingGroup()
+        )
+    }
 
-            HStack {
+    private var topAccountChrome: some View {
+        applyChromeBlur(
+            to: HStack {
                 Spacer(minLength: 0)
+                    .allowsHitTesting(false)
                 accountButton
             }
             .padding(.horizontal, MinSpacing.lg)
             .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: MinSpacing.TopControls.buttonSize)
-        .offset(y: MinSpacing.TitleType.markOffsetY)
-        .compositingGroup()
-        .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
-        .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
-        .accessibilityElement(children: .contain)
-        .animation(
-            isPagerActive ? nil : .easeOut(duration: 0.12),
-            value: chromeBlurProgress
+            .frame(height: MinSpacing.TopControls.buttonSize)
+            .offset(y: MinSpacing.TitleType.markOffsetY)
+            .compositingGroup()
+            .accessibilityElement(children: .contain)
         )
     }
 

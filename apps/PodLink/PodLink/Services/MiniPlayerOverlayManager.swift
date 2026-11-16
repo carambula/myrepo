@@ -49,7 +49,10 @@ private struct MiniPlayerOverlayRoot: View {
                     .environment(themeManager)
                     .environment(playbackService)
                     .environment(networkStatusService)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Size to the card only — a maxHeight infinity strip ate taps
+                    // for account / search / FABs outside the visible mini chrome.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
                     .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
                     .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                     .transition(.offset(y: UIScreen.main.bounds.height))
@@ -99,7 +102,12 @@ private final class MiniPlayerOverlayWindow: UIWindow {
         // Now-playing (and any other modal) presented from this window must
         // receive normal hits; the mini-only passthrough would eat the sheet.
         if rootViewController?.presentedViewController != nil {
-            return super.hitTest(point, with: event)
+            let hit = super.hitTest(point, with: event)
+            // Don't let the clear full-screen container steal taps outside the sheet.
+            if hit === self || hit === rootViewController?.view {
+                return nil
+            }
+            return hit
         }
 
         guard let root = rootViewController?.view,
@@ -117,7 +125,13 @@ private final class MiniPlayerOverlayWindow: UIWindow {
         guard hostFrameInRoot.contains(pointInRoot) else { return nil }
 
         let local = convert(point, to: host)
-        return host.hitTest(local, with: event)
+        let hit = host.hitTest(local, with: event)
+        // Empty strip / Spacer regions still hit-test to the hosting root and
+        // would block account, search, and FABs in the windows below.
+        if hit == nil || hit === host || hit === root {
+            return nil
+        }
+        return hit
     }
 }
 

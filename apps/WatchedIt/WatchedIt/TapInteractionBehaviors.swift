@@ -164,7 +164,7 @@ struct GlowPulseEffectModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
                     .stroke(accentColor.opacity(colorIntensity), lineWidth: 2 * intensity)
                     .scaleEffect(pulseScale)
                     .opacity(pulseOpacity)

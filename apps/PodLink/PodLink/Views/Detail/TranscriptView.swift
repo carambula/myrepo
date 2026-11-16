@@ -91,7 +91,7 @@ struct TranscriptView: View {
                                     .padding(.horizontal, DesignSystem.Spacing.xs)
                                     .padding(.vertical, 2)
                                     .background(Color(.systemGray6))
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs))
                             }
                         }
                     }

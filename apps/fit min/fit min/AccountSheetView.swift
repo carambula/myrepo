@@ -46,6 +46,8 @@ struct AccountSheetView: View {
                     }
                     .pickerStyle(.menu)
 
+                    MinRadiusSettingsPicker()
+
                     Button {
                         showsFonts = true
                     } label: {

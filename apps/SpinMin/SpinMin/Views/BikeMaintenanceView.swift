@@ -253,11 +253,11 @@ struct ChainComponentCard: View {
                     
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                                 .fill(Color.secondary.opacity(0.2))
                                 .frame(height: 8)
                             
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.xs)
                                 .fill(chainStatus.waxDue ? Color.red : Color.green)
                                 .frame(width: geometry.size.width * min(1.0, kmSinceWax / (kmSinceWax + kmUntilWax)), height: 8)
                         }

@@ -103,7 +103,7 @@ struct VendorSelectionRow: View {
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color.secondary.opacity(0.1))
-                                .cornerRadius(4)
+                                .cornerRadius(DesignSystem.CornerRadius.xs)
                         }
                         if vendor.specialties.count > 3 {
                             Text("+\(vendor.specialties.count - 3)")

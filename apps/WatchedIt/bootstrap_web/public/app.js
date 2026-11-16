@@ -3142,6 +3142,52 @@ function slugify(val) {
   return val.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 }
 
+var RADIUS_RAMP = [4, 8, 12, 16, 20];
+var RADIUS_CSS_BASES = {
+  "--radius-sm": 8,
+  "--radius-md": 12,
+  "--radius-lg": 16,
+  "--radius-xl": 24,
+  "--ds-radius-xs": 4,
+  "--ds-radius-sm": 8,
+  "--ds-radius-md": 12,
+  "--ds-radius-lg": 16,
+  "--ds-radius-xl": 20,
+  "--ds-radius-artTile": 8
+};
+
+function resolvePreviewRadius(base, mode) {
+  if (base >= 50) return base;
+  if (base <= 0) return 0;
+  if (mode === "default") return base;
+  if (mode === "universal3") return 12;
+  if (mode === "universal2") return 8;
+  if (mode === "universal1") return 4;
+  if (mode === "universal0") return 0;
+  var steps = mode === "reduced3" ? 3 : mode === "reduced2" ? 2 : 1;
+  var index = RADIUS_RAMP.indexOf(base);
+  if (index < 0) {
+    if (base < RADIUS_RAMP[0]) return base;
+    if (base > RADIUS_RAMP[RADIUS_RAMP.length - 1]) {
+      index = RADIUS_RAMP.length - 1 + Math.max(0, Math.round((base - RADIUS_RAMP[RADIUS_RAMP.length - 1]) / 4));
+    } else {
+      for (var i = RADIUS_RAMP.length - 1; i >= 0; i--) {
+        if (RADIUS_RAMP[i] <= base) { index = i; break; }
+      }
+    }
+  }
+  var next = Math.max(0, index - steps);
+  return next < RADIUS_RAMP.length ? RADIUS_RAMP[next] : RADIUS_RAMP[RADIUS_RAMP.length - 1];
+}
+
+function applyRadii(mode) {
+  var root = document.documentElement;
+  Object.keys(RADIUS_CSS_BASES).forEach(function(name) {
+    root.style.setProperty(name, resolvePreviewRadius(RADIUS_CSS_BASES[name], mode) + "px");
+  });
+  root.setAttribute("data-radius-mode", mode || "default");
+}
+
 function populateSelect(selectId, enumData, defaultRawValue) {
   var select = document.getElementById(selectId);
   if (!select || !enumData || !enumData.cases || !enumData.cases.length) return;
@@ -3421,6 +3467,9 @@ function initAppearanceSettings() {
   applyToolbarStyle(toolbarSel ? toolbarSel.value : "Custom Floating Toolbar");
   applyDetailLayout(detailSel ? detailSel.value : "Poster Focus");
   applySearchBar(searchSel ? searchSel.value : "Glass");
+
+  var radiiSel = document.getElementById("app-radii");
+  applyRadii(radiiSel ? radiiSel.value : "default");
 
   var actionBarSel = document.getElementById("app-action-bar-layout");
   applyActionBarLayout(actionBarSel ? actionBarSel.value : "leftAligned");

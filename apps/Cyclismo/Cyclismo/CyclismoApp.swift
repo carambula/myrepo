@@ -29,6 +29,7 @@ struct CyclismoApp: App {
         WindowGroup {
             ContentView(deepLinkURL: $deepLinkURL)
                 .environmentObject(themeManager)
+                .minRadiusStyle()
                 .themeBackground()
                 .ideasRageShake(app: .cyc)
                 .onOpenURL { url in

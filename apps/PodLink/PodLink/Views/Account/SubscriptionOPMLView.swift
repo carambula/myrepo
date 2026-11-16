@@ -89,7 +89,7 @@ struct SubscriptionOPMLView: View {
                         .ignoresSafeArea()
                     ProgressView("Importing…")
                         .padding(24)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md))
                 }
             }
         }

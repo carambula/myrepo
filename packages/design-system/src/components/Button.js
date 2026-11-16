@@ -27,7 +27,7 @@ export function Button({
     letter-spacing: ${typography.styles.button.letterSpacing};
     line-height: ${typography.styles.button.lineHeight};
     border: none;
-    border-radius: ${borders.radii.md};
+    border-radius: ${borders.radii.control};
     cursor: ${disabled ? 'not-allowed' : 'pointer'};
     transition: ${transitions.all};
     opacity: ${disabled ? '0.5' : '1'};

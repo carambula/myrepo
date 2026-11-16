@@ -117,7 +117,9 @@ public final class MinAffordanceStyle {
     }
 
     private nonisolated static var squareRect: RoundedRectangle {
-        RoundedRectangle(cornerRadius: MinCornerRadius.md, style: .continuous)
+        // Buttons / navigation keep the canonical control radius, independent
+        // of the content radii setting.
+        RoundedRectangle(cornerRadius: MinCornerRadius.baseMD, style: .continuous)
     }
 
     private init() {

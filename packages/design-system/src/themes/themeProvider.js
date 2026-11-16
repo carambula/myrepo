@@ -6,6 +6,7 @@
 import { lightTheme } from './lightTheme.js';
 import { darkTheme } from './darkTheme.js';
 import { initFontOverride } from '../appearance/fontOverride.js';
+import { initRadiusStyle } from '../appearance/radiusStyle.js';
 
 /**
  * Available themes
@@ -95,6 +96,9 @@ export function initTheme() {
   
   // Initialize font override
   initFontOverride();
+
+  // Initialize corner-radius preference
+  initRadiusStyle();
   
   // Listen for system theme changes
   if (typeof window !== 'undefined' && window.matchMedia) {

@@ -131,7 +131,7 @@ export function OnboardingFlow({
 
         .onboarding-flow__content {
           background: var(--color-surface);
-          border-radius: 16px;
+          border-radius: var(--min-radius-lg, 16px);
           padding: 32px;
           box-shadow: var(--shadow-md);
         }

@@ -57,6 +57,7 @@ struct fit_minApp: App {
         WindowGroup {
             ContentView()
                 .environment(themeManager)
+                .minRadiusStyle()
                 .preferredColorScheme(themeManager.currentTheme.isDark ? .dark : .light)
                 .themeBackground()
                 .ideasRageShake(app: .fit)

@@ -188,7 +188,7 @@ struct EpisodePlayerSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(.ultraThinMaterial)
-                .cornerRadius(20)
+                .cornerRadius(DesignSystem.CornerRadius.xl)
             }
             .buttonStyle(.plain)
             .padding(.top, 8)

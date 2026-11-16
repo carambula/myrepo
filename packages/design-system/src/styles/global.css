@@ -9,6 +9,19 @@
   --min-page-margin-bottom: 24px;
   --min-page-margin-left: 24px;
   --min-page-margin-right: 24px;
+
+  /* Corner radii — live values follow the Radii appearance setting.
+     Circular / pill tokens (--min-radius-round, --min-radius-full) are not remapped. */
+  --min-radius-none: 0px;
+  --min-radius-xs: 4px;
+  --min-radius-sm: 8px;
+  --min-radius-md: 12px;
+  --min-radius-lg: 16px;
+  --min-radius-xl: 20px;
+  --min-radius-art-tile: 4px;
+  --min-radius-round: 100px;
+  --min-radius-full: 9999px;
+  --min-radius-control: 8px;
 }
 
 @media (max-width: 767px) {

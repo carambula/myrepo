@@ -179,8 +179,9 @@ struct PodcastListView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Wordmark behind pages — content scrolls over it; blur tracks pager + scroll.
-            topWordmark
+            // Chrome behind pages — content scrolls over it; blur tracks pager + scroll.
+            // Non-interactive so the pager can receive scrolls; taps use the hit target above.
+            topChrome
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
                 .allowsHitTesting(false)
                 .zIndex(0)
@@ -205,8 +206,8 @@ struct PodcastListView: View {
             dragOverlay
                 .zIndex(2)
 
-            // Account sits above the pager so it stays tappable; same blur as the wordmark.
-            topAccountChrome
+            // Invisible account hit target above the pager (visual chrome stays under for blur).
+            accountHitTarget
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
                 .zIndex(3)
         }
@@ -832,25 +833,15 @@ struct PodcastListView: View {
         .padding(.bottom, scrollBottomInset)
     }
 
-    // MARK: - Top Chrome (wordmark under pages; account above for taps)
+    // MARK: - Top Chrome (wordmark + account)
     //
-    // Wordmark lives under the pager so content can scroll over it. Account is
-    // layered above so the control stays tappable. Both share the same blur.
+    // Lives under the pager pages so content can scroll over it. Blur/fade follow
+    // the blended scroll offsets of the grid and list pages as the pager moves.
+    // A separate clear hit target above the pager keeps Account tappable.
 
-    @ViewBuilder
-    private func applyChromeBlur<Content: View>(to content: Content) -> some View {
-        content
-            .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
-            .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
-            .animation(
-                isPagerActive ? nil : .easeOut(duration: 0.12),
-                value: chromeBlurProgress
-            )
-    }
-
-    private var topWordmark: some View {
-        applyChromeBlur(
-            to: Image("Title Type")
+    private var topChrome: some View {
+        ZStack(alignment: .topLeading) {
+            Image("Title Type")
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
@@ -861,45 +852,60 @@ struct PodcastListView: View {
                        alignment: .leading)
                 .frame(maxWidth: .infinity, maxHeight: MinSpacing.TopControls.buttonSize, alignment: .leading)
                 .padding(.leading, MinSpacing.TitleType.horizontalPadding)
-                .frame(maxWidth: .infinity)
-                .frame(height: MinSpacing.TopControls.buttonSize)
-                .offset(y: MinSpacing.TitleType.markOffsetY)
-                .compositingGroup()
-        )
-    }
 
-    private var topAccountChrome: some View {
-        applyChromeBlur(
-            to: HStack {
+            HStack {
                 Spacer(minLength: 0)
-                    .allowsHitTesting(false)
-                accountButton
+                accountButtonLabel
             }
             .padding(.horizontal, MinSpacing.lg)
             .frame(maxWidth: .infinity, minHeight: MinSpacing.TopControls.buttonSize, alignment: .trailing)
-            .frame(height: MinSpacing.TopControls.buttonSize)
-            .offset(y: MinSpacing.TitleType.markOffsetY)
-            .compositingGroup()
-            .accessibilityElement(children: .contain)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MinSpacing.TopControls.buttonSize)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+        .compositingGroup()
+        .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
+        .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
+        .accessibilityElement(children: .contain)
+        .accessibilityHidden(true)
+        .animation(
+            isPagerActive ? nil : .easeOut(duration: 0.12),
+            value: chromeBlurProgress
         )
     }
 
-    private var accountButton: some View {
+    /// Clear control matching the account chrome frame so taps work above the pager.
+    private var accountHitTarget: some View {
+        let size = MinSpacing.TopControls.buttonSize
+        return HStack {
+            Spacer(minLength: 0)
+                .allowsHitTesting(false)
+            Button {
+                rootSheet = .account
+            } label: {
+                Color.clear
+                    .frame(width: size, height: size)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Account")
+        }
+        .padding(.horizontal, MinSpacing.lg)
+        .frame(maxWidth: .infinity, minHeight: size, alignment: .trailing)
+        .frame(height: size)
+        .offset(y: MinSpacing.TitleType.markOffsetY)
+    }
+
+    private var accountButtonLabel: some View {
         let aff = MinAffordanceStyle.shared
         let size = MinSpacing.TopControls.buttonSize
-        return Button {
-            rootSheet = .account
-        } label: {
-            Image(systemName: "person.crop.circle")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .frame(width: size, height: size)
-                .contentShape(Rectangle())
-                .frostedSurface(aff.insettableCircleShape)
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
-        .accessibilityLabel("Account")
+        return Image(systemName: "person.crop.circle")
+            .font(.body.weight(.semibold))
+            .foregroundStyle(DesignSystem.Colors.textPrimary)
+            .frame(width: size, height: size)
+            .contentShape(Rectangle())
+            .frostedSurface(aff.insettableCircleShape)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Layout Switch Animation (FAB / settings — non-interactive)

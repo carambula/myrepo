@@ -484,6 +484,10 @@ struct MiniPlayerView: View {
             .padding(.horizontal, DesignSystem.Spacing.sm)
             .padding(.bottom, pinnedBottom ? DesignSystem.Spacing.sm : 0)
             .padding(.top, pinnedBottom ? 0 : DesignSystem.Spacing.sm)
+            // Ensure the capsule claims taps inside its bounds (overlay hitTest
+            // forwards to the hosting root; SwiftUI still needs a content shape).
+            .contentShape(Rectangle())
+            .fixedSize(horizontal: true, vertical: true)
     }
 
     private var microplayerDockedPlayer: some View {

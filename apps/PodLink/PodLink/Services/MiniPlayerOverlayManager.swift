@@ -49,10 +49,9 @@ private struct MiniPlayerOverlayRoot: View {
                     .environment(themeManager)
                     .environment(playbackService)
                     .environment(networkStatusService)
-                    // Size to the card only — a maxHeight infinity strip ate taps
-                    // for account / search / FABs outside the visible mini chrome.
+                    // Hug the card/capsule — UIKit leading/trailing (or ≤320 center)
+                    // constraints propose width; avoid a maxHeight infinity strip.
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity)
                     .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
                     .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                     .transition(.offset(y: UIScreen.main.bounds.height))
@@ -119,19 +118,17 @@ private final class MiniPlayerOverlayWindow: UIWindow {
             return nil
         }
         let hostFrameInRoot = host.superview!.convert(host.frame, to: root)
-        guard hostFrameInRoot.height > 8 else { return nil }
+        // Host is sized to the mini card; ignore collapsed / empty hosts.
+        guard hostFrameInRoot.width > 8, hostFrameInRoot.height > 8 else { return nil }
 
         let pointInRoot = root.convert(point, from: self)
         guard hostFrameInRoot.contains(pointInRoot) else { return nil }
 
         let local = convert(point, to: host)
-        let hit = host.hitTest(local, with: event)
-        // Empty strip / Spacer regions still hit-test to the hosting root and
-        // would block account, search, and FABs in the windows below.
-        if hit == nil || hit === host || hit === root {
-            return nil
-        }
-        return hit
+        // SwiftUI materials/buttons often resolve hitTest to the hosting root.
+        // The host hugs the card, so delivering those taps is correct — do not
+        // discard `hit === host` or microplayer taps fall through to the grid.
+        return host.hitTest(local, with: event) ?? host
     }
 }
 

@@ -27,6 +27,7 @@ struct PodcastListView: View {
     @AppStorage("showPodcastTitlesOnMain") private var showPodcastTitlesOnMain = false
     @AppStorage("newEpisodeBadgeMode") private var newEpisodeBadgeMode = NewEpisodeBadgeMode.notStartedLatest.rawValue
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
+    @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
     @AppStorage("miniPlayerFloatVerticalSnap") private var miniPlayerFloatVerticalSnap = MiniPlayerFloatVerticalSnap.bottom.rawValue
 
     @State private var followedPodcasts: [Podcast] = []
@@ -155,19 +156,29 @@ struct PodcastListView: View {
         miniPlayerFloatVerticalSnap == MiniPlayerFloatVerticalSnap.top.rawValue
     }
 
+    /// Matches `MiniPlayerOverlayRoot.ownsFloatingMini` — microplayer always floats.
+    private var showsFloatingMiniOverlay: Bool {
+        guard playbackService.state.currentEpisode != nil else { return false }
+        return miniPlayerDockMode != MiniPlayerDockMode.docked.rawValue
+            || miniPlayerSize == MiniPlayerSize.microplayer.rawValue
+    }
+
     private var floatingMiniTopInset: CGFloat {
-        guard playbackService.state.currentEpisode != nil,
-              miniPlayerDockMode != MiniPlayerDockMode.docked.rawValue,
-              floatingMiniAtTop else { return 0 }
-        return 100
+        guard showsFloatingMiniOverlay, floatingMiniAtTop else { return 0 }
+        return miniPlayerSize == MiniPlayerSize.microplayer.rawValue ? 72 : 100
     }
 
     private var scrollBottomInset: CGFloat {
-        let hasMini = playbackService.state.currentEpisode != nil
-            && miniPlayerDockMode != MiniPlayerDockMode.docked.rawValue
-        guard hasMini else { return 48 }
+        guard showsFloatingMiniOverlay else { return 48 }
         if floatingMiniAtTop { return 48 }
+        // Microplayer is a short capsule; 100pt left a dead band under it.
+        if miniPlayerSize == MiniPlayerSize.microplayer.rawValue { return 72 }
         return 100
+    }
+
+    /// Normalize ScrollView offset so 0 is the resting top (insets-safe).
+    private func normalizedScrollOffset(_ geometry: ScrollGeometry) -> CGFloat {
+        max(0, geometry.contentOffset.y + geometry.contentInsets.top)
     }
 
     private var isGridPosterStyle: Bool {
@@ -179,13 +190,7 @@ struct PodcastListView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Fixed chrome behind pages — stays put during grid↔list swipe;
-            // blur lerps to the incoming page's scroll offset.
-            topChrome
-                .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .allowsHitTesting(false)
-                .zIndex(0)
-
+            // Pages fill the screen; chrome overlays them (does not shrink the pager).
             Group {
                 if !hasAttemptedInitialLoad {
                     ScrollView {
@@ -195,9 +200,7 @@ struct PodcastListView: View {
                         }
                         .padding(.top, MinSpacing.TopControls.verticalPadding)
                     }
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        max(0, geometry.contentOffset.y)
-                    } action: { _, newOffset in
+                    .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
                         soloScrollOffset = newOffset
                     }
                 } else if followedPodcasts.isEmpty {
@@ -208,24 +211,30 @@ struct PodcastListView: View {
                         }
                         .padding(.top, MinSpacing.TopControls.verticalPadding)
                     }
-                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                        max(0, geometry.contentOffset.y)
-                    } action: { _, newOffset in
+                    .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
                         soloScrollOffset = newOffset
                     }
                 } else {
                     layoutPager
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .zIndex(1)
 
-            dragOverlay
+            // Fixed chrome behind page *content* (pages are full-bleed; top spacer
+            // clears the chrome). Stays put during grid↔list swipe.
+            topChrome
+                .padding(.top, MinSpacing.TopControls.verticalPadding)
+                .allowsHitTesting(false)
                 .zIndex(2)
+
+            dragOverlay
+                .zIndex(3)
 
             // Clear account hit target above pages (visual me button is in topChrome).
             accountHitTarget
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
-                .zIndex(3)
+                .zIndex(4)
         }
         .background {
             GeometryReader { geometry in
@@ -291,6 +300,7 @@ struct PodcastListView: View {
             .onAppear { pageWidth = width }
             .onChange(of: width) { _, newValue in pageWidth = newValue }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .simultaneousGesture(layoutPagerGesture)
     }
@@ -313,9 +323,7 @@ struct PodcastListView: View {
             .scrollDisabled(draggedPodcastID != nil || pagerAxisLocked || isPagerDragging)
             .scrollClipDisabled()
             .refreshable { await refreshFeeds() }
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                max(0, geometry.contentOffset.y)
-            } action: { _, newOffset in
+            .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
                 gridScrollOffset = newOffset
             }
             .simultaneousGesture(dragTrackingGesture(proxy: proxy))
@@ -333,9 +341,7 @@ struct PodcastListView: View {
         .scrollDisabled(pagerAxisLocked || isPagerDragging)
         .scrollClipDisabled()
         .refreshable { await refreshFeeds() }
-        .onScrollGeometryChange(for: CGFloat.self) { geometry in
-            max(0, geometry.contentOffset.y)
-        } action: { _, newOffset in
+        .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
             listScrollOffset = newOffset
         }
     }

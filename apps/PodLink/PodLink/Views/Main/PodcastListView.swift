@@ -42,6 +42,11 @@ struct PodcastListView: View {
     @State private var pagerAxisLocked = false
     @State private var suppressLayoutModeAnimation = false
     @State private var pagerGeneration = 0
+    /// Vertical scroll of the grid / list pages — drives shared chrome blur.
+    @State private var gridScrollOffset: CGFloat = 0
+    @State private var listScrollOffset: CGFloat = 0
+    /// Empty / loading single-scroll chrome blur.
+    @State private var soloScrollOffset: CGFloat = 0
 
     // MARK: - Drag & Drop State
     @State private var draggedPodcastID: String?
@@ -118,6 +123,30 @@ struct PodcastListView: View {
         )
     }
 
+    /// 0 = grid page, 1 = list page — used to lerp chrome blur toward the incoming page.
+    private var layoutPagerProgress: CGFloat {
+        MainScreenLayoutToggle.pagerProgress(offset: displayedPagerOffset, pageWidth: pageWidth)
+    }
+
+    private var pageTopContentInset: CGFloat {
+        MinSpacing.TopControls.buttonSize + MinSpacing.TitleType.contentTopSpacing
+    }
+
+    private var chromeBlurProgress: CGFloat {
+        if !hasAttemptedInitialLoad || followedPodcasts.isEmpty {
+            return MainScreenLayoutToggle.scrollBlurProgress(
+                scrollOffset: soloScrollOffset,
+                blurDistance: MinSpacing.TitleType.blurDistance
+            )
+        }
+        return MainScreenLayoutToggle.blendedChromeBlurProgress(
+            gridScrollOffset: gridScrollOffset,
+            listScrollOffset: listScrollOffset,
+            pagerProgress: layoutPagerProgress,
+            blurDistance: MinSpacing.TitleType.blurDistance
+        )
+    }
+
     private var badgeMode: NewEpisodeBadgeMode {
         NewEpisodeBadgeMode(rawValue: newEpisodeBadgeMode) ?? .notStartedLatest
     }
@@ -150,25 +179,40 @@ struct PodcastListView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
+            // Fixed chrome behind pages — stays put during grid↔list swipe;
+            // blur lerps to the incoming page's scroll offset.
+            topChrome
+                .padding(.top, MinSpacing.TopControls.verticalPadding)
+                .allowsHitTesting(false)
+                .zIndex(0)
+
             Group {
                 if !hasAttemptedInitialLoad {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            scrollPinnedTopChrome(coordinateSpace: "podcastListLoading")
+                            pageTopSpacer
                             initialLoadPlaceholder
                         }
                         .padding(.top, MinSpacing.TopControls.verticalPadding)
                     }
-                    .coordinateSpace(name: "podcastListLoading")
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        max(0, geometry.contentOffset.y)
+                    } action: { _, newOffset in
+                        soloScrollOffset = newOffset
+                    }
                 } else if followedPodcasts.isEmpty {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            scrollPinnedTopChrome(coordinateSpace: "podcastListEmpty")
+                            pageTopSpacer
                             emptyState
                         }
                         .padding(.top, MinSpacing.TopControls.verticalPadding)
                     }
-                    .coordinateSpace(name: "podcastListEmpty")
+                    .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                        max(0, geometry.contentOffset.y)
+                    } action: { _, newOffset in
+                        soloScrollOffset = newOffset
+                    }
                 } else {
                     layoutPager
                 }
@@ -178,8 +222,7 @@ struct PodcastListView: View {
             dragOverlay
                 .zIndex(2)
 
-            // Clear account hit target above scrolling content (visual chrome is
-            // scroll-pinned inside each page with zIndex -1).
+            // Clear account hit target above pages (visual me button is in topChrome).
             accountHitTarget
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
                 .zIndex(3)
@@ -252,24 +295,29 @@ struct PodcastListView: View {
         .simultaneousGesture(layoutPagerGesture)
     }
 
+    private var pageTopSpacer: some View {
+        Color.clear
+            .frame(height: pageTopContentInset)
+            .allowsHitTesting(false)
+    }
+
     private var gridPage: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    scrollPinnedTopChrome(coordinateSpace: "gridLayoutPage")
-                    // Non-hit-testing gap so the overlay account hit target stays
-                    // tappable above the first row.
-                    Color.clear
-                        .frame(height: MinSpacing.TitleType.contentTopSpacing)
-                        .allowsHitTesting(false)
+                    pageTopSpacer
                     gridContent
                 }
                 .padding(.top, MinSpacing.TopControls.verticalPadding)
             }
-            .coordinateSpace(name: "gridLayoutPage")
             .scrollDisabled(draggedPodcastID != nil || pagerAxisLocked || isPagerDragging)
             .scrollClipDisabled()
             .refreshable { await refreshFeeds() }
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                max(0, geometry.contentOffset.y)
+            } action: { _, newOffset in
+                gridScrollOffset = newOffset
+            }
             .simultaneousGesture(dragTrackingGesture(proxy: proxy))
         }
     }
@@ -277,18 +325,19 @@ struct PodcastListView: View {
     private var listPage: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                scrollPinnedTopChrome(coordinateSpace: "listLayoutPage")
-                Color.clear
-                    .frame(height: MinSpacing.TitleType.contentTopSpacing)
-                    .allowsHitTesting(false)
+                pageTopSpacer
                 listRows
             }
             .padding(.top, MinSpacing.TopControls.verticalPadding)
         }
-        .coordinateSpace(name: "listLayoutPage")
         .scrollDisabled(pagerAxisLocked || isPagerDragging)
         .scrollClipDisabled()
         .refreshable { await refreshFeeds() }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            max(0, geometry.contentOffset.y)
+        } action: { _, newOffset in
+            listScrollOffset = newOffset
+        }
     }
 
     @ViewBuilder
@@ -796,11 +845,11 @@ struct PodcastListView: View {
 
     // MARK: - Top Chrome (wordmark + account)
     //
-    // Lives inside each page ScrollView with `minScrollPinnedChrome` (same pattern
-    // as WatchedIt / YourTube) so blur/fade run on the scroll render path. A clear
-    // hit target above the pager keeps Account tappable.
+    // Fixed behind the pager so grid↔list swipes leave title/me in place. Blur
+    // lerps between each page's scroll offset using pager progress. A clear hit
+    // target above the pager keeps Account tappable.
 
-    private func scrollPinnedTopChrome(coordinateSpace: String) -> some View {
+    private var topChrome: some View {
         ZStack(alignment: .topLeading) {
             Image("Title Type")
                 .renderingMode(.template)
@@ -824,9 +873,15 @@ struct PodcastListView: View {
         .frame(maxWidth: .infinity)
         .frame(height: MinSpacing.TopControls.buttonSize)
         .offset(y: MinSpacing.TitleType.markOffsetY)
-        .minScrollPinnedChrome(coordinateSpace: coordinateSpace)
-        .allowsHitTesting(false)
+        .compositingGroup()
+        .blur(radius: chromeBlurProgress * MinSpacing.TitleType.maxBlurRadius)
+        .opacity(1.0 - chromeBlurProgress * MinSpacing.TitleType.maxOpacityReduction)
         .accessibilityHidden(true)
+        // Track the finger during pager swipes; ease only for vertical scroll settles.
+        .animation(
+            isPagerActive ? nil : .easeOut(duration: 0.12),
+            value: chromeBlurProgress
+        )
     }
 
     /// Clear control matching the account chrome frame so taps work above the pager.

@@ -28,15 +28,21 @@ enum PodLinkDeepLink {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
 
         let host = (url.host ?? "").lowercased()
+        let queryValues = Self.queryValues(from: url, components: components)
 
         func cleaned(_ raw: String?) -> String? {
             guard let raw else { return nil }
-            let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let plusDecoded = raw.replacingOccurrences(of: "+", with: " ")
+            let value = (plusDecoded.removingPercentEncoding ?? plusDecoded)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             return value.isEmpty ? nil : value
         }
 
         func firstQueryValue(_ keys: [String]) -> String? {
             for key in keys {
+                if let value = cleaned(queryValues[key.lowercased()]) {
+                    return value
+                }
                 if let value = cleaned(url.queryValue(for: key)) {
                     return value
                 }
@@ -94,5 +100,36 @@ enum PodLinkDeepLink {
                 self = .show(feedURL: feedURL)
             }
         }
+    }
+
+    /// `URLComponents.queryItems` can drop values on custom-scheme URLs with an embedded feed URL.
+    static func queryValues(from url: URL, components: URLComponents) -> [String: String] {
+        var values: [String: String] = [:]
+        for item in components.queryItems ?? [] {
+            let key = item.name.lowercased()
+            if values[key] == nil, let value = item.value, !value.isEmpty {
+                values[key] = value
+            }
+        }
+        let rawQuery = components.query ?? url.query ?? rawQueryString(from: url.absoluteString)
+        guard let rawQuery, !rawQuery.isEmpty else { return values }
+        for pair in rawQuery.split(separator: "&") {
+            let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard let name = parts.first else { continue }
+            let key = name.replacingOccurrences(of: "+", with: " ")
+                .removingPercentEncoding?
+                .lowercased() ?? String(name).lowercased()
+            if values[key] != nil { continue }
+            let value = parts.count > 1 ? String(parts[1]) : ""
+            if !value.isEmpty {
+                values[key] = value
+            }
+        }
+        return values
+    }
+
+    private static func rawQueryString(from absolute: String) -> String? {
+        guard let range = absolute.range(of: "?") else { return nil }
+        return String(absolute[range.upperBound...])
     }
 }

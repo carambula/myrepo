@@ -21,6 +21,25 @@ export function shouldHeroZoomSheet({ nested } = {}) {
   return nested !== true;
 }
 
+/**
+ * Re-applying `preferredCornerRadius` during dismiss fights the morph and
+ * punches holes in the dim plate. Skip it while the card is flying.
+ */
+export function shouldApplySheetChromeRadius({ dismissing = false, heroMotion = false } = {}) {
+  return dismissing !== true && heroMotion !== true;
+}
+
+/**
+ * Clip-only corner radius for the returning card. Do not bake the sheet
+ * radius into the snapshot and scale it — that only matches the tile when
+ * the default 38pt sheet happens to scale onto an 8pt art tile.
+ */
+export function heroReturnClipRadius(fromRadius, toRadius) {
+  const from = Number.isFinite(fromRadius) ? Math.max(0, fromRadius) : 0;
+  const to = Number.isFinite(toRadius) ? Math.max(0, toRadius) : 0;
+  return { from, to };
+}
+
 /** True when enough of the source rect is still in the viewport to morph into. */
 export function isHeroSourceVisible(source, viewport, minOverlap = heroSourceVisibleOverlap) {
   if (!source || !viewport) return false;

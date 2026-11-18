@@ -194,6 +194,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             if !isDismissing {
                 didRevealBackdrop = false
                 didFadeBackdropOut = false
+                SheetHeroSession.shared.isHeroMotionActive = false
             }
         }
 
@@ -339,6 +340,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             crossedDismissThreshold = false
             lastTranslation = translation
             originalDimmingAlpha = dimmingView?.alpha ?? 1
+            SheetHeroSession.shared.isHeroMotionActive = true
             disableCompetingPans()
             refreshScrollViews()
             disableScrollPans()
@@ -427,6 +429,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             followOrigin = .zero
             gestureBeganOnEdge = false
             reenableScrollPans()
+            if !isDismissing {
+                SheetHeroSession.shared.isHeroMotionActive = false
+            }
             onFollowingChange(false, activation)
         }
 
@@ -535,9 +540,17 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             revealBackdropIfNeeded()
         }
 
-        private func suppressSystemDimming() {
+        private func suppressSystemDimming(applyCornerRadius: Bool? = nil) {
             if let presented = presentedController() {
-                SheetPresentationScrim.suppressSystemDimming(for: presented)
+                let allowRadius = applyCornerRadius ?? (
+                    !isDismissing
+                    && !SheetHeroSession.shared.isHeroMotionActive
+                    && presented.isBeingDismissed != true
+                )
+                SheetPresentationScrim.suppressSystemDimming(
+                    for: presented,
+                    applyCornerRadius: allowRadius
+                )
             }
             if let container = containerView {
                 SheetPresentationScrim.hideSystemSheetDimming(in: container)
@@ -602,12 +615,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             if isDismissing { return }
             if backdropView?.isGestureDrivenFade == true || backdropView?.isVisuallyClear == true {
                 didFadeBackdropOut = true
-                applyBackdropStrength(0, force: true)
                 return
             }
             guard !didFadeBackdropOut else { return }
             didFadeBackdropOut = true
-            suppressSystemDimming()
+            suppressSystemDimming(applyCornerRadius: false)
             let animations = {
                 self.backdropView?.strength = 0
                 self.backdropView?.alpha = 0
@@ -783,10 +795,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 configured: configured,
                 platter: Self.platterCornerRadius(for: card)
             )
-            // Round all four corners on the live platter before capture so the
-            // bitmap itself has one continuous radius — no square bottoms that
-            // can nest under a second clip.
-            Self.applyFloatingCardCorners(to: card, radius: radius)
+            // Clip the proxy, don't bake radius into the live platter. Baking
+            // then scaling only lands on the tile in default mode (38pt sheet
+            // → 8pt art). Remapped radii flash a second contour and punch
+            // holes in the dim plate.
             Self.stripPlatterShadow(from: card)
             card.layoutIfNeeded()
             CATransaction.flush()
@@ -967,6 +979,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func beginGestureDrivenFade() {
             backdropView?.isGestureDrivenFade = true
             didFadeBackdropOut = true
+            SheetHeroSession.shared.isHeroMotionActive = true
         }
 
         private func flingAway(from translation: CGSize, velocity: CGSize) {
@@ -1011,12 +1024,14 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 return
             }
 
+            let startRadius = max(proxy.layer.cornerRadius, 1)
+            let clipRadii = EdgeSwipeToDismiss.heroReturnClipRadius(from: startRadius, to: radius)
             let clip = UIView(frame: visual)
             clip.isUserInteractionEnabled = false
             clip.clipsToBounds = true
             clip.layer.masksToBounds = true
             clip.layer.cornerCurve = .continuous
-            clip.layer.cornerRadius = max(proxy.layer.cornerRadius, 1)
+            clip.layer.cornerRadius = clipRadii.from
             clip.layer.maskedCorners = [
                 .layerMinXMinYCorner, .layerMaxXMinYCorner,
                 .layerMinXMaxYCorner, .layerMaxXMaxYCorner
@@ -1029,6 +1044,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             proxy.removeFromSuperview()
             proxy.layer.anchorPoint = CGPoint(x: 0, y: 0)
             proxy.frame = CGRect(origin: .zero, size: originalSize)
+            // One clip owns the radius. Nested proxy rounding fights remapped
+            // tile radii and lets the dim plate show through the corners.
+            proxy.layer.cornerRadius = 0
+            proxy.clipsToBounds = false
+            proxy.layer.masksToBounds = false
             let liveScale = visual.width / originalSize.width
             proxy.transform = CGAffineTransform(scaleX: liveScale, y: liveScale)
             clip.addSubview(proxy)
@@ -1070,7 +1090,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 options: [.curveEaseOut, .beginFromCurrentState]
             ) {
                 clip.frame = source
-                clip.layer.cornerRadius = radius
+                clip.layer.cornerRadius = clipRadii.to
                 proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
                 fillView?.alpha = 1
                 self.applyBackdropStrength(0, force: true)
@@ -1130,9 +1150,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.restoreSheet(removeProxy: true, revealSheet: false)
-                self.removeBackdrop(restoreSystemDimming: false)
                 self.endFollowing()
                 self.onDismiss()
+                self.removeBackdrop(restoreSystemDimming: false)
+                SheetHeroSession.shared.isHeroMotionActive = false
             }
         }
 

@@ -249,6 +249,13 @@ public enum EdgeSwipeToDismiss {
         return sourceWidth / currentWidth
     }
 
+    /// Clip-only radius for the returning card. Do not bake the sheet radius
+    /// into the snapshot and scale it — that only matches the tile in default
+    /// mode, where 38pt happens to scale onto an 8pt art tile.
+    public static func heroReturnClipRadius(from start: CGFloat, to end: CGFloat) -> (from: CGFloat, to: CGFloat) {
+        (from: max(0, start), to: max(0, end))
+    }
+
     /// Fling duration from the current card frame back to the source image.
     public static func heroReturnDuration(
         from: CGRect,

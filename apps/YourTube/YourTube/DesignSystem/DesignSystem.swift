@@ -152,6 +152,7 @@ enum DesignSystem {
         static var md: CGFloat { MinCornerRadius.md }
         static var lg: CGFloat { MinCornerRadius.lg }
         static var xl: CGFloat { MinCornerRadius.xl }
+        static var sheet: CGFloat { MinCornerRadius.sheet }
         static var round: CGFloat { MinCornerRadius.round }
     }
 

@@ -35,6 +35,7 @@ public struct IdeasRageShakeModifier: ViewModifier {
                             }
                         }
                 }
+                .minSheetCornerRadius()
             }
     }
 }

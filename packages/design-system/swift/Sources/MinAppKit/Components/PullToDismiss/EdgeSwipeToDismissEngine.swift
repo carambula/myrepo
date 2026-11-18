@@ -776,8 +776,11 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             card.transform = .identity
             CATransaction.commit()
 
+            let configured = configuration.cardCornerRadius > 0.5
+                ? configuration.cardCornerRadius
+                : MinCornerRadius.dismissConfiguredRadius
             let radius = EdgeSwipeToDismiss.effectiveCardCornerRadius(
-                configured: configuration.cardCornerRadius,
+                configured: configured,
                 platter: Self.platterCornerRadius(for: card)
             )
             // Round all four corners on the live platter before capture so the
@@ -1338,6 +1341,7 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
+            .minSheetCornerRadius()
             .interactiveDismissDisabled(true)
             .background(
                 EdgeSwipeToDismissHost(

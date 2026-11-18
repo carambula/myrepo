@@ -6,9 +6,11 @@
 import {
   CONTROL_RADIUS_PX,
   WEB_RADIUS_BASE,
+  WEB_SHEET_RADIUS,
   formatRadiusPx,
   getRadiusMode,
   resolveRadius,
+  resolveSheet,
 } from '../appearance/radiusStyle.js';
 
 function liveRadius(basePx) {
@@ -55,6 +57,10 @@ export const borders = {
     // DO NOT use larger radii (md, lg, xl, etc.) for primary art tiles
     get artTile() {
       return liveRadius(WEB_RADIUS_BASE.artTile);
+    },
+
+    get sheet() {
+      return formatRadiusPx(resolveSheet(getRadiusMode(), WEB_SHEET_RADIUS));
     },
   },
 

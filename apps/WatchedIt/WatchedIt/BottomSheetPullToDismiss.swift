@@ -60,6 +60,7 @@ struct MovieDetailPresentationModifier<SheetContent: View>: ViewModifier {
                 self.content(movie)
                     .sheetHeroPresented()
                     .sheetHeroDestination(id: SheetHeroID.movie(movie.id))
+                    .minSheetCornerRadius()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }

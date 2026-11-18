@@ -21,6 +21,9 @@ public enum MinCornerRadius {
     /// Extra large — base 20pt.
     public static let baseXL: CGFloat = 20
 
+    /// Presented sheet chrome — base 38pt (system sheet radius).
+    public static let baseSheet: CGFloat = 38
+
     /// Art tile — base 8pt (same step as `sm`).
     public static let baseArtTile: CGFloat = 8
 
@@ -44,4 +47,22 @@ public enum MinCornerRadius {
 
     /// Extra large corner radius.
     public static var xl: CGFloat { MinRadiusStyle.shared.resolve(baseXL) }
+
+    /// Presented sheet / bottom-sheet chrome radius.
+    public static var sheet: CGFloat { MinRadiusStyle.shared.resolveSheet() }
+
+    /// SwiftUI `presentationCornerRadius`. `nil` keeps the system sheet radius.
+    public static var presentationRadius: CGFloat? {
+        MinRadiusStyle.shared.presentationSheetRadius
+    }
+
+    /// UIKit `preferredCornerRadius`. `-1` keeps the system sheet radius.
+    public static var uiKitSheetCornerRadius: CGFloat {
+        MinRadiusStyle.shared.uiKitSheetCornerRadius
+    }
+
+    /// Dismiss-engine override. `-1` reads the live platter; `0` is square.
+    public static var dismissConfiguredRadius: CGFloat {
+        MinRadiusStyle.shared.dismissConfiguredRadius
+    }
 }

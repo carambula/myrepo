@@ -81,6 +81,7 @@ public struct IdeasListView: View {
             FeedbackComposeSheet(app: app) {
                 Task { await reload() }
             }
+            .minSheetCornerRadius()
         }
     }
 

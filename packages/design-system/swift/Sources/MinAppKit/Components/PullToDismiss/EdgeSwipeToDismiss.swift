@@ -19,7 +19,7 @@ public struct EdgeSwipeToDismissConfiguration {
     /// Higher = closer to 1:1. ~720 lets an 80pt pull move ~71pt.
     public var bottomSwipeStiffness: CGFloat
     /// Continuous corner radius for the floating card (all four corners).
-    /// `0` uses the live sheet platter's system radius.
+    /// Negative means unset (read the live platter). `0` is square.
     public var cardCornerRadius: CGFloat
     /// When true, the dismiss host installs a darker dim plate behind the
     /// sheet and fades it with drag progress (shared across all min apps).
@@ -60,7 +60,7 @@ public struct EdgeSwipeToDismissConfiguration {
     }
 
     /// Fallback when the presentation platter has not published a radius yet.
-    public static let systemSheetCornerRadius: CGFloat = 38
+    public static var systemSheetCornerRadius: CGFloat { MinCornerRadius.baseSheet }
 
     public static let `default` = EdgeSwipeToDismissConfiguration()
 }
@@ -103,12 +103,13 @@ public enum EdgeSwipeToDismiss {
         return nil
     }
 
-    /// Prefer an explicit override, otherwise the live platter's system radius.
+    /// Prefer an explicit override (`0` is square), otherwise the live platter.
+    /// Negative `configured` means unset.
     public static func effectiveCardCornerRadius(
         configured: CGFloat,
         platter: CGFloat
     ) -> CGFloat {
-        if configured > 0.5 { return configured }
+        if configured >= 0 { return configured }
         if platter > 0.5 { return platter }
         return EdgeSwipeToDismissConfiguration.systemSheetCornerRadius
     }

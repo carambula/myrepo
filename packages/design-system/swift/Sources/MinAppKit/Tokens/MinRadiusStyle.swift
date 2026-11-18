@@ -103,6 +103,50 @@ public final class MinRadiusStyle {
         Self.resolve(base, mode: mode)
     }
 
+    /// System sheet chrome (38pt) through the current mode.
+    /// Reduced 1/2/3 step onto the named ramp from `xl` (20 → 16 → 12).
+    public func resolveSheet() -> CGFloat {
+        Self.resolveSheet(mode: mode)
+    }
+
+    public var presentationSheetRadius: CGFloat? {
+        switch mode {
+        case .default: return nil
+        default: return resolveSheet()
+        }
+    }
+
+    public var uiKitSheetCornerRadius: CGFloat {
+        switch mode {
+        case .default: return -1
+        default: return resolveSheet()
+        }
+    }
+
+    public var dismissConfiguredRadius: CGFloat {
+        switch mode {
+        case .default: return -1
+        default: return resolveSheet()
+        }
+    }
+
+    public nonisolated static func resolveSheet(mode: Mode) -> CGFloat {
+        switch mode {
+        case .default:
+            return MinCornerRadius.baseSheet
+        case .reduced1, .reduced2, .reduced3:
+            return slide(MinCornerRadius.baseXL, steps: mode.reducedSteps - 1)
+        case .universal3:
+            return ramp[2]
+        case .universal2:
+            return ramp[1]
+        case .universal1:
+            return ramp[0]
+        case .universal0:
+            return 0
+        }
+    }
+
     public nonisolated static func resolve(_ base: CGFloat, mode: Mode) -> CGFloat {
         if base >= circularThreshold { return base }
         if base <= 0 { return 0 }
@@ -170,6 +214,32 @@ struct MinRadiusEnvironmentModifier: ViewModifier {
         content
             .environment(style)
             .animation(.easeInOut(duration: 0.2), value: style.mode)
+            #if os(iOS)
+            .background(
+                MinSheetCornerRadiusGuard(mode: style.mode)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            )
+            #endif
+    }
+}
+
+public extension View {
+    /// Applies the Radii setting to this presented sheet's chrome.
+    func minSheetCornerRadius() -> some View {
+        modifier(MinSheetCornerRadiusModifier())
+    }
+}
+
+struct MinSheetCornerRadiusModifier: ViewModifier {
+    @Bindable var style = MinRadiusStyle.shared
+
+    func body(content: Content) -> some View {
+        #if os(iOS) || os(macOS)
+        content.presentationCornerRadius(style.presentationSheetRadius)
+        #else
+        content
+        #endif
     }
 }
 

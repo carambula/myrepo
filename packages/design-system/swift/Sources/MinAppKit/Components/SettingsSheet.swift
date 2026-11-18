@@ -25,6 +25,7 @@ public struct SettingsSheet<Content: View>: View {
             content()
         }
         .listStyle(.insetGrouped)
+        .minSheetCornerRadius()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

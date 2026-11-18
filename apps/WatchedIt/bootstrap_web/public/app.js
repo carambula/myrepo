@@ -3153,7 +3153,8 @@ var RADIUS_CSS_BASES = {
   "--ds-radius-md": 12,
   "--ds-radius-lg": 16,
   "--ds-radius-xl": 20,
-  "--ds-radius-artTile": 8
+  "--ds-radius-artTile": 8,
+  "--min-radius-sheet": 16
 };
 
 function resolvePreviewRadius(base, mode) {

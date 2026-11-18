@@ -80,6 +80,7 @@ export const RADIUS_BASE = Object.freeze({
   md: 12,
   lg: 16,
   xl: 20,
+  sheet: 38,
   artTile: 8,
   round: 100,
 });
@@ -97,6 +98,9 @@ export const WEB_RADIUS_BASE = Object.freeze({
   artTile: 4,
   full: 9999,
 });
+
+/** Current web BottomSheet chrome — `borders.radii.xl` / `--min-radius-lg`. */
+export const WEB_SHEET_RADIUS = WEB_RADIUS_BASE.xl;
 
 /** Buttons, inputs, and other circular-adjacent controls — never remapped. */
 export const CONTROL_RADIUS_PX = WEB_RADIUS_BASE.md;
@@ -182,6 +186,40 @@ export function resolveRadius(base, mode = currentMode) {
   }
 }
 
+/**
+ * System / web sheet chrome. Native default is 38pt; reduced 1/2/3 step
+ * onto the named ramp from `xl` (20 → 16 → 12). Universal matches content.
+ */
+export function resolveSheet(mode = currentMode, base = RADIUS_BASE.sheet) {
+  const value = Number(base);
+  if (!Number.isFinite(value)) return 0;
+
+  switch (mode) {
+    case RADIUS_MODES.DEFAULT:
+      return value;
+    case RADIUS_MODES.REDUCED_1:
+    case RADIUS_MODES.REDUCED_2:
+    case RADIUS_MODES.REDUCED_3: {
+      const steps = mode === RADIUS_MODES.REDUCED_3 ? 3 : mode === RADIUS_MODES.REDUCED_2 ? 2 : 1;
+      const last = RADIUS_RAMP[RADIUS_RAMP.length - 1];
+      if (value > last) {
+        return slideRadius(last, steps - 1);
+      }
+      return slideRadius(value, steps);
+    }
+    case RADIUS_MODES.UNIVERSAL_3:
+      return RADIUS_RAMP[2];
+    case RADIUS_MODES.UNIVERSAL_2:
+      return RADIUS_RAMP[1];
+    case RADIUS_MODES.UNIVERSAL_1:
+      return RADIUS_RAMP[0];
+    case RADIUS_MODES.UNIVERSAL_0:
+      return 0;
+    default:
+      return value;
+  }
+}
+
 export function formatRadiusPx(value) {
   if (value === 0) return '0';
   return `${value}px`;
@@ -221,6 +259,7 @@ export function radiusCssVariables(mode = currentMode) {
   for (const [name, base] of Object.entries(RADIUS_CSS_VARIABLE_BASES)) {
     vars[name] = formatRadiusPx(resolveRadius(base, mode));
   }
+  vars['--min-radius-sheet'] = formatRadiusPx(resolveSheet(mode, WEB_SHEET_RADIUS));
   vars['--min-radius-none'] = '0px';
   vars['--min-radius-round'] = '100px';
   vars['--min-radius-full'] = '9999px';
@@ -279,8 +318,10 @@ export default {
   RADIUS_MODE_OPTIONS,
   RADIUS_BASE,
   WEB_RADIUS_BASE,
+  WEB_SHEET_RADIUS,
   CONTROL_RADIUS_PX,
   resolveRadius,
+  resolveSheet,
   slideRadius,
   setRadiusMode,
   getRadiusMode,

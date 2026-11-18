@@ -11,6 +11,10 @@ enum SheetPresentationScrim {
             if sheet.largestUndimmedDetentIdentifier != detent {
                 sheet.largestUndimmedDetentIdentifier = detent
             }
+            let radius = MinCornerRadius.uiKitSheetCornerRadius
+            if sheet.preferredCornerRadius != radius {
+                sheet.preferredCornerRadius = radius
+            }
         }
         if let container = viewController.presentationController?.containerView {
             hideSystemSheetDimming(in: container)

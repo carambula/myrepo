@@ -6,10 +6,13 @@ import {
   RADIUS_MODES,
   RADIUS_RAMP,
   WEB_RADIUS_BASE,
+  WEB_SHEET_RADIUS,
   formatRadiusPx,
   getRadiusMode,
+  radiusCssVariables,
   rampIndexFor,
   resolveRadius,
+  resolveSheet,
   setRadiusMode,
   slideRadius,
 } from './radiusStyle.js';
@@ -134,6 +137,46 @@ describe('control radii', () => {
 
     setRadiusMode(RADIUS_MODES.DEFAULT, { persist: false, apply: false });
     assert.equal(getRadiusMode(), RADIUS_MODES.DEFAULT);
+  });
+});
+
+describe('resolveSheet', () => {
+  it('keeps the system sheet radius in default mode', () => {
+    assert.equal(resolveSheet(RADIUS_MODES.DEFAULT), 38);
+    assert.equal(RADIUS_BASE.sheet, 38);
+  });
+
+  it('steps the native sheet onto the named ramp for reduced modes', () => {
+    assert.equal(resolveSheet(RADIUS_MODES.REDUCED_1), ramp.xl);
+    assert.equal(resolveSheet(RADIUS_MODES.REDUCED_2), ramp.lg);
+    assert.equal(resolveSheet(RADIUS_MODES.REDUCED_3), ramp.md);
+  });
+
+  it('uses universal radii for sheet chrome', () => {
+    assert.equal(resolveSheet(RADIUS_MODES.UNIVERSAL_3), ramp.md);
+    assert.equal(resolveSheet(RADIUS_MODES.UNIVERSAL_2), ramp.sm);
+    assert.equal(resolveSheet(RADIUS_MODES.UNIVERSAL_1), ramp.xs);
+    assert.equal(resolveSheet(RADIUS_MODES.UNIVERSAL_0), 0);
+  });
+
+  it('slides a web sheet that already sits on the ramp', () => {
+    assert.equal(WEB_SHEET_RADIUS, 16);
+    assert.equal(resolveSheet(RADIUS_MODES.REDUCED_1, 16), ramp.md);
+    assert.equal(resolveSheet(RADIUS_MODES.DEFAULT, 16), 16);
+  });
+
+  it('keeps the current web BottomSheet radius in CSS variables', () => {
+    assert.equal(radiusCssVariables(RADIUS_MODES.DEFAULT)['--min-radius-sheet'], '16px');
+    assert.equal(radiusCssVariables(RADIUS_MODES.REDUCED_1)['--min-radius-sheet'], '12px');
+    assert.equal(radiusCssVariables(RADIUS_MODES.UNIVERSAL_0)['--min-radius-sheet'], '0');
+  });
+
+  it('exposes a live sheet token on borders.radii', () => {
+    setRadiusMode(RADIUS_MODES.DEFAULT, { persist: false, apply: false });
+    assert.equal(borders.radii.sheet, '16px');
+    setRadiusMode(RADIUS_MODES.UNIVERSAL_0, { persist: false, apply: false });
+    assert.equal(borders.radii.sheet, '0');
+    setRadiusMode(RADIUS_MODES.DEFAULT, { persist: false, apply: false });
   });
 });
 

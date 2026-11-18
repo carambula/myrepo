@@ -476,6 +476,7 @@ private struct SheetHeroPresentedModifier: ViewModifier {
             // zoom. The destination modifier (outside this one) still zooms
             // the root sheet itself.
             .environment(\.sheetHeroAllowsZoom, false)
+            .minSheetCornerRadius()
             .onAppear { SheetHeroGeometry.enterPresentedSheet() }
             .onDisappear { SheetHeroGeometry.leavePresentedSheet() }
     }
@@ -499,6 +500,7 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
+                .minSheetCornerRadius()
         }
     }
 }
@@ -517,6 +519,7 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
             sheetContent()
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
+                .minSheetCornerRadius()
         }
     }
 }

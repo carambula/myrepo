@@ -93,6 +93,7 @@ public struct PullToDismissEngineModifier<CloseButton: View>: ViewModifier {
                 .offset(y: showButton ? 0 : 20)
                 .allowsHitTesting(showButton)
         }
+        .minSheetCornerRadius()
     }
 
     private func handleOverscroll(_ distance: CGFloat) {

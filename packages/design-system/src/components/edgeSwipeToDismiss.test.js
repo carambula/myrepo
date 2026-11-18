@@ -28,10 +28,12 @@ import {
   heroOpenDuration,
   heroOpenTransform,
   heroOverlayFadeDuration,
+  heroReturnClipRadius,
   heroReturnDuration,
   heroReturnScale,
   isHeroSourceVisible,
   sheetHeroID,
+  shouldApplySheetChromeRadius,
   shouldHeroZoomSheet,
 } from './sheetHero.js';
 
@@ -301,6 +303,24 @@ describe('sheet hero zoom', () => {
     assert.equal(heroFillOpacity(0, { sourceVisible: false }), 0);
     assert.equal(heroFillOpacity(0.5, { sourceVisible: false }), 0.5);
     assert.equal(heroFillOpacity(1, { sourceVisible: false }), 1);
+  });
+
+  it('clips the returning card from sheet chrome to the tile, not a scaled bake', () => {
+    const scale = heroReturnScale(390, 80);
+    assert.ok(Math.abs(38 * scale - 8) < 1);
+    const remapped = heroReturnClipRadius(12, 12);
+    assert.equal(remapped.from, 12);
+    assert.equal(remapped.to, 12);
+    assert.ok(Math.abs(remapped.to - 12 * scale) > 5);
+    const reduced = heroReturnClipRadius(20, 4);
+    assert.equal(reduced.from, 20);
+    assert.equal(reduced.to, 4);
+  });
+
+  it('does not reapply sheet chrome radius while the card is flying', () => {
+    assert.equal(shouldApplySheetChromeRadius({}), true);
+    assert.equal(shouldApplySheetChromeRadius({ dismissing: true }), false);
+    assert.equal(shouldApplySheetChromeRadius({ heroMotion: true }), false);
   });
 });
 

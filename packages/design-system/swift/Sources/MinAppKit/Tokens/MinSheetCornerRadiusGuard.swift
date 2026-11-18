@@ -140,12 +140,16 @@ final class MinSheetCornerRadiusGuardView: UIView {
     }
 
     private func apply(_ radius: CGFloat, to viewController: UIViewController) {
+        if let presented = viewController.presentedViewController {
+            apply(radius, to: presented)
+        }
+        // Rewriting chrome radius during a morph snaps the platter back to
+        // the sheet value and punches holes in the dim plate.
+        if viewController.isBeingDismissed { return }
+        if SheetHeroSession.shared.isHeroMotionActive { return }
         if let sheet = viewController.sheetPresentationController,
            sheet.preferredCornerRadius != radius {
             sheet.preferredCornerRadius = radius
-        }
-        if let presented = viewController.presentedViewController {
-            apply(radius, to: presented)
         }
         for child in viewController.children {
             apply(radius, to: child)

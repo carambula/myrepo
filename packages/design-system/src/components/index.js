@@ -56,11 +56,13 @@ export {
   heroOpenDuration,
   heroOpenTransform,
   heroOverlayFadeDuration,
+  heroReturnClipRadius,
   heroReturnDuration,
   heroReturnScale,
   heroSourceVisibleOverlap,
   isHeroSourceVisible,
   sheetHeroID,
+  shouldApplySheetChromeRadius,
   shouldHeroZoomSheet,
 } from './sheetHero.js';
 export { DismissButton } from './DismissButton.js';

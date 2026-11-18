@@ -5,15 +5,23 @@ import UIKit
 /// Hides the system sheet dimming view so min apps can fade their own plate
 /// in and out with the zoom / dismiss animation instead of popping it.
 enum SheetPresentationScrim {
-    static func suppressSystemDimming(for viewController: UIViewController) {
+    static func suppressSystemDimming(
+        for viewController: UIViewController,
+        applyCornerRadius: Bool = true
+    ) {
         if let sheet = viewController.sheetPresentationController {
             let detent = sheet.selectedDetentIdentifier ?? .large
             if sheet.largestUndimmedDetentIdentifier != detent {
                 sheet.largestUndimmedDetentIdentifier = detent
             }
-            let radius = MinCornerRadius.uiKitSheetCornerRadius
-            if sheet.preferredCornerRadius != radius {
-                sheet.preferredCornerRadius = radius
+            let allowRadius = applyCornerRadius
+                && !viewController.isBeingDismissed
+                && !SheetHeroSession.shared.isHeroMotionActive
+            if allowRadius {
+                let radius = MinCornerRadius.uiKitSheetCornerRadius
+                if sheet.preferredCornerRadius != radius {
+                    sheet.preferredCornerRadius = radius
+                }
             }
         }
         if let container = viewController.presentationController?.containerView {
@@ -173,8 +181,6 @@ final class SheetScrimGuardView: UIView {
         // second shade animation that pops after the sheet has landed.
         if backdrop.isGestureDrivenFade || backdrop.isVisuallyClear {
             didFadeBackdropOut = true
-            backdrop.strength = 0
-            backdrop.alpha = 0
             return
         }
         didFadeBackdropOut = true
@@ -272,8 +278,13 @@ final class SheetScrimGuardView: UIView {
             SheetPresentationScrim.hideSystemSheetDimming(in: window)
         }
         if let presented = presentingViewController()?.presentedViewController {
-            SheetPresentationScrim.suppressSystemDimming(for: presented)
-            if backdropView?.isGestureDrivenFade != true {
+            let heroMotion = SheetHeroSession.shared.isHeroMotionActive
+                || backdropView?.isGestureDrivenFade == true
+            SheetPresentationScrim.suppressSystemDimming(
+                for: presented,
+                applyCornerRadius: !presented.isBeingDismissed && !heroMotion
+            )
+            if !heroMotion {
                 installBackdrop(for: presented)
             }
             if presented.isBeingDismissed {

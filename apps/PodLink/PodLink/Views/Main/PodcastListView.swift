@@ -129,6 +129,18 @@ struct PodcastListView: View {
         MainScreenLayoutToggle.pagerProgress(offset: displayedPagerOffset, pageWidth: pageWidth)
     }
 
+    /// Until the pager measures a width, progress is 0 (grid). List zoom
+    /// sources must still match, or the episode sheet flashes full-size.
+    private var allowsGridHeroZoom: Bool {
+        if pageWidth <= 0 { return renderedLayoutMode != "list" }
+        return layoutPagerProgress < 0.5
+    }
+
+    private var allowsListHeroZoom: Bool {
+        if pageWidth <= 0 { return renderedLayoutMode == "list" }
+        return layoutPagerProgress >= 0.5
+    }
+
     private var pageTopContentInset: CGFloat {
         MinSpacing.TopControls.buttonSize + MinSpacing.TitleType.contentTopSpacing
     }
@@ -328,7 +340,7 @@ struct PodcastListView: View {
             }
             .simultaneousGesture(dragTrackingGesture(proxy: proxy))
         }
-        .environment(\.sheetHeroAllowsZoom, layoutPagerProgress < 0.5)
+        .environment(\.sheetHeroAllowsZoom, allowsGridHeroZoom)
     }
 
     private var listPage: some View {
@@ -345,7 +357,7 @@ struct PodcastListView: View {
         .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
             listScrollOffset = newOffset
         }
-        .environment(\.sheetHeroAllowsZoom, layoutPagerProgress >= 0.5)
+        .environment(\.sheetHeroAllowsZoom, allowsListHeroZoom)
     }
 
     @ViewBuilder

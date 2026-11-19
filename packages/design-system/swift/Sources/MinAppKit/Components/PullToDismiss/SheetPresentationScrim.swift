@@ -14,9 +14,10 @@ enum SheetPresentationScrim {
             if sheet.largestUndimmedDetentIdentifier != detent {
                 sheet.largestUndimmedDetentIdentifier = detent
             }
+            let heroMotionActive = SheetHeroSession.isHeroMotionActive
             let allowRadius = applyCornerRadius
                 && !viewController.isBeingDismissed
-                && !SheetHeroSession.shared.isHeroMotionActive
+                && !heroMotionActive
             if allowRadius {
                 let radius = MinCornerRadius.uiKitSheetCornerRadius
                 if sheet.preferredCornerRadius != radius {
@@ -278,7 +279,7 @@ final class SheetScrimGuardView: UIView {
             SheetPresentationScrim.hideSystemSheetDimming(in: window)
         }
         if let presented = presentingViewController()?.presentedViewController {
-            let heroMotion = SheetHeroSession.shared.isHeroMotionActive
+            let heroMotion = SheetHeroSession.isHeroMotionActive
                 || backdropView?.isGestureDrivenFade == true
             SheetPresentationScrim.suppressSystemDimming(
                 for: presented,

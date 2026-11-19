@@ -194,7 +194,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             if !isDismissing {
                 didRevealBackdrop = false
                 didFadeBackdropOut = false
-                SheetHeroSession.shared.isHeroMotionActive = false
+                SheetHeroSession.isHeroMotionActive = false
             }
         }
 
@@ -340,7 +340,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             crossedDismissThreshold = false
             lastTranslation = translation
             originalDimmingAlpha = dimmingView?.alpha ?? 1
-            SheetHeroSession.shared.isHeroMotionActive = true
+            SheetHeroSession.isHeroMotionActive = true
             disableCompetingPans()
             refreshScrollViews()
             disableScrollPans()
@@ -430,7 +430,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             gestureBeganOnEdge = false
             reenableScrollPans()
             if !isDismissing {
-                SheetHeroSession.shared.isHeroMotionActive = false
+                SheetHeroSession.isHeroMotionActive = false
             }
             onFollowingChange(false, activation)
         }
@@ -542,9 +542,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func suppressSystemDimming(applyCornerRadius: Bool? = nil) {
             if let presented = presentedController() {
+                let heroMotionActive = SheetHeroSession.isHeroMotionActive
                 let allowRadius = applyCornerRadius ?? (
                     !isDismissing
-                    && !SheetHeroSession.shared.isHeroMotionActive
+                    && !heroMotionActive
                     && presented.isBeingDismissed != true
                 )
                 SheetPresentationScrim.suppressSystemDimming(
@@ -979,7 +980,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
         private func beginGestureDrivenFade() {
             backdropView?.isGestureDrivenFade = true
             didFadeBackdropOut = true
-            SheetHeroSession.shared.isHeroMotionActive = true
+            SheetHeroSession.isHeroMotionActive = true
         }
 
         private func flingAway(from translation: CGSize, velocity: CGSize) {
@@ -1153,7 +1154,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 self.endFollowing()
                 self.onDismiss()
                 self.removeBackdrop(restoreSystemDimming: false)
-                SheetHeroSession.shared.isHeroMotionActive = false
+                SheetHeroSession.isHeroMotionActive = false
             }
         }
 

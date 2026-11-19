@@ -128,7 +128,9 @@ final class SheetHeroSession {
     private var dismissHandlers: [() -> Void] = []
     /// True while a proxy is following the finger or flying back to a tile.
     /// Radius guards must not rewrite `preferredCornerRadius` in this window.
-    var isHeroMotionActive = false
+    /// `nonisolated(unsafe)` so UIKit display-link / dimming callbacks can
+    /// read it without hopping through a MainActor autoclosure.
+    nonisolated(unsafe) static var isHeroMotionActive = false
 
     func cover(_ id: String?) {
         guard let id, !id.isEmpty else { return }

@@ -4,7 +4,9 @@
  *
  * Open and close use the system zoom transition (iOS 18
  * `matchedTransitionSource` + `navigationTransition(.zoom)`), the same API
- * as the App Store. Custom snapshot flings fight that motion.
+ * as the App Store. Zoom is a full-screen transition, so those
+ * presentations use `fullScreenCover` rather than `.sheet`. Custom
+ * snapshot flings fight that motion.
  */
 
 export const heroOpenDuration = 0.42;
@@ -23,12 +25,20 @@ export function shouldHeroZoomSheet({ nested: _nested } = {}) {
 }
 
 /**
- * `navigationTransition(.zoom)` must sit on the presented sheet, not inside
+ * `navigationTransition(.zoom)` must sit on the presented view, not inside
  * the destination view's body. Inner attachment lets UIKit draw a full-size
  * sheet for a frame, then remove it when zoom starts.
  */
 export function shouldAttachHeroZoomOnPresentedSheet({ innerBody = false } = {}) {
   return innerBody !== true;
+}
+
+/**
+ * Zoom is a full-screen transition. Presenting it with a sheet first draws
+ * the full-size platter, then tears it down when the morph starts.
+ */
+export function shouldPresentHeroZoomAsFullScreenCover({ hasSource = true } = {}) {
+  return hasSource === true;
 }
 
 /**

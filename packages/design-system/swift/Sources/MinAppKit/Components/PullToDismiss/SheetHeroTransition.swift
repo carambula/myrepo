@@ -553,9 +553,61 @@ private struct SheetHeroPresentedModifier: ViewModifier {
     }
 }
 
-/// Captures the presenting view's zoom namespace and injects it into sheet
-/// content. SwiftUI does not carry that environment across `.sheet`, and the
-/// global stack is wrong when a parent container re-renders.
+/// Hosts zoom content for `fullScreenCover`. Zoom is a full-screen
+/// transition; presenting it with `.sheet` first draws a full-size platter
+/// and then tears it down when the morph starts.
+private struct SheetHeroZoomHost<Content: View>: View {
+    let id: String
+    let namespace: Namespace.ID?
+    let content: Content
+
+    init(
+        id: String,
+        namespace: Namespace.ID?,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.id = id
+        self.namespace = namespace
+        self.content = content()
+    }
+
+    var body: some View {
+        let tagged = content
+            .environment(\.sheetHeroPresentedID, id)
+            .environment(\.sheetHeroNamespace, namespace)
+            .environment(\.sheetHeroAllowsZoom, true)
+        #if os(iOS)
+        if #available(iOS 18.0, *), let namespace {
+            tagged
+                .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+                .background {
+                    SheetHeroZoomSessionProbe()
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
+                }
+                .onAppear {
+                    if SheetHeroID.isMiniPlayer(id) {
+                        DispatchQueue.main.async {
+                            SheetHeroSession.shared.cover(id)
+                        }
+                    }
+                }
+                .onDisappear {
+                    SheetHeroSession.shared.uncover(id)
+                }
+                .navigationTransition(.zoom(sourceID: id, in: namespace))
+        } else {
+            tagged.minSheetCornerRadius()
+        }
+        #else
+        tagged
+        #endif
+    }
+}
+
+/// Captures the presenting view's zoom namespace and injects it into presented
+/// content. SwiftUI does not carry that environment across presentation
+/// boundaries, and the global stack is wrong when a parent re-renders.
 private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
     @Binding var item: Item?
@@ -564,17 +616,69 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
+    private var resolvedNamespace: Namespace.ID? {
+        capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
+    }
+
+    /// Zoom is a full-screen transition. Items with a source id present as
+    /// `fullScreenCover`; the rest stay sheets.
+    private var zoomItem: Binding<Item?> {
+        Binding(
+            get: {
+                guard let value = item,
+                      let id = sourceID?(value), !id.isEmpty else { return nil }
+                return value
+            },
+            set: { item = $0 }
+        )
+    }
+
+    private var sheetItem: Binding<Item?> {
+        Binding(
+            get: {
+                guard let value = item else { return nil }
+                if let id = sourceID?(value), !id.isEmpty { return nil }
+                return value
+            },
+            set: { item = $0 }
+        )
+    }
+
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
+        let captured = resolvedNamespace
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            content
+                .fullScreenCover(item: zoomItem, onDismiss: onDismiss) { value in
+                    if let id = sourceID?(value), !id.isEmpty {
+                        SheetHeroZoomHost(id: id, namespace: captured) {
+                            sheetContent(value)
+                        }
+                    } else {
+                        sheetContent(value)
+                    }
+                }
+                .sheet(item: sheetItem, onDismiss: onDismiss) { value in
+                    sheetContent(value)
+                        .environment(\.sheetHeroNamespace, captured)
+                        .environment(\.sheetHeroAllowsZoom, true)
+                        .minSheetCornerRadius()
+                }
+        } else {
+            fallbackSheet(content, captured: captured)
+        }
+        #else
+        fallbackSheet(content, captured: captured)
+        #endif
+    }
+
+    private func fallbackSheet(_ content: Content, captured: Namespace.ID?) -> some View {
         content.sheet(item: $item, onDismiss: onDismiss) { value in
-            // Zoom must be the outermost modifier on this presented view.
-            // Attaching it inside the sheet body lets UIKit draw a full-size
-            // sheet for a frame, then tear it down when zoom attaches.
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
-                .sheetHeroDestination(id: sourceID?(value), namespace: captured)
         }
     }
 }
@@ -587,14 +691,63 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: () -> SheetContent
 
+    private var resolvedNamespace: Namespace.ID? {
+        capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
+    }
+
+    private var presentsZoom: Bool {
+        sourceID.map { !$0.isEmpty } ?? false
+    }
+
+    private var presentZoom: Binding<Bool> {
+        Binding(
+            get: { isPresented && presentsZoom },
+            set: { isPresented = $0 }
+        )
+    }
+
+    private var presentSheet: Binding<Bool> {
+        Binding(
+            get: { isPresented && !presentsZoom },
+            set: { isPresented = $0 }
+        )
+    }
+
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
+        let captured = resolvedNamespace
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            content
+                .fullScreenCover(isPresented: presentZoom, onDismiss: onDismiss) {
+                    if let id = sourceID, !id.isEmpty {
+                        SheetHeroZoomHost(id: id, namespace: captured) {
+                            sheetContent()
+                        }
+                    } else {
+                        sheetContent()
+                    }
+                }
+                .sheet(isPresented: presentSheet, onDismiss: onDismiss) {
+                    sheetContent()
+                        .environment(\.sheetHeroNamespace, captured)
+                        .environment(\.sheetHeroAllowsZoom, true)
+                        .minSheetCornerRadius()
+                }
+        } else {
+            fallbackSheet(content, captured: captured)
+        }
+        #else
+        fallbackSheet(content, captured: captured)
+        #endif
+    }
+
+    private func fallbackSheet(_ content: Content, captured: Namespace.ID?) -> some View {
         content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
             sheetContent()
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
-                .sheetHeroDestination(id: sourceID, namespace: captured)
         }
     }
 }
@@ -619,7 +772,8 @@ extension View {
         modifier(SheetHeroPresentedModifier())
     }
 
-    /// Presents a sheet and forwards this view's zoom namespace into it.
+    /// Presents a sheet (or a full-screen cover when zooming) and forwards
+    /// this view's zoom namespace into it.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         onDismiss: (() -> Void)? = nil,
@@ -634,7 +788,7 @@ extension View {
         )
     }
 
-    /// Like `sheetFromHero(item:)` and morphs the sheet out of `sourceID`.
+    /// Like `sheetFromHero(item:)` and morphs a full-screen cover out of `sourceID`.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         sourceID: @escaping (Item) -> String?,
@@ -696,8 +850,9 @@ extension View {
         modifier(SheetHeroSourceModifier(id: id, cornerRadius: cornerRadius))
     }
 
-    /// Morphs this presented sheet out of the matching source image, and back
-    /// into it, using the system zoom transition.
+    /// Morphs this presented view out of the matching source image, and back
+    /// into it, using the system zoom transition. Prefer `sheetFromHero`
+    /// so zoom presents as a full-screen cover.
     @ViewBuilder
     public func sheetHeroDestination(id: String?, namespace: Namespace.ID? = nil) -> some View {
         if let id, !id.isEmpty {

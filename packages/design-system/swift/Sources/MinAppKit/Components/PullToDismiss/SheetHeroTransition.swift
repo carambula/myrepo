@@ -131,7 +131,19 @@ final class SheetHeroSession {
     static let shared = SheetHeroSession()
 
     private(set) var coveredIDs: Set<String> = []
+    private(set) var zoomDestinationCount = 0
     private var dismissHandlers: [() -> Void] = []
+
+    /// True while a destination is using iOS 18 `navigationTransition(.zoom)`.
+    var usesSystemZoom: Bool { zoomDestinationCount > 0 }
+
+    func enterZoomDestination() {
+        zoomDestinationCount += 1
+    }
+
+    func leaveZoomDestination() {
+        zoomDestinationCount = max(0, zoomDestinationCount - 1)
+    }
     /// True while a proxy is following the finger or flying back to a tile.
     /// Radius guards must not rewrite `preferredCornerRadius` in this window.
     /// `nonisolated(unsafe)` so UIKit display-link / dimming callbacks can
@@ -199,7 +211,7 @@ extension EnvironmentValues {
         set { self[SheetHeroPresentedIDKey.self] = newValue }
     }
 
-    /// Root home↔sheet morphs. A sheet sitting on another sheet does not.
+    /// Source images may morph into a presented sheet via the system zoom.
     public var sheetHeroAllowsZoom: Bool {
         get { self[SheetHeroAllowsZoomKey.self] }
         set { self[SheetHeroAllowsZoomKey.self] = newValue }
@@ -266,31 +278,18 @@ private struct SheetHeroSourceModifier: ViewModifier {
                         #endif
                 }
             }
-            .modifier(SheetHeroCoverOpacity(id: id))
 
         #if os(iOS)
-        // Nested sheets skip matchedTransitionSource — zooming a sheet that
-        // sits on another sheet is too complex, so those present normally.
+        // App Store-style zoom: the system morphs this image into the sheet.
+        // Do not paint an opaque background over it, and do not overlay a
+        // second copy — both break the illusion of one persistent object.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
-                // `matchedTransitionSource` hides its live view while (and
-                // sometimes after) the morph — especially in a secondary
-                // overlay window like the floating mini player. Keep a
-                // hit-test-free copy on top so artwork stays visible when
-                // idle; cover opacity hides that copy during the flight.
                 sourced
                     .matchedTransitionSource(id: id, in: namespace) { source in
-                        source
-                            .background(Color(uiColor: .systemBackground))
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            )
-                    }
-                    .overlay {
-                        content
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                            .modifier(SheetHeroCoverOpacity(id: id))
+                        source.clipShape(
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        )
                     }
             } else {
                 sourced
@@ -406,55 +405,26 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
 }
 #endif
 
-private struct SheetHeroCoverOpacity: ViewModifier {
-    let id: String
-    var session = SheetHeroSession.shared
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(session.isCovered(id) ? 0 : 1)
-            .transaction { $0.animation = nil }
-    }
-}
-
 private struct SheetHeroDestinationModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
     let id: String
-    /// Captured when this destination is first inserted. A parent sheet's
-    /// `onAppear` must not later steal zoom from the root sheet.
-    @State private var allowsZoom: Bool = !SheetHeroGeometry.isInsidePresentedSheet
 
     private var namespace: Namespace.ID? {
         environmentNamespace ?? SheetHeroGeometry.currentNamespace
-    }
-
-    private var shouldZoom: Bool {
-        // Captured at insert time. Do not AND with environmentAllowsZoom:
-        // `sheetHeroPresented` sits inside this modifier and forces that
-        // value false so nested sources skip matching.
-        allowsZoom
     }
 
     func body(content: Content) -> some View {
         let tagged = content
             .environment(\.sheetHeroPresentedID, id)
             .environment(\.sheetHeroNamespace, namespace)
-            .environment(\.sheetHeroAllowsZoom, shouldZoom)
+            .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
-        applyZoom(
-            tagged
-                .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        )
-        .onAppear {
-            guard shouldZoom else { return }
-            // After the system has snapshotted the source for the open zoom.
-            DispatchQueue.main.async {
-                SheetHeroSession.shared.cover(id)
+        applyZoom(tagged)
+            .onAppear { SheetHeroSession.shared.enterZoomDestination() }
+            .onDisappear {
+                SheetHeroSession.shared.leaveZoomDestination()
+                SheetHeroSession.shared.uncover(id)
             }
-        }
-        .onDisappear {
-            SheetHeroSession.shared.uncover(id)
-        }
         #else
         tagged
         #endif
@@ -463,7 +433,7 @@ private struct SheetHeroDestinationModifier: ViewModifier {
     @ViewBuilder
     private func applyZoom<V: View>(_ view: V) -> some View {
         #if os(iOS)
-        if #available(iOS 18.0, *), shouldZoom, let namespace {
+        if #available(iOS 18.0, *), let namespace {
             view.navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             view
@@ -483,10 +453,6 @@ private struct SheetHeroPresentedModifier: ViewModifier {
                 \.sheetHeroNamespace,
                 environmentNamespace ?? SheetHeroGeometry.currentNamespace
             )
-            // Sources and nested sheets inside this presentation must not
-            // zoom. The destination modifier (outside this one) still zooms
-            // the root sheet itself.
-            .environment(\.sheetHeroAllowsZoom, false)
             .minSheetCornerRadius()
             .onAppear { SheetHeroGeometry.enterPresentedSheet() }
             .onDisappear { SheetHeroGeometry.leavePresentedSheet() }
@@ -498,19 +464,16 @@ private struct SheetHeroPresentedModifier: ViewModifier {
 /// global stack is wrong when a parent container re-renders.
 private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
-    @Environment(\.sheetHeroAllowsZoom) private var allowsZoom
     @Binding var item: Item?
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
     func body(content: Content) -> some View {
         let captured = namespace ?? SheetHeroGeometry.currentNamespace
-        // Nested presenters (search, show) already flipped allowsZoom off.
-        let capturedAllowsZoom = allowsZoom && !SheetHeroGeometry.isInsidePresentedSheet
         content.sheet(item: $item, onDismiss: onDismiss) { value in
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
-                .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
+                .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
         }
     }
@@ -518,18 +481,16 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
 
 private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
-    @Environment(\.sheetHeroAllowsZoom) private var allowsZoom
     @Binding var isPresented: Bool
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: () -> SheetContent
 
     func body(content: Content) -> some View {
         let captured = namespace ?? SheetHeroGeometry.currentNamespace
-        let capturedAllowsZoom = allowsZoom && !SheetHeroGeometry.isInsidePresentedSheet
         content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
             sheetContent()
                 .environment(\.sheetHeroNamespace, captured)
-                .environment(\.sheetHeroAllowsZoom, capturedAllowsZoom)
+                .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
         }
     }
@@ -550,7 +511,6 @@ extension View {
     }
 
     /// Presents a sheet and forwards this view's zoom namespace into it.
-    /// Nested sheets (already sitting on another sheet) skip the zoom.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         onDismiss: (() -> Void)? = nil,
@@ -590,8 +550,7 @@ extension View {
     }
 
     /// Morphs this presented sheet out of the matching source image, and back
-    /// into it on a regular dismiss. No-ops when this sheet sits on another
-    /// sheet — only the root presentation over home zooms.
+    /// into it, using the system zoom transition.
     @ViewBuilder
     public func sheetHeroDestination(id: String?) -> some View {
         if let id, !id.isEmpty {

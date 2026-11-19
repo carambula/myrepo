@@ -1390,26 +1390,42 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
         self.onFollowingChange = onFollowingChange
     }
 
+    /// Apple's zoom transition is continuously interactive. Hijacking it with
+    /// a snapshot proxy and `interactiveDismissDisabled` is what made dismiss
+    /// feel unlike the App Store.
+    private var usesSystemZoom: Bool {
+        if #available(iOS 18.0, *) {
+            return heroID.map { !$0.isEmpty } ?? false
+        }
+        return false
+    }
+
     public func body(content: Content) -> some View {
         content
             .minSheetCornerRadius()
-            .interactiveDismissDisabled(true)
-            .background(
-                EdgeSwipeToDismissHost(
-                    configuration: configuration,
-                    onDismiss: { animated in
-                        var transaction = Transaction()
-                        transaction.disablesAnimations = !animated
-                        withTransaction(transaction) {
-                            dismiss()
-                        }
-                    },
-                    onFollowingChange: onFollowingChange,
-                    heroID: heroID
-                )
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
-            )
+            .interactiveDismissDisabled(!usesSystemZoom)
+            .background {
+                if usesSystemZoom {
+                    Color.clear
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
+                } else {
+                    EdgeSwipeToDismissHost(
+                        configuration: configuration,
+                        onDismiss: { animated in
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = !animated
+                            withTransaction(transaction) {
+                                dismiss()
+                            }
+                        },
+                        onFollowingChange: onFollowingChange,
+                        heroID: heroID
+                    )
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                }
+            }
     }
 }
 

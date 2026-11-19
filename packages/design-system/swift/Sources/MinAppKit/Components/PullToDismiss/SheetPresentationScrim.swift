@@ -182,6 +182,10 @@ final class SheetScrimGuardView: UIView {
         didFadeBackdropOut = false
         didAnimateBackdropIn = false
         installLifecycleHook(on: presented)
+        if SheetHeroSession.shared.usesSystemZoom {
+            prepareSystemZoomScrim(for: presented)
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             self?.applyScrim(for: presented)
         }

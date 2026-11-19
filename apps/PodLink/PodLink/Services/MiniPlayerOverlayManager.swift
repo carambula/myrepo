@@ -20,11 +20,20 @@ private struct MiniPlayerOverlayRoot: View {
     }
 
     /// Keep the mini mounted while now-playing is up so zoom can return here.
-    /// Hide visually (and from hit-testing) so it does not sit above the player.
     private var showMiniPlayer: Bool {
         ownsFloatingMini
             && playbackService.state.currentEpisode != nil
             && !playbackService.isSearchUIVisible
+    }
+
+    /// True while this overlay window presented now-playing (including the
+    /// dismiss zoom). The mini stays at rest so the thumb can land on it.
+    @State private var overlayOwnsPresentedPlayer = false
+
+    /// Hide only when a player from another window would sit under this overlay.
+    /// Instant, not sprung — a fade here fights the zoom.
+    private var hideMiniForForeignPlayer: Bool {
+        playbackService.isEpisodePlayerUIVisible && !overlayOwnsPresentedPlayer
     }
 
     /// Present now-playing from this window so the mini thumb and player share
@@ -52,16 +61,19 @@ private struct MiniPlayerOverlayRoot: View {
                     // Hug the card/capsule — UIKit leading/trailing (or ≤320 center)
                     // constraints propose width; avoid a maxHeight infinity strip.
                     .fixedSize(horizontal: false, vertical: true)
-                    .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
+                    .opacity(hideMiniForForeignPlayer ? 0 : 1)
+                    .animation(nil, value: hideMiniForForeignPlayer)
                     .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                     .transition(.offset(y: UIScreen.main.bounds.height))
             }
         }
-        .animation(.spring(response: 0.35), value: playbackService.state.currentEpisode != nil)
-        .animation(.spring(response: 0.35), value: playbackService.isEpisodePlayerUIVisible)
-        .animation(.spring(response: 0.35), value: playbackService.isSearchUIVisible)
-        .animation(.spring(response: 0.35), value: miniPlayerDockMode)
-        .sheetFromHero(isPresented: presentNowPlayingFromOverlay) {
+        .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.state.currentEpisode != nil)
+        .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.isSearchUIVisible)
+        .animation(.spring(response: SheetHeroMotion.openDuration), value: miniPlayerDockMode)
+        .sheetFromHero(
+            isPresented: presentNowPlayingFromOverlay,
+            onDismiss: { overlayOwnsPresentedPlayer = false }
+        ) {
             if let episode = playbackService.state.currentEpisode {
                 EpisodePlayerSheet(
                     episode: episode,
@@ -78,7 +90,12 @@ private struct MiniPlayerOverlayRoot: View {
                 .presentationDragIndicator(.visible)
             }
         }
-        .sheetHeroContainer()
+        .onChange(of: playbackService.isNowPlayingSheetPresented) { _, presented in
+            if presented, ownsFloatingMini {
+                overlayOwnsPresentedPlayer = true
+            }
+        }
+        .sheetHeroOverlayContainer()
     }
 }
 

@@ -328,6 +328,7 @@ struct PodcastListView: View {
             }
             .simultaneousGesture(dragTrackingGesture(proxy: proxy))
         }
+        .environment(\.sheetHeroAllowsZoom, layoutPagerProgress < 0.5)
     }
 
     private var listPage: some View {
@@ -344,6 +345,7 @@ struct PodcastListView: View {
         .onScrollGeometryChange(for: CGFloat.self, of: normalizedScrollOffset) { _, newOffset in
             listScrollOffset = newOffset
         }
+        .environment(\.sheetHeroAllowsZoom, layoutPagerProgress >= 0.5)
     }
 
     @ViewBuilder

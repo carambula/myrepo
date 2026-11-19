@@ -82,7 +82,6 @@ struct ContentView: View {
             && (miniPlayerFloatVerticalSnap == MiniPlayerFloatVerticalSnap.bottom.rawValue
                 || miniPlayerSize == MiniPlayerSize.microplayer.rawValue)
             && playbackService.state.currentEpisode != nil
-            && !playbackService.isEpisodePlayerUIVisible
     }
 
     private var bottomTrailingSearchBottomPadding: CGFloat {
@@ -186,35 +185,9 @@ struct ContentView: View {
             .environment(themeManager)
             .environment(playbackService)
             .environment(downloadManager)
-            .sheetHeroPresented()
-            .sheetHeroDestination(id: SheetHeroID.episode(selection.episode.id))
             .presentationDragIndicator(.visible)
         }
-        .sheetHeroContainer()
-        .task(id: hasCompletedOnboarding) {
-            guard hasCompletedOnboarding else { return }
-            // Resume state has already been hydrated synchronously in `PlaybackService.init()`,
-            // so the mini player is on screen with correct artwork/title/scrub the instant this
-            // view mounts. Kick the resume episode's RSS refresh off in the background so we
-            // never gate the first frame on the network, then let the deferred launch
-            // maintenance sweep handle the heavier followed-feeds rebuild.
-            Task(priority: .utility) {
-                await playbackService.refreshResumeSessionFromFeed()
-            }
-            scheduleLaunchMaintenance()
-        }
-        .onDisappear {
-            autoQueueRefreshTask?.cancel()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .inactive || phase == .background {
-                autoQueueRefreshTask?.cancel()
-                playbackService.saveResumeSessionNow()
-            } else if phase == .active {
-                scheduleDeferredRetentionSweep()
-            }
-        }
-        .sheet(item: $rootSheet) { sheet in
+        .sheetFromHero(item: $rootSheet) { sheet in
             Group {
                 switch sheet {
                 case .podcast(let podcast):
@@ -241,6 +214,30 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .sheet(isPresented: nowPlayingOverRootModal) {
                 nowPlayingSheetContent
+            }
+        }
+        .sheetHeroContainer()
+        .task(id: hasCompletedOnboarding) {
+            guard hasCompletedOnboarding else { return }
+            // Resume state has already been hydrated synchronously in `PlaybackService.init()`,
+            // so the mini player is on screen with correct artwork/title/scrub the instant this
+            // view mounts. Kick the resume episode's RSS refresh off in the background so we
+            // never gate the first frame on the network, then let the deferred launch
+            // maintenance sweep handle the heavier followed-feeds rebuild.
+            Task(priority: .utility) {
+                await playbackService.refreshResumeSessionFromFeed()
+            }
+            scheduleLaunchMaintenance()
+        }
+        .onDisappear {
+            autoQueueRefreshTask?.cancel()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .inactive || phase == .background {
+                autoQueueRefreshTask?.cancel()
+                playbackService.saveResumeSessionNow()
+            } else if phase == .active {
+                scheduleDeferredRetentionSweep()
             }
         }
         .fullScreenCover(isPresented: $isSearchSheetPresented) {

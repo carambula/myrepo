@@ -21,6 +21,12 @@ public enum SheetHeroID {
     public static func movie(_ id: String) -> String { "movie:\(id)" }
     public static func video(_ id: String) -> String { "video:\(id)" }
     public static func channel(_ id: String) -> String { "channel:\(id)" }
+
+    /// Mini-player artwork in a secondary overlay window. `matchedTransitionSource`
+    /// hides that live view, so those sources keep a covered idle copy.
+    public static func isMiniPlayer(_ id: String) -> Bool {
+        id.hasPrefix("miniPlayer:")
+    }
 }
 
 /// Last frames, radii, and snapshots of hero sources, used to fling a sheet
@@ -219,14 +225,25 @@ extension EnvironmentValues {
 }
 
 private struct SheetHeroContainerModifier: ViewModifier {
+    var participatesInGlobalStack: Bool = true
     @Namespace private var namespace
 
     func body(content: Content) -> some View {
-        SheetHeroGeometry.activate(namespace)
+        if participatesInGlobalStack {
+            SheetHeroGeometry.activate(namespace)
+        }
         return content
             .environment(\.sheetHeroNamespace, namespace)
-            .onAppear { SheetHeroGeometry.pushNamespace(namespace) }
-            .onDisappear { SheetHeroGeometry.popNamespace(namespace) }
+            .onAppear {
+                if participatesInGlobalStack {
+                    SheetHeroGeometry.pushNamespace(namespace)
+                }
+            }
+            .onDisappear {
+                if participatesInGlobalStack {
+                    SheetHeroGeometry.popNamespace(namespace)
+                }
+            }
             #if os(iOS)
             .background(
                 SheetScrimGuard()
@@ -281,16 +298,29 @@ private struct SheetHeroSourceModifier: ViewModifier {
 
         #if os(iOS)
         // App Store-style zoom: the system morphs this image into the sheet.
-        // Do not paint an opaque background over it, and do not overlay a
-        // second copy — both break the illusion of one persistent object.
+        // Grid/list tiles must stay live — a second copy reads as a leftover
+        // thumb. Mini-player art lives in an overlay window where
+        // `matchedTransitionSource` hides the live view even when idle, so
+        // that source keeps a hit-test-free copy that cover opacity hides
+        // while the sheet is the flying object.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
-                sourced
+                let matched = sourced
                     .matchedTransitionSource(id: id, in: namespace) { source in
                         source.clipShape(
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         )
                     }
+                if SheetHeroID.isMiniPlayer(id) {
+                    matched.overlay {
+                        content
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .modifier(SheetHeroCoverOpacity(id: id))
+                    }
+                } else {
+                    matched
+                }
             } else {
                 sourced
             }
@@ -405,6 +435,51 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
 }
 #endif
 
+#if os(iOS)
+private struct SheetHeroCoverOpacity: ViewModifier {
+    let id: String
+    var session = SheetHeroSession.shared
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(session.isCovered(id) ? 0 : 1)
+            .transaction { $0.animation = nil }
+    }
+}
+
+/// Enters the zoom session as soon as the destination hosting view exists so
+/// scrim setup does not install a custom dim plate on the first zoom frames.
+private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.enter()
+        return view
+    }
+
+    func updateUIView(_ uiView: ProbeView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: ProbeView, coordinator: ()) {
+        uiView.leave()
+    }
+
+    final class ProbeView: UIView {
+        private var active = false
+
+        func enter() {
+            guard !active else { return }
+            active = true
+            SheetHeroSession.shared.enterZoomDestination()
+        }
+
+        func leave() {
+            guard active else { return }
+            active = false
+            SheetHeroSession.shared.leaveZoomDestination()
+        }
+    }
+}
+#endif
+
 private struct SheetHeroDestinationModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
     let id: String
@@ -420,9 +495,19 @@ private struct SheetHeroDestinationModifier: ViewModifier {
             .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
         applyZoom(tagged)
-            .onAppear { SheetHeroSession.shared.enterZoomDestination() }
+            .background {
+                SheetHeroZoomSessionProbe()
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            }
+            .onAppear {
+                if SheetHeroID.isMiniPlayer(id) {
+                    DispatchQueue.main.async {
+                        SheetHeroSession.shared.cover(id)
+                    }
+                }
+            }
             .onDisappear {
-                SheetHeroSession.shared.leaveZoomDestination()
                 SheetHeroSession.shared.uncover(id)
             }
         #else
@@ -501,6 +586,12 @@ extension View {
     /// can morph as one persistent picture.
     public func sheetHeroContainer() -> some View {
         modifier(SheetHeroContainerModifier())
+    }
+
+    /// Overlay windows (floating mini player) keep an isolated namespace so
+    /// they cannot steal `currentNamespace` from the main window's tiles.
+    public func sheetHeroOverlayContainer() -> some View {
+        modifier(SheetHeroContainerModifier(participatesInGlobalStack: false))
     }
 
     /// Re-applies the presenting container's zoom namespace onto presented

@@ -32,10 +32,14 @@ import {
   heroReturnDuration,
   heroReturnScale,
   isHeroSourceVisible,
+  miniPlayerChromeAnimationDuration,
+  miniPlayerChromeOpacity,
   sheetHeroID,
   shouldApplySheetChromeRadius,
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldPersistMatchedSourceCopy,
+  shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
   stackedSheetCornerRadius,
 } from './sheetHero.js';
@@ -357,6 +361,33 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldApplySheetChromeRadius({}), true);
     assert.equal(shouldApplySheetChromeRadius({ dismissing: true }), false);
     assert.equal(shouldApplySheetChromeRadius({ heroMotion: true }), false);
+  });
+
+  it('keeps an idle copy only for overlay mini-player sources', () => {
+    assert.equal(shouldPersistMatchedSourceCopy({ kind: 'miniPlayer' }), true);
+    assert.equal(shouldPersistMatchedSourceCopy({ kind: 'podcast' }), false);
+    assert.equal(shouldPersistMatchedSourceCopy({ kind: 'episode' }), false);
+    assert.equal(shouldPersistMatchedSourceCopy({}), false);
+  });
+
+  it('skips zoom sources on the off-screen pager page', () => {
+    assert.equal(shouldRegisterHeroSource({}), true);
+    assert.equal(shouldRegisterHeroSource({ pageVisible: true }), true);
+    assert.equal(shouldRegisterHeroSource({ pageVisible: false }), false);
+  });
+
+  it('keeps mini-player chrome at rest while it owns the zoom', () => {
+    assert.equal(miniPlayerChromeOpacity({}), 1);
+    assert.equal(
+      miniPlayerChromeOpacity({ playerVisible: true, overlayOwnsPlayer: true }),
+      1
+    );
+    assert.equal(
+      miniPlayerChromeOpacity({ playerVisible: true, overlayOwnsPlayer: false }),
+      0
+    );
+    assert.equal(miniPlayerChromeAnimationDuration({ zoomInFlight: true }), 0);
+    assert.equal(miniPlayerChromeAnimationDuration({}), heroOpenDuration);
   });
 });
 

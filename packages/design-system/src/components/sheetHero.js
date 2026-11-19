@@ -23,6 +23,43 @@ export function shouldHeroZoomSheet({ nested: _nested } = {}) {
 }
 
 /**
+ * `matchedTransitionSource` hides live views in overlay windows (the floating
+ * mini player). Keep an idle copy there. Grid/list tiles must not — a second
+ * copy reads as a leftover thumb during the morph.
+ */
+export function shouldPersistMatchedSourceCopy({ kind } = {}) {
+  return kind === 'miniPlayer';
+}
+
+/**
+ * Off-screen pager twins (grid still mounted in list, and vice versa) must
+ * not register as zoom sources or the sheet fades from the wrong rect.
+ */
+export function shouldRegisterHeroSource({ pageVisible = true } = {}) {
+  return pageVisible === true;
+}
+
+/**
+ * Mini-player chrome stays at rest while it owns the now-playing zoom.
+ * Hide it only when a player from another window would sit underneath;
+ * never animate that hide against the zoom.
+ */
+export function miniPlayerChromeOpacity({
+  playerVisible = false,
+  overlayOwnsPlayer = false,
+} = {}) {
+  if (playerVisible && !overlayOwnsPlayer) return 0;
+  return 1;
+}
+
+/** Instant when the zoom is in flight; spring only for first appear / search. */
+export function miniPlayerChromeAnimationDuration({
+  zoomInFlight = false,
+} = {}) {
+  return zoomInFlight === true ? 0 : heroOpenDuration;
+}
+
+/**
  * Re-applying `preferredCornerRadius` during dismiss fights the morph and
  * punches holes in the dim plate. Skip it while the card is flying.
  */

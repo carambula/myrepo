@@ -2,8 +2,8 @@
  * Shared math for zooming a sheet out of a matching key image and flinging
  * that image back into its thumbnail. Mirrors MinAppKit SheetHeroTransition.
  *
- * Nested sheets (a sheet sitting on another sheet) never zoom — only the
- * root sheet over home morphs from its key image.
+ * Nested sheets skip the open zoom (ordinary present). Dismiss still flings
+ * the card to the rest-size thumb while the sheet below un-scales with it.
  */
 
 export const heroOpenDuration = 0.42;
@@ -54,14 +54,41 @@ export function isHeroSourceVisible(source, viewport, minOverlap = heroSourceVis
 
 /**
  * Artwork overlay opacity while the returning card scales into place.
- * On-screen sources are already the flying object (fully opaque). Off-screen
- * sources fade the stored key image in so the shrinking card fills with art.
+ * On-screen sources at rest stay the flying object. Off-screen sources, or a
+ * sheet that has been scrolled away from its hero, fade the stored key image
+ * in so the card does not crop-and-snap into the tile.
  */
-export function heroFillOpacity(progress, { sourceVisible } = {}) {
-  if (sourceVisible) return 1;
+export function heroFillOpacity(progress, { sourceVisible, scrolled } = {}) {
+  if (sourceVisible !== false && scrolled !== true) return 1;
   const t = Number(progress);
   if (!Number.isFinite(t)) return 0;
   return Math.min(1, Math.max(0, t));
+}
+
+/**
+ * Presenter scale shrinks every on-screen tile. Keep the rest-size frame so
+ * the returning card flies to where the thumb will be, not the shrunken sheet.
+ * Off-screen twins (the other pager page, a covered cell) must not overwrite
+ * a live on-screen frame — that is what sent grid dismisses to a corner.
+ */
+export function shouldReplaceHeroFrame(
+  existing,
+  next,
+  { existingOnScreen, nextOnScreen } = {}
+) {
+  if (!(next?.width > 1) || !(next?.height > 1)) return false;
+  if (!existing) return true;
+  if (next.width < existing.width * 0.97) return false;
+  if (existingOnScreen && nextOnScreen === false) return false;
+  return true;
+}
+
+/**
+ * Root and nested sheets both fling the card back. Nested lands on the
+ * rest-size thumb while the sheet below un-scales in the same motion.
+ */
+export function shouldHeroFlingToSource({ nested: _nested } = {}) {
+  return true;
 }
 
 /** One shared duration: the flying sheet and shade finish together. */

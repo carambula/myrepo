@@ -18,6 +18,7 @@ struct PodcastDetailView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
     @Environment(DownloadManager.self) private var downloadManager
+    @Environment(NetworkStatusService.self) private var networkStatusService
 
     @State private var selectedEpisode: Episode?
     @State private var episodeForTranscript: Episode?
@@ -187,6 +188,7 @@ struct PodcastDetailView: View {
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
+                .environment(networkStatusService)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }

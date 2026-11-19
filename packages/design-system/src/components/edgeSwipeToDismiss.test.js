@@ -43,6 +43,7 @@ import {
   shouldPresentHeroZoomAsFullScreenCover,
   shouldPresentHeroZoomWithPreferredTransition,
   shouldMountHeroZoomPresenterAsChildViewController,
+  shouldSearchHeroSourceViewBeyondTile,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -313,6 +314,10 @@ describe('sheet hero zoom', () => {
 
   it('does not mount the zoom presenter as a child view controller', () => {
     assert.equal(shouldMountHeroZoomPresenterAsChildViewController(), false);
+  });
+
+  it('does not walk past the source tile when registering zoom views', () => {
+    assert.equal(shouldSearchHeroSourceViewBeyondTile(), false);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

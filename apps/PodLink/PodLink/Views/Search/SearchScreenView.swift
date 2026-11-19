@@ -275,6 +275,7 @@ struct SearchScreenView: View {
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
+                .environment(networkStatusService)
                 .sheetHeroPresented()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)

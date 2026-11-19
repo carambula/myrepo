@@ -56,6 +56,14 @@ export function shouldMountHeroZoomPresenterAsChildViewController() {
 }
 
 /**
+ * Source-view lookup must stay inside the tile. Walking the list or window
+ * on every layout hung the main thread at launch.
+ */
+export function shouldSearchHeroSourceViewBeyondTile() {
+  return false;
+}
+
+/**
  * `matchedTransitionSource` hides live views in overlay windows (the floating
  * mini player). Keep an idle copy there. Grid/list tiles must not — a second
  * copy reads as a leftover thumb during the morph.

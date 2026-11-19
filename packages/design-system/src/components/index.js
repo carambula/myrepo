@@ -72,6 +72,7 @@ export {
   shouldPresentHeroZoomAsFullScreenCover,
   shouldPresentHeroZoomWithPreferredTransition,
   shouldMountHeroZoomPresenterAsChildViewController,
+  shouldSearchHeroSourceViewBeyondTile,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,

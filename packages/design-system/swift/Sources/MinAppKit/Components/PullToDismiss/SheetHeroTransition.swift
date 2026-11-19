@@ -379,41 +379,46 @@ enum SheetHeroSourceViews {
 
     static func view(for id: String) -> UIView? {
         let found = storage[id]?.view
-        if found == nil {
+        if found == nil || found?.window == nil {
             storage.removeValue(forKey: id)
+            return nil
         }
         return found
     }
 
     static func registerWalk(from start: UIView, id: String) {
-        var node: UIView? = start.superview ?? start
+        var node: UIView? = start.superview
         var hops = 0
-        var fallback: UIView?
-        while let view = node, hops < 16 {
-            if view !== start,
-               view.bounds.width > 8,
-               view.bounds.height > 8,
-               !view.isHidden,
-               view.alpha > 0.01 {
-                if fallback == nil { fallback = view }
-                if let imageView = firstImageView(in: view) {
-                    register(id, imageView)
-                    return
-                }
+        var sizedSeen = 0
+        while let view = node, hops < 8, sizedSeen < 2 {
+            hops += 1
+            guard view.bounds.width > 8, view.bounds.height > 8 else {
+                node = view.superview
+                continue
+            }
+            sizedSeen += 1
+            if let imageView = firstImageView(in: view) {
+                register(id, imageView)
+                return
+            }
+            if sizedSeen == 2 {
+                register(id, view)
+                return
             }
             node = view.superview
-            hops += 1
-        }
-        if let fallback {
-            register(id, fallback)
         }
     }
 
+    /// Stay inside the tile. Walking the list or window on every layout
+    /// hung the main thread at launch.
     private static func firstImageView(in root: UIView) -> UIImageView? {
         var stack = [root]
         var visited = 0
-        while let view = stack.popLast(), visited < 48 {
+        while let view = stack.popLast(), visited < 16 {
             visited += 1
+            if view !== root, (view.bounds.width > 400 || view.subviews.count > 12) {
+                continue
+            }
             if let imageView = view as? UIImageView,
                imageView.bounds.width > 8,
                imageView.bounds.height > 8,
@@ -470,6 +475,7 @@ private struct SheetHeroSourceRegistrar: UIViewRepresentable {
             pending?.cancel()
             let work = DispatchWorkItem { [weak self] in
                 guard let self, !self.heroID.isEmpty else { return }
+                if SheetHeroSourceViews.view(for: self.heroID) != nil { return }
                 SheetHeroSourceViews.registerWalk(from: self, id: self.heroID)
             }
             pending = work
@@ -538,6 +544,7 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
         /// destination at full size for a frame.
         private func registerSourceView() {
             guard !heroID.isEmpty, !SheetHeroID.isMiniPlayer(heroID) else { return }
+            if SheetHeroSourceViews.view(for: heroID)?.window != nil { return }
             SheetHeroSourceViews.registerWalk(from: self, id: heroID)
         }
 
@@ -729,6 +736,18 @@ private struct SheetHeroZoomHost<Content: View>: View {
 }
 
 #if os(iOS)
+/// Copies the presenting SwiftUI environment into a UIKit-hosted destination.
+/// UIHostingController does not inherit `@Environment` objects, which crashed
+/// launch with a missing `NetworkStatusService`.
+private struct SheetHeroEnvironmentBridge<Content: View>: View {
+    let content: Content
+    let environment: EnvironmentValues
+
+    var body: some View {
+        content.transformEnvironment(\.self) { $0 = environment }
+    }
+}
+
 /// Presents with `preferredTransition = .zoom` set *before* `present`.
 /// SwiftUI `.sheet` and `.fullScreenCover` create the destination at
 /// full size, then attach zoom — that first frame is the flash.
@@ -758,6 +777,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
 
     func updateUIView(_ view: ProbeView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.environment = context.environment
         context.coordinator.sync(from: view)
     }
 
@@ -778,7 +798,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
         }
     }
 
-    final class ZoomHostingController: UIHostingController<Destination> {
+    final class ZoomHostingController: UIHostingController<SheetHeroEnvironmentBridge<Destination>> {
         weak var dismissDelegate: UIAdaptivePresentationControllerDelegate?
 
         override func viewDidLoad() {
@@ -790,11 +810,19 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
 
     final class Coordinator: NSObject, UIAdaptivePresentationControllerDelegate {
         var parent: SheetHeroUIKitZoom?
+        var environment = EnvironmentValues()
         weak var presented: ZoomHostingController?
         var presentedID: Item.ID?
         var isPresenting = false
         var isDismissing = false
         var windowRetries = 0
+
+        func rooted(_ item: Item, parent: SheetHeroUIKitZoom) -> SheetHeroEnvironmentBridge<Destination> {
+            SheetHeroEnvironmentBridge(
+                content: parent.destination(item),
+                environment: environment
+            )
+        }
 
         func sync(from view: UIView) {
             guard let parent else { return }
@@ -802,7 +830,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
                let id = parent.sourceID(item),
                !id.isEmpty {
                 if presentedID == item.id, let host = presented {
-                    host.rootView = parent.destination(item)
+                    host.rootView = rooted(item, parent: parent)
                     return
                 }
                 present(item, id: id, from: view, parent: parent)
@@ -839,7 +867,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
             }
             windowRetries = 0
             isPresenting = true
-            let host = ZoomHostingController(rootView: parent.destination(item))
+            let host = ZoomHostingController(rootView: rooted(item, parent: parent))
             host.dismissDelegate = self
             host.preferredTransition = .zoom(sourceViewProvider: { _ in
                 SheetHeroSourceViews.view(for: id)

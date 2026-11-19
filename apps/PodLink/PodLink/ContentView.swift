@@ -193,6 +193,7 @@ struct ContentView: View {
             .environment(themeManager)
             .environment(playbackService)
             .environment(downloadManager)
+            .environment(networkStatusService)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
@@ -500,6 +501,8 @@ struct ContentView: View {
             )
                 .environment(themeManager)
                 .environment(playbackService)
+                .environment(downloadManager)
+                .environment(networkStatusService)
                 .presentationDragIndicator(.visible)
         }
     }

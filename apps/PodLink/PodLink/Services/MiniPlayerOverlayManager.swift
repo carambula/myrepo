@@ -104,6 +104,10 @@ private struct MiniPlayerOverlayRoot: View {
                 overlayOwnsPresentedPlayer = true
             }
         }
+        .environment(themeManager)
+        .environment(playbackService)
+        .environment(downloadManager)
+        .environment(networkStatusService)
         .sheetHeroOverlayContainer()
     }
 }

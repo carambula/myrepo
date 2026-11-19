@@ -2,21 +2,6 @@ import Foundation
 import UIKit
 
 extension String {
-    var cleanedHTML: String {
-        guard let data = self.data(using: .utf8),
-              let attributed = try? NSAttributedString(
-                data: data,
-                options: [
-                    .documentType: NSAttributedString.DocumentType.html,
-                    .characterEncoding: String.Encoding.utf8.rawValue
-                ],
-                documentAttributes: nil
-              ) else {
-            return self.strippingHTML
-        }
-        return attributed.string
-    }
-
     func extractYear() -> Int? {
         let pattern = #"\b(19|20)\d{2}\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),

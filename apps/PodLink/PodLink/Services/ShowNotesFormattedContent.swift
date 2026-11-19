@@ -15,7 +15,7 @@ enum ShowNotesFormattedContent {
             if let html = attributedFromHTML(trimmed, linkUIColor: linkUIColor) {
                 return html
             }
-            let plain = trimmed.cleanedHTML
+            let plain = trimmed.strippingHTMLTags
             return markdownOrPlain(plain, linkUIColor: linkUIColor)
         }
 
@@ -28,21 +28,11 @@ enum ShowNotesFormattedContent {
         s.range(of: #"<\s*[a-zA-Z][^>]*>"#, options: .regularExpression) != nil
     }
 
+    /// Parsed natively. The system HTML importer spins the main run loop,
+    /// which must not happen while the player sheet is appearing.
     private static func attributedFromHTML(_ fragment: String, linkUIColor: UIColor) -> AttributedString? {
-        let wrapped = """
-        <!DOCTYPE html>
-        <html><head><meta charset="utf-8"></head><body>\(fragment)</body></html>
-        """
-        guard let data = wrapped.data(using: .utf8) else { return nil }
-        let opts: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue
-        ]
-        guard let parsed = try? NSMutableAttributedString(data: data, options: opts, documentAttributes: nil) else {
-            return nil
-        }
-        let text = parsed.string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return nil }
+        let parsed = ShowNotesHTMLRenderer.render(fragment, pointSize: bodyPointSize)
+        guard parsed.length > 0 else { return nil }
 
         normalizeUIKitTypography(in: parsed, linkUIColor: linkUIColor)
         return AttributedString(parsed)

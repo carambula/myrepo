@@ -170,14 +170,22 @@ struct ContentView: View {
                     }
                 }
                 .themeBackground()
-                .sheetFromHero(isPresented: nowPlayingOverNavigationStack) {
+                .sheetFromHero(
+                    isPresented: nowPlayingOverNavigationStack,
+                    sourceID: playbackService.state.currentEpisode.map {
+                        SheetHeroID.miniPlayer($0.id)
+                    }
+                ) {
                     nowPlayingSheetContent
                 }
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
             }
         }
-        .sheetFromHero(item: $selectedLatestEpisode) { selection in
+        .sheetFromHero(
+            item: $selectedLatestEpisode,
+            sourceID: { SheetHeroID.episode($0.episode.id) }
+        ) { selection in
             EpisodePlayerSheet(
                 episode: selection.episode,
                 fallbackPodcast: selection.podcast
@@ -185,9 +193,10 @@ struct ContentView: View {
             .environment(themeManager)
             .environment(playbackService)
             .environment(downloadManager)
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
-        .sheetFromHero(item: $rootSheet) { sheet in
+        .sheetFromHero(item: $rootSheet, sourceID: { $0.sheetHeroID }) { sheet in
             Group {
                 switch sheet {
                 case .podcast(let podcast):
@@ -209,7 +218,6 @@ struct ContentView: View {
             .environment(downloadManager)
             .environment(networkStatusService)
             .sheetHeroPresented()
-            .sheetHeroDestination(id: sheet.sheetHeroID)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .sheet(isPresented: nowPlayingOverRootModal) {
@@ -488,8 +496,7 @@ struct ContentView: View {
                 onOpenPodcast: { podcast in
                     playbackService.isNowPlayingSheetPresented = false
                     rootSheet = .podcast(podcast)
-                },
-                sheetHeroSourceID: SheetHeroID.miniPlayer(episode.id)
+                }
             )
                 .environment(themeManager)
                 .environment(playbackService)

@@ -23,11 +23,28 @@ export function shouldHeroZoomSheet({ nested: _nested } = {}) {
 }
 
 /**
+ * `navigationTransition(.zoom)` must sit on the presented sheet, not inside
+ * the destination view's body. Inner attachment lets UIKit draw a full-size
+ * sheet for a frame, then remove it when zoom starts.
+ */
+export function shouldAttachHeroZoomOnPresentedSheet({ innerBody = false } = {}) {
+  return innerBody !== true;
+}
+
+/**
  * `matchedTransitionSource` hides live views in overlay windows (the floating
  * mini player). Keep an idle copy there. Grid/list tiles must not — a second
  * copy reads as a leftover thumb during the morph.
  */
 export function shouldPersistMatchedSourceCopy({ kind } = {}) {
+  return kind === 'miniPlayer';
+}
+
+/**
+ * Overlay mini-player zoom must snapshot the visible copy. Matching the
+ * hidden live view presents a full-size sheet for a frame, then tears it down.
+ */
+export function shouldMatchHeroSourceOnVisibleCopy({ kind } = {}) {
   return kind === 'miniPlayer';
 }
 
@@ -63,8 +80,18 @@ export function miniPlayerChromeAnimationDuration({
  * Re-applying `preferredCornerRadius` during dismiss fights the morph and
  * punches holes in the dim plate. Skip it while the card is flying.
  */
-export function shouldApplySheetChromeRadius({ dismissing = false, heroMotion = false } = {}) {
-  return dismissing !== true && heroMotion !== true;
+export function shouldApplySheetChromeRadius({
+  dismissing = false,
+  presenting = false,
+  heroMotion = false,
+  systemZoom = false,
+} = {}) {
+  return (
+    dismissing !== true &&
+    presenting !== true &&
+    heroMotion !== true &&
+    systemZoom !== true
+  );
 }
 
 /**

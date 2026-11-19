@@ -36,8 +36,10 @@ import {
   miniPlayerChromeOpacity,
   sheetHeroID,
   shouldApplySheetChromeRadius,
+  shouldAttachHeroZoomOnPresentedSheet,
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldMatchHeroSourceOnVisibleCopy,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -288,6 +290,12 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldHeroZoomSheet({ nested: true }), true);
   });
 
+  it('attaches zoom on the presented sheet, not inside the destination body', () => {
+    assert.equal(shouldAttachHeroZoomOnPresentedSheet({}), true);
+    assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: false }), true);
+    assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: true }), false);
+  });
+
   it('treats a scrolled-away thumbnail as off-screen', () => {
     const viewport = { x: 0, y: 0, width: 390, height: 700 };
     assert.equal(
@@ -360,7 +368,9 @@ describe('sheet hero zoom', () => {
   it('does not reapply sheet chrome radius while the card is flying', () => {
     assert.equal(shouldApplySheetChromeRadius({}), true);
     assert.equal(shouldApplySheetChromeRadius({ dismissing: true }), false);
+    assert.equal(shouldApplySheetChromeRadius({ presenting: true }), false);
     assert.equal(shouldApplySheetChromeRadius({ heroMotion: true }), false);
+    assert.equal(shouldApplySheetChromeRadius({ systemZoom: true }), false);
   });
 
   it('keeps an idle copy only for overlay mini-player sources', () => {
@@ -368,6 +378,12 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldPersistMatchedSourceCopy({ kind: 'podcast' }), false);
     assert.equal(shouldPersistMatchedSourceCopy({ kind: 'episode' }), false);
     assert.equal(shouldPersistMatchedSourceCopy({}), false);
+  });
+
+  it('zooms overlay mini-player from the visible copy, not the hidden live view', () => {
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({ kind: 'miniPlayer' }), true);
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({ kind: 'podcast' }), false);
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({}), false);
   });
 
   it('skips zoom sources on the off-screen pager page', () => {

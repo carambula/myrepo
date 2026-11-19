@@ -3,6 +3,12 @@ import UIKit
 
 // MARK: - SwiftUI root (lives above system sheets via overlay window)
 
+/// Stable item for overlay now-playing so the sheet is never an empty `if let`.
+private struct OverlayNowPlayingItem: Identifiable {
+    let episode: Episode
+    var id: String { episode.id }
+}
+
 private struct MiniPlayerOverlayRoot: View {
     @Bindable var themeManager: ThemeManager
     @Bindable var playbackService: PlaybackService
@@ -11,6 +17,7 @@ private struct MiniPlayerOverlayRoot: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
+    @Namespace private var overlayHero
 
     /// Floating / microplayer chrome ownership for this overlay window.
     private var ownsFloatingMini: Bool {
@@ -38,15 +45,16 @@ private struct MiniPlayerOverlayRoot: View {
 
     /// Present now-playing from this window so the mini thumb and player share
     /// one zoom namespace (floating mini is not in the main `ContentView` window).
-    private var presentNowPlayingFromOverlay: Binding<Bool> {
+    private var overlayNowPlayingItem: Binding<OverlayNowPlayingItem?> {
         Binding(
             get: {
-                ownsFloatingMini
-                    && playbackService.isNowPlayingSheetPresented
-                    && playbackService.state.currentEpisode != nil
+                guard ownsFloatingMini,
+                      playbackService.isNowPlayingSheetPresented,
+                      let episode = playbackService.state.currentEpisode else { return nil }
+                return OverlayNowPlayingItem(episode: episode)
             },
-            set: { presented in
-                if !presented { playbackService.isNowPlayingSheetPresented = false }
+            set: { newValue in
+                if newValue == nil { playbackService.isNowPlayingSheetPresented = false }
             }
         )
     }
@@ -58,6 +66,7 @@ private struct MiniPlayerOverlayRoot: View {
                     .environment(themeManager)
                     .environment(playbackService)
                     .environment(networkStatusService)
+                    .environment(\.sheetHeroNamespace, overlayHero)
                     // Hug the card/capsule — UIKit leading/trailing (or ≤320 center)
                     // constraints propose width; avoid a maxHeight infinity strip.
                     .fixedSize(horizontal: false, vertical: true)
@@ -71,24 +80,24 @@ private struct MiniPlayerOverlayRoot: View {
         .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.isSearchUIVisible)
         .animation(.spring(response: SheetHeroMotion.openDuration), value: miniPlayerDockMode)
         .sheetFromHero(
-            isPresented: presentNowPlayingFromOverlay,
+            item: overlayNowPlayingItem,
+            sourceID: { SheetHeroID.miniPlayer($0.episode.id) },
+            namespace: overlayHero,
             onDismiss: { overlayOwnsPresentedPlayer = false }
-        ) {
-            if let episode = playbackService.state.currentEpisode {
-                EpisodePlayerSheet(
-                    episode: episode,
-                    onOpenPodcast: { podcast in
-                        playbackService.isNowPlayingSheetPresented = false
-                        playbackService.pendingPodcastPresentation = podcast
-                    },
-                    sheetHeroSourceID: SheetHeroID.miniPlayer(episode.id)
-                )
-                .environment(themeManager)
-                .environment(playbackService)
-                .environment(downloadManager)
-                .environment(networkStatusService)
-                .presentationDragIndicator(.visible)
-            }
+        ) { item in
+            EpisodePlayerSheet(
+                episode: item.episode,
+                onOpenPodcast: { podcast in
+                    playbackService.isNowPlayingSheetPresented = false
+                    playbackService.pendingPodcastPresentation = podcast
+                }
+            )
+            .environment(themeManager)
+            .environment(playbackService)
+            .environment(downloadManager)
+            .environment(networkStatusService)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: playbackService.isNowPlayingSheetPresented) { _, presented in
             if presented, ownsFloatingMini {
@@ -202,9 +211,14 @@ final class MiniPlayerOverlayManager {
         let window = MiniPlayerOverlayWindow(windowScene: windowScene)
         let container = UIViewController()
         container.view.backgroundColor = .clear
+        // Present sheets in this full-screen container, not the 72pt host
+        // strip — otherwise UIKit draws a full-size platter from the tiny
+        // presenting bounds, then zoom tears it down.
+        container.definesPresentationContext = true
         let rootContainer = container.view!
 
         let host = UIHostingController(rootView: root)
+        host.definesPresentationContext = false
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
         host.view.clipsToBounds = false

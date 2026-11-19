@@ -9,9 +9,6 @@ struct EpisodePlayerSheet: View {
     var fallbackPodcast: Podcast? = nil
     /// After the player dismisses, run extra navigation (e.g. present the podcast from the root sheet).
     var onOpenPodcast: ((Podcast) -> Void)? = nil
-    /// Zoom source for this presentation. Mini-player open uses `SheetHeroID.miniPlayer`;
-    /// list/detail opens leave this nil so the default episode id is used.
-    var sheetHeroSourceID: String? = nil
 
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
@@ -247,7 +244,6 @@ struct EpisodePlayerSheet: View {
         .overlay(alignment: .top) { adSkipToast }
         .bottomSheetPullToDismiss()
         .sheetHeroPresented()
-        .sheetHeroDestination(id: sheetHeroSourceID ?? SheetHeroID.episode(episode.id))
         .sheet(item: $overlaySheet) { sheet in
             switch sheet {
             case .queue:

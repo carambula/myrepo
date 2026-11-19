@@ -62,6 +62,22 @@ export function shouldHitTestMiniPlayerOverlayCardOnly() {
 }
 
 /**
+ * Overlay hit testing must use the card's UIKit window frame, not SwiftUI
+ * `.global` — in a secondary window those spaces do not match.
+ */
+export function shouldReportMiniPlayerHitTargetInWindowCoordinates() {
+  return true;
+}
+
+/**
+ * The visible pager page must sit at layout x = 0. Parent `.offset` is
+ * visual-only, so list sources on page 1 otherwise stay at x = width.
+ */
+export function pagerPageOffset({ pageIndex = 0, pagerOffset = 0, pageWidth = 0 } = {}) {
+  return pagerOffset + pageIndex * pageWidth;
+}
+
+/**
  * `matchedTransitionSource` hides live views in overlay windows (the floating
  * mini player). Keep an idle copy there. Grid/list tiles must not — a second
  * copy reads as a leftover thumb during the morph.

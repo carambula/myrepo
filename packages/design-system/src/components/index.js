@@ -70,6 +70,7 @@ export {
   shouldHeroZoomSheet,
   shouldMatchHeroSourceOnVisibleCopy,
   shouldPresentHeroZoomAsFullScreenCover,
+  shouldPresentHeroZoomWithPreferredTransition,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,

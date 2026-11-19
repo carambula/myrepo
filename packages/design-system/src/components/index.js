@@ -64,6 +64,7 @@ export {
   miniPlayerChromeAnimationDuration,
   miniPlayerChromeOpacity,
   sheetHeroID,
+  shouldAttachHeroZoomOnPresentedSheet,
   shouldApplySheetChromeRadius,
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,

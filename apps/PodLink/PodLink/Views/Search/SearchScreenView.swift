@@ -270,22 +270,25 @@ struct SearchScreenView: View {
             }
         }
         .bottomSheetPullToDismiss()
-        .sheetFromHero(item: $selectedPodcast) { podcast in
+        .sheetFromHero(item: $selectedPodcast, sourceID: { SheetHeroID.podcast($0.id) }) { podcast in
             PodcastDetailView(podcast: podcast)
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
                 .sheetHeroPresented()
-                .sheetHeroDestination(id: SheetHeroID.podcast(podcast.id))
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheetFromHero(item: $selectedEpisodeResult) { result in
+        .sheetFromHero(
+            item: $selectedEpisodeResult,
+            sourceID: { SheetHeroID.episode($0.episode.id) }
+        ) { result in
             EpisodePlayerSheet(episode: result.episode, fallbackPodcast: result.podcast)
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
                 .environment(networkStatusService)
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showPrivateFeedSheet) {

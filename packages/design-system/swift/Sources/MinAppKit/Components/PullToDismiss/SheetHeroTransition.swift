@@ -483,9 +483,10 @@ private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
 private struct SheetHeroDestinationModifier: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var environmentNamespace
     let id: String
+    var explicitNamespace: Namespace.ID? = nil
 
     private var namespace: Namespace.ID? {
-        environmentNamespace ?? SheetHeroGeometry.currentNamespace
+        explicitNamespace ?? environmentNamespace ?? SheetHeroGeometry.currentNamespace
     }
 
     func body(content: Content) -> some View {
@@ -550,16 +551,21 @@ private struct SheetHeroPresentedModifier: ViewModifier {
 private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
     @Binding var item: Item?
+    var sourceID: ((Item) -> String?)?
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
     func body(content: Content) -> some View {
         let captured = namespace ?? SheetHeroGeometry.currentNamespace
         content.sheet(item: $item, onDismiss: onDismiss) { value in
+            // Zoom must be the outermost modifier on this presented view.
+            // Attaching it inside the sheet body lets UIKit draw a full-size
+            // sheet for a frame, then tear it down when zoom attaches.
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
+                .sheetHeroDestination(id: sourceID?(value), namespace: captured)
         }
     }
 }
@@ -567,6 +573,7 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
 private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier {
     @Environment(\.sheetHeroNamespace) private var namespace
     @Binding var isPresented: Bool
+    var sourceID: String?
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: () -> SheetContent
 
@@ -577,6 +584,7 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
+                .sheetHeroDestination(id: sourceID, namespace: captured)
         }
     }
 }
@@ -616,6 +624,23 @@ extension View {
         )
     }
 
+    /// Like `sheetFromHero(item:)` and morphs the sheet out of `sourceID`.
+    public func sheetFromHero<Item: Identifiable, SheetContent: View>(
+        item: Binding<Item?>,
+        sourceID: @escaping (Item) -> String?,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> SheetContent
+    ) -> some View {
+        modifier(
+            SheetFromHeroModifier(
+                item: item,
+                sourceID: sourceID,
+                onDismiss: onDismiss,
+                sheetContent: content
+            )
+        )
+    }
+
     /// Bool-presented variant of `sheetFromHero(item:)` — same namespace forwarding.
     public func sheetFromHero<SheetContent: View>(
         isPresented: Binding<Bool>,
@@ -625,6 +650,23 @@ extension View {
         modifier(
             SheetFromHeroPresentedModifier(
                 isPresented: isPresented,
+                onDismiss: onDismiss,
+                sheetContent: content
+            )
+        )
+    }
+
+    /// Like `sheetFromHero(isPresented:)` and morphs the sheet out of `sourceID`.
+    public func sheetFromHero<SheetContent: View>(
+        isPresented: Binding<Bool>,
+        sourceID: String?,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> SheetContent
+    ) -> some View {
+        modifier(
+            SheetFromHeroPresentedModifier(
+                isPresented: isPresented,
+                sourceID: sourceID,
                 onDismiss: onDismiss,
                 sheetContent: content
             )
@@ -643,9 +685,9 @@ extension View {
     /// Morphs this presented sheet out of the matching source image, and back
     /// into it, using the system zoom transition.
     @ViewBuilder
-    public func sheetHeroDestination(id: String?) -> some View {
+    public func sheetHeroDestination(id: String?, namespace: Namespace.ID? = nil) -> some View {
         if let id, !id.isEmpty {
-            modifier(SheetHeroDestinationModifier(id: id))
+            modifier(SheetHeroDestinationModifier(id: id, explicitNamespace: namespace))
         } else {
             self
         }

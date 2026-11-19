@@ -159,6 +159,7 @@ final class MinSheetCornerRadiusGuardView: UIView {
         }
         // Rewriting chrome radius during a morph snaps the platter back to
         // the sheet value and punches holes in the dim plate.
+        if viewController.isBeingPresented { return }
         if viewController.isBeingDismissed { return }
         if SheetHeroSession.isHeroMotionActive { return }
         if let sheet = viewController.sheetPresentationController,

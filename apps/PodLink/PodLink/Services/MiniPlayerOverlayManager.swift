@@ -72,6 +72,9 @@ private struct MiniPlayerOverlayRoot: View {
         .animation(.spring(response: SheetHeroMotion.openDuration), value: miniPlayerDockMode)
         .sheetFromHero(
             isPresented: presentNowPlayingFromOverlay,
+            sourceID: playbackService.state.currentEpisode.map {
+                SheetHeroID.miniPlayer($0.id)
+            },
             onDismiss: { overlayOwnsPresentedPlayer = false }
         ) {
             if let episode = playbackService.state.currentEpisode {
@@ -80,8 +83,7 @@ private struct MiniPlayerOverlayRoot: View {
                     onOpenPodcast: { podcast in
                         playbackService.isNowPlayingSheetPresented = false
                         playbackService.pendingPodcastPresentation = podcast
-                    },
-                    sheetHeroSourceID: SheetHeroID.miniPlayer(episode.id)
+                    }
                 )
                 .environment(themeManager)
                 .environment(playbackService)

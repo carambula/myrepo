@@ -182,9 +182,11 @@ final class SheetScrimGuardView: UIView {
         didFadeBackdropOut = false
         didAnimateBackdropIn = false
         installLifecycleHook(on: presented)
-        if SheetHeroSession.shared.usesSystemZoom {
+        // Do not rewrite sheet chrome on the opening frames. Mutating
+        // `largestUndimmedDetentIdentifier` while UIKit is presenting draws a
+        // full-size platter, then tears it down when zoom attaches.
+        if presented.isBeingPresented || SheetHeroSession.shared.usesSystemZoom {
             prepareSystemZoomScrim(for: presented)
-            return
         }
         DispatchQueue.main.async { [weak self] in
             self?.applyScrim(for: presented)
@@ -203,9 +205,10 @@ final class SheetScrimGuardView: UIView {
     }
 
     /// Apple's zoom transition fades its own dim plate. Hide ours and give
-    /// the system dimming view back.
+    /// the system dimming view back. Do not touch `sheetPresentationController`
+    /// while the card is opening — that snaps a full-size sheet on screen.
     private func prepareSystemZoomScrim(for presented: UIViewController) {
-        if let sheet = presented.sheetPresentationController {
+        if !presented.isBeingPresented, let sheet = presented.sheetPresentationController {
             sheet.largestUndimmedDetentIdentifier = nil
         }
         if let window {

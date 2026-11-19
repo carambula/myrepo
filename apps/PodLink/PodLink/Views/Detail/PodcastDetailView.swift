@@ -179,11 +179,15 @@ struct PodcastDetailView: View {
                 playbackService.popSearchUISession()
             }
         }
-        .sheetFromHero(item: $selectedEpisode) { episode in
+        .sheetFromHero(
+            item: $selectedEpisode,
+            sourceID: { SheetHeroID.episode($0.id) }
+        ) { episode in
             EpisodePlayerSheet(episode: episode)
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .sheetHeroContainer()

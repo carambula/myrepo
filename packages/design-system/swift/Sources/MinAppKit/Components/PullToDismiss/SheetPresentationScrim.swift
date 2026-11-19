@@ -19,7 +19,7 @@ enum SheetPresentationScrim {
                 && !viewController.isBeingDismissed
                 && !heroMotionActive
             if allowRadius {
-                let radius = MinCornerRadius.uiKitSheetCornerRadius
+                let radius = MinCornerRadius.pinnedSheetCornerRadius
                 if sheet.preferredCornerRadius != radius {
                     sheet.preferredCornerRadius = radius
                 }

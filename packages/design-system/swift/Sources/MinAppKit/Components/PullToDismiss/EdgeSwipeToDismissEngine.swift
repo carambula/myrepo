@@ -951,37 +951,35 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             }
         }
 
-        /// Views UIKit scaled down behind this sheet (home, or the sheet below).
-        private func scaledPresentingViews() -> [UIView] {
-            var views: [UIView] = []
-            var seen = Set<ObjectIdentifier>()
-            func consider(_ view: UIView?) {
-                guard let view, seen.insert(ObjectIdentifier(view)).inserted else { return }
-                let t = view.transform
-                if abs(t.a - 1) > 0.01 || abs(t.d - 1) > 0.01 || abs(t.tx) > 0.5 || abs(t.ty) > 0.5 {
-                    views.append(view)
-                }
-            }
-            var presenter = presentedController()?.presentingViewController
+        private func isNestedSheet() -> Bool {
+            guard let presented = presentedController() else { return false }
+            var presenter = presented.presentingViewController
             while let current = presenter {
-                consider(current.view)
-                if let wrapper = current.view.superview {
-                    consider(wrapper)
-                    wrapper.subviews.forEach(consider)
-                }
-                presenter = current.presentingViewController ?? current.parent
+                if current.presentingViewController != nil { return true }
+                presenter = current.parent
             }
-            if let container = containerView {
-                for sub in container.subviews
-                where sub !== dragView && sub !== backdropView && sub !== sheetView {
-                    consider(sub)
-                }
-            }
-            return views
+            return false
+        }
+
+        /// Nested sheets dismiss with the system so the sheet below un-scales
+        /// in the same motion, at the same radius, instead of a hero landing
+        /// on the shrunken presenter.
+        private func dismissNested() {
+            guard !isDismissing else { return }
+            isDismissing = true
+            stopFollowDisplayLink()
+            restoreSheet(removeProxy: true, revealSheet: true)
+            endFollowing()
+            onDismiss(true)
+            SheetHeroSession.isHeroMotionActive = false
         }
 
         private func beginProgrammaticDismiss() {
             guard !isDismissing else { return }
+            if isNestedSheet() {
+                dismissNested()
+                return
+            }
             if followActivation == nil {
                 followActivation = .edge
                 onFollowingChange(true, .edge)
@@ -1009,6 +1007,10 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func flingAway(from translation: CGSize, velocity: CGSize) {
             guard movingView != nil, !isDismissing else { return }
+            if isNestedSheet() {
+                dismissNested()
+                return
+            }
             if let heroID,
                let source = SheetHeroGeometry.frame(for: heroID),
                source.width > 2,
@@ -1108,31 +1110,20 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 velocity: velocity,
                 configuration: configuration
             )
-            let presenting = scaledPresentingViews()
 
-            UIView.animateKeyframes(
+            UIView.animate(
                 withDuration: duration,
                 delay: 0,
-                options: [.calculationModeCubic, .beginFromCurrentState]
+                options: [.curveEaseOut, .beginFromCurrentState]
             ) {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 1) {
-                    clip.frame = source
-                    clip.layer.cornerRadius = clipRadii.to
-                    proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
-                    fillView?.frame = CGRect(origin: .zero, size: source.size)
-                    for view in presenting {
-                        view.transform = .identity
-                    }
-                    self.applyBackdropStrength(0, force: true)
-                }
+                clip.frame = source
+                clip.layer.cornerRadius = clipRadii.to
+                proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
                 if fadeToArt {
-                    // Crop toward the tile, then dissolve into the key art
-                    // instead of snapping the scrolled snapshot into it.
-                    UIView.addKeyframe(withRelativeStartTime: 0.55, relativeDuration: 0.45) {
-                        fillView?.alpha = 1
-                        proxy.alpha = 0
-                    }
+                    fillView?.alpha = 1
+                    proxy.alpha = 0
                 }
+                self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
@@ -1161,7 +1152,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 dismissing: true,
                 dismissTranslation: fly
             )
-            let presenting = scaledPresentingViews()
             UIView.animate(
                 withDuration: duration,
                 delay: 0,
@@ -1169,9 +1159,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             ) {
                 moving.transform = transform
                 moving.alpha = 0
-                for view in presenting {
-                    view.transform = .identity
-                }
                 self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()

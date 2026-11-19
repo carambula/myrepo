@@ -2,8 +2,8 @@
  * Shared math for zooming a sheet out of a matching key image and flinging
  * that image back into its thumbnail. Mirrors MinAppKit SheetHeroTransition.
  *
- * Nested sheets skip the open zoom (ordinary present). Dismiss still flings
- * the card to the rest-size thumb while the sheet below un-scales with it.
+ * Nested sheets (a sheet sitting on another sheet) never zoom — only the
+ * root sheet over home morphs from its key image.
  */
 
 export const heroOpenDuration = 0.42;
@@ -55,8 +55,8 @@ export function isHeroSourceVisible(source, viewport, minOverlap = heroSourceVis
 /**
  * Artwork overlay opacity while the returning card scales into place.
  * On-screen sources at rest stay the flying object. Off-screen sources, or a
- * sheet that has been scrolled away from its hero, fade the stored key image
- * in so the card does not crop-and-snap into the tile.
+ * sheet scrolled away from its hero, fade the stored key image in so the
+ * card dissolves into the tile instead of cropping into it.
  */
 export function heroFillOpacity(progress, { sourceVisible, scrolled } = {}) {
   if (sourceVisible !== false && scrolled !== true) return 1;
@@ -66,10 +66,8 @@ export function heroFillOpacity(progress, { sourceVisible, scrolled } = {}) {
 }
 
 /**
- * Presenter scale shrinks every on-screen tile. Keep the rest-size frame so
- * the returning card flies to where the thumb will be, not the shrunken sheet.
- * Off-screen twins (the other pager page, a covered cell) must not overwrite
- * a live on-screen frame — that is what sent grid dismisses to a corner.
+ * Presenter scale shrinks tiles. Keep the rest-size frame so a grid dismiss
+ * returns to the live thumb, not a shrunken or off-screen twin.
  */
 export function shouldReplaceHeroFrame(
   existing,
@@ -83,12 +81,20 @@ export function shouldReplaceHeroFrame(
   return true;
 }
 
+/** Nested sheets use the system dismiss so they un-scale with matching radii. */
+export function shouldHeroFlingToSource({ nested } = {}) {
+  return nested !== true;
+}
+
 /**
- * Root and nested sheets both fling the card back. Nested lands on the
- * rest-size thumb while the sheet below un-scales in the same motion.
+ * Pin every sheet in a stack to the same chrome radius. Leaving the system
+ * default (`< 0` / null) lets UIKit morph the sheet below to device corners.
  */
-export function shouldHeroFlingToSource({ nested: _nested } = {}) {
-  return true;
+export function stackedSheetCornerRadius(preferred, { fallback = 38 } = {}) {
+  if (preferred == null) return fallback;
+  const value = Number(preferred);
+  if (!Number.isFinite(value) || value < 0) return fallback;
+  return value;
 }
 
 /** One shared duration: the flying sheet and shade finish together. */

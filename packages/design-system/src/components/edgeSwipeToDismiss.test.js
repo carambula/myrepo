@@ -37,6 +37,7 @@ import {
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
   shouldReplaceHeroFrame,
+  stackedSheetCornerRadius,
 } from './sheetHero.js';
 
 const sheet = { width: 390, height: 700 };
@@ -312,36 +313,31 @@ describe('sheet hero zoom', () => {
     assert.equal(heroFillOpacity(1, { sourceVisible: true, scrolled: true }), 1);
   });
 
-  it('keeps rest-size tile frames instead of presenter-scaled ones', () => {
+  it('keeps rest-size tile frames instead of presenter-scaled or off-screen ones', () => {
     const rest = { x: 24, y: 200, width: 160, height: 160 };
     const scaled = { x: 40, y: 240, width: 144, height: 144 };
+    const offscreen = { x: 420, y: 640, width: 160, height: 160 };
     assert.equal(shouldReplaceHeroFrame(null, rest), true);
     assert.equal(shouldReplaceHeroFrame(rest, scaled), false);
-    assert.equal(shouldReplaceHeroFrame(rest, { x: 24, y: 80, width: 160, height: 160 }), true);
-  });
-
-  it('does not let an off-screen pager twin overwrite a live tile frame', () => {
-    const rest = { x: 24, y: 200, width: 160, height: 160 };
-    const offscreenList = { x: 420, y: 640, width: 160, height: 160 };
     assert.equal(
-      shouldReplaceHeroFrame(rest, offscreenList, {
+      shouldReplaceHeroFrame(rest, offscreen, {
         existingOnScreen: true,
         nextOnScreen: false,
       }),
       false
     );
-    assert.equal(
-      shouldReplaceHeroFrame(offscreenList, rest, {
-        existingOnScreen: false,
-        nextOnScreen: true,
-      }),
-      true
-    );
   });
 
-  it('flings nested sheets to the rest-size destination with the parent', () => {
+  it('does not fling a nested sheet; the stack dismisses together', () => {
     assert.equal(shouldHeroFlingToSource({}), true);
-    assert.equal(shouldHeroFlingToSource({ nested: true }), true);
+    assert.equal(shouldHeroFlingToSource({ nested: true }), false);
+  });
+
+  it('pins stacked sheets to the same chrome radius', () => {
+    assert.equal(stackedSheetCornerRadius(-1), 38);
+    assert.equal(stackedSheetCornerRadius(null), 38);
+    assert.equal(stackedSheetCornerRadius(12), 12);
+    assert.equal(stackedSheetCornerRadius(0), 0);
   });
 
   it('clips the returning card from sheet chrome to the tile, not a scaled bake', () => {

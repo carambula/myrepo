@@ -256,8 +256,7 @@ public enum EdgeSwipeToDismiss {
         (from: max(0, start), to: max(0, end))
     }
 
-    /// Presenter scale shrinks tiles. Keep the larger rest-size frame.
-    /// An on-screen thumb wins over an off-screen twin (pager, covered cell).
+    /// Presenter scale shrinks tiles. Keep the rest-size, on-screen frame.
     public static func shouldReplaceHeroFrame(
         existing: CGRect?,
         next: CGRect,
@@ -269,6 +268,14 @@ public enum EdgeSwipeToDismiss {
         if next.width < existing.width * 0.97 { return false }
         if existingOnScreen && !nextOnScreen { return false }
         return true
+    }
+
+    /// Pin every sheet in a stack to the same chrome radius.
+    public static func stackedSheetCornerRadius(
+        _ preferred: CGFloat,
+        fallback: CGFloat = MinCornerRadius.baseSheet
+    ) -> CGFloat {
+        preferred < 0 ? fallback : preferred
     }
 
     /// Fling duration from the current card frame back to the source image.

@@ -166,7 +166,11 @@ final class MinSheetCornerRadiusGuardView: UIView {
            sheet.preferredCornerRadius != radius {
             sheet.preferredCornerRadius = radius
         }
-        pinPlatterRadius(radius, on: viewController.view)
+        // `viewIfLoaded`: this also runs when UIKit first reports a sheet,
+        // and forcing its view to load there gets ahead of the presentation.
+        if let view = viewController.viewIfLoaded {
+            pinPlatterRadius(radius, on: view)
+        }
         for child in viewController.children {
             apply(radius, to: child)
         }

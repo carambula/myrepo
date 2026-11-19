@@ -1,9 +1,10 @@
 /**
- * Shared math for zooming a sheet out of a matching key image and flinging
- * that image back into its thumbnail. Mirrors MinAppKit SheetHeroTransition.
+ * Shared math for zooming a sheet out of a matching key image.
+ * Mirrors MinAppKit SheetHeroTransition.
  *
- * Nested sheets (a sheet sitting on another sheet) never zoom — only the
- * root sheet over home morphs from its key image.
+ * Open and close use the system zoom transition (iOS 18
+ * `matchedTransitionSource` + `navigationTransition(.zoom)`), the same API
+ * as the App Store. Custom snapshot flings fight that motion.
  */
 
 export const heroOpenDuration = 0.42;
@@ -16,9 +17,9 @@ export function sheetHeroID(kind, id) {
   return `${kind}:${id}`;
 }
 
-/** Root home↔sheet only. A sheet on another sheet uses ordinary present/dismiss. */
-export function shouldHeroZoomSheet({ nested } = {}) {
-  return nested !== true;
+/** System zoom handles root and nested sheets. */
+export function shouldHeroZoomSheet({ nested: _nested } = {}) {
+  return true;
 }
 
 /**
@@ -81,9 +82,9 @@ export function shouldReplaceHeroFrame(
   return true;
 }
 
-/** Nested sheets use the system dismiss so they un-scale with matching radii. */
-export function shouldHeroFlingToSource({ nested } = {}) {
-  return nested !== true;
+/** Do not snapshot-fling when the system zoom transition is driving dismiss. */
+export function shouldHeroFlingToSource({ systemZoom = true } = {}) {
+  return systemZoom !== true;
 }
 
 /**

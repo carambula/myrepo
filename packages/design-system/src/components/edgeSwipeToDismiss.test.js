@@ -278,10 +278,10 @@ describe('sheet hero zoom', () => {
     assert.equal(timing.total, timing.move);
   });
 
-  it('zooms only the root sheet, never a sheet sitting on another sheet', () => {
+  it('uses the system zoom transition for root and nested sheets', () => {
     assert.equal(shouldHeroZoomSheet({}), true);
     assert.equal(shouldHeroZoomSheet({ nested: false }), true);
-    assert.equal(shouldHeroZoomSheet({ nested: true }), false);
+    assert.equal(shouldHeroZoomSheet({ nested: true }), true);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {
@@ -328,9 +328,10 @@ describe('sheet hero zoom', () => {
     );
   });
 
-  it('does not fling a nested sheet; the stack dismisses together', () => {
-    assert.equal(shouldHeroFlingToSource({}), true);
-    assert.equal(shouldHeroFlingToSource({ nested: true }), false);
+  it('does not snapshot-fling when the system zoom is driving dismiss', () => {
+    assert.equal(shouldHeroFlingToSource({}), false);
+    assert.equal(shouldHeroFlingToSource({ systemZoom: true }), false);
+    assert.equal(shouldHeroFlingToSource({ systemZoom: false }), true);
   });
 
   it('pins stacked sheets to the same chrome radius', () => {

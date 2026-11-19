@@ -317,12 +317,6 @@ private struct SheetHeroSourceModifier: ViewModifier {
                                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                 )
                             }
-                            .background {
-                                SheetHeroSourceRegistrar(id: id)
-                                    .frame(width: 0, height: 0)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                            }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                             .modifier(SheetHeroCoverOpacity(id: id))
@@ -362,128 +356,6 @@ private struct SheetHeroSourceModifier: ViewModifier {
 }
 
 #if os(iOS)
-/// Live thumbnail views for UIKit `preferredTransition = .zoom`. SwiftUI
-/// `.sheet` / `.fullScreenCover` attach zoom after the first full-size frame.
-enum SheetHeroSourceViews {
-    private final class WeakView {
-        weak var view: UIView?
-        init(_ view: UIView) { self.view = view }
-    }
-
-    private static var storage: [String: WeakView] = [:]
-
-    static func register(_ id: String, _ view: UIView) {
-        guard !id.isEmpty else { return }
-        storage[id] = WeakView(view)
-    }
-
-    static func view(for id: String) -> UIView? {
-        let found = storage[id]?.view
-        if found == nil || found?.window == nil {
-            storage.removeValue(forKey: id)
-            return nil
-        }
-        return found
-    }
-
-    static func registerWalk(from start: UIView, id: String) {
-        var node: UIView? = start.superview
-        var hops = 0
-        var sizedSeen = 0
-        while let view = node, hops < 8, sizedSeen < 2 {
-            hops += 1
-            guard view.bounds.width > 8, view.bounds.height > 8 else {
-                node = view.superview
-                continue
-            }
-            sizedSeen += 1
-            if let imageView = firstImageView(in: view) {
-                register(id, imageView)
-                return
-            }
-            if sizedSeen == 2 {
-                register(id, view)
-                return
-            }
-            node = view.superview
-        }
-    }
-
-    /// Stay inside the tile. Walking the list or window on every layout
-    /// hung the main thread at launch.
-    private static func firstImageView(in root: UIView) -> UIImageView? {
-        var stack = [root]
-        var visited = 0
-        while let view = stack.popLast(), visited < 16 {
-            visited += 1
-            if view !== root, (view.bounds.width > 400 || view.subviews.count > 12) {
-                continue
-            }
-            if let imageView = view as? UIImageView,
-               imageView.bounds.width > 8,
-               imageView.bounds.height > 8,
-               !imageView.isHidden,
-               imageView.alpha > 0.01 {
-                return imageView
-            }
-            stack.append(contentsOf: view.subviews)
-        }
-        return nil
-    }
-}
-
-private struct SheetHeroSourceRegistrar: UIViewRepresentable {
-    let id: String
-
-    func makeUIView(context: Context) -> RegistrarView {
-        let view = RegistrarView()
-        view.heroID = id
-        return view
-    }
-
-    func updateUIView(_ uiView: RegistrarView, context: Context) {
-        uiView.heroID = id
-        uiView.registerSoon()
-    }
-
-    final class RegistrarView: UIView {
-        var heroID: String = ""
-        private var pending: DispatchWorkItem?
-
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            isUserInteractionEnabled = false
-            isAccessibilityElement = false
-            backgroundColor = .clear
-        }
-
-        @available(*, unavailable) required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            registerSoon()
-        }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            registerSoon()
-        }
-
-        func registerSoon() {
-            pending?.cancel()
-            let work = DispatchWorkItem { [weak self] in
-                guard let self, !self.heroID.isEmpty else { return }
-                if SheetHeroSourceViews.view(for: self.heroID) != nil { return }
-                SheetHeroSourceViews.registerWalk(from: self, id: self.heroID)
-            }
-            pending = work
-            DispatchQueue.main.async(execute: work)
-        }
-    }
-}
-
 /// Walks the source tile for a UIImage so dismiss can fade that art into the
 /// returning card when the live thumbnail has scrolled off-screen.
 private struct SheetHeroImageCapture: UIViewRepresentable {
@@ -529,23 +401,12 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
             pending?.cancel()
             let work = DispatchWorkItem { [weak self] in
                 self?.capture()
-                self?.registerSourceView()
             }
             pending = work
             DispatchQueue.main.async(execute: work)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: DispatchWorkItem { [weak self] in
                 self?.capture()
-                self?.registerSourceView()
             })
-        }
-
-        /// Mini-player sources register the visible overlay copy, not this
-        /// hidden live view. Zooming from a hidden view flashes the
-        /// destination at full size for a frame.
-        private func registerSourceView() {
-            guard !heroID.isEmpty, !SheetHeroID.isMiniPlayer(heroID) else { return }
-            if SheetHeroSourceViews.view(for: heroID)?.window != nil { return }
-            SheetHeroSourceViews.registerWalk(from: self, id: heroID)
         }
 
         private func capture() {
@@ -642,22 +503,27 @@ private struct SheetHeroDestinationModifier: ViewModifier {
             .environment(\.sheetHeroNamespace, namespace)
             .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
-        applyZoom(tagged)
-            .background {
-                SheetHeroZoomSessionProbe()
-                    .frame(width: 0, height: 0)
-                    .accessibilityHidden(true)
-            }
-            .onAppear {
-                if SheetHeroID.isMiniPlayer(id) {
-                    DispatchQueue.main.async {
-                        SheetHeroSession.shared.cover(id)
+        // Zoom must be the outermost modifier on the presented sheet.
+        // Trailing wrappers let UIKit draw a full-size platter for a frame
+        // before the matched source takes over.
+        applyZoom(
+            tagged
+                .background {
+                    SheetHeroZoomSessionProbe()
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
+                }
+                .onAppear {
+                    if SheetHeroID.isMiniPlayer(id) {
+                        DispatchQueue.main.async {
+                            SheetHeroSession.shared.cover(id)
+                        }
                     }
                 }
-            }
-            .onDisappear {
-                SheetHeroSession.shared.uncover(id)
-            }
+                .onDisappear {
+                    SheetHeroSession.shared.uncover(id)
+                }
+        )
         #else
         tagged
         #endif
@@ -692,246 +558,6 @@ private struct SheetHeroPresentedModifier: ViewModifier {
     }
 }
 
-/// Destination hosted by UIKit zoom. Do not apply SwiftUI
-/// `navigationTransition` here — that modifier is what attaches zoom
-/// after the first full-size frame.
-private struct SheetHeroZoomHost<Content: View>: View {
-    let id: String
-    let namespace: Namespace.ID?
-    let content: Content
-
-    init(
-        id: String,
-        namespace: Namespace.ID?,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.id = id
-        self.namespace = namespace
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .environment(\.sheetHeroPresentedID, id)
-            .environment(\.sheetHeroNamespace, namespace)
-            .environment(\.sheetHeroAllowsZoom, true)
-            #if os(iOS)
-            .background {
-                SheetHeroZoomSessionProbe()
-                    .frame(width: 0, height: 0)
-                    .accessibilityHidden(true)
-            }
-            .onAppear {
-                if SheetHeroID.isMiniPlayer(id) {
-                    DispatchQueue.main.async {
-                        SheetHeroSession.shared.cover(id)
-                    }
-                }
-            }
-            .onDisappear {
-                SheetHeroSession.shared.uncover(id)
-            }
-            #endif
-    }
-}
-
-#if os(iOS)
-/// Copies the presenting SwiftUI environment into a UIKit-hosted destination.
-/// UIHostingController does not inherit `@Environment` objects, which crashed
-/// launch with a missing `NetworkStatusService`.
-private struct SheetHeroEnvironmentBridge<Content: View>: View {
-    let content: Content
-    let environment: EnvironmentValues
-
-    var body: some View {
-        content.transformEnvironment(\.self) { $0 = environment }
-    }
-}
-
-/// Presents with `preferredTransition = .zoom` set *before* `present`.
-/// SwiftUI `.sheet` and `.fullScreenCover` create the destination at
-/// full size, then attach zoom — that first frame is the flash.
-///
-/// Must be a `UIViewRepresentable`, not a child view controller. A
-/// `UIViewControllerRepresentable` in the mini-player overlay expanded
-/// that window to a full-screen blank plate.
-@available(iOS 18.0, *)
-private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIViewRepresentable {
-    @Binding var item: Item?
-    var sourceID: (Item) -> String?
-    var onDismiss: (() -> Void)?
-    var destination: (Item) -> Destination
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> ProbeView {
-        let view = ProbeView()
-        view.isUserInteractionEnabled = false
-        view.isAccessibilityElement = false
-        view.backgroundColor = .clear
-        view.isOpaque = false
-        return view
-    }
-
-    func updateUIView(_ view: ProbeView, context: Context) {
-        context.coordinator.parent = self
-        context.coordinator.environment = context.environment
-        context.coordinator.sync(from: view)
-    }
-
-    static func dismantleUIView(_ view: ProbeView, coordinator: Coordinator) {
-        coordinator.dismantle()
-    }
-
-    final class ProbeView: UIView {
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            backgroundColor = .clear
-            isOpaque = false
-            isUserInteractionEnabled = false
-        }
-
-        @available(*, unavailable) required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
-    }
-
-    final class ZoomHostingController: UIHostingController<SheetHeroEnvironmentBridge<Destination>> {
-        weak var dismissDelegate: UIAdaptivePresentationControllerDelegate?
-
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            view.backgroundColor = .systemBackground
-            presentationController?.delegate = dismissDelegate
-        }
-    }
-
-    final class Coordinator: NSObject, UIAdaptivePresentationControllerDelegate {
-        var parent: SheetHeroUIKitZoom?
-        var environment = EnvironmentValues()
-        weak var presented: ZoomHostingController?
-        var presentedID: Item.ID?
-        var isPresenting = false
-        var isDismissing = false
-        var windowRetries = 0
-
-        func rooted(_ item: Item, parent: SheetHeroUIKitZoom) -> SheetHeroEnvironmentBridge<Destination> {
-            SheetHeroEnvironmentBridge(
-                content: parent.destination(item),
-                environment: environment
-            )
-        }
-
-        func sync(from view: UIView) {
-            guard let parent else { return }
-            if let item = parent.item,
-               let id = parent.sourceID(item),
-               !id.isEmpty {
-                if presentedID == item.id, let host = presented {
-                    host.rootView = rooted(item, parent: parent)
-                    return
-                }
-                present(item, id: id, from: view, parent: parent)
-            } else {
-                dismissIfNeeded()
-            }
-        }
-
-        func present(
-            _ item: Item,
-            id: String,
-            from view: UIView,
-            parent: SheetHeroUIKitZoom
-        ) {
-            if isPresenting || isDismissing { return }
-            if presented != nil {
-                isDismissing = true
-                presented?.dismiss(animated: false) { [weak self] in
-                    self?.isDismissing = false
-                    self?.presented = nil
-                    self?.presentedID = nil
-                    self?.sync(from: view)
-                }
-                return
-            }
-            guard let anchor = presentationAnchor(from: view) else {
-                windowRetries += 1
-                guard windowRetries < 8 else { return }
-                DispatchQueue.main.async { [weak self, weak view] in
-                    guard let self, let view else { return }
-                    self.sync(from: view)
-                }
-                return
-            }
-            windowRetries = 0
-            isPresenting = true
-            let host = ZoomHostingController(rootView: rooted(item, parent: parent))
-            host.dismissDelegate = self
-            host.preferredTransition = .zoom(sourceViewProvider: { _ in
-                SheetHeroSourceViews.view(for: id)
-            })
-            presented = host
-            presentedID = item.id
-            anchor.present(host, animated: true) { [weak self] in
-                self?.isPresenting = false
-            }
-        }
-
-        func dismissIfNeeded() {
-            guard presented != nil, !isDismissing else { return }
-            isDismissing = true
-            presented?.dismiss(animated: true) { [weak self] in
-                self?.notifyDismiss()
-            }
-        }
-
-        func dismantle() {
-            presented?.dismiss(animated: false)
-            presented = nil
-            presentedID = nil
-            isPresenting = false
-            isDismissing = false
-        }
-
-        func presentationControllerDidDismiss(
-            _ presentationController: UIPresentationController
-        ) {
-            notifyDismiss()
-        }
-
-        private func notifyDismiss() {
-            guard presented != nil || presentedID != nil else { return }
-            presented = nil
-            presentedID = nil
-            isPresenting = false
-            isDismissing = false
-            if parent?.item != nil {
-                parent?.item = nil
-            }
-            parent?.onDismiss?()
-        }
-
-        /// Present from this window's root (the overlay container is full
-        /// screen; the SwiftUI host strip is not).
-        private func presentationAnchor(from view: UIView) -> UIViewController? {
-            guard let window = view.window,
-                  var node = window.rootViewController else { return nil }
-            while let presented = node.presentedViewController,
-                  presented !== self.presented {
-                node = presented
-            }
-            return node
-        }
-    }
-}
-#endif
-
-private struct SheetHeroPresentedFlag: Identifiable, Equatable {
-    let id: String
-}
-
 /// Captures the presenting view's zoom namespace and injects it into presented
 /// content. SwiftUI does not carry that environment across presentation
 /// boundaries, and the global stack is wrong when a parent re-renders.
@@ -943,72 +569,15 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
-    private var resolvedNamespace: Namespace.ID? {
-        capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
-    }
-
-    private var zoomItem: Binding<Item?> {
-        Binding(
-            get: {
-                guard let value = item,
-                      let id = sourceID?(value), !id.isEmpty else { return nil }
-                return value
-            },
-            set: { item = $0 }
-        )
-    }
-
-    private var sheetItem: Binding<Item?> {
-        Binding(
-            get: {
-                guard let value = item else { return nil }
-                if let id = sourceID?(value), !id.isEmpty { return nil }
-                return value
-            },
-            set: { item = $0 }
-        )
-    }
-
-    @ViewBuilder
     func body(content: Content) -> some View {
-        let captured = resolvedNamespace
-        #if os(iOS)
-        if #available(iOS 18.0, *) {
-            content
-                .background {
-                    SheetHeroUIKitZoom(
-                        item: zoomItem,
-                        sourceID: { sourceID?($0) },
-                        onDismiss: onDismiss
-                    ) { value in
-                        SheetHeroZoomHost(id: sourceID?(value) ?? "", namespace: captured) {
-                            sheetContent(value)
-                        }
-                    }
-                    .frame(width: 0, height: 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                }
-                .sheet(item: sheetItem, onDismiss: onDismiss) { value in
-                    sheetContent(value)
-                        .environment(\.sheetHeroNamespace, captured)
-                        .environment(\.sheetHeroAllowsZoom, true)
-                        .minSheetCornerRadius()
-                }
-        } else {
-            fallbackSheet(content, captured: captured)
-        }
-        #else
-        fallbackSheet(content, captured: captured)
-        #endif
-    }
-
-    private func fallbackSheet(_ content: Content, captured: Namespace.ID?) -> some View {
+        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
         content.sheet(item: $item, onDismiss: onDismiss) { value in
+            // Zoom must be the outermost modifier on this presented sheet.
             sheetContent(value)
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
+                .sheetHeroDestination(id: sourceID?(value), namespace: captured)
         }
     }
 }
@@ -1021,71 +590,14 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: () -> SheetContent
 
-    private var resolvedNamespace: Namespace.ID? {
-        capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
-    }
-
-    private var presentsZoom: Bool {
-        sourceID.map { !$0.isEmpty } ?? false
-    }
-
-    private var zoomFlag: Binding<SheetHeroPresentedFlag?> {
-        Binding(
-            get: {
-                guard isPresented, let id = sourceID, !id.isEmpty else { return nil }
-                return SheetHeroPresentedFlag(id: id)
-            },
-            set: { isPresented = $0 != nil }
-        )
-    }
-
-    private var presentSheet: Binding<Bool> {
-        Binding(
-            get: { isPresented && !presentsZoom },
-            set: { isPresented = $0 }
-        )
-    }
-
-    @ViewBuilder
     func body(content: Content) -> some View {
-        let captured = resolvedNamespace
-        #if os(iOS)
-        if #available(iOS 18.0, *) {
-            content
-                .background {
-                    SheetHeroUIKitZoom(
-                        item: zoomFlag,
-                        sourceID: { $0.id },
-                        onDismiss: onDismiss
-                    ) { flag in
-                        SheetHeroZoomHost(id: flag.id, namespace: captured) {
-                            sheetContent()
-                        }
-                    }
-                    .frame(width: 0, height: 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                }
-                .sheet(isPresented: presentSheet, onDismiss: onDismiss) {
-                    sheetContent()
-                        .environment(\.sheetHeroNamespace, captured)
-                        .environment(\.sheetHeroAllowsZoom, true)
-                        .minSheetCornerRadius()
-                }
-        } else {
-            fallbackSheet(content, captured: captured)
-        }
-        #else
-        fallbackSheet(content, captured: captured)
-        #endif
-    }
-
-    private func fallbackSheet(_ content: Content, captured: Namespace.ID?) -> some View {
+        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
         content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
             sheetContent()
                 .environment(\.sheetHeroNamespace, captured)
                 .environment(\.sheetHeroAllowsZoom, true)
                 .minSheetCornerRadius()
+                .sheetHeroDestination(id: sourceID, namespace: captured)
         }
     }
 }
@@ -1110,8 +622,7 @@ extension View {
         modifier(SheetHeroPresentedModifier())
     }
 
-    /// Presents a sheet, or a UIKit zoom when `sourceID` matches a source
-    /// image, and forwards this view's zoom namespace into it.
+    /// Presents a sheet and forwards this view's zoom namespace into it.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         onDismiss: (() -> Void)? = nil,
@@ -1126,7 +637,7 @@ extension View {
         )
     }
 
-    /// Like `sheetFromHero(item:)` and morphs out of `sourceID` with UIKit zoom.
+    /// Like `sheetFromHero(item:)` and morphs the sheet out of `sourceID`.
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         sourceID: @escaping (Item) -> String?,
@@ -1188,9 +699,9 @@ extension View {
         modifier(SheetHeroSourceModifier(id: id, cornerRadius: cornerRadius))
     }
 
-    /// Morphs this presented view out of the matching source image, and back
-    /// into it, using the system zoom transition. Prefer `sheetFromHero`,
-    /// which sets UIKit `preferredTransition` before present.
+    /// Morphs this presented sheet out of the matching source image, and back
+    /// into it, using the system zoom transition. Prefer `sheetFromHero`
+    /// so zoom sits on the presented sheet from the first frame.
     @ViewBuilder
     public func sheetHeroDestination(id: String?, namespace: Namespace.ID? = nil) -> some View {
         if let id, !id.isEmpty {

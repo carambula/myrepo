@@ -9,6 +9,13 @@ private struct OverlayNowPlayingItem: Identifiable {
     var id: String { episode.id }
 }
 
+private struct MiniPlayerCardFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
 private struct MiniPlayerOverlayRoot: View {
     @Bindable var themeManager: ThemeManager
     @Bindable var playbackService: PlaybackService
@@ -17,7 +24,12 @@ private struct MiniPlayerOverlayRoot: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("miniPlayerDockMode") private var miniPlayerDockMode = MiniPlayerDockMode.floating.rawValue
     @AppStorage("miniPlayerSize") private var miniPlayerSize = MiniPlayerSize.slim.rawValue
+    @AppStorage("miniPlayerFloatVerticalSnap") private var miniPlayerFloatVerticalSnap = MiniPlayerFloatVerticalSnap.bottom.rawValue
     @Namespace private var overlayHero
+
+    private var overlayAlignment: Alignment {
+        miniPlayerFloatVerticalSnap == MiniPlayerFloatVerticalSnap.top.rawValue ? .top : .bottom
+    }
 
     /// Floating / microplayer chrome ownership for this overlay window.
     private var ownsFloatingMini: Bool {
@@ -60,21 +72,37 @@ private struct MiniPlayerOverlayRoot: View {
     }
 
     var body: some View {
-        Group {
+        ZStack(alignment: overlayAlignment) {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .allowsHitTesting(false)
             if showMiniPlayer {
                 MiniPlayerView(showNowPlayingSheet: $playbackService.isNowPlayingSheetPresented)
                     .environment(themeManager)
                     .environment(playbackService)
                     .environment(networkStatusService)
                     .environment(\.sheetHeroNamespace, overlayHero)
-                    // Hug the card/capsule — UIKit leading/trailing (or ≤320 center)
-                    // constraints propose width; avoid a maxHeight infinity strip.
-                    .fixedSize(horizontal: false, vertical: true)
+                    .fixedSize(horizontal: miniPlayerSize == MiniPlayerSize.microplayer.rawValue, vertical: true)
                     .opacity(hideMiniForForeignPlayer ? 0 : 1)
                     .animation(nil, value: hideMiniForForeignPlayer)
                     .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: MiniPlayerCardFrameKey.self,
+                                value: proxy.frame(in: .global)
+                            )
+                        }
+                    }
                     .transition(.offset(y: UIScreen.main.bounds.height))
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onPreferenceChange(MiniPlayerCardFrameKey.self) { frame in
+            MiniPlayerOverlayManager.shared.cardFrameInWindow = frame
+        }
+        .onChange(of: showMiniPlayer) { _, show in
+            if !show { MiniPlayerOverlayManager.shared.cardFrameInWindow = .zero }
         }
         .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.state.currentEpisode != nil)
         .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.isSearchUIVisible)
@@ -131,33 +159,16 @@ private final class MiniPlayerOverlayWindow: UIWindow {
         // Now-playing (and any other modal) presented from this window must
         // receive normal hits; the mini-only passthrough would eat the sheet.
         if rootViewController?.presentedViewController != nil {
-            let hit = super.hitTest(point, with: event)
-            // Don't let the clear full-screen container steal taps outside the sheet.
-            if hit === self || hit === rootViewController?.view {
-                return nil
-            }
-            return hit
+            return super.hitTest(point, with: event)
         }
 
-        guard let root = rootViewController?.view,
-              let host = miniPlayerHostView,
-              host.superview != nil,
-              !host.isHidden,
-              host.alpha > 0.01
-        else {
+        let card = MiniPlayerOverlayManager.shared.cardFrameInWindow
+        guard card.width > 8, card.height > 8, card.contains(point) else {
             return nil
         }
-        let hostFrameInRoot = host.superview!.convert(host.frame, to: root)
-        // Host is sized to the mini card; ignore collapsed / empty hosts.
-        guard hostFrameInRoot.width > 8, hostFrameInRoot.height > 8 else { return nil }
 
-        let pointInRoot = root.convert(point, from: self)
-        guard hostFrameInRoot.contains(pointInRoot) else { return nil }
-
+        guard let host = miniPlayerHostView else { return nil }
         let local = convert(point, to: host)
-        // SwiftUI materials/buttons often resolve hitTest to the hosting root.
-        // The host hugs the card, so delivering those taps is correct — do not
-        // discard `hit === host` or microplayer taps fall through to the grid.
         return host.hitTest(local, with: event) ?? host
     }
 }
@@ -171,6 +182,8 @@ final class MiniPlayerOverlayManager {
     private var overlayWindow: MiniPlayerOverlayWindow?
     private var hostingController: UIHostingController<MiniPlayerOverlayRoot>?
     private var hostVerticalConstraints: [NSLayoutConstraint] = []
+    /// Mini-player card in screen coordinates, for passthrough hit testing.
+    var cardFrameInWindow: CGRect = .zero
 
     private init() {}
 
@@ -180,8 +193,8 @@ final class MiniPlayerOverlayManager {
         playbackService: PlaybackService,
         downloadManager: DownloadManager,
         networkStatusService: NetworkStatusService,
-        miniPlayerFloatSnapAtTop: Bool,
-        isMicroplayerMode: Bool
+        miniPlayerFloatSnapAtTop _: Bool,
+        isMicroplayerMode _: Bool
     ) {
         let root = MiniPlayerOverlayRoot(
             themeManager: themeManager,
@@ -195,13 +208,10 @@ final class MiniPlayerOverlayManager {
            let container = host.superview {
             hostingController?.rootView = root
             existing.miniPlayerHostView = host
+            host.backgroundColor = .clear
+            host.isOpaque = false
             host.clipsToBounds = false
-            applyHostConstraints(
-                hostView: host,
-                container: container,
-                floatSnapAtTop: miniPlayerFloatSnapAtTop,
-                isMicroplayerMode: isMicroplayerMode
-            )
+            applyHostConstraints(hostView: host, container: container)
             overlayWindow?.isHidden = false
             return
         }
@@ -213,6 +223,8 @@ final class MiniPlayerOverlayManager {
         hostVerticalConstraints.removeAll()
 
         let window = MiniPlayerOverlayWindow(windowScene: windowScene)
+        window.isOpaque = false
+        window.backgroundColor = .clear
         let container = UIViewController()
         container.view.backgroundColor = .clear
         container.view.isOpaque = false
@@ -223,25 +235,17 @@ final class MiniPlayerOverlayManager {
         let rootContainer = container.view!
 
         let host = UIHostingController(rootView: root)
-        host.definesPresentationContext = false
+        // Full-screen host so `.sheet` zoom presents from the window, not a
+        // 72pt strip. Hits outside the card still pass through.
+        host.definesPresentationContext = true
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
         host.view.clipsToBounds = false
         host.view.translatesAutoresizingMaskIntoConstraints = false
-        host.view.setContentHuggingPriority(.required, for: .vertical)
-        host.view.setContentCompressionResistancePriority(.required, for: .vertical)
-        if #available(iOS 16.0, *) {
-            host.sizingOptions = [.intrinsicContentSize]
-        }
 
         container.addChild(host)
         rootContainer.addSubview(host.view)
-        applyHostConstraints(
-            hostView: host.view,
-            container: rootContainer,
-            floatSnapAtTop: miniPlayerFloatSnapAtTop,
-            isMicroplayerMode: isMicroplayerMode
-        )
+        applyHostConstraints(hostView: host.view, container: rootContainer)
         host.didMove(toParent: container)
 
         window.rootViewController = container
@@ -252,39 +256,14 @@ final class MiniPlayerOverlayManager {
         hostingController = host
     }
 
-    private func applyHostConstraints(
-        hostView: UIView,
-        container: UIView,
-        floatSnapAtTop: Bool,
-        isMicroplayerMode: Bool
-    ) {
+    private func applyHostConstraints(hostView: UIView, container: UIView) {
         NSLayoutConstraint.deactivate(hostVerticalConstraints)
-        hostVerticalConstraints.removeAll()
-
-        let safe = container.safeAreaLayoutGuide
-        /// Restrict interactive strip to the minimum practical area so overlay touches don't
-        /// block unrelated controls (e.g. top search button) outside the visible mini player.
-        let maxStripHeight: CGFloat = isMicroplayerMode ? 72 : 280
-
-        hostVerticalConstraints = [hostView.heightAnchor.constraint(lessThanOrEqualToConstant: maxStripHeight)]
-        if isMicroplayerMode {
-            hostVerticalConstraints.append(contentsOf: [
-                hostView.centerXAnchor.constraint(equalTo: safe.centerXAnchor),
-                hostView.leadingAnchor.constraint(greaterThanOrEqualTo: safe.leadingAnchor),
-                hostView.trailingAnchor.constraint(lessThanOrEqualTo: safe.trailingAnchor),
-                hostView.widthAnchor.constraint(lessThanOrEqualToConstant: 320),
-            ])
-        } else {
-            hostVerticalConstraints.append(contentsOf: [
-                hostView.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
-                hostView.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
-            ])
-        }
-        if floatSnapAtTop {
-            hostVerticalConstraints.append(hostView.topAnchor.constraint(equalTo: safe.topAnchor))
-        } else {
-            hostVerticalConstraints.append(hostView.bottomAnchor.constraint(equalTo: safe.bottomAnchor))
-        }
+        hostVerticalConstraints = [
+            hostView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hostView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hostView.topAnchor.constraint(equalTo: container.topAnchor),
+            hostView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ]
         NSLayoutConstraint.activate(hostVerticalConstraints)
     }
 }
@@ -296,7 +275,7 @@ struct MiniPlayerOverlaySceneAnchor: UIViewRepresentable {
     var playbackService: PlaybackService
     var downloadManager: DownloadManager
     var networkStatusService: NetworkStatusService
-    /// Drives overlay strip pin (UIKit); must mirror `miniPlayerFloatVerticalSnap` AppStorage.
+    /// Reconfigures the overlay when snap / microplayer settings change.
     var miniPlayerFloatSnapAtTop: Bool
     var isMicroplayerMode: Bool
 

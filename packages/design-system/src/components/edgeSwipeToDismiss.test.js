@@ -41,9 +41,10 @@ import {
   shouldHeroZoomSheet,
   shouldMatchHeroSourceOnVisibleCopy,
   shouldPresentHeroZoomAsFullScreenCover,
+  shouldPresentHeroZoomAsSheet,
   shouldPresentHeroZoomWithPreferredTransition,
-  shouldMountHeroZoomPresenterAsChildViewController,
-  shouldSearchHeroSourceViewBeyondTile,
+  shouldSizeMiniPlayerOverlayHostToWindow,
+  shouldHitTestMiniPlayerOverlayCardOnly,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -300,24 +301,19 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: true }), false);
   });
 
-  it('does not present zoom with SwiftUI sheet or full-screen cover', () => {
+  it('presents zoom as a sheet, not a full-screen cover or UIKit zoom', () => {
+    assert.equal(shouldPresentHeroZoomAsSheet({}), true);
+    assert.equal(shouldPresentHeroZoomAsSheet({ hasSource: true }), true);
+    assert.equal(shouldPresentHeroZoomAsSheet({ hasSource: false }), false);
     assert.equal(shouldPresentHeroZoomAsFullScreenCover({}), false);
     assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: true }), false);
-    assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: false }), false);
+    assert.equal(shouldPresentHeroZoomWithPreferredTransition({}), false);
+    assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: true }), false);
   });
 
-  it('presents zoom with UIKit preferredTransition set before present', () => {
-    assert.equal(shouldPresentHeroZoomWithPreferredTransition({}), true);
-    assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: true }), true);
-    assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: false }), false);
-  });
-
-  it('does not mount the zoom presenter as a child view controller', () => {
-    assert.equal(shouldMountHeroZoomPresenterAsChildViewController(), false);
-  });
-
-  it('does not walk past the source tile when registering zoom views', () => {
-    assert.equal(shouldSearchHeroSourceViewBeyondTile(), false);
+  it('sizes the mini-player overlay host to the window and hit-tests the card only', () => {
+    assert.equal(shouldSizeMiniPlayerOverlayHostToWindow(), true);
+    assert.equal(shouldHitTestMiniPlayerOverlayCardOnly(), true);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

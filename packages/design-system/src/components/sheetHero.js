@@ -3,10 +3,9 @@
  * Mirrors MinAppKit SheetHeroTransition.
  *
  * Open and close use the system zoom transition (iOS 18
- * `preferredTransition = .zoom`), the same API as the App Store. SwiftUI
- * `.sheet` and `.fullScreenCover` attach zoom after the first full-size
- * frame, so matching source IDs present from UIKit instead. Custom
- * snapshot flings fight that motion.
+ * `matchedTransitionSource` + `navigationTransition(.zoom)`), the same API
+ * as the App Store. Destinations present as `.sheet`. Custom snapshot
+ * flings fight that motion.
  */
 
 export const heroOpenDuration = 0.42;
@@ -34,33 +33,32 @@ export function shouldAttachHeroZoomOnPresentedSheet({ innerBody = false } = {})
 }
 
 /**
- * SwiftUI `.sheet` and `.fullScreenCover` both draw the destination at
- * full size for a frame, then attach zoom. Present with UIKit
- * `preferredTransition` set before `present`.
+ * Zoom destinations present as sheets. Full-screen covers and UIKit
+ * `preferredTransition` drop the sheet chrome.
  */
 export function shouldPresentHeroZoomAsFullScreenCover({ hasSource: _hasSource } = {}) {
   return false;
 }
 
-export function shouldPresentHeroZoomWithPreferredTransition({ hasSource = true } = {}) {
+export function shouldPresentHeroZoomWithPreferredTransition({ hasSource: _hasSource } = {}) {
+  return false;
+}
+
+export function shouldPresentHeroZoomAsSheet({ hasSource = true } = {}) {
   return hasSource === true;
 }
 
 /**
- * The zoom presenter must be a zero-size `UIView`, not a child view
- * controller. A `UIViewControllerRepresentable` in the mini-player overlay
- * expanded that window into a full-screen blank plate.
+ * Overlay mini-player sheets must present from a full-window host. A 72pt
+ * hugging host makes UIKit draw a full-size platter, then zoom tears it down.
  */
-export function shouldMountHeroZoomPresenterAsChildViewController() {
-  return false;
+export function shouldSizeMiniPlayerOverlayHostToWindow() {
+  return true;
 }
 
-/**
- * Source-view lookup must stay inside the tile. Walking the list or window
- * on every layout hung the main thread at launch.
- */
-export function shouldSearchHeroSourceViewBeyondTile() {
-  return false;
+/** Hits outside the mini card must pass through to the main window. */
+export function shouldHitTestMiniPlayerOverlayCardOnly() {
+  return true;
 }
 
 /**

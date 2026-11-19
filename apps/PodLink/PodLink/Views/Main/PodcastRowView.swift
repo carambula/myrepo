@@ -92,6 +92,11 @@ struct PodcastRowView: View {
                     .frame(width: listArtSize, height: listArtSize)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.artTile))
+                    .sheetHeroSource(
+                        id: latestEpisode.map { SheetHeroID.episode($0.id) }
+                            ?? SheetHeroID.podcast(podcast.id),
+                        cornerRadius: DesignSystem.CornerRadius.artTile
+                    )
                     .overlay(alignment: .bottomLeading) {
                         if showPodcastInsetThumbnail {
                             podcastInsetThumbnail
@@ -106,11 +111,6 @@ struct PodcastRowView: View {
                             .accessibilityLabel("Unplayed latest episode")
                     }
                 }
-                .sheetHeroSource(
-                    id: latestEpisode.map { SheetHeroID.episode($0.id) }
-                        ?? SheetHeroID.podcast(podcast.id),
-                    cornerRadius: DesignSystem.CornerRadius.artTile
-                )
 
                 if showTitles {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {

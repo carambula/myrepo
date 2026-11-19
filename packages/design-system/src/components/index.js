@@ -69,6 +69,7 @@ export {
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
   shouldMatchHeroSourceOnVisibleCopy,
+  shouldPresentHeroZoomAsFullScreenCover,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,

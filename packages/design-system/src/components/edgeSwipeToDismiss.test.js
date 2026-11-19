@@ -40,6 +40,7 @@ import {
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
   shouldMatchHeroSourceOnVisibleCopy,
+  shouldPresentHeroZoomAsFullScreenCover,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -294,6 +295,12 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldAttachHeroZoomOnPresentedSheet({}), true);
     assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: false }), true);
     assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: true }), false);
+  });
+
+  it('presents zoom as a full-screen cover, not a sheet', () => {
+    assert.equal(shouldPresentHeroZoomAsFullScreenCover({}), true);
+    assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: true }), true);
+    assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: false }), false);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

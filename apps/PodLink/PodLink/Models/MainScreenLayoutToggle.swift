@@ -60,6 +60,17 @@ enum MainScreenLayoutToggle {
         return min(0, max(-pageWidth, raw))
     }
 
+    /// Layout offset for one pager page. The visible page must sit at 0 —
+    /// `.offset` on a parent HStack is visual-only, so list sources on page 1
+    /// stay at `x = width` and `matchedTransitionSource` misses them.
+    static func pageVisualOffset(
+        pageIndex: CGFloat,
+        pagerOffset: CGFloat,
+        pageWidth: CGFloat
+    ) -> CGFloat {
+        pagerOffset + pageIndex * pageWidth
+    }
+
     /// Commit when released past halfway (or with predicted momentum past halfway).
     static func shouldCommitPagerSwipe(
         fromIndex: CGFloat,

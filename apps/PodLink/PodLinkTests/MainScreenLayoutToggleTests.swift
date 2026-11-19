@@ -78,6 +78,49 @@ struct MainScreenLayoutToggleTests {
     }
 
     @Test
+    func visiblePagerPageSitsAtZeroOffset() {
+        let width: CGFloat = 390
+        let gridOffset = MainScreenLayoutToggle.clampedPagerOffset(
+            settledIndex: 0,
+            dragTranslation: 0,
+            pageWidth: width
+        )
+        let listOffset = MainScreenLayoutToggle.clampedPagerOffset(
+            settledIndex: 1,
+            dragTranslation: 0,
+            pageWidth: width
+        )
+        #expect(
+            MainScreenLayoutToggle.pageVisualOffset(
+                pageIndex: 0,
+                pagerOffset: gridOffset,
+                pageWidth: width
+            ) == 0
+        )
+        #expect(
+            MainScreenLayoutToggle.pageVisualOffset(
+                pageIndex: 1,
+                pagerOffset: gridOffset,
+                pageWidth: width
+            ) == width
+        )
+        #expect(
+            MainScreenLayoutToggle.pageVisualOffset(
+                pageIndex: 0,
+                pagerOffset: listOffset,
+                pageWidth: width
+            ) == -width
+        )
+        #expect(
+            MainScreenLayoutToggle.pageVisualOffset(
+                pageIndex: 1,
+                pagerOffset: listOffset,
+                pageWidth: width
+            ) == 0
+        )
+    }
+
+    @Test
     func shouldCommitPagerSwipeUsesHalfwayAndPrediction() {
         let width: CGFloat = 390
         #expect(

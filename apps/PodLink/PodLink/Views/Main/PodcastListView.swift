@@ -295,20 +295,37 @@ struct PodcastListView: View {
     private var layoutPager: some View {
         GeometryReader { geo in
             let width = geo.size.width
-            HStack(spacing: 0) {
+            let pagerOffset = MainScreenLayoutToggle.clampedPagerOffset(
+                settledIndex: settledPageIndex,
+                dragTranslation: pagerDragTranslation,
+                pageWidth: width
+            )
+            // Each page carries its own offset so the visible page's layout
+            // frame is at x = 0. A parent HStack `.offset` is visual-only and
+            // left list `matchedTransitionSource` at x = width (full-sheet flash).
+            ZStack(alignment: .topLeading) {
                 gridPage
                     .frame(width: width)
+                    .offset(
+                        x: MainScreenLayoutToggle.pageVisualOffset(
+                            pageIndex: 0,
+                            pagerOffset: pagerOffset,
+                            pageWidth: width
+                        )
+                    )
+                    .allowsHitTesting(allowsGridHeroZoom)
                 listPage
                     .frame(width: width)
+                    .offset(
+                        x: MainScreenLayoutToggle.pageVisualOffset(
+                            pageIndex: 1,
+                            pagerOffset: pagerOffset,
+                            pageWidth: width
+                        )
+                    )
+                    .allowsHitTesting(allowsListHeroZoom)
             }
-            .frame(width: width * 2, alignment: .leading)
-            .offset(
-                x: MainScreenLayoutToggle.clampedPagerOffset(
-                    settledIndex: settledPageIndex,
-                    dragTranslation: pagerDragTranslation,
-                    pageWidth: width
-                )
-            )
+            .frame(width: width, alignment: .leading)
             .onAppear { pageWidth = width }
             .onChange(of: width) { _, newValue in pageWidth = newValue }
         }

@@ -9,10 +9,44 @@ private struct OverlayNowPlayingItem: Identifiable {
     var id: String { episode.id }
 }
 
-private struct MiniPlayerCardFrameKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
+/// Reports the mini-player card in the overlay *window* coordinate space.
+/// SwiftUI `.global` in a secondary window does not match `UIWindow.hitTest`.
+private struct MiniPlayerHitTargetProbe: UIViewRepresentable {
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.isUserInteractionEnabled = false
+        view.isOpaque = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: ProbeView, context: Context) {
+        uiView.reportFrame()
+    }
+
+    static func dismantleUIView(_ uiView: ProbeView, coordinator: ()) {
+        (uiView.window as? MiniPlayerOverlayWindow)?.cardFrame = .zero
+    }
+
+    final class ProbeView: UIView {
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            reportFrame()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            reportFrame()
+        }
+
+        func reportFrame() {
+            guard let overlay = window as? MiniPlayerOverlayWindow else { return }
+            guard bounds.width > 8, bounds.height > 8 else {
+                overlay.cardFrame = .zero
+                return
+            }
+            overlay.cardFrame = convert(bounds, to: overlay)
+        }
     }
 }
 
@@ -87,22 +121,14 @@ private struct MiniPlayerOverlayRoot: View {
                     .animation(nil, value: hideMiniForForeignPlayer)
                     .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                     .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: MiniPlayerCardFrameKey.self,
-                                value: proxy.frame(in: .global)
-                            )
-                        }
+                        MiniPlayerHitTargetProbe()
                     }
                     .transition(.offset(y: UIScreen.main.bounds.height))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onPreferenceChange(MiniPlayerCardFrameKey.self) { frame in
-            MiniPlayerOverlayManager.shared.cardFrameInWindow = frame
-        }
         .onChange(of: showMiniPlayer) { _, show in
-            if !show { MiniPlayerOverlayManager.shared.cardFrameInWindow = .zero }
+            if !show { MiniPlayerOverlayManager.shared.clearCardFrame() }
         }
         .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.state.currentEpisode != nil)
         .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.isSearchUIVisible)
@@ -144,6 +170,7 @@ private struct MiniPlayerOverlayRoot: View {
 
 private final class MiniPlayerOverlayWindow: UIWindow {
     weak var miniPlayerHostView: UIView?
+    var cardFrame: CGRect = .zero
 
     override init(windowScene: UIWindowScene) {
         super.init(windowScene: windowScene)
@@ -162,13 +189,15 @@ private final class MiniPlayerOverlayWindow: UIWindow {
             return super.hitTest(point, with: event)
         }
 
-        let card = MiniPlayerOverlayManager.shared.cardFrameInWindow
+        let card = cardFrame.insetBy(dx: -8, dy: -8)
         guard card.width > 8, card.height > 8, card.contains(point) else {
             return nil
         }
 
         guard let host = miniPlayerHostView else { return nil }
         let local = convert(point, to: host)
+        // Materials often resolve to the full-screen hosting root. The card
+        // frame already gated this tap, so deliver it to the host.
         return host.hitTest(local, with: event) ?? host
     }
 }
@@ -181,9 +210,10 @@ final class MiniPlayerOverlayManager {
 
     private var overlayWindow: MiniPlayerOverlayWindow?
     private var hostingController: UIHostingController<MiniPlayerOverlayRoot>?
-    private var hostVerticalConstraints: [NSLayoutConstraint] = []
-    /// Mini-player card in screen coordinates, for passthrough hit testing.
-    var cardFrameInWindow: CGRect = .zero
+
+    func clearCardFrame() {
+        overlayWindow?.cardFrame = .zero
+    }
 
     private init() {}
 
@@ -204,14 +234,12 @@ final class MiniPlayerOverlayManager {
         )
 
         if let existing = overlayWindow, existing.windowScene === windowScene,
-           let host = hostingController?.view,
-           let container = host.superview {
-            hostingController?.rootView = root
-            existing.miniPlayerHostView = host
-            host.backgroundColor = .clear
-            host.isOpaque = false
-            host.clipsToBounds = false
-            applyHostConstraints(hostView: host, container: container)
+           let host = hostingController {
+            host.rootView = root
+            existing.miniPlayerHostView = host.view
+            host.view.backgroundColor = .clear
+            host.view.isOpaque = false
+            host.view.clipsToBounds = false
             overlayWindow?.isHidden = false
             return
         }
@@ -219,52 +247,25 @@ final class MiniPlayerOverlayManager {
         overlayWindow?.isHidden = true
         overlayWindow = nil
         hostingController = nil
-        NSLayoutConstraint.deactivate(hostVerticalConstraints)
-        hostVerticalConstraints.removeAll()
 
         let window = MiniPlayerOverlayWindow(windowScene: windowScene)
         window.isOpaque = false
         window.backgroundColor = .clear
-        let container = UIViewController()
-        container.view.backgroundColor = .clear
-        container.view.isOpaque = false
-        // Present sheets in this full-screen container, not the 72pt host
-        // strip — otherwise UIKit draws a full-size platter from the tiny
-        // presenting bounds, then zoom tears it down.
-        container.definesPresentationContext = true
-        let rootContainer = container.view!
 
         let host = UIHostingController(rootView: root)
-        // Full-screen host so `.sheet` zoom presents from the window, not a
-        // 72pt strip. Hits outside the card still pass through.
+        // Root of the overlay window so `.sheet` zoom presents from the
+        // window, not a 72pt strip. Hits outside the card still pass through.
         host.definesPresentationContext = true
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
         host.view.clipsToBounds = false
-        host.view.translatesAutoresizingMaskIntoConstraints = false
 
-        container.addChild(host)
-        rootContainer.addSubview(host.view)
-        applyHostConstraints(hostView: host.view, container: rootContainer)
-        host.didMove(toParent: container)
-
-        window.rootViewController = container
+        window.rootViewController = host
         window.miniPlayerHostView = host.view
         window.isHidden = false
 
         overlayWindow = window
         hostingController = host
-    }
-
-    private func applyHostConstraints(hostView: UIView, container: UIView) {
-        NSLayoutConstraint.deactivate(hostVerticalConstraints)
-        hostVerticalConstraints = [
-            hostView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hostView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            hostView.topAnchor.constraint(equalTo: container.topAnchor),
-            hostView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ]
-        NSLayoutConstraint.activate(hostVerticalConstraints)
     }
 }
 

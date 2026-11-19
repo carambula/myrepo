@@ -43,8 +43,10 @@ import {
   shouldPresentHeroZoomAsFullScreenCover,
   shouldPresentHeroZoomAsSheet,
   shouldPresentHeroZoomWithPreferredTransition,
+  pagerPageOffset,
   shouldSizeMiniPlayerOverlayHostToWindow,
   shouldHitTestMiniPlayerOverlayCardOnly,
+  shouldReportMiniPlayerHitTargetInWindowCoordinates,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -314,6 +316,15 @@ describe('sheet hero zoom', () => {
   it('sizes the mini-player overlay host to the window and hit-tests the card only', () => {
     assert.equal(shouldSizeMiniPlayerOverlayHostToWindow(), true);
     assert.equal(shouldHitTestMiniPlayerOverlayCardOnly(), true);
+    assert.equal(shouldReportMiniPlayerHitTargetInWindowCoordinates(), true);
+  });
+
+  it('keeps the visible pager page at layout x = 0', () => {
+    const width = 390;
+    assert.equal(pagerPageOffset({ pageIndex: 0, pagerOffset: 0, pageWidth: width }), 0);
+    assert.equal(pagerPageOffset({ pageIndex: 1, pagerOffset: 0, pageWidth: width }), width);
+    assert.equal(pagerPageOffset({ pageIndex: 0, pagerOffset: -width, pageWidth: width }), -width);
+    assert.equal(pagerPageOffset({ pageIndex: 1, pagerOffset: -width, pageWidth: width }), 0);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

@@ -211,6 +211,7 @@ final class MiniPlayerOverlayManager {
         let window = MiniPlayerOverlayWindow(windowScene: windowScene)
         let container = UIViewController()
         container.view.backgroundColor = .clear
+        container.view.isOpaque = false
         // Present sheets in this full-screen container, not the 72pt host
         // strip — otherwise UIKit draws a full-size platter from the tiny
         // presenting bounds, then zoom tears it down.

@@ -47,6 +47,15 @@ export function shouldPresentHeroZoomWithPreferredTransition({ hasSource = true 
 }
 
 /**
+ * The zoom presenter must be a zero-size `UIView`, not a child view
+ * controller. A `UIViewControllerRepresentable` in the mini-player overlay
+ * expanded that window into a full-screen blank plate.
+ */
+export function shouldMountHeroZoomPresenterAsChildViewController() {
+  return false;
+}
+
+/**
  * `matchedTransitionSource` hides live views in overlay windows (the floating
  * mini player). Keep an idle copy there. Grid/list tiles must not — a second
  * copy reads as a leftover thumb during the morph.

@@ -42,6 +42,7 @@ import {
   shouldMatchHeroSourceOnVisibleCopy,
   shouldPresentHeroZoomAsFullScreenCover,
   shouldPresentHeroZoomWithPreferredTransition,
+  shouldMountHeroZoomPresenterAsChildViewController,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -308,6 +309,10 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldPresentHeroZoomWithPreferredTransition({}), true);
     assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: true }), true);
     assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: false }), false);
+  });
+
+  it('does not mount the zoom presenter as a child view controller', () => {
+    assert.equal(shouldMountHeroZoomPresenterAsChildViewController(), false);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

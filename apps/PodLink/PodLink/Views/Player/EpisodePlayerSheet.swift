@@ -238,9 +238,17 @@ struct EpisodePlayerSheet: View {
             shareURL: episodeShareURL,
             shareSubject: episodeShareSubject,
             shareMessage: episodeShareMessage,
-            scrollBottomPadding: SheetPullToDismissLayout.scrollContentBottomInset(playbackService: playbackService)
+            // The mini player is hidden while this sheet is up, so only the
+            // close button needs room. Reading that from `playbackService`
+            // gave a taller inset on the first frame, before `onAppear`
+            // registered the player, and re-laid the sheet out mid-zoom.
+            scrollBottomPadding: SheetPullToDismissLayout.pullToDismissButtonReserve
         )
         .background((themeManager.currentTheme.backgroundTint ?? .clear).opacity(0.5))
+        // Opaque base under the tint, like the other zoom destinations.
+        // Without it the sheet depends on the system platter for its fill
+        // while it zooms.
+        .background(Color(.systemBackground))
         .overlay(alignment: .top) { adSkipToast }
         .bottomSheetPullToDismiss()
         .sheetHeroPresented()

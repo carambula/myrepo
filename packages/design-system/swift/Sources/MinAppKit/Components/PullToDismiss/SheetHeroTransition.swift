@@ -305,21 +305,29 @@ private struct SheetHeroSourceModifier: ViewModifier {
         // while the sheet is the flying object.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
-                let matched = sourced
-                    .matchedTransitionSource(id: id, in: namespace) { source in
-                        source.clipShape(
-                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        )
-                    }
                 if SheetHeroID.isMiniPlayer(id) {
-                    matched.overlay {
+                    // Overlay windows hide the live `matchedTransitionSource`
+                    // view even when idle. Zoom must snapshot this visible
+                    // copy — matching the hidden live view presents a
+                    // full-size sheet for a frame, then tears it down.
+                    sourced.overlay {
                         content
+                            .matchedTransitionSource(id: id, in: namespace) { source in
+                                source.clipShape(
+                                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                )
+                            }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                             .modifier(SheetHeroCoverOpacity(id: id))
                     }
                 } else {
-                    matched
+                    sourced
+                        .matchedTransitionSource(id: id, in: namespace) { source in
+                            source.clipShape(
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            )
+                        }
                 }
             } else {
                 sourced
@@ -552,11 +560,12 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
     @Environment(\.sheetHeroNamespace) private var namespace
     @Binding var item: Item?
     var sourceID: ((Item) -> String?)?
+    var capturedNamespace: Namespace.ID? = nil
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: (Item) -> SheetContent
 
     func body(content: Content) -> some View {
-        let captured = namespace ?? SheetHeroGeometry.currentNamespace
+        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
         content.sheet(item: $item, onDismiss: onDismiss) { value in
             // Zoom must be the outermost modifier on this presented view.
             // Attaching it inside the sheet body lets UIKit draw a full-size
@@ -574,11 +583,12 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
     @Environment(\.sheetHeroNamespace) private var namespace
     @Binding var isPresented: Bool
     var sourceID: String?
+    var capturedNamespace: Namespace.ID? = nil
     var onDismiss: (() -> Void)?
     @ViewBuilder var sheetContent: () -> SheetContent
 
     func body(content: Content) -> some View {
-        let captured = namespace ?? SheetHeroGeometry.currentNamespace
+        let captured = capturedNamespace ?? namespace ?? SheetHeroGeometry.currentNamespace
         content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
             sheetContent()
                 .environment(\.sheetHeroNamespace, captured)
@@ -628,6 +638,7 @@ extension View {
     public func sheetFromHero<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         sourceID: @escaping (Item) -> String?,
+        namespace: Namespace.ID? = nil,
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping (Item) -> SheetContent
     ) -> some View {
@@ -635,6 +646,7 @@ extension View {
             SheetFromHeroModifier(
                 item: item,
                 sourceID: sourceID,
+                capturedNamespace: namespace,
                 onDismiss: onDismiss,
                 sheetContent: content
             )
@@ -660,6 +672,7 @@ extension View {
     public func sheetFromHero<SheetContent: View>(
         isPresented: Binding<Bool>,
         sourceID: String?,
+        namespace: Namespace.ID? = nil,
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> SheetContent
     ) -> some View {
@@ -667,6 +680,7 @@ extension View {
             SheetFromHeroPresentedModifier(
                 isPresented: isPresented,
                 sourceID: sourceID,
+                capturedNamespace: namespace,
                 onDismiss: onDismiss,
                 sheetContent: content
             )

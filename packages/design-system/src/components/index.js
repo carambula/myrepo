@@ -68,6 +68,7 @@ export {
   shouldApplySheetChromeRadius,
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldMatchHeroSourceOnVisibleCopy,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,

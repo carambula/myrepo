@@ -41,6 +41,14 @@ export function shouldPersistMatchedSourceCopy({ kind } = {}) {
 }
 
 /**
+ * Overlay mini-player zoom must snapshot the visible copy. Matching the
+ * hidden live view presents a full-size sheet for a frame, then tears it down.
+ */
+export function shouldMatchHeroSourceOnVisibleCopy({ kind } = {}) {
+  return kind === 'miniPlayer';
+}
+
+/**
  * Off-screen pager twins (grid still mounted in list, and vice versa) must
  * not register as zoom sources or the sheet fades from the wrong rect.
  */

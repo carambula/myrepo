@@ -39,6 +39,7 @@ import {
   shouldAttachHeroZoomOnPresentedSheet,
   shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldMatchHeroSourceOnVisibleCopy,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -377,6 +378,12 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldPersistMatchedSourceCopy({ kind: 'podcast' }), false);
     assert.equal(shouldPersistMatchedSourceCopy({ kind: 'episode' }), false);
     assert.equal(shouldPersistMatchedSourceCopy({}), false);
+  });
+
+  it('zooms overlay mini-player from the visible copy, not the hidden live view', () => {
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({ kind: 'miniPlayer' }), true);
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({ kind: 'podcast' }), false);
+    assert.equal(shouldMatchHeroSourceOnVisibleCopy({}), false);
   });
 
   it('skips zoom sources on the off-screen pager page', () => {

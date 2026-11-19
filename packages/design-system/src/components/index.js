@@ -63,7 +63,10 @@ export {
   isHeroSourceVisible,
   sheetHeroID,
   shouldApplySheetChromeRadius,
+  shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldReplaceHeroFrame,
+  stackedSheetCornerRadius,
 } from './sheetHero.js';
 export { DismissButton } from './DismissButton.js';
 export { LoadingState, EmptyState, MAIN_APP_LOADING_CLASSNAME } from './ContentStatus.js';

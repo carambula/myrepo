@@ -104,7 +104,7 @@ final class MinSheetCornerRadiusGuardView: UIView {
     }
 
     private func applyNow() {
-        let radius = MinCornerRadius.uiKitSheetCornerRadius
+        let radius = MinCornerRadius.pinnedSheetCornerRadius
         if let root = rootViewController() {
             apply(radius, to: root)
         }
@@ -124,9 +124,23 @@ final class MinSheetCornerRadiusGuardView: UIView {
 
     fileprivate func applyTick() {
         applyNow()
-        if CACurrentMediaTime() >= applyUntil {
+        let nested = presentationDepth(from: window?.rootViewController) > 1
+            || presentationDepth(from: rootViewController()) > 1
+        // Keep pinning while sheets are stacked so the behind sheet cannot
+        // morph to the device concentric corners.
+        if !nested, CACurrentMediaTime() >= applyUntil {
             stopApplyLink()
         }
+    }
+
+    private func presentationDepth(from viewController: UIViewController?) -> Int {
+        var depth = 0
+        var current = viewController
+        while let presented = current?.presentedViewController {
+            depth += 1
+            current = presented
+        }
+        return depth
     }
 
     private func stopApplyLink() {
@@ -151,8 +165,28 @@ final class MinSheetCornerRadiusGuardView: UIView {
            sheet.preferredCornerRadius != radius {
             sheet.preferredCornerRadius = radius
         }
+        pinPlatterRadius(radius, on: viewController.view)
         for child in viewController.children {
             apply(radius, to: child)
+        }
+    }
+
+    /// UIKit restyles the DropShadow platter of a sheet sitting behind another
+    /// sheet. Keep that chrome on the same radius as the sheet in front.
+    private func pinPlatterRadius(_ radius: CGFloat, on view: UIView) {
+        var current: UIView? = view
+        var hops = 0
+        while let platter = current, hops < 12 {
+            let name = NSStringFromClass(type(of: platter))
+            if name.contains("DropShadow") || name.contains("Platter") {
+                platter.layer.cornerCurve = .continuous
+                if abs(platter.layer.cornerRadius - radius) > 0.5 {
+                    platter.layer.cornerRadius = radius
+                }
+                return
+            }
+            current = platter.superview
+            hops += 1
         }
     }
 

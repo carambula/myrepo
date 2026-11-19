@@ -236,7 +236,11 @@ struct MinSheetCornerRadiusModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(iOS) || os(macOS)
-        content.presentationCornerRadius(style.presentationSheetRadius)
+        // Always pin a numeric radius so a sheet behind another sheet does
+        // not morph to the device concentric corners.
+        content.presentationCornerRadius(
+            style.presentationSheetRadius ?? MinCornerRadius.baseSheet
+        )
         #else
         content
         #endif

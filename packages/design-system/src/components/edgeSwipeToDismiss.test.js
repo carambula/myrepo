@@ -34,7 +34,10 @@ import {
   isHeroSourceVisible,
   sheetHeroID,
   shouldApplySheetChromeRadius,
+  shouldHeroFlingToSource,
   shouldHeroZoomSheet,
+  shouldReplaceHeroFrame,
+  stackedSheetCornerRadius,
 } from './sheetHero.js';
 
 const sheet = { width: 390, height: 700 };
@@ -303,6 +306,38 @@ describe('sheet hero zoom', () => {
     assert.equal(heroFillOpacity(0, { sourceVisible: false }), 0);
     assert.equal(heroFillOpacity(0.5, { sourceVisible: false }), 0.5);
     assert.equal(heroFillOpacity(1, { sourceVisible: false }), 1);
+  });
+
+  it('fades the key image in when the sheet has been scrolled away from the hero', () => {
+    assert.equal(heroFillOpacity(0, { sourceVisible: true, scrolled: true }), 0);
+    assert.equal(heroFillOpacity(1, { sourceVisible: true, scrolled: true }), 1);
+  });
+
+  it('keeps rest-size tile frames instead of presenter-scaled or off-screen ones', () => {
+    const rest = { x: 24, y: 200, width: 160, height: 160 };
+    const scaled = { x: 40, y: 240, width: 144, height: 144 };
+    const offscreen = { x: 420, y: 640, width: 160, height: 160 };
+    assert.equal(shouldReplaceHeroFrame(null, rest), true);
+    assert.equal(shouldReplaceHeroFrame(rest, scaled), false);
+    assert.equal(
+      shouldReplaceHeroFrame(rest, offscreen, {
+        existingOnScreen: true,
+        nextOnScreen: false,
+      }),
+      false
+    );
+  });
+
+  it('does not fling a nested sheet; the stack dismisses together', () => {
+    assert.equal(shouldHeroFlingToSource({}), true);
+    assert.equal(shouldHeroFlingToSource({ nested: true }), false);
+  });
+
+  it('pins stacked sheets to the same chrome radius', () => {
+    assert.equal(stackedSheetCornerRadius(-1), 38);
+    assert.equal(stackedSheetCornerRadius(null), 38);
+    assert.equal(stackedSheetCornerRadius(12), 12);
+    assert.equal(stackedSheetCornerRadius(0), 0);
   });
 
   it('clips the returning card from sheet chrome to the tile, not a scaled bake', () => {

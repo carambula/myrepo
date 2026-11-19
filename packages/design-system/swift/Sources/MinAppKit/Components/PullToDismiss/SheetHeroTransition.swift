@@ -39,7 +39,13 @@ public enum SheetHeroGeometry {
     private static var presentedSheetCount = 0
 
     public static func update(id: String, frame: CGRect, cornerRadius: CGFloat, onScreen: Bool) {
-        guard frame.width > 1, frame.height > 1 else { return }
+        if SheetHeroSession.shared.isCovered(id) { return }
+        guard EdgeSwipeToDismiss.shouldReplaceHeroFrame(
+            existing: frames[id],
+            next: frame,
+            existingOnScreen: onScreenIDs.contains(id),
+            nextOnScreen: onScreen
+        ) else { return }
         frames[id] = frame
         radii[id] = cornerRadius
         if onScreen {

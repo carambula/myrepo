@@ -61,6 +61,13 @@ public enum MinCornerRadius {
         MinRadiusStyle.shared.uiKitSheetCornerRadius
     }
 
+    /// Numeric radius pinned on every sheet in a stack. Leaving the system
+    /// default (`-1`) lets UIKit morph the sheet below to device corners.
+    public static var pinnedSheetCornerRadius: CGFloat {
+        let value = uiKitSheetCornerRadius
+        return value < 0 ? baseSheet : value
+    }
+
     /// Dismiss-engine override. `-1` reads the live platter; `0` is square.
     public static var dismissConfiguredRadius: CGFloat {
         MinRadiusStyle.shared.dismissConfiguredRadius

@@ -54,14 +54,47 @@ export function isHeroSourceVisible(source, viewport, minOverlap = heroSourceVis
 
 /**
  * Artwork overlay opacity while the returning card scales into place.
- * On-screen sources are already the flying object (fully opaque). Off-screen
- * sources fade the stored key image in so the shrinking card fills with art.
+ * On-screen sources at rest stay the flying object. Off-screen sources, or a
+ * sheet scrolled away from its hero, fade the stored key image in so the
+ * card dissolves into the tile instead of cropping into it.
  */
-export function heroFillOpacity(progress, { sourceVisible } = {}) {
-  if (sourceVisible) return 1;
+export function heroFillOpacity(progress, { sourceVisible, scrolled } = {}) {
+  if (sourceVisible !== false && scrolled !== true) return 1;
   const t = Number(progress);
   if (!Number.isFinite(t)) return 0;
   return Math.min(1, Math.max(0, t));
+}
+
+/**
+ * Presenter scale shrinks tiles. Keep the rest-size frame so a grid dismiss
+ * returns to the live thumb, not a shrunken or off-screen twin.
+ */
+export function shouldReplaceHeroFrame(
+  existing,
+  next,
+  { existingOnScreen, nextOnScreen } = {}
+) {
+  if (!(next?.width > 1) || !(next?.height > 1)) return false;
+  if (!existing) return true;
+  if (next.width < existing.width * 0.97) return false;
+  if (existingOnScreen && nextOnScreen === false) return false;
+  return true;
+}
+
+/** Nested sheets use the system dismiss so they un-scale with matching radii. */
+export function shouldHeroFlingToSource({ nested } = {}) {
+  return nested !== true;
+}
+
+/**
+ * Pin every sheet in a stack to the same chrome radius. Leaving the system
+ * default (`< 0` / null) lets UIKit morph the sheet below to device corners.
+ */
+export function stackedSheetCornerRadius(preferred, { fallback = 38 } = {}) {
+  if (preferred == null) return fallback;
+  const value = Number(preferred);
+  if (!Number.isFinite(value) || value < 0) return fallback;
+  return value;
 }
 
 /** One shared duration: the flying sheet and shade finish together. */

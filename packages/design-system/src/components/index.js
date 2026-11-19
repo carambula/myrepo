@@ -71,6 +71,7 @@ export {
   shouldMatchHeroSourceOnVisibleCopy,
   shouldPresentHeroZoomAsFullScreenCover,
   shouldPresentHeroZoomWithPreferredTransition,
+  shouldMountHeroZoomPresenterAsChildViewController,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,

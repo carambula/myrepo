@@ -732,8 +732,12 @@ private struct SheetHeroZoomHost<Content: View>: View {
 /// Presents with `preferredTransition = .zoom` set *before* `present`.
 /// SwiftUI `.sheet` and `.fullScreenCover` create the destination at
 /// full size, then attach zoom — that first frame is the flash.
+///
+/// Must be a `UIViewRepresentable`, not a child view controller. A
+/// `UIViewControllerRepresentable` in the mini-player overlay expanded
+/// that window to a full-screen blank plate.
 @available(iOS 18.0, *)
-private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIViewControllerRepresentable {
+private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIViewRepresentable {
     @Binding var item: Item?
     var sourceID: (Item) -> String?
     var onDismiss: (() -> Void)?
@@ -743,24 +747,35 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
         Coordinator()
     }
 
-    func makeUIViewController(context: Context) -> UIViewController {
-        let controller = UIViewController()
-        controller.view.backgroundColor = .clear
-        controller.view.isUserInteractionEnabled = false
-        controller.view.isAccessibilityElement = false
-        return controller
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        view.backgroundColor = .clear
+        view.isOpaque = false
+        return view
     }
 
-    func updateUIViewController(_ controller: UIViewController, context: Context) {
+    func updateUIView(_ view: ProbeView, context: Context) {
         context.coordinator.parent = self
-        context.coordinator.sync(from: controller)
+        context.coordinator.sync(from: view)
     }
 
-    static func dismantleUIViewController(
-        _ controller: UIViewController,
-        coordinator: Coordinator
-    ) {
+    static func dismantleUIView(_ view: ProbeView, coordinator: Coordinator) {
         coordinator.dismantle()
+    }
+
+    final class ProbeView: UIView {
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            backgroundColor = .clear
+            isOpaque = false
+            isUserInteractionEnabled = false
+        }
+
+        @available(*, unavailable) required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
     }
 
     final class ZoomHostingController: UIHostingController<Destination> {
@@ -781,7 +796,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
         var isDismissing = false
         var windowRetries = 0
 
-        func sync(from controller: UIViewController) {
+        func sync(from view: UIView) {
             guard let parent else { return }
             if let item = parent.item,
                let id = parent.sourceID(item),
@@ -790,7 +805,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
                     host.rootView = parent.destination(item)
                     return
                 }
-                present(item, id: id, from: controller, parent: parent)
+                present(item, id: id, from: view, parent: parent)
             } else {
                 dismissIfNeeded()
             }
@@ -799,7 +814,7 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
         func present(
             _ item: Item,
             id: String,
-            from controller: UIViewController,
+            from view: UIView,
             parent: SheetHeroUIKitZoom
         ) {
             if isPresenting || isDismissing { return }
@@ -809,16 +824,16 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
                     self?.isDismissing = false
                     self?.presented = nil
                     self?.presentedID = nil
-                    self?.sync(from: controller)
+                    self?.sync(from: view)
                 }
                 return
             }
-            guard let anchor = presentationAnchor(from: controller) else {
+            guard let anchor = presentationAnchor(from: view) else {
                 windowRetries += 1
                 guard windowRetries < 8 else { return }
-                DispatchQueue.main.async { [weak self, weak controller] in
-                    guard let self, let controller else { return }
-                    self.sync(from: controller)
+                DispatchQueue.main.async { [weak self, weak view] in
+                    guard let self, let view else { return }
+                    self.sync(from: view)
                 }
                 return
             }
@@ -872,10 +887,8 @@ private struct SheetHeroUIKitZoom<Item: Identifiable, Destination: View>: UIView
 
         /// Present from this window's root (the overlay container is full
         /// screen; the SwiftUI host strip is not).
-        private func presentationAnchor(
-            from controller: UIViewController
-        ) -> UIViewController? {
-            guard let window = controller.view.window,
+        private func presentationAnchor(from view: UIView) -> UIViewController? {
+            guard let window = view.window,
                   var node = window.rootViewController else { return nil }
             while let presented = node.presentedViewController,
                   presented !== self.presented {
@@ -945,6 +958,7 @@ private struct SheetFromHeroModifier<Item: Identifiable, SheetContent: View>: Vi
                         }
                     }
                     .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
                 .sheet(item: sheetItem, onDismiss: onDismiss) { value in
@@ -1021,6 +1035,7 @@ private struct SheetFromHeroPresentedModifier<SheetContent: View>: ViewModifier 
                         }
                     }
                     .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
                 .sheet(isPresented: presentSheet, onDismiss: onDismiss) {

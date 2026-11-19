@@ -256,21 +256,6 @@ public enum EdgeSwipeToDismiss {
         (from: max(0, start), to: max(0, end))
     }
 
-    /// Presenter scale shrinks tiles. Keep the larger rest-size frame.
-    /// An on-screen thumb wins over an off-screen twin (pager, covered cell).
-    public static func shouldReplaceHeroFrame(
-        existing: CGRect?,
-        next: CGRect,
-        existingOnScreen: Bool = false,
-        nextOnScreen: Bool = true
-    ) -> Bool {
-        guard next.width > 1, next.height > 1 else { return false }
-        guard let existing else { return true }
-        if next.width < existing.width * 0.97 { return false }
-        if existingOnScreen && !nextOnScreen { return false }
-        return true
-    }
-
     /// Fling duration from the current card frame back to the source image.
     public static func heroReturnDuration(
         from: CGRect,

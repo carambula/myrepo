@@ -15,7 +15,7 @@ import UIKit
 /// - hides the card, then dismisses without animation
 struct EdgeSwipeToDismissHost: UIViewRepresentable {
     let configuration: EdgeSwipeToDismissConfiguration
-    let onDismiss: (_ animated: Bool) -> Void
+    let onDismiss: () -> Void
     let onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
     var heroID: String?
 
@@ -83,7 +83,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var configuration: EdgeSwipeToDismissConfiguration
-        var onDismiss: (_ animated: Bool) -> Void
+        var onDismiss: () -> Void
         var onFollowingChange: (Bool, EdgeSwipeToDismiss.Activation) -> Void
         var heroID: String?
         weak var probeView: ProbeView?
@@ -117,7 +117,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         init(
             configuration: EdgeSwipeToDismissConfiguration,
-            onDismiss: @escaping (_ animated: Bool) -> Void,
+            onDismiss: @escaping () -> Void,
             onFollowingChange: @escaping (Bool, EdgeSwipeToDismiss.Activation) -> Void,
             heroID: String?
         ) {
@@ -951,33 +951,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             }
         }
 
-        /// Views UIKit scaled down behind this sheet (home, or the sheet below).
-        private func scaledPresentingViews() -> [UIView] {
-            var views: [UIView] = []
-            var seen = Set<ObjectIdentifier>()
-            func consider(_ view: UIView?) {
-                guard let view, seen.insert(ObjectIdentifier(view)).inserted else { return }
-                let t = view.transform
-                if abs(t.a - 1) > 0.01 || abs(t.d - 1) > 0.01 || abs(t.tx) > 0.5 || abs(t.ty) > 0.5 {
-                    views.append(view)
-                }
-            }
-            var presenter = presentedController()?.presentingViewController
-            while let current = presenter {
-                consider(current.view)
-                if let wrapper = current.view.superview {
-                    consider(wrapper)
-                    wrapper.subviews.forEach(consider)
-                }
-                presenter = current.presentingViewController ?? current.parent
-            }
-            if let container = containerView {
-                for sub in container.subviews
-                where sub !== dragView && sub !== backdropView && sub !== sheetView {
-                    consider(sub)
-                }
-            }
-            return views
+        private func isNestedSheet() -> Bool {
+            guard let presented = presentedController() else { return false }
+            return presented.presentingViewController?.presentingViewController != nil
         }
 
         private func beginProgrammaticDismiss() {
@@ -994,7 +970,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 if let sheetView {
                     finishDismiss(sheet: sheetView)
                 } else {
-                    onDismiss(false)
+                    onDismiss()
                 }
                 return
             }
@@ -1009,7 +985,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
 
         private func flingAway(from translation: CGSize, velocity: CGSize) {
             guard movingView != nil, !isDismissing else { return }
-            if let heroID,
+            // A sheet sitting on another sheet uses ordinary dismiss, not zoom.
+            if !isNestedSheet(),
+               let heroID,
                let source = SheetHeroGeometry.frame(for: heroID),
                source.width > 2,
                source.height > 2 {
@@ -1081,11 +1059,9 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             CATransaction.commit()
 
             let sourceOnScreen = heroID.map { SheetHeroGeometry.isOnScreen($0) } ?? false
-            let scrolledAway = cachedScrollViews.contains { $0.contentOffset.y > 24 }
-            let fadeToArt = !sourceOnScreen || scrolledAway
             let fillImage = heroID.flatMap { SheetHeroGeometry.image(for: $0) }
             let fillView: UIImageView?
-            if fadeToArt, let fillImage {
+            if !sourceOnScreen, let fillImage {
                 let imageView = UIImageView(image: fillImage)
                 imageView.contentMode = .scaleAspectFill
                 imageView.clipsToBounds = true
@@ -1108,31 +1084,17 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 velocity: velocity,
                 configuration: configuration
             )
-            let presenting = scaledPresentingViews()
 
-            UIView.animateKeyframes(
+            UIView.animate(
                 withDuration: duration,
                 delay: 0,
-                options: [.calculationModeCubic, .beginFromCurrentState]
+                options: [.curveEaseOut, .beginFromCurrentState]
             ) {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 1) {
-                    clip.frame = source
-                    clip.layer.cornerRadius = clipRadii.to
-                    proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
-                    fillView?.frame = CGRect(origin: .zero, size: source.size)
-                    for view in presenting {
-                        view.transform = .identity
-                    }
-                    self.applyBackdropStrength(0, force: true)
-                }
-                if fadeToArt {
-                    // Crop toward the tile, then dissolve into the key art
-                    // instead of snapping the scrolled snapshot into it.
-                    UIView.addKeyframe(withRelativeStartTime: 0.55, relativeDuration: 0.45) {
-                        fillView?.alpha = 1
-                        proxy.alpha = 0
-                    }
-                }
+                clip.frame = source
+                clip.layer.cornerRadius = clipRadii.to
+                proxy.transform = CGAffineTransform(scaleX: scale, y: scale)
+                fillView?.alpha = 1
+                self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()
                 self.finishDismiss(sheet: sheetView)
@@ -1161,7 +1123,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 dismissing: true,
                 dismissTranslation: fly
             )
-            let presenting = scaledPresentingViews()
             UIView.animate(
                 withDuration: duration,
                 delay: 0,
@@ -1169,9 +1130,6 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
             ) {
                 moving.transform = transform
                 moving.alpha = 0
-                for view in presenting {
-                    view.transform = .identity
-                }
                 self.applyBackdropStrength(0, force: true)
             } completion: { _ in
                 self.stopFollowDisplayLink()
@@ -1194,7 +1152,7 @@ struct EdgeSwipeToDismissHost: UIViewRepresentable {
                 guard let self else { return }
                 self.restoreSheet(removeProxy: true, revealSheet: false)
                 self.endFollowing()
-                self.onDismiss(false)
+                self.onDismiss()
                 self.removeBackdrop(restoreSystemDimming: false)
                 SheetHeroSession.isHeroMotionActive = false
             }
@@ -1410,9 +1368,9 @@ public struct EdgeSwipeToDismissModifier: ViewModifier {
             .background(
                 EdgeSwipeToDismissHost(
                     configuration: configuration,
-                    onDismiss: { animated in
+                    onDismiss: {
                         var transaction = Transaction()
-                        transaction.disablesAnimations = !animated
+                        transaction.disablesAnimations = true
                         withTransaction(transaction) {
                             dismiss()
                         }

@@ -34,9 +34,7 @@ import {
   isHeroSourceVisible,
   sheetHeroID,
   shouldApplySheetChromeRadius,
-  shouldHeroFlingToSource,
   shouldHeroZoomSheet,
-  shouldReplaceHeroFrame,
 } from './sheetHero.js';
 
 const sheet = { width: 390, height: 700 };
@@ -305,43 +303,6 @@ describe('sheet hero zoom', () => {
     assert.equal(heroFillOpacity(0, { sourceVisible: false }), 0);
     assert.equal(heroFillOpacity(0.5, { sourceVisible: false }), 0.5);
     assert.equal(heroFillOpacity(1, { sourceVisible: false }), 1);
-  });
-
-  it('fades the key image in when the sheet has been scrolled away from the hero', () => {
-    assert.equal(heroFillOpacity(0, { sourceVisible: true, scrolled: true }), 0);
-    assert.equal(heroFillOpacity(1, { sourceVisible: true, scrolled: true }), 1);
-  });
-
-  it('keeps rest-size tile frames instead of presenter-scaled ones', () => {
-    const rest = { x: 24, y: 200, width: 160, height: 160 };
-    const scaled = { x: 40, y: 240, width: 144, height: 144 };
-    assert.equal(shouldReplaceHeroFrame(null, rest), true);
-    assert.equal(shouldReplaceHeroFrame(rest, scaled), false);
-    assert.equal(shouldReplaceHeroFrame(rest, { x: 24, y: 80, width: 160, height: 160 }), true);
-  });
-
-  it('does not let an off-screen pager twin overwrite a live tile frame', () => {
-    const rest = { x: 24, y: 200, width: 160, height: 160 };
-    const offscreenList = { x: 420, y: 640, width: 160, height: 160 };
-    assert.equal(
-      shouldReplaceHeroFrame(rest, offscreenList, {
-        existingOnScreen: true,
-        nextOnScreen: false,
-      }),
-      false
-    );
-    assert.equal(
-      shouldReplaceHeroFrame(offscreenList, rest, {
-        existingOnScreen: false,
-        nextOnScreen: true,
-      }),
-      true
-    );
-  });
-
-  it('flings nested sheets to the rest-size destination with the parent', () => {
-    assert.equal(shouldHeroFlingToSource({}), true);
-    assert.equal(shouldHeroFlingToSource({ nested: true }), true);
   });
 
   it('clips the returning card from sheet chrome to the tile, not a scaled bake', () => {

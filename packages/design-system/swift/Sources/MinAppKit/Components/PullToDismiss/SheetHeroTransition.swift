@@ -39,14 +39,7 @@ public enum SheetHeroGeometry {
     private static var presentedSheetCount = 0
 
     public static func update(id: String, frame: CGRect, cornerRadius: CGFloat, onScreen: Bool) {
-        if SheetHeroSession.shared.isCovered(id) { return }
-        let existingOnScreen = onScreenIDs.contains(id)
-        guard EdgeSwipeToDismiss.shouldReplaceHeroFrame(
-            existing: frames[id],
-            next: frame,
-            existingOnScreen: existingOnScreen,
-            nextOnScreen: onScreen
-        ) else { return }
+        guard frame.width > 1, frame.height > 1 else { return }
         frames[id] = frame
         radii[id] = cornerRadius
         if onScreen {
@@ -57,18 +50,7 @@ public enum SheetHeroGeometry {
     }
 
     public static func frame(for id: String) -> CGRect? {
-        #if os(iOS)
-        let stored = frames[id]
-        let live = liveFrame(for: id, onScreenOnly: true)
-        if let stored, let live {
-            // Live on-screen tiles win when they are rest-size. Presenter
-            // scale is smaller, so the frozen rest frame still wins then.
-            return live.width >= stored.width * 0.97 ? live : stored
-        }
-        return stored ?? live ?? liveFrame(for: id, onScreenOnly: false)
-        #else
         frames[id]
-        #endif
     }
 
     public static func cornerRadius(for id: String) -> CGFloat {
@@ -76,10 +58,7 @@ public enum SheetHeroGeometry {
     }
 
     public static func isOnScreen(_ id: String) -> Bool {
-        #if os(iOS)
-        if liveFrame(for: id, onScreenOnly: true) != nil { return true }
-        #endif
-        return onScreenIDs.contains(id)
+        onScreenIDs.contains(id)
     }
 
     public static func setOnScreen(_ id: String, _ onScreen: Bool) {
@@ -118,39 +97,6 @@ public enum SheetHeroGeometry {
     static var currentNamespace: Namespace.ID? {
         namespaceStack.last
     }
-
-    #if os(iOS)
-    private struct LiveHero {
-        var id: String
-        var frame: () -> CGRect?
-        weak var owner: AnyObject?
-    }
-
-    private static var liveHeroes: [ObjectIdentifier: LiveHero] = [:]
-
-    static func registerLiveHero(id: String, owner: AnyObject, frame: @escaping () -> CGRect?) {
-        liveHeroes[ObjectIdentifier(owner)] = LiveHero(id: id, frame: frame, owner: owner)
-    }
-
-    static func unregisterLiveHero(owner: AnyObject) {
-        liveHeroes.removeValue(forKey: ObjectIdentifier(owner))
-    }
-
-    private static func liveFrame(for id: String, onScreenOnly: Bool) -> CGRect? {
-        liveHeroes = liveHeroes.filter { $0.value.owner != nil }
-        var best: CGRect?
-        for item in liveHeroes.values where item.id == id {
-            guard let frame = item.frame(), frame.width > 1, frame.height > 1 else { continue }
-            if onScreenOnly && !sheetHeroFrameIsOnScreen(frame) { continue }
-            if let current = best {
-                if frame.width > current.width { best = frame }
-            } else {
-                best = frame
-            }
-        }
-        return best
-    }
-    #endif
 
     /// Register a container namespace. A parent that is already on the stack
     /// stays put so its body refreshes cannot steal the top from a nested
@@ -306,7 +252,7 @@ private struct SheetHeroSourceModifier: ViewModifier {
                         }
                         #if os(iOS)
                         .overlay {
-                            SheetHeroImageCapture(id: id, cornerRadius: cornerRadius)
+                            SheetHeroImageCapture(id: id)
                                 .frame(width: 0, height: 0)
                                 .allowsHitTesting(false)
                                 .accessibilityHidden(true)
@@ -353,17 +299,16 @@ private struct SheetHeroSourceModifier: ViewModifier {
 
     private func record(_ frame: CGRect) {
         #if os(iOS)
-        // UIKit probes record window frames. SwiftUI `.global` is a different
-        // space and was sending grid dismisses to a stale corner.
-        _ = frame
+        let onScreen = sheetHeroFrameIsOnScreen(frame)
         #else
+        let onScreen = true
+        #endif
         SheetHeroGeometry.update(
             id: id,
             frame: frame,
             cornerRadius: cornerRadius,
-            onScreen: true
+            onScreen: onScreen
         )
-        #endif
     }
 }
 
@@ -372,30 +317,20 @@ private struct SheetHeroSourceModifier: ViewModifier {
 /// returning card when the live thumbnail has scrolled off-screen.
 private struct SheetHeroImageCapture: UIViewRepresentable {
     let id: String
-    var cornerRadius: CGFloat = MinCornerRadius.artTile
 
     func makeUIView(context: Context) -> CaptureView {
         let view = CaptureView()
         view.heroID = id
-        view.cornerRadius = cornerRadius
         return view
     }
 
     func updateUIView(_ uiView: CaptureView, context: Context) {
         uiView.heroID = id
-        uiView.cornerRadius = cornerRadius
-        if uiView.window != nil {
-            SheetHeroGeometry.registerLiveHero(id: id, owner: uiView) { [weak uiView] in
-                uiView?.windowFrame()
-            }
-            uiView.recordWindowFrame()
-        }
         uiView.captureSoon()
     }
 
     final class CaptureView: UIView {
         var heroID: String = ""
-        var cornerRadius: CGFloat = MinCornerRadius.artTile
         private var pending: DispatchWorkItem?
 
         override init(frame: CGRect) {
@@ -411,46 +346,12 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            if window != nil {
-                SheetHeroGeometry.registerLiveHero(id: heroID, owner: self) { [weak self] in
-                    self?.windowFrame()
-                }
-                recordWindowFrame()
-            } else {
-                SheetHeroGeometry.unregisterLiveHero(owner: self)
-            }
             captureSoon()
         }
 
         override func layoutSubviews() {
             super.layoutSubviews()
-            recordWindowFrame()
             captureSoon()
-        }
-
-        /// UIKit window coords — the same space the dismiss clip converts from.
-        func windowFrame() -> CGRect? {
-            guard let window else { return nil }
-            var node: UIView? = superview
-            var hops = 0
-            while let view = node, hops < 8 {
-                if view.bounds.width > 8, view.bounds.height > 8 {
-                    return view.convert(view.bounds, to: window)
-                }
-                node = view.superview
-                hops += 1
-            }
-            return nil
-        }
-
-        func recordWindowFrame() {
-            guard !heroID.isEmpty, let frame = windowFrame() else { return }
-            SheetHeroGeometry.update(
-                id: heroID,
-                frame: frame,
-                cornerRadius: cornerRadius,
-                onScreen: sheetHeroFrameIsOnScreen(frame)
-            )
         }
 
         func captureSoon() {

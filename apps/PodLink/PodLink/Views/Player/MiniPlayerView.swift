@@ -890,13 +890,11 @@ struct MainScreenDockedMiniPlayerSlot: View {
                 .environment(playbackService)
                 .environment(networkStatusService)
                 .frame(maxWidth: .infinity)
-                .opacity(playbackService.isEpisodePlayerUIVisible ? 0 : 1)
                 .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
                 .transition(.offset(y: -UIScreen.main.bounds.height))
             }
         }
-        .animation(.spring(response: 0.35), value: shouldShow)
-        .animation(.spring(response: 0.35), value: playbackService.state.currentEpisode != nil)
-        .animation(.spring(response: 0.35), value: playbackService.isEpisodePlayerUIVisible)
+        .animation(.spring(response: SheetHeroMotion.openDuration), value: shouldShow)
+        .animation(.spring(response: SheetHeroMotion.openDuration), value: playbackService.state.currentEpisode != nil)
     }
 }

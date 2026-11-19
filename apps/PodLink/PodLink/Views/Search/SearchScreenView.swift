@@ -286,8 +286,6 @@ struct SearchScreenView: View {
                 .environment(playbackService)
                 .environment(downloadManager)
                 .environment(networkStatusService)
-                .sheetHeroPresented()
-                .sheetHeroDestination(id: SheetHeroID.episode(result.episode.id))
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showPrivateFeedSheet) {

@@ -184,8 +184,6 @@ struct PodcastDetailView: View {
                 .environment(themeManager)
                 .environment(playbackService)
                 .environment(downloadManager)
-                .sheetHeroPresented()
-                .sheetHeroDestination(id: SheetHeroID.episode(episode.id))
                 .presentationDragIndicator(.visible)
         }
         .sheetHeroContainer()

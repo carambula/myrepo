@@ -5,6 +5,11 @@ import UIKit
 /// Hides the system sheet dimming view so min apps can fade their own plate
 /// in and out with the zoom / dismiss animation instead of popping it.
 enum SheetPresentationScrim {
+    /// Dimming views this file hid, so restoring touches only those. Forcing
+    /// alpha on every dimming view in the window also hits the one UIKit is
+    /// fading in for a zoom presentation.
+    nonisolated(unsafe) private static let hiddenDimmingViews = NSHashTable<UIView>.weakObjects()
+
     static func suppressSystemDimming(
         for viewController: UIViewController,
         applyCornerRadius: Bool = true
@@ -42,6 +47,7 @@ enum SheetPresentationScrim {
                     sub.alpha = 0
                     sub.isHidden = true
                     sub.isUserInteractionEnabled = false
+                    hiddenDimmingViews.add(sub)
                 }
             }
         }
@@ -51,14 +57,11 @@ enum SheetPresentationScrim {
     }
 
     static func restoreSystemSheetDimming(in view: UIView) {
-        let name = NSStringFromClass(type(of: view))
-        if name.contains("Dimming"), !(view is SheetDismissBackdropView) {
-            view.isHidden = false
-            view.alpha = 1
-            view.isUserInteractionEnabled = true
-        }
-        for sub in view.subviews {
-            restoreSystemSheetDimming(in: sub)
+        for dimming in hiddenDimmingViews.allObjects where dimming.isDescendant(of: view) {
+            dimming.isHidden = false
+            dimming.alpha = 1
+            dimming.isUserInteractionEnabled = true
+            hiddenDimmingViews.remove(dimming)
         }
     }
 
@@ -171,6 +174,28 @@ final class SheetScrimGuardView: UIView {
         handlePresented(presenter.presentedViewController)
     }
 
+    /// Whether the system zoom owns this presentation. This has to be known
+    /// when UIKit first reports the sheet. Deciding a run-loop turn later
+    /// raced the sheet's first render, and losing that race rewrote the
+    /// sheet's detents and corner radius while UIKit was presenting it.
+    private func isSystemZoom(_ presented: UIViewController?) -> Bool {
+        if SheetHeroSession.usesSystemZoom { return true }
+        if #available(iOS 18.0, *), presented?.preferredTransition != nil { return true }
+        return false
+    }
+
+    private func describe(_ presented: UIViewController) -> String {
+        var transition = "n/a"
+        if #available(iOS 18.0, *) {
+            transition = presented.preferredTransition == nil ? "none" : "set"
+        }
+        return "\(type(of: presented))"
+            + " session=\(SheetHeroSession.usesSystemZoom)"
+            + " preferredTransition=\(transition)"
+            + " beingPresented=\(presented.isBeingPresented)"
+            + " inWindow=\(presented.viewIfLoaded?.window != nil)"
+    }
+
     private func handlePresented(_ presented: UIViewController?) {
         guard let presented else {
             fadeBackdropOut(with: presentingViewController())
@@ -181,13 +206,15 @@ final class SheetScrimGuardView: UIView {
         }
         didFadeBackdropOut = false
         didAnimateBackdropIn = false
-        installLifecycleHook(on: presented)
-        // Do not rewrite sheet chrome on the opening frames. Mutating
-        // `largestUndimmedDetentIdentifier` while UIKit is presenting draws a
-        // full-size platter, then tears it down when zoom attaches.
-        if presented.isBeingPresented || SheetHeroSession.shared.usesSystemZoom {
+        // A zoom sheet belongs to the system from its first frame: no child
+        // hook in its view, no chrome writes, no dim plate, no display link.
+        if isSystemZoom(presented) {
+            SheetHeroDiagnostics.log("scrim stands down at present: \(describe(presented))")
             prepareSystemZoomScrim(for: presented)
+            return
         }
+        SheetHeroDiagnostics.log("scrim manages sheet: \(describe(presented))")
+        installLifecycleHook(on: presented)
         DispatchQueue.main.async { [weak self] in
             self?.applyScrim(for: presented)
         }
@@ -195,7 +222,8 @@ final class SheetScrimGuardView: UIView {
 
     private func applyScrim(for presented: UIViewController) {
         guard presentingViewController()?.presentedViewController === presented else { return }
-        if SheetHeroSession.shared.usesSystemZoom {
+        if isSystemZoom(presented) {
+            SheetHeroDiagnostics.log("scrim found zoom late: \(describe(presented))")
             prepareSystemZoomScrim(for: presented)
             return
         }
@@ -204,11 +232,14 @@ final class SheetScrimGuardView: UIView {
         installBackdrop(for: presented)
     }
 
-    /// Apple's zoom transition fades its own dim plate. Hide ours and give
-    /// the system dimming view back. Do not touch `sheetPresentationController`
-    /// while the card is opening — that snaps a full-size sheet on screen.
+    /// Apple's zoom transition fades its own dim plate. Undo only what this
+    /// guard did itself, and never write to `sheetPresentationController`
+    /// before the card has landed.
     private func prepareSystemZoomScrim(for presented: UIViewController) {
-        if !presented.isBeingPresented, let sheet = presented.sheetPresentationController {
+        if !presented.isBeingPresented,
+           presented.viewIfLoaded?.window != nil,
+           let sheet = presented.sheetPresentationController,
+           sheet.largestUndimmedDetentIdentifier != nil {
             sheet.largestUndimmedDetentIdentifier = nil
         }
         if let window {
@@ -310,6 +341,11 @@ final class SheetScrimGuardView: UIView {
     }
 
     private func beginHidingSystemDimming() {
+        if let presented = presentingViewController()?.presentedViewController,
+           isSystemZoom(presented) {
+            prepareSystemZoomScrim(for: presented)
+            return
+        }
         hideUntil = CACurrentMediaTime() + SheetHeroMotion.openDuration
         hideTick()
         guard hideLink == nil else { return }
@@ -319,9 +355,12 @@ final class SheetScrimGuardView: UIView {
     }
 
     fileprivate func hideTick() {
-        if SheetHeroSession.shared.usesSystemZoom {
-            if let presented = presentingViewController()?.presentedViewController {
-                prepareSystemZoomScrim(for: presented)
+        let current = presentingViewController()?.presentedViewController
+        if isSystemZoom(current) {
+            if let current {
+                prepareSystemZoomScrim(for: current)
+            } else {
+                stopHideLink()
             }
             return
         }

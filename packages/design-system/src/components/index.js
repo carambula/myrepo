@@ -61,6 +61,7 @@ export {
   heroReturnScale,
   heroSourceVisibleOverlap,
   isHeroSourceVisible,
+  isSystemZoomPresentation,
   miniPlayerChromeAnimationDuration,
   miniPlayerChromeOpacity,
   sheetHeroID,
@@ -79,6 +80,7 @@ export {
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
+  shouldScrimGuardManageSheet,
   stackedSheetCornerRadius,
 } from './sheetHero.js';
 export { DismissButton } from './DismissButton.js';

@@ -49,6 +49,29 @@ export function shouldPresentHeroZoomAsSheet({ hasSource = true } = {}) {
 }
 
 /**
+ * A zoom sheet is the system's from its first frame. The presenting side
+ * knows it is a zoom sheet as soon as its content is built (`expected`),
+ * once the destination has rendered (`rendered`), or when the controller
+ * carries a preferred transition. Waiting for `rendered` alone is too late:
+ * UIKit reports the sheet before the sheet has drawn.
+ */
+export function isSystemZoomPresentation({
+  expected = false,
+  rendered = false,
+  preferredTransition = false,
+} = {}) {
+  return expected === true || rendered === true || preferredTransition === true;
+}
+
+/**
+ * The presenting-side scrim guard leaves a zoom sheet alone: no chrome
+ * writes, no custom dim plate, no child hook in the sheet's view.
+ */
+export function shouldScrimGuardManageSheet({ systemZoom = false } = {}) {
+  return systemZoom !== true;
+}
+
+/**
  * Overlay mini-player sheets must present from a full-window host. A 72pt
  * hugging host makes UIKit draw a full-size platter, then zoom tears it down.
  */

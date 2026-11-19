@@ -1,4 +1,5 @@
 import Observation
+import os
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -9,6 +10,20 @@ public enum SheetHeroMotion {
     /// Open zoom, close zoom, and scrim fade — one shared duration so
     /// stacked layers, the flying image, and shade move together.
     public static let openDuration: TimeInterval = 0.42
+}
+
+/// Debug-build trace of how a hero sheet was classified and handled. Filter
+/// the Xcode console on `SheetHero` to see one presentation end to end.
+enum SheetHeroDiagnostics {
+    #if DEBUG
+    private static let logger = Logger(subsystem: "MinAppKit", category: "SheetHero")
+    #endif
+
+    static func log(_ message: String) {
+        #if DEBUG
+        logger.debug("\(message, privacy: .public)")
+        #endif
+    }
 }
 
 /// Stable ids for a source image and the sheet it opens. The two must match.
@@ -137,18 +152,45 @@ final class SheetHeroSession {
     static let shared = SheetHeroSession()
 
     private(set) var coveredIDs: Set<String> = []
-    private(set) var zoomDestinationCount = 0
     private var dismissHandlers: [() -> Void] = []
 
-    /// True while a destination is using iOS 18 `navigationTransition(.zoom)`.
-    var usesSystemZoom: Bool { zoomDestinationCount > 0 }
+    // Zoom bookkeeping is written while SwiftUI builds views and read by
+    // UIKit guards, always on the main thread. It stays out of observation
+    // and, like `isHeroMotionActive`, out of MainActor isolation.
+    nonisolated(unsafe) private static var activeZoomIDs: [String: Int] = [:]
+    nonisolated(unsafe) private static var zoomExpectedUntil: TimeInterval = 0
 
-    func enterZoomDestination() {
-        zoomDestinationCount += 1
+    /// True from the moment a zoom sheet is about to be presented until its
+    /// destination is torn down. Presenting-side guards read this when UIKit
+    /// reports the new sheet, which is before the sheet has rendered.
+    nonisolated static var usesSystemZoom: Bool {
+        !activeZoomIDs.isEmpty
+            || ProcessInfo.processInfo.systemUptime < zoomExpectedUntil
     }
 
-    func leaveZoomDestination() {
-        zoomDestinationCount = max(0, zoomDestinationCount - 1)
+    /// Call while building the presented content, before UIKit presents it.
+    /// Waiting for the destination to render is too late: by then the
+    /// presenting-side scrim may already have rewritten the sheet's chrome.
+    nonisolated static func expectZoomPresentation(_ id: String) {
+        guard activeZoomIDs[id] == nil else { return }
+        if !usesSystemZoom {
+            SheetHeroDiagnostics.log("expect zoom \(id)")
+        }
+        // Normally the sheet renders within one run-loop turn. The window
+        // only bounds a presentation that never happens.
+        zoomExpectedUntil = ProcessInfo.processInfo.systemUptime + 1
+    }
+
+    nonisolated static func enterZoomDestination(_ id: String) {
+        activeZoomIDs[id, default: 0] += 1
+        zoomExpectedUntil = 0
+        SheetHeroDiagnostics.log("zoom destination rendered \(id)")
+    }
+
+    nonisolated static func leaveZoomDestination(_ id: String) {
+        guard let count = activeZoomIDs[id] else { return }
+        activeZoomIDs[id] = count > 1 ? count - 1 : nil
+        SheetHeroDiagnostics.log("zoom destination removed \(id)")
     }
     /// True while a proxy is following the finger or flying back to a tile.
     /// Radius guards must not rewrite `preferredCornerRadius` in this window.
@@ -301,15 +343,13 @@ private struct SheetHeroSourceModifier: ViewModifier {
         // Grid/list tiles must stay live — a second copy reads as a leftover
         // thumb. Mini-player art lives in an overlay window where
         // `matchedTransitionSource` hides the live view even when idle, so
-        // that source keeps a hit-test-free copy that cover opacity hides
-        // while the sheet is the flying object.
+        // that source keeps a hit-test-free copy for the system to match.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 if SheetHeroID.isMiniPlayer(id) {
-                    // Overlay windows hide the live `matchedTransitionSource`
-                    // view even when idle. Zoom must snapshot this visible
-                    // copy — matching the hidden live view presents a
-                    // full-size sheet for a frame, then tears it down.
+                    // The system hides and restores its matched source on its
+                    // own, so this copy's opacity is left alone while the
+                    // sheet opens.
                     sourced.overlay {
                         content
                             .matchedTransitionSource(id: id, in: namespace) { source in
@@ -319,7 +359,6 @@ private struct SheetHeroSourceModifier: ViewModifier {
                             }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
-                            .modifier(SheetHeroCoverOpacity(id: id))
                     }
                 } else {
                     sourced
@@ -444,45 +483,39 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
 #endif
 
 #if os(iOS)
-private struct SheetHeroCoverOpacity: ViewModifier {
-    let id: String
-    var session = SheetHeroSession.shared
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(session.isCovered(id) ? 0 : 1)
-            .transaction { $0.animation = nil }
-    }
-}
-
-/// Enters the zoom session as soon as the destination hosting view exists so
-/// scrim setup does not install a custom dim plate on the first zoom frames.
+/// Holds the zoom session open for as long as the destination's hosting view
+/// exists. `expectZoomPresentation` covers the gap before this view is made.
 private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
+    let id: String
+
     func makeUIView(context: Context) -> ProbeView {
         let view = ProbeView()
-        view.enter()
+        view.enter(id)
         return view
     }
 
-    func updateUIView(_ uiView: ProbeView, context: Context) {}
+    func updateUIView(_ uiView: ProbeView, context: Context) {
+        uiView.enter(id)
+    }
 
     static func dismantleUIView(_ uiView: ProbeView, coordinator: ()) {
         uiView.leave()
     }
 
     final class ProbeView: UIView {
-        private var active = false
+        private var activeID: String?
 
-        func enter() {
-            guard !active else { return }
-            active = true
-            SheetHeroSession.shared.enterZoomDestination()
+        func enter(_ id: String) {
+            guard activeID != id else { return }
+            leave()
+            activeID = id
+            SheetHeroSession.enterZoomDestination(id)
         }
 
         func leave() {
-            guard active else { return }
-            active = false
-            SheetHeroSession.shared.leaveZoomDestination()
+            guard let id = activeID else { return }
+            activeID = nil
+            SheetHeroSession.leaveZoomDestination(id)
         }
     }
 }
@@ -503,22 +536,14 @@ private struct SheetHeroDestinationModifier: ViewModifier {
             .environment(\.sheetHeroNamespace, namespace)
             .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
-        // Zoom must be the outermost modifier on the presented sheet.
-        // Trailing wrappers let UIKit draw a full-size platter for a frame
-        // before the matched source takes over.
+        // Nothing here may change the source or the sheet once the zoom has
+        // started; the system owns both until the card lands.
         applyZoom(
             tagged
                 .background {
-                    SheetHeroZoomSessionProbe()
+                    SheetHeroZoomSessionProbe(id: id)
                         .frame(width: 0, height: 0)
                         .accessibilityHidden(true)
-                }
-                .onAppear {
-                    if SheetHeroID.isMiniPlayer(id) {
-                        DispatchQueue.main.async {
-                            SheetHeroSession.shared.cover(id)
-                        }
-                    }
                 }
                 .onDisappear {
                     SheetHeroSession.shared.uncover(id)
@@ -705,6 +730,9 @@ extension View {
     @ViewBuilder
     public func sheetHeroDestination(id: String?, namespace: Namespace.ID? = nil) -> some View {
         if let id, !id.isEmpty {
+            // Runs while the presenter builds this sheet's content, which is
+            // before UIKit presents it and before the sheet itself renders.
+            let _ = SheetHeroSession.expectZoomPresentation(id)
             modifier(SheetHeroDestinationModifier(id: id, explicitNamespace: namespace))
         } else {
             self

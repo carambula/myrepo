@@ -32,6 +32,7 @@ import {
   heroReturnDuration,
   heroReturnScale,
   isHeroSourceVisible,
+  isSystemZoomPresentation,
   miniPlayerChromeAnimationDuration,
   miniPlayerChromeOpacity,
   sheetHeroID,
@@ -50,6 +51,7 @@ import {
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
+  shouldScrimGuardManageSheet,
   stackedSheetCornerRadius,
 } from './sheetHero.js';
 
@@ -311,6 +313,26 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: true }), false);
     assert.equal(shouldPresentHeroZoomWithPreferredTransition({}), false);
     assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: true }), false);
+  });
+
+  it('knows a zoom sheet before the sheet has rendered', () => {
+    assert.equal(isSystemZoomPresentation({}), false);
+    assert.equal(isSystemZoomPresentation({ expected: true }), true);
+    assert.equal(isSystemZoomPresentation({ rendered: true }), true);
+    assert.equal(isSystemZoomPresentation({ preferredTransition: true }), true);
+    assert.equal(isSystemZoomPresentation({ expected: true, rendered: false }), true);
+  });
+
+  it('keeps the scrim guard off zoom sheets', () => {
+    assert.equal(shouldScrimGuardManageSheet({}), true);
+    assert.equal(shouldScrimGuardManageSheet({ systemZoom: false }), true);
+    assert.equal(shouldScrimGuardManageSheet({ systemZoom: true }), false);
+    assert.equal(
+      shouldScrimGuardManageSheet({
+        systemZoom: isSystemZoomPresentation({ expected: true }),
+      }),
+      false
+    );
   });
 
   it('sizes the mini-player overlay host to the window and hit-tests the card only', () => {

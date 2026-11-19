@@ -41,6 +41,7 @@ import {
   shouldHeroZoomSheet,
   shouldMatchHeroSourceOnVisibleCopy,
   shouldPresentHeroZoomAsFullScreenCover,
+  shouldPresentHeroZoomWithPreferredTransition,
   shouldPersistMatchedSourceCopy,
   shouldRegisterHeroSource,
   shouldReplaceHeroFrame,
@@ -297,10 +298,16 @@ describe('sheet hero zoom', () => {
     assert.equal(shouldAttachHeroZoomOnPresentedSheet({ innerBody: true }), false);
   });
 
-  it('presents zoom as a full-screen cover, not a sheet', () => {
-    assert.equal(shouldPresentHeroZoomAsFullScreenCover({}), true);
-    assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: true }), true);
+  it('does not present zoom with SwiftUI sheet or full-screen cover', () => {
+    assert.equal(shouldPresentHeroZoomAsFullScreenCover({}), false);
+    assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: true }), false);
     assert.equal(shouldPresentHeroZoomAsFullScreenCover({ hasSource: false }), false);
+  });
+
+  it('presents zoom with UIKit preferredTransition set before present', () => {
+    assert.equal(shouldPresentHeroZoomWithPreferredTransition({}), true);
+    assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: true }), true);
+    assert.equal(shouldPresentHeroZoomWithPreferredTransition({ hasSource: false }), false);
   });
 
   it('treats a scrolled-away thumbnail as off-screen', () => {

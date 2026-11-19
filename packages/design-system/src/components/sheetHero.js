@@ -3,9 +3,9 @@
  * Mirrors MinAppKit SheetHeroTransition.
  *
  * Open and close use the system zoom transition (iOS 18
- * `matchedTransitionSource` + `navigationTransition(.zoom)`), the same API
- * as the App Store. Zoom is a full-screen transition, so those
- * presentations use `fullScreenCover` rather than `.sheet`. Custom
+ * `preferredTransition = .zoom`), the same API as the App Store. SwiftUI
+ * `.sheet` and `.fullScreenCover` attach zoom after the first full-size
+ * frame, so matching source IDs present from UIKit instead. Custom
  * snapshot flings fight that motion.
  */
 
@@ -34,10 +34,15 @@ export function shouldAttachHeroZoomOnPresentedSheet({ innerBody = false } = {})
 }
 
 /**
- * Zoom is a full-screen transition. Presenting it with a sheet first draws
- * the full-size platter, then tears it down when the morph starts.
+ * SwiftUI `.sheet` and `.fullScreenCover` both draw the destination at
+ * full size for a frame, then attach zoom. Present with UIKit
+ * `preferredTransition` set before `present`.
  */
-export function shouldPresentHeroZoomAsFullScreenCover({ hasSource = true } = {}) {
+export function shouldPresentHeroZoomAsFullScreenCover({ hasSource: _hasSource } = {}) {
+  return false;
+}
+
+export function shouldPresentHeroZoomWithPreferredTransition({ hasSource = true } = {}) {
   return hasSource === true;
 }
 

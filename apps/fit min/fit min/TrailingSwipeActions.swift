@@ -5,18 +5,22 @@ struct TrailingSwipeAction: Identifiable {
     let id: String
     let title: String
     let systemImage: String
-    let tint: Color
     var role: ButtonRole?
     let handler: () -> Void
 }
 
 enum TrailingSwipeMetrics {
-    static let actionWidth: CGFloat = 72
+    static let actionWidth: CGFloat = DesignSystem.Controls.iconButtonSize
+    static let actionSpacing: CGFloat = DesignSystem.Spacing.sm
+    static let trailingInset: CGFloat = DesignSystem.Spacing.lg
     static let openThreshold: CGFloat = 0.35
     static let rubberBand: CGFloat = 4
 
     static func revealedWidth(actionCount: Int) -> CGFloat {
-        CGFloat(max(actionCount, 0)) * actionWidth
+        guard actionCount > 0 else { return 0 }
+        return CGFloat(actionCount) * actionWidth
+            + CGFloat(actionCount - 1) * actionSpacing
+            + trailingInset
     }
 
     static func clampedOffset(_ proposed: CGFloat, revealedWidth: CGFloat) -> CGFloat {
@@ -60,7 +64,6 @@ struct TrailingSwipeActionsModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(DesignSystem.Colors.background)
             .offset(x: visualOffset)
             .overlay {
                 if isRevealed, !isHorizontalDrag {
@@ -99,27 +102,19 @@ struct TrailingSwipeActionsModifier: ViewModifier {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: TrailingSwipeMetrics.actionSpacing) {
             ForEach(actions) { action in
-                VStack(spacing: DesignSystem.Spacing.xs) {
-                    Image(systemName: action.systemImage)
-                        .font(.system(size: 18, weight: .semibold))
-                    Text(action.title)
-                        .font(DesignSystem.Typography.caption())
-                        .lineLimit(1)
-                }
-                .foregroundStyle(.white)
-                .frame(width: TrailingSwipeMetrics.actionWidth)
-                .frame(maxHeight: .infinity)
-                .background(action.tint)
-                .contentShape(Rectangle())
-                .onTapGesture {
+                Button {
                     perform(action)
+                } label: {
+                    Image(systemName: action.systemImage)
                 }
-                .accessibilityAddTraits(.isButton)
+                .buttonStyle(CircularGlassIconButtonStyle())
                 .accessibilityLabel(action.title)
             }
         }
+        .padding(.trailing, TrailingSwipeMetrics.trailingInset)
+        .frame(maxHeight: .infinity)
         .allowsHitTesting(visualOffset < -20)
     }
 

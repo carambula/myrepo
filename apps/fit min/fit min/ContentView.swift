@@ -312,7 +312,6 @@ struct SetTimerListView: View {
                 id: "duplicate",
                 title: "Duplicate",
                 systemImage: DesignSystem.Icon.duplicate,
-                tint: DesignSystem.Colors.highlight,
                 handler: {
                     revealedTimerID = nil
                     isRowSwiping = false
@@ -323,7 +322,6 @@ struct SetTimerListView: View {
                 id: "edit",
                 title: "Edit",
                 systemImage: DesignSystem.Icon.edit,
-                tint: DesignSystem.Colors.accent,
                 handler: {
                     revealedTimerID = nil
                     isRowSwiping = false
@@ -334,7 +332,6 @@ struct SetTimerListView: View {
                 id: "delete",
                 title: "Delete",
                 systemImage: DesignSystem.Icon.delete,
-                tint: DesignSystem.Colors.error,
                 role: .destructive,
                 handler: {
                     revealedTimerID = nil

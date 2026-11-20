@@ -142,14 +142,14 @@ struct fit_minTests {
 
     @Test func trailingSwipeMetricsSnapAndClampOffsets() {
         let revealedWidth = TrailingSwipeMetrics.revealedWidth(actionCount: 3)
-        #expect(revealedWidth == 216)
+        #expect(revealedWidth == TrailingSwipeMetrics.actionWidth * 3 + TrailingSwipeMetrics.actionSpacing * 2 + TrailingSwipeMetrics.trailingInset)
         #expect(TrailingSwipeMetrics.clampedOffset(0, revealedWidth: revealedWidth) == 0)
-        #expect(TrailingSwipeMetrics.clampedOffset(-108, revealedWidth: revealedWidth) == -108)
-        #expect(TrailingSwipeMetrics.clampedOffset(-216, revealedWidth: revealedWidth) == -216)
-        #expect(TrailingSwipeMetrics.clampedOffset(-256, revealedWidth: revealedWidth) == -226)
+        #expect(TrailingSwipeMetrics.clampedOffset(-revealedWidth / 2, revealedWidth: revealedWidth) == -revealedWidth / 2)
+        #expect(TrailingSwipeMetrics.clampedOffset(-revealedWidth, revealedWidth: revealedWidth) == -revealedWidth)
+        #expect(TrailingSwipeMetrics.clampedOffset(-revealedWidth - 40, revealedWidth: revealedWidth) == -revealedWidth - 10)
         #expect(TrailingSwipeMetrics.clampedOffset(8, revealedWidth: revealedWidth) == 2)
-        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -50, revealedWidth: revealedWidth) == 0)
-        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -80, revealedWidth: revealedWidth) == -216)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -(revealedWidth * TrailingSwipeMetrics.openThreshold) + 1, revealedWidth: revealedWidth) == 0)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -(revealedWidth * TrailingSwipeMetrics.openThreshold) - 1, revealedWidth: revealedWidth) == -revealedWidth)
         #expect(TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -20, height: 4)))
         #expect(!TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -4, height: 20)))
     }

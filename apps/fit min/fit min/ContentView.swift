@@ -69,13 +69,22 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
         }
         .sheet(item: $configuratorPresentation) { presentation in
-            SetTimerConfiguratorSheet(timer: presentation.timer) { configuration, customTitle in
-                saveTimer(presentation.timer, configuration: configuration, customTitle: customTitle)
-            } onDelete: {
-                if let timer = presentation.timer {
-                    deleteTimer(timer)
+            SetTimerConfiguratorSheet(
+                timer: presentation.timer,
+                onSave: { configuration, customTitle in
+                    saveTimer(presentation.timer, configuration: configuration, customTitle: customTitle)
+                },
+                onDuplicate: { configuration, customTitle in
+                    if let timer = presentation.timer {
+                        duplicateTimer(timer, configuration: configuration, customTitle: customTitle)
+                    }
+                },
+                onDelete: {
+                    if let timer = presentation.timer {
+                        deleteTimer(timer)
+                    }
                 }
-            }
+            )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .bottomSheetPullToDismiss()
@@ -122,6 +131,11 @@ struct ContentView: View {
         } else {
             modelContext.insert(SetTimer(customTitle: customTitle, configuration: configuration))
         }
+        try? modelContext.save()
+    }
+
+    private func duplicateTimer(_ timer: SetTimer, configuration: SetTimerConfiguration, customTitle: String) {
+        modelContext.insert(timer.makeDuplicate(configuration: configuration, customTitle: customTitle))
         try? modelContext.save()
     }
 

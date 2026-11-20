@@ -136,12 +136,17 @@ struct ContentView: View {
     }
 
     private func duplicateTimer(_ timer: SetTimer) {
-        duplicateTimer(timer, configuration: timer.configuration, customTitle: timer.customTitle)
+        let configuration = timer.configuration
+        let customTitle = timer.customTitle
+        duplicateTimer(timer, configuration: configuration, customTitle: customTitle)
     }
 
     private func duplicateTimer(_ timer: SetTimer, configuration: SetTimerConfiguration, customTitle: String) {
-        modelContext.insert(timer.makeDuplicate(configuration: configuration, customTitle: customTitle))
-        try? modelContext.save()
+        let copy = timer.makeDuplicate(configuration: configuration, customTitle: customTitle)
+        withAnimation(MinAnimation.springQuick) {
+            modelContext.insert(copy)
+            try? modelContext.save()
+        }
     }
 
     private func deleteTimer(_ timer: SetTimer) {
@@ -310,6 +315,7 @@ struct SetTimerListView: View {
                 tint: DesignSystem.Colors.highlight,
                 handler: {
                     revealedTimerID = nil
+                    isRowSwiping = false
                     onDuplicate(timer)
                 }
             ),
@@ -320,6 +326,7 @@ struct SetTimerListView: View {
                 tint: DesignSystem.Colors.accent,
                 handler: {
                     revealedTimerID = nil
+                    isRowSwiping = false
                     onEdit(timer)
                 }
             ),
@@ -331,6 +338,7 @@ struct SetTimerListView: View {
                 role: .destructive,
                 handler: {
                     revealedTimerID = nil
+                    isRowSwiping = false
                     onDelete(timer)
                 }
             )

@@ -50,6 +50,11 @@ class PlaybackService {
     /// `ContentView` consumes this into `rootSheet`.
     var pendingPodcastPresentation: Podcast?
 
+    /// True from the tap that opens now-playing out of the floating / micro
+    /// overlay until dismiss zoom has finished. Keeps that mini at rest (no
+    /// hide / flash) so art can return into the same chrome.
+    var nowPlayingPresentedFromFloatingOverlay = false
+
     /// Nested `onAppear` / `onDisappear` from every `EpisodePlayerSheet`; hides the mini player while > 0.
     private(set) var episodePlayerUIPresentationDepth = 0
 

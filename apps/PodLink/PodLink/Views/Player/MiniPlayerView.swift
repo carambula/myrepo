@@ -478,12 +478,12 @@ struct MiniPlayerView: View {
         .frostedSurface(surfaceShape)
     }
 
-    /// Always bottom-padded — overlay pins microplayer to the bottom edge and
-    /// does not participate in top/bottom float snap.
     private var floatingMicroplayerView: some View {
-        microplayerRow
+        let pinnedBottom = floatVerticalSnap == .bottom
+        return microplayerRow
             .padding(.horizontal, DesignSystem.Spacing.sm)
-            .padding(.bottom, DesignSystem.Spacing.sm)
+            .padding(.bottom, pinnedBottom ? DesignSystem.Spacing.sm : 0)
+            .padding(.top, pinnedBottom ? 0 : DesignSystem.Spacing.sm)
             // Ensure the capsule claims taps inside its bounds (overlay hitTest
             // forwards to the hosting root; SwiftUI still needs a content shape).
             .contentShape(Rectangle())

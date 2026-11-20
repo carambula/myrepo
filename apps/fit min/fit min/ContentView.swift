@@ -46,6 +46,7 @@ struct ContentView: View {
                 onEdit: { timer in
                     configuratorPresentation = ConfiguratorPresentation(timer: timer)
                 },
+                onDuplicate: { duplicateTimer($0) },
                 onDelete: deleteTimer,
                 onAccountTap: { isAccountPresented = true }
             )
@@ -69,13 +70,22 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
         }
         .sheet(item: $configuratorPresentation) { presentation in
-            SetTimerConfiguratorSheet(timer: presentation.timer) { configuration, customTitle in
-                saveTimer(presentation.timer, configuration: configuration, customTitle: customTitle)
-            } onDelete: {
-                if let timer = presentation.timer {
-                    deleteTimer(timer)
+            SetTimerConfiguratorSheet(
+                timer: presentation.timer,
+                onSave: { configuration, customTitle in
+                    saveTimer(presentation.timer, configuration: configuration, customTitle: customTitle)
+                },
+                onDuplicate: { configuration, customTitle in
+                    if let timer = presentation.timer {
+                        duplicateTimer(timer, configuration: configuration, customTitle: customTitle)
+                    }
+                },
+                onDelete: {
+                    if let timer = presentation.timer {
+                        deleteTimer(timer)
+                    }
                 }
-            }
+            )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .bottomSheetPullToDismiss()
@@ -122,6 +132,15 @@ struct ContentView: View {
         } else {
             modelContext.insert(SetTimer(customTitle: customTitle, configuration: configuration))
         }
+        try? modelContext.save()
+    }
+
+    private func duplicateTimer(_ timer: SetTimer) {
+        duplicateTimer(timer, configuration: timer.configuration, customTitle: timer.customTitle)
+    }
+
+    private func duplicateTimer(_ timer: SetTimer, configuration: SetTimerConfiguration, customTitle: String) {
+        modelContext.insert(timer.makeDuplicate(configuration: configuration, customTitle: customTitle))
         try? modelContext.save()
     }
 
@@ -208,8 +227,12 @@ struct SetTimerListView: View {
     var onOpen: (SetTimer) -> Void
     var onPlaybackButton: (SetTimer) -> Void
     var onEdit: (SetTimer) -> Void
+    var onDuplicate: (SetTimer) -> Void
     var onDelete: (SetTimer) -> Void
     var onAccountTap: () -> Void
+
+    @State private var revealedTimerID: PersistentIdentifier?
+    @State private var isRowSwiping = false
 
     var body: some View {
         ScrollView {
@@ -228,34 +251,90 @@ struct SetTimerListView: View {
                             SetTimerRow(
                                 timer: timer,
                                 liveSession: liveSession(for: timer),
-                                onOpen: { onOpen(timer) },
-                                onPlaybackButton: { onPlaybackButton(timer) }
+                                onOpen: {
+                                    revealedTimerID = nil
+                                    onOpen(timer)
+                                },
+                                onPlaybackButton: {
+                                    revealedTimerID = nil
+                                    onPlaybackButton(timer)
+                                }
                             )
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    onDelete(timer)
-                                } label: {
-                                    Label("Delete", systemImage: DesignSystem.Icon.delete)
-                                }
-
-                                Button {
-                                    onEdit(timer)
-                                } label: {
-                                    Label("Edit", systemImage: DesignSystem.Icon.edit)
-                                }
-                                .tint(DesignSystem.Colors.accent)
-                            }
+                            .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
+                            .trailingSwipeActions(
+                                isRevealed: revealedBinding(for: timer),
+                                isDragActive: $isRowSwiping,
+                                actions: swipeActions(for: timer)
+                            )
+                            .accessibilityAction(named: "Edit") { onEdit(timer) }
+                            .accessibilityAction(named: "Duplicate") { onDuplicate(timer) }
+                            .accessibilityAction(named: "Delete") { onDelete(timer) }
                         }
                     }
-                    .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
                     .padding(.bottom, DesignSystem.Spacing.bottomSafeArea)
                 }
             }
             .padding(.top, DesignSystem.TopControls.verticalPadding)
         }
+        .scrollDisabled(isRowSwiping)
         .scrollClipDisabled()
         .coordinateSpace(name: "setTimerListScroll")
+        .onScrollPhaseChange { _, newPhase in
+            guard newPhase == .interacting, !isRowSwiping, revealedTimerID != nil else { return }
+            withAnimation(MinAnimation.springQuick) {
+                revealedTimerID = nil
+            }
+        }
         .themeBackground()
+    }
+
+    private func revealedBinding(for timer: SetTimer) -> Binding<Bool> {
+        Binding(
+            get: { revealedTimerID == timer.persistentModelID },
+            set: { isOpen in
+                if isOpen {
+                    revealedTimerID = timer.persistentModelID
+                } else if revealedTimerID == timer.persistentModelID {
+                    revealedTimerID = nil
+                }
+            }
+        )
+    }
+
+    private func swipeActions(for timer: SetTimer) -> [TrailingSwipeAction] {
+        [
+            TrailingSwipeAction(
+                id: "duplicate",
+                title: "Duplicate",
+                systemImage: DesignSystem.Icon.duplicate,
+                tint: DesignSystem.Colors.highlight,
+                handler: {
+                    revealedTimerID = nil
+                    onDuplicate(timer)
+                }
+            ),
+            TrailingSwipeAction(
+                id: "edit",
+                title: "Edit",
+                systemImage: DesignSystem.Icon.edit,
+                tint: DesignSystem.Colors.accent,
+                handler: {
+                    revealedTimerID = nil
+                    onEdit(timer)
+                }
+            ),
+            TrailingSwipeAction(
+                id: "delete",
+                title: "Delete",
+                systemImage: DesignSystem.Icon.delete,
+                tint: DesignSystem.Colors.error,
+                role: .destructive,
+                handler: {
+                    revealedTimerID = nil
+                    onDelete(timer)
+                }
+            )
+        ]
     }
 
     private var scrollPinnedTopChrome: some View {

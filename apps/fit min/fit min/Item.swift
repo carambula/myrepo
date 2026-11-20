@@ -176,13 +176,29 @@ final class SetTimer {
         }
     }
 
-    var schedule: [IntervalSegment] {
-        if let customSegmentsData,
-           let customSegments = try? JSONDecoder().decode([IntervalSegment].self, from: customSegmentsData),
-           !customSegments.isEmpty {
-            return customSegments
+    var customSegments: [IntervalSegment]? {
+        guard let customSegmentsData,
+              let customSegments = try? JSONDecoder().decode([IntervalSegment].self, from: customSegmentsData),
+              !customSegments.isEmpty else {
+            return nil
         }
-        return SetTimerScheduleBuilder.segments(for: configuration)
+        return customSegments
+    }
+
+    var schedule: [IntervalSegment] {
+        customSegments ?? SetTimerScheduleBuilder.segments(for: configuration)
+    }
+
+    func makeDuplicate(configuration: SetTimerConfiguration, customTitle: String) -> SetTimer {
+        SetTimer(
+            customTitle: SetTimerDuplicator.duplicatedTitle(from: customTitle),
+            configuration: configuration,
+            customSegments: SetTimerDuplicator.copiedCustomSegments(
+                originalConfiguration: self.configuration,
+                originalCustomSegments: customSegments,
+                newConfiguration: configuration
+            )
+        )
     }
 
     var totalDurationSeconds: Int {
@@ -214,6 +230,26 @@ final class SetTimer {
         self.customTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         customSegmentsData = nil
         updatedAt = Date()
+    }
+}
+
+enum SetTimerDuplicator {
+    static func duplicatedTitle(from customTitle: String) -> String {
+        let trimmed = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        return "\(trimmed) copy"
+    }
+
+    static func copiedCustomSegments(
+        originalConfiguration: SetTimerConfiguration,
+        originalCustomSegments: [IntervalSegment]?,
+        newConfiguration: SetTimerConfiguration
+    ) -> [IntervalSegment]? {
+        guard newConfiguration.normalized == originalConfiguration.normalized else { return nil }
+        guard let segments = originalCustomSegments, !segments.isEmpty else { return nil }
+        return segments.map { segment in
+            IntervalSegment(kind: segment.kind, durationSeconds: segment.durationSeconds, repIndex: segment.repIndex)
+        }
     }
 }
 

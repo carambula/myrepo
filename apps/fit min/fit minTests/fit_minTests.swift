@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import SwiftData
 import Testing
 @testable import fit_min
 
@@ -136,5 +138,111 @@ struct fit_minTests {
         ]
 
         #expect(SetTimerTitleFormatter.blockTitle(for: segments) == "30s/15s → 60s/30s → 30s")
+    }
+
+    @Test func trailingSwipeMetricsSnapAndClampOffsets() {
+        let revealedWidth = TrailingSwipeMetrics.revealedWidth(actionCount: 3)
+        #expect(revealedWidth == 216)
+        #expect(TrailingSwipeMetrics.clampedOffset(0, revealedWidth: revealedWidth) == 0)
+        #expect(TrailingSwipeMetrics.clampedOffset(-108, revealedWidth: revealedWidth) == -108)
+        #expect(TrailingSwipeMetrics.clampedOffset(-216, revealedWidth: revealedWidth) == -216)
+        #expect(TrailingSwipeMetrics.clampedOffset(-256, revealedWidth: revealedWidth) == -226)
+        #expect(TrailingSwipeMetrics.clampedOffset(8, revealedWidth: revealedWidth) == 2)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -50, revealedWidth: revealedWidth) == 0)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -80, revealedWidth: revealedWidth) == -216)
+        #expect(TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -20, height: 4)))
+        #expect(!TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -4, height: 20)))
+    }
+
+    @Test func duplicatedTimerTitleAppendsCopy() {
+        #expect(SetTimerDuplicator.duplicatedTitle(from: "") == "")
+        #expect(SetTimerDuplicator.duplicatedTitle(from: "  ") == "")
+        #expect(SetTimerDuplicator.duplicatedTitle(from: "Tabata Sprint") == "Tabata Sprint copy")
+        #expect(SetTimerDuplicator.duplicatedTitle(from: "  Muscle Burner  ") == "Muscle Burner copy")
+    }
+
+    @Test func duplicatedTimerKeepsCustomSegmentsWhenConfigurationIsUnchanged() {
+        let configuration = SetTimerConfiguration(
+            intervalType: .ladder,
+            restType: .regressive,
+            reps: 3,
+            workSeconds: 60,
+            restSeconds: 30,
+            workStepSeconds: 15
+        )
+        let originalSegments = [
+            IntervalSegment(kind: .work, durationSeconds: 60, repIndex: 0),
+            IntervalSegment(kind: .rest, durationSeconds: 30, repIndex: 0),
+            IntervalSegment(kind: .work, durationSeconds: 45, repIndex: 1),
+            IntervalSegment(kind: .rest, durationSeconds: 30, repIndex: 1),
+            IntervalSegment(kind: .work, durationSeconds: 30, repIndex: 2),
+        ]
+
+        let copied = SetTimerDuplicator.copiedCustomSegments(
+            originalConfiguration: configuration,
+            originalCustomSegments: originalSegments,
+            newConfiguration: configuration
+        )
+
+        #expect(copied?.map(\.kind) == originalSegments.map(\.kind))
+        #expect(copied?.map(\.durationSeconds) == originalSegments.map(\.durationSeconds))
+        let copiedIDs = copied?.map(\.id) ?? []
+        #expect(!copiedIDs.isEmpty)
+        #expect(Set(copiedIDs).isDisjoint(with: Set(originalSegments.map(\.id))))
+    }
+
+    @Test func duplicatedTimerDropsCustomSegmentsWhenConfigurationChanges() {
+        let original = SetTimerConfiguration(reps: 3, workSeconds: 60, restSeconds: 30)
+        var edited = original
+        edited.workSeconds = 90
+        let segments = [IntervalSegment(kind: .work, durationSeconds: 60, repIndex: 0)]
+
+        #expect(
+            SetTimerDuplicator.copiedCustomSegments(
+                originalConfiguration: original,
+                originalCustomSegments: segments,
+                newConfiguration: edited
+            ) == nil
+        )
+    }
+
+    @MainActor
+    @Test func makeDuplicateCopiesWorkoutWithoutSharingHistory() throws {
+        let schema = Schema([SetTimer.self])
+        let modelConfiguration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        let context = ModelContext(container)
+        let configuration = SetTimerConfiguration(
+            intervalType: .ladder,
+            restType: .regressive,
+            reps: 3,
+            workSeconds: 60,
+            restSeconds: 30,
+            workStepSeconds: 15
+        )
+        let original = SetTimer(
+            completedCount: 4,
+            customTitle: "Power Drop",
+            configuration: configuration,
+            customSegments: [
+                IntervalSegment(kind: .work, durationSeconds: 60, repIndex: 0),
+                IntervalSegment(kind: .rest, durationSeconds: 30, repIndex: 0),
+                IntervalSegment(kind: .work, durationSeconds: 45, repIndex: 1),
+                IntervalSegment(kind: .rest, durationSeconds: 30, repIndex: 1),
+                IntervalSegment(kind: .work, durationSeconds: 30, repIndex: 2),
+            ]
+        )
+        original.lastUsedAt = Date()
+        context.insert(original)
+
+        let duplicate = original.makeDuplicate(configuration: original.configuration, customTitle: original.customTitle)
+        context.insert(duplicate)
+
+        #expect(duplicate.customTitle == "Power Drop copy")
+        #expect(duplicate.completedCount == 0)
+        #expect(duplicate.lastUsedAt == nil)
+        #expect(duplicate.configuration == original.configuration)
+        #expect(duplicate.schedule.map(\.durationSeconds) == original.schedule.map(\.durationSeconds))
+        #expect(duplicate.customSegments?.map(\.id) != original.customSegments?.map(\.id))
     }
 }

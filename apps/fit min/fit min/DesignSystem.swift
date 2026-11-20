@@ -69,6 +69,7 @@ struct DesignSystem {
         static let check = "checkmark"
         static let close = "xmark"
         static let delete = "trash"
+        static let duplicate = "square.on.square"
         static let edit = "pencil"
         static let forward = "forward.fill"
         static let clock = "timer"

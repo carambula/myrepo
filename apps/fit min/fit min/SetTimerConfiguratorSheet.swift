@@ -5,6 +5,7 @@ struct SetTimerConfiguratorSheet: View {
 
     let timer: SetTimer?
     var onSave: (SetTimerConfiguration, String) -> Void
+    var onDuplicate: ((SetTimerConfiguration, String) -> Void)?
     var onDelete: (() -> Void)?
 
     @State private var configuration: SetTimerConfiguration
@@ -12,9 +13,15 @@ struct SetTimerConfiguratorSheet: View {
     @State private var titleDraft: String
     @State private var isTitleEditorPresented = false
 
-    init(timer: SetTimer?, onSave: @escaping (SetTimerConfiguration, String) -> Void, onDelete: (() -> Void)? = nil) {
+    init(
+        timer: SetTimer?,
+        onSave: @escaping (SetTimerConfiguration, String) -> Void,
+        onDuplicate: ((SetTimerConfiguration, String) -> Void)? = nil,
+        onDelete: (() -> Void)? = nil
+    ) {
         self.timer = timer
         self.onSave = onSave
+        self.onDuplicate = onDuplicate
         self.onDelete = onDelete
         _configuration = State(initialValue: timer?.configuration ?? SetTimerConfiguration())
         _customTitle = State(initialValue: timer?.customTitle ?? "")
@@ -105,14 +112,27 @@ struct SetTimerConfiguratorSheet: View {
                 }
                 .designSystemGroupedListRow()
 
-                if timer != nil, let onDelete {
+                if timer != nil {
                     Section {
-                        Button(role: .destructive) {
-                            onDelete()
-                            dismiss()
-                        } label: {
-                            Label("Delete set timer", systemImage: DesignSystem.Icon.delete)
-                                .frame(maxWidth: .infinity)
+                        if let onDuplicate {
+                            Button {
+                                onDuplicate(configuration.normalized, customTitle)
+                                dismiss()
+                            } label: {
+                                Label("Duplicate timer", systemImage: DesignSystem.Icon.duplicate)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .disabled(!canSave)
+                        }
+
+                        if let onDelete {
+                            Button(role: .destructive) {
+                                onDelete()
+                                dismiss()
+                            } label: {
+                                Label("Delete set timer", systemImage: DesignSystem.Icon.delete)
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
                     }
                     .designSystemGroupedListRow()

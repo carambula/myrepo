@@ -79,14 +79,32 @@ private struct MiniPlayerOverlayRoot: View {
             && !playbackService.isSearchUIVisible
     }
 
-    /// True while this overlay window presented now-playing (including the
-    /// dismiss zoom). The mini stays at rest so the thumb can land on it.
-    @State private var overlayOwnsPresentedPlayer = false
-
     /// Hide only when a player from another window would sit under this overlay.
+    /// Never hide while this overlay spawned now-playing — including dismiss
+    /// zoom — so art returns into the still-visible micro / floating chrome.
     /// Instant, not sprung — a fade here fights the zoom.
     private var hideMiniForForeignPlayer: Bool {
-        playbackService.isEpisodePlayerUIVisible && !overlayOwnsPresentedPlayer
+        if playbackService.nowPlayingPresentedFromFloatingOverlay {
+            return false
+        }
+        if ownsFloatingMini && playbackService.isNowPlayingSheetPresented {
+            return false
+        }
+        return playbackService.isEpisodePlayerUIVisible
+    }
+
+    /// Mark ownership on the tap that opens the sheet (before `onAppear`),
+    /// so the mini never flashes hidden for one frame.
+    private var showNowPlayingFromOverlay: Binding<Bool> {
+        Binding(
+            get: { playbackService.isNowPlayingSheetPresented },
+            set: { newValue in
+                if newValue {
+                    playbackService.nowPlayingPresentedFromFloatingOverlay = true
+                }
+                playbackService.isNowPlayingSheetPresented = newValue
+            }
+        )
     }
 
     /// Present now-playing from this window so the mini thumb and player share
@@ -100,7 +118,9 @@ private struct MiniPlayerOverlayRoot: View {
                 return OverlayNowPlayingItem(episode: episode)
             },
             set: { newValue in
-                if newValue == nil { playbackService.isNowPlayingSheetPresented = false }
+                if newValue == nil {
+                    playbackService.isNowPlayingSheetPresented = false
+                }
             }
         )
     }
@@ -111,7 +131,7 @@ private struct MiniPlayerOverlayRoot: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .allowsHitTesting(false)
             if showMiniPlayer {
-                MiniPlayerView(showNowPlayingSheet: $playbackService.isNowPlayingSheetPresented)
+                MiniPlayerView(showNowPlayingSheet: showNowPlayingFromOverlay)
                     .environment(themeManager)
                     .environment(playbackService)
                     .environment(networkStatusService)
@@ -119,7 +139,12 @@ private struct MiniPlayerOverlayRoot: View {
                     .fixedSize(horizontal: miniPlayerSize == MiniPlayerSize.microplayer.rawValue, vertical: true)
                     .opacity(hideMiniForForeignPlayer ? 0 : 1)
                     .animation(nil, value: hideMiniForForeignPlayer)
-                    .allowsHitTesting(!playbackService.isEpisodePlayerUIVisible)
+                    // Stay non-interactive under the sheet, but never unmount /
+                    // opacity-hide when this overlay owns the presentation.
+                    .allowsHitTesting(
+                        !playbackService.isEpisodePlayerUIVisible
+                            && !playbackService.nowPlayingPresentedFromFloatingOverlay
+                    )
                     .background {
                         MiniPlayerHitTargetProbe()
                     }
@@ -137,7 +162,14 @@ private struct MiniPlayerOverlayRoot: View {
             item: overlayNowPlayingItem,
             sourceID: { SheetHeroID.miniPlayer($0.episode.id) },
             namespace: overlayHero,
-            onDismiss: { overlayOwnsPresentedPlayer = false }
+            onDismiss: {
+                // Wait a turn so `EpisodePlayerSheet.onDisappear` can pop its
+                // session first — clearing ownership in the same frame as the
+                // pop would flash the mini hidden under a foreign-player hide.
+                DispatchQueue.main.async {
+                    playbackService.nowPlayingPresentedFromFloatingOverlay = false
+                }
+            }
         ) { item in
             EpisodePlayerSheet(
                 episode: item.episode,
@@ -155,7 +187,7 @@ private struct MiniPlayerOverlayRoot: View {
         }
         .onChange(of: playbackService.isNowPlayingSheetPresented) { _, presented in
             if presented, ownsFloatingMini {
-                overlayOwnsPresentedPlayer = true
+                playbackService.nowPlayingPresentedFromFloatingOverlay = true
             }
         }
         .environment(themeManager)

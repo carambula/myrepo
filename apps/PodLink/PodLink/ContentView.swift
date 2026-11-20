@@ -116,10 +116,13 @@ struct ContentView: View {
     }
 
     /// Now-playing sheet stacked on top of podcast / search / account.
+    /// Docked only — floating / microplayer present from the overlay window so
+    /// their chrome stays put and zoom can return into the same thumb.
     private var nowPlayingOverRootModal: Binding<Bool> {
         Binding(
             get: {
-                playbackService.isNowPlayingSheetPresented
+                ownsDockedNowPlayingPresentation
+                    && playbackService.isNowPlayingSheetPresented
                     && rootSheet != nil
                     && playbackService.state.currentEpisode != nil
             },

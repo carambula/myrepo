@@ -48,6 +48,7 @@ struct TrailingSwipeActionsModifier: ViewModifier {
     @State private var offset: CGFloat = 0
     @State private var dragStartOffset: CGFloat = 0
     @State private var isHorizontalDrag = false
+    @GestureState private var isGestureDragging = false
 
     private var revealedWidth: CGFloat {
         TrailingSwipeMetrics.revealedWidth(actionCount: actions.count)
@@ -58,61 +59,83 @@ struct TrailingSwipeActionsModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        ZStack(alignment: .trailing) {
-            HStack(spacing: 0) {
-                ForEach(actions) { action in
-                    Button(role: action.role) {
-                        close()
-                        action.handler()
-                    } label: {
-                        VStack(spacing: DesignSystem.Spacing.xs) {
-                            Image(systemName: action.systemImage)
-                                .font(.system(size: 18, weight: .semibold))
-                            Text(action.title)
-                                .font(DesignSystem.Typography.caption())
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: TrailingSwipeMetrics.actionWidth)
-                        .frame(maxHeight: .infinity)
-                        .background(action.tint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(action.title)
+        content
+            .background(DesignSystem.Colors.background)
+            .offset(x: visualOffset)
+            .overlay {
+                if isRevealed, !isHorizontalDrag {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: close)
                 }
             }
-            .allowsHitTesting(visualOffset < -20)
+            .contentShape(Rectangle())
+            .simultaneousGesture(swipeGesture)
+            .overlay(alignment: .trailing) {
+                actionButtons
+                    .offset(x: visualOffset + revealedWidth)
+                    .zIndex(1)
+            }
+            .clipped()
+            .onChange(of: isGestureDragging) { _, dragging in
+                isDragActive = dragging
+                if !dragging {
+                    isHorizontalDrag = false
+                }
+            }
+            .onChange(of: isRevealed) { _, revealed in
+                guard !isHorizontalDrag else { return }
+                withAnimation(MinAnimation.springQuick) {
+                    offset = revealed ? -revealedWidth : 0
+                }
+                if !revealed {
+                    isDragActive = false
+                }
+            }
+            .onDisappear {
+                isDragActive = false
+                isHorizontalDrag = false
+            }
+    }
 
-            content
-                .background(DesignSystem.Colors.background)
-                .offset(x: visualOffset)
-                .overlay {
-                    if isRevealed, !isHorizontalDrag {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture(perform: close)
-                    }
+    private var actionButtons: some View {
+        HStack(spacing: 0) {
+            ForEach(actions) { action in
+                VStack(spacing: DesignSystem.Spacing.xs) {
+                    Image(systemName: action.systemImage)
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(action.title)
+                        .font(DesignSystem.Typography.caption())
+                        .lineLimit(1)
                 }
-        }
-        .contentShape(Rectangle())
-        .clipped()
-        .simultaneousGesture(swipeGesture)
-        .onChange(of: isRevealed) { _, revealed in
-            guard !isHorizontalDrag else { return }
-            withAnimation(MinAnimation.springQuick) {
-                offset = revealed ? -revealedWidth : 0
+                .foregroundStyle(.white)
+                .frame(width: TrailingSwipeMetrics.actionWidth)
+                .frame(maxHeight: .infinity)
+                .background(action.tint)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    perform(action)
+                }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel(action.title)
             }
         }
+        .allowsHitTesting(visualOffset < -20)
     }
 
     private var swipeGesture: some Gesture {
         DragGesture(minimumDistance: 12, coordinateSpace: .local)
+            .updating($isGestureDragging) { value, state, _ in
+                let isOpeningSwipe = value.translation.width < 0
+                if state || (TrailingSwipeMetrics.isHorizontalDrag(translation: value.translation) && (isRevealed || isOpeningSwipe)) {
+                    state = true
+                }
+            }
             .onChanged { value in
                 if !isHorizontalDrag {
                     guard TrailingSwipeMetrics.isHorizontalDrag(translation: value.translation) else { return }
                     if !isRevealed, value.translation.width > 0 { return }
                     isHorizontalDrag = true
-                    isDragActive = true
                     dragStartOffset = offset
                     isRevealed = true
                 }
@@ -121,10 +144,7 @@ struct TrailingSwipeActionsModifier: ViewModifier {
             }
             .onEnded { value in
                 let wasHorizontalDrag = isHorizontalDrag
-                defer {
-                    isHorizontalDrag = false
-                    isDragActive = false
-                }
+                isHorizontalDrag = false
                 guard wasHorizontalDrag else { return }
 
                 let predicted = visualOffset + value.predictedEndTranslation.width - value.translation.width
@@ -139,13 +159,23 @@ struct TrailingSwipeActionsModifier: ViewModifier {
             }
     }
 
-    private func close() {
+    private func perform(_ action: TrailingSwipeAction) {
+        isDragActive = false
+        isHorizontalDrag = false
         withAnimation(MinAnimation.springQuick) {
             isRevealed = false
             offset = 0
         }
+        action.handler()
+    }
+
+    private func close() {
         isDragActive = false
         isHorizontalDrag = false
+        withAnimation(MinAnimation.springQuick) {
+            isRevealed = false
+            offset = 0
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import SwiftData
 import Testing
@@ -137,6 +138,20 @@ struct fit_minTests {
         ]
 
         #expect(SetTimerTitleFormatter.blockTitle(for: segments) == "30s/15s → 60s/30s → 30s")
+    }
+
+    @Test func trailingSwipeMetricsSnapAndClampOffsets() {
+        let revealedWidth = TrailingSwipeMetrics.revealedWidth(actionCount: 3)
+        #expect(revealedWidth == 216)
+        #expect(TrailingSwipeMetrics.clampedOffset(0, revealedWidth: revealedWidth) == 0)
+        #expect(TrailingSwipeMetrics.clampedOffset(-108, revealedWidth: revealedWidth) == -108)
+        #expect(TrailingSwipeMetrics.clampedOffset(-216, revealedWidth: revealedWidth) == -216)
+        #expect(TrailingSwipeMetrics.clampedOffset(-256, revealedWidth: revealedWidth) == -226)
+        #expect(TrailingSwipeMetrics.clampedOffset(8, revealedWidth: revealedWidth) == 2)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -50, revealedWidth: revealedWidth) == 0)
+        #expect(TrailingSwipeMetrics.restOffset(predictedOffset: -80, revealedWidth: revealedWidth) == -216)
+        #expect(TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -20, height: 4)))
+        #expect(!TrailingSwipeMetrics.isHorizontalDrag(translation: CGSize(width: -4, height: 20)))
     }
 
     @Test func duplicatedTimerTitleAppendsCopy() {

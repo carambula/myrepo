@@ -355,6 +355,9 @@ private struct SheetHeroSourceModifier: ViewModifier {
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 if SheetHeroID.isMiniPlayer(id) {
+                    // Cover hides the leftover thumb while the sheet is settled.
+                    // Uncover happens at dismiss *start* (not tear-down) so the
+                    // return morph lands on an opaque target like grid/list tiles.
                     sourced
                         .modifier(SheetHeroCoverOpacity(id: id))
                         .overlay {
@@ -540,6 +543,83 @@ private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
         }
     }
 }
+
+/// Covers mini-player source art after open settles, and uncovers at dismiss
+/// *start* so return zoom matches grid/list (opaque land, no fade-out).
+private struct SheetHeroMiniCoverProbe: UIViewControllerRepresentable {
+    let id: String
+
+    func makeUIViewController(context: Context) -> CoverProbeController {
+        let controller = CoverProbeController()
+        controller.heroID = id
+        return controller
+    }
+
+    func updateUIViewController(_ controller: CoverProbeController, context: Context) {
+        controller.heroID = id
+    }
+
+    static func dismantleUIViewController(_ controller: CoverProbeController, coordinator: ()) {
+        controller.cancelPendingCover()
+        SheetHeroSession.shared.uncover(controller.heroID)
+    }
+
+    final class CoverProbeController: UIViewController {
+        var heroID: String = ""
+        private var coverWork: DispatchWorkItem?
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            scheduleCoverIfNeeded()
+        }
+
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            cancelPendingCover()
+            // Dismiss commit — reveal the thumb before the return morph runs.
+            // Waiting until tear-down kept opacity at 0 for the whole land and
+            // looked like the art fading out on the way back.
+            guard sheetHostIsBeingDismissed() else { return }
+            SheetHeroSession.shared.uncover(heroID)
+            SheetHeroDiagnostics.log("uncover mini source for dismiss \(heroID)")
+        }
+
+        /// This probe is a child of the sheet host; `isBeingDismissed` is often
+        /// only set on the presented host, not on representable children.
+        private func sheetHostIsBeingDismissed() -> Bool {
+            var current: UIViewController? = self
+            while let vc = current {
+                if vc.presentingViewController != nil {
+                    return vc.isBeingDismissed
+                }
+                if vc.isBeingDismissed { return true }
+                current = vc.parent
+            }
+            return false
+        }
+
+        func scheduleCoverIfNeeded() {
+            guard SheetHeroID.isMiniPlayer(heroID) else { return }
+            cancelPendingCover()
+            let coverID = heroID
+            let work = DispatchWorkItem {
+                guard SheetHeroSession.isActiveZoomDestination(coverID) else { return }
+                SheetHeroSession.shared.cover(coverID)
+                SheetHeroDiagnostics.log("cover mini source \(coverID)")
+            }
+            coverWork = work
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + SheetHeroMotion.openDuration,
+                execute: work
+            )
+        }
+
+        func cancelPendingCover() {
+            coverWork?.cancel()
+            coverWork = nil
+        }
+    }
+}
 #endif
 
 private struct SheetHeroDestinationModifier: ViewModifier {
@@ -559,9 +639,8 @@ private struct SheetHeroDestinationModifier: ViewModifier {
         #if os(iOS)
         // Nothing here may change the source or the sheet once the zoom has
         // started; the system owns both until the card lands. Mini-player
-        // thumbs are covered only after the open spring settles so the open
-        // morph is not fighting a hidden source, then stay covered until this
-        // destination leaves (dismiss land complete).
+        // thumbs are covered only after the open spring settles, then
+        // uncovered as soon as dismiss begins so return matches tiles.
         applyZoom(
             tagged
                 .background {
@@ -569,13 +648,11 @@ private struct SheetHeroDestinationModifier: ViewModifier {
                         .frame(width: 0, height: 0)
                         .accessibilityHidden(true)
                 }
-                .onAppear {
-                    guard SheetHeroID.isMiniPlayer(id) else { return }
-                    let coverID = id
-                    DispatchQueue.main.asyncAfter(deadline: .now() + SheetHeroMotion.openDuration) {
-                        guard SheetHeroSession.isActiveZoomDestination(coverID) else { return }
-                        SheetHeroSession.shared.cover(coverID)
-                        SheetHeroDiagnostics.log("cover mini source \(coverID)")
+                .background {
+                    if SheetHeroID.isMiniPlayer(id) {
+                        SheetHeroMiniCoverProbe(id: id)
+                            .frame(width: 0, height: 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .onDisappear {

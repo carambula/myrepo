@@ -37,9 +37,9 @@ public enum SheetHeroID {
     public static func video(_ id: String) -> String { "video:\(id)" }
     public static func channel(_ id: String) -> String { "channel:\(id)" }
 
-    /// Mini-player artwork in a secondary overlay window. `matchedTransitionSource`
-    /// hides that live view, so those sources keep an idle copy that cover
-    /// opacity hides while the matching sheet is the foreground object.
+    /// Mini-player artwork in a secondary overlay window. Live art stays
+    /// hidden; a matched idle copy is the visible thumb, and cover opacity
+    /// hides that copy while the matching sheet is the foreground object.
     public static func isMiniPlayer(_ id: String) -> Bool {
         id.hasPrefix("miniPlayer:")
     }
@@ -350,16 +350,18 @@ private struct SheetHeroSourceModifier: ViewModifier {
         // Grid/list tiles must stay live — a second copy reads as a leftover
         // thumb. Mini-player art lives in an overlay window where
         // `matchedTransitionSource` hides the live view even when idle, so
-        // that source keeps a hit-test-free copy. Cover opacity hides both
-        // while the matching sheet is the foreground object.
+        // that source keeps a hit-test-free copy as the only visible art.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 if SheetHeroID.isMiniPlayer(id) {
-                    // Cover hides the leftover thumb while the sheet is settled.
-                    // Uncover happens at dismiss *start* (not tear-down) so the
-                    // return morph lands on an opaque target like grid/list tiles.
+                    // Live art stays invisible — uncovering the matched copy at
+                    // dismiss start (opaque land target) must not also reveal a
+                    // second thumb in the microplayer during the return flight.
+                    // Cover opacity only gates that matched copy: hidden while
+                    // the sheet is settled, opaque for the return morph.
                     sourced
-                        .modifier(SheetHeroCoverOpacity(id: id))
+                        .opacity(0)
+                        .accessibilityHidden(true)
                         .overlay {
                             content
                                 .matchedTransitionSource(id: id, in: namespace) { source in

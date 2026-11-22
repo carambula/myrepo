@@ -37,9 +37,9 @@ public enum SheetHeroID {
     public static func video(_ id: String) -> String { "video:\(id)" }
     public static func channel(_ id: String) -> String { "channel:\(id)" }
 
-    /// Mini-player artwork in a secondary overlay window. Live art stays
-    /// hidden; a matched idle copy is the visible thumb, and cover opacity
-    /// hides that copy while the matching sheet is the foreground object.
+    /// Mini-player artwork in a secondary overlay window. The system keeps
+    /// the matched source hidden there, so an unmatched copy is the visible
+    /// thumb; cover opacity hides that copy while its sheet is up.
     public static func isMiniPlayer(_ id: String) -> Bool {
         id.hasPrefix("miniPlayer:")
     }
@@ -348,20 +348,21 @@ private struct SheetHeroSourceModifier: ViewModifier {
         #if os(iOS)
         // App Store-style zoom: the system morphs this image into the sheet.
         // Grid/list tiles must stay live — a second copy reads as a leftover
-        // thumb. Mini-player art lives in an overlay window where
-        // `matchedTransitionSource` hides the live view even when idle, so
-        // that source keeps a hit-test-free copy as the only visible art.
+        // thumb. Mini-player art lives in an overlay window where the system
+        // keeps a `matchedTransitionSource` view hidden even when idle, so
+        // that source is split into two layers.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 if SheetHeroID.isMiniPlayer(id) {
-                    // Live art stays invisible — uncovering the matched copy at
-                    // dismiss start (opaque land target) must not also reveal a
-                    // second thumb in the microplayer during the return flight.
-                    // Cover opacity only gates that matched copy: hidden while
-                    // the sheet is settled, opaque for the return morph.
+                    // `sourced` is the only art anyone sees at rest. Cover
+                    // opacity hides it while the sheet is up and for the whole
+                    // return flight, so the flying art is the only thumb.
+                    //
+                    // The overlay copy is what the zoom snapshots and lands
+                    // on. Its opacity is never ours to change: a transparent
+                    // source makes the returning art fade out on the way back.
                     sourced
-                        .opacity(0)
-                        .accessibilityHidden(true)
+                        .modifier(SheetHeroCoverOpacity(id: id))
                         .overlay {
                             content
                                 .matchedTransitionSource(id: id, in: namespace) { source in
@@ -369,7 +370,6 @@ private struct SheetHeroSourceModifier: ViewModifier {
                                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                     )
                                 }
-                                .modifier(SheetHeroCoverOpacity(id: id))
                                 .allowsHitTesting(false)
                                 .accessibilityHidden(true)
                         }
@@ -546,8 +546,8 @@ private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
     }
 }
 
-/// Covers mini-player source art after open settles, and uncovers at dismiss
-/// *start* so return zoom matches grid/list (opaque land, no fade-out).
+/// Covers the visible mini-player thumb once the open has settled and keeps
+/// it covered until the return zoom has landed, then reveals it in place.
 private struct SheetHeroMiniCoverProbe: UIViewControllerRepresentable {
     let id: String
 
@@ -569,21 +569,32 @@ private struct SheetHeroMiniCoverProbe: UIViewControllerRepresentable {
     final class CoverProbeController: UIViewController {
         var heroID: String = ""
         private var coverWork: DispatchWorkItem?
+        private var isReturning = false
 
+        /// Also runs when an interactive dismiss is cancelled.
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
+            isReturning = false
             scheduleCoverIfNeeded()
         }
 
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
             cancelPendingCover()
-            // Dismiss commit — reveal the thumb before the return morph runs.
-            // Waiting until tear-down kept opacity at 0 for the whole land and
-            // looked like the art fading out on the way back.
             guard sheetHostIsBeingDismissed() else { return }
+            // A dismiss that starts before the settle cover ran still needs
+            // the thumb slot empty for the flight.
+            isReturning = true
+            SheetHeroSession.shared.cover(heroID)
+        }
+
+        /// The return zoom has landed; a cancelled drag never gets here.
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            guard isReturning else { return }
+            isReturning = false
             SheetHeroSession.shared.uncover(heroID)
-            SheetHeroDiagnostics.log("uncover mini source for dismiss \(heroID)")
+            SheetHeroDiagnostics.log("uncover mini source after land \(heroID)")
         }
 
         /// This probe is a child of the sheet host; `isBeingDismissed` is often
@@ -640,9 +651,9 @@ private struct SheetHeroDestinationModifier: ViewModifier {
             .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
         // Nothing here may change the source or the sheet once the zoom has
-        // started; the system owns both until the card lands. Mini-player
-        // thumbs are covered only after the open spring settles, then
-        // uncovered as soon as dismiss begins so return matches tiles.
+        // started; the system owns both until the card lands. The visible
+        // mini-player thumb is a separate layer from the matched source, so
+        // its cover probe can hide it from settle until the return lands.
         applyZoom(
             tagged
                 .background {

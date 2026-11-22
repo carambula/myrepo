@@ -163,12 +163,11 @@ private struct MiniPlayerOverlayRoot: View {
             sourceID: { SheetHeroID.miniPlayer($0.episode.id) },
             namespace: overlayHero,
             onDismiss: {
-                // Wait a turn so `EpisodePlayerSheet.onDisappear` can pop its
-                // session first — clearing ownership in the same frame as the
-                // pop would flash the mini hidden under a foreign-player hide.
-                DispatchQueue.main.async {
-                    playbackService.nowPlayingPresentedFromFloatingOverlay = false
-                }
+                // Keep ownership through the dismiss zoom land. Clearing as
+                // soon as the sheet reports dismiss (or on the next turn while
+                // `isEpisodePlayerUIVisible` is still true) opacity-hides the
+                // mini and the thumb has nowhere to return.
+                Self.scheduleClearFloatingOverlayOwnership(playbackService)
             }
         ) { item in
             EpisodePlayerSheet(
@@ -190,11 +189,29 @@ private struct MiniPlayerOverlayRoot: View {
                 playbackService.nowPlayingPresentedFromFloatingOverlay = true
             }
         }
+        .onChange(of: playbackService.isEpisodePlayerUIVisible) { _, visible in
+            if !visible, !playbackService.isNowPlayingSheetPresented {
+                Self.scheduleClearFloatingOverlayOwnership(playbackService)
+            }
+        }
         .environment(themeManager)
         .environment(playbackService)
         .environment(downloadManager)
         .environment(networkStatusService)
         .sheetHeroOverlayContainer()
+    }
+
+    /// Drop overlay ownership only after the player session is gone and the
+    /// dismiss zoom has had time to land on the still-mounted mini.
+    private static func scheduleClearFloatingOverlayOwnership(
+        _ playbackService: PlaybackService
+    ) {
+        guard playbackService.nowPlayingPresentedFromFloatingOverlay else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + SheetHeroMotion.openDuration) {
+            guard !playbackService.isNowPlayingSheetPresented,
+                  !playbackService.isEpisodePlayerUIVisible else { return }
+            playbackService.nowPlayingPresentedFromFloatingOverlay = false
+        }
     }
 }
 
@@ -258,23 +275,26 @@ final class MiniPlayerOverlayManager {
         miniPlayerFloatSnapAtTop _: Bool,
         isMicroplayerMode _: Bool
     ) {
+        // Services are reference types; Observation keeps the existing root
+        // live. Replacing `rootView` here resets `@Namespace` and remounts the
+        // mini mid-dismiss, so zoom returns to nothing and the capsule slides
+        // back in a moment later.
+        if let existing = overlayWindow, existing.windowScene === windowScene,
+           let host = hostingController {
+            existing.miniPlayerHostView = host.view
+            host.view.backgroundColor = .clear
+            host.view.isOpaque = false
+            host.view.clipsToBounds = false
+            existing.isHidden = false
+            return
+        }
+
         let root = MiniPlayerOverlayRoot(
             themeManager: themeManager,
             playbackService: playbackService,
             downloadManager: downloadManager,
             networkStatusService: networkStatusService
         )
-
-        if let existing = overlayWindow, existing.windowScene === windowScene,
-           let host = hostingController {
-            host.rootView = root
-            existing.miniPlayerHostView = host.view
-            host.view.backgroundColor = .clear
-            host.view.isOpaque = false
-            host.view.clipsToBounds = false
-            overlayWindow?.isHidden = false
-            return
-        }
 
         overlayWindow?.isHidden = true
         overlayWindow = nil

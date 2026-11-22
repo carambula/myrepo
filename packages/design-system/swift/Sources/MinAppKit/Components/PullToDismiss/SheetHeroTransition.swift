@@ -38,7 +38,8 @@ public enum SheetHeroID {
     public static func channel(_ id: String) -> String { "channel:\(id)" }
 
     /// Mini-player artwork in a secondary overlay window. `matchedTransitionSource`
-    /// hides that live view, so those sources keep a covered idle copy.
+    /// hides that live view, so those sources keep an idle copy that cover
+    /// opacity hides while the matching sheet is the foreground object.
     public static func isMiniPlayer(_ id: String) -> Bool {
         id.hasPrefix("miniPlayer:")
     }
@@ -192,6 +193,12 @@ final class SheetHeroSession {
         activeZoomIDs[id] = count > 1 ? count - 1 : nil
         SheetHeroDiagnostics.log("zoom destination removed \(id)")
     }
+
+    /// True while `id`'s zoom destination is still in the hierarchy.
+    nonisolated static func isActiveZoomDestination(_ id: String) -> Bool {
+        activeZoomIDs[id] != nil
+    }
+
     /// True while a proxy is following the finger or flying back to a tile.
     /// Radius guards must not rewrite `preferredCornerRadius` in this window.
     /// `nonisolated(unsafe)` so UIKit display-link / dimming callbacks can
@@ -343,23 +350,24 @@ private struct SheetHeroSourceModifier: ViewModifier {
         // Grid/list tiles must stay live — a second copy reads as a leftover
         // thumb. Mini-player art lives in an overlay window where
         // `matchedTransitionSource` hides the live view even when idle, so
-        // that source keeps a hit-test-free copy for the system to match.
+        // that source keeps a hit-test-free copy. Cover opacity hides both
+        // while the matching sheet is the foreground object.
         if allowsZoom, let namespace {
             if #available(iOS 18.0, *) {
                 if SheetHeroID.isMiniPlayer(id) {
-                    // The system hides and restores its matched source on its
-                    // own, so this copy's opacity is left alone while the
-                    // sheet opens.
-                    sourced.overlay {
-                        content
-                            .matchedTransitionSource(id: id, in: namespace) { source in
-                                source.clipShape(
-                                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                )
-                            }
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
+                    sourced
+                        .modifier(SheetHeroCoverOpacity(id: id))
+                        .overlay {
+                            content
+                                .matchedTransitionSource(id: id, in: namespace) { source in
+                                    source.clipShape(
+                                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                    )
+                                }
+                                .modifier(SheetHeroCoverOpacity(id: id))
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
                 } else {
                     sourced
                         .matchedTransitionSource(id: id, in: namespace) { source in
@@ -483,6 +491,19 @@ private struct SheetHeroImageCapture: UIViewRepresentable {
 #endif
 
 #if os(iOS)
+/// Hides mini-player source art while its sheet owns the foreground so the
+/// morph is one picture — not a leftover thumb under / behind the player.
+private struct SheetHeroCoverOpacity: ViewModifier {
+    let id: String
+    var session = SheetHeroSession.shared
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(session.isCovered(id) ? 0 : 1)
+            .transaction { $0.animation = nil }
+    }
+}
+
 /// Holds the zoom session open for as long as the destination's hosting view
 /// exists. `expectZoomPresentation` covers the gap before this view is made.
 private struct SheetHeroZoomSessionProbe: UIViewRepresentable {
@@ -537,13 +558,25 @@ private struct SheetHeroDestinationModifier: ViewModifier {
             .environment(\.sheetHeroAllowsZoom, true)
         #if os(iOS)
         // Nothing here may change the source or the sheet once the zoom has
-        // started; the system owns both until the card lands.
+        // started; the system owns both until the card lands. Mini-player
+        // thumbs are covered only after the open spring settles so the open
+        // morph is not fighting a hidden source, then stay covered until this
+        // destination leaves (dismiss land complete).
         applyZoom(
             tagged
                 .background {
                     SheetHeroZoomSessionProbe(id: id)
                         .frame(width: 0, height: 0)
                         .accessibilityHidden(true)
+                }
+                .onAppear {
+                    guard SheetHeroID.isMiniPlayer(id) else { return }
+                    let coverID = id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + SheetHeroMotion.openDuration) {
+                        guard SheetHeroSession.isActiveZoomDestination(coverID) else { return }
+                        SheetHeroSession.shared.cover(coverID)
+                        SheetHeroDiagnostics.log("cover mini source \(coverID)")
+                    }
                 }
                 .onDisappear {
                     SheetHeroSession.shared.uncover(id)

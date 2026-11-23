@@ -47,14 +47,7 @@ struct ThemeSelectionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .onAppear {

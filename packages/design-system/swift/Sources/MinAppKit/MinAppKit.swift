@@ -20,6 +20,7 @@ import Foundation
 /// - `AgentConnectionStore`: hashed tokens and per-app read/write scopes
 /// - `AgentJournal`: 7-day undo records and a redacted audit log
 /// - `AgentSettingsView`: Account-sheet UI for connecting and revoking agents
+/// - `MinSheetIconButton`: Icon-only close/done/add/send toolbar chrome for account and menu sheets
 public enum MinAppKit {
     /// Current version of MinAppKit
     public static let version = "1.0.0"

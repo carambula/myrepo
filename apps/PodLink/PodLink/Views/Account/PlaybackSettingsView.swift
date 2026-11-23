@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 enum AutoQueueRefreshPolicy: String, CaseIterable, Identifiable {
@@ -184,14 +185,7 @@ struct PlaybackSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .onChange(of: playbackSpeed) { _, newValue in

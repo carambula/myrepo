@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct DownloadedEpisodesView: View {
@@ -39,25 +40,16 @@ struct DownloadedEpisodesView: View {
         .navigationTitle("Downloaded Episodes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
-            }
             if !records.isEmpty {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(role: .destructive) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    MinSheetIconButton(.delete, accessibilityLabel: "Clear downloads") {
                         downloadManager.clearAllDownloads()
                         refreshRecords()
-                    } label: {
-                        Label("Clear", systemImage: "trash")
                     }
                 }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .onAppear(perform: refreshRecords)

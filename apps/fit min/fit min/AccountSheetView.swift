@@ -175,13 +175,7 @@ struct AccountSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                            .viewControlIconStyle()
-                    }
-                    .accessibilityLabel("Close")
+                    MinSheetIconButton(.close) { dismiss() }
                 }
             }
             .sheet(isPresented: $showsThemes) {
@@ -242,13 +236,7 @@ struct ThemeSelectionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.check)
-                        .viewControlIconStyle()
-                }
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
     }

@@ -247,7 +247,7 @@ private struct ExportShareSheet: View {
             .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    MinSheetIconButton(.done) { dismiss() }
                 }
             }
         }

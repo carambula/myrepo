@@ -31,7 +31,7 @@ public struct IdeasRageShakeModifier: ViewModifier {
                     IdeasListView(app: app)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button("Close") { showIdeas = false }
+                                MinSheetIconButton(.close) { showIdeas = false }
                             }
                         }
                 }

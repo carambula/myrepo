@@ -31,4 +31,5 @@ public enum MinIcon {
     public static let safari = "safari"
     public static let play = "play.fill"
     public static let pause = "pause.fill"
+    public static let send = "paperplane"
 }

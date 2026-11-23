@@ -1,5 +1,6 @@
-import SwiftUI
+import MinAppKit
 import SwiftData
+import SwiftUI
 
 struct AddChannelView: View {
     @Environment(\.dismiss) private var dismiss
@@ -58,14 +59,7 @@ struct AddChannelView: View {
             .navigationTitle("Add Channel")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.checkmark)
-                            .viewControlIconStyle()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Done")
+                    MinSheetIconButton(.done) { dismiss() }
                 }
             }
         }

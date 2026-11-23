@@ -527,11 +527,11 @@ function ComponentsPanel() {
         </div>
       </ComponentPreview>
 
-      <ComponentPreview title="SettingsSheet" desc="Grouped list + Done toolbar chrome">
+      <ComponentPreview title="SettingsSheet" desc="Grouped list + icon-only Done (checkmark) toolbar chrome">
         <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Notifications</span>
-            <span style={{ color: '#2563eb', fontSize: 13, fontWeight: 600 }}>✓ Done</span>
+            <span className="app-sheet-icon-btn" aria-label="Done" style={{ color: '#2563eb', fontSize: 16, fontWeight: 600 }}>✓</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333' }}>
             <span style={{ fontSize: 13 }}>Morning Summary</span>
@@ -729,7 +729,7 @@ function PatternsPanel() {
     { name: 'Frosted Surface + Card Modifiers', where: 'All 4 apps', desc: 'Shared View modifiers for glass surfaces and card elevation. Single implementation in MinAppKit.', dsFile: '—', swift: 'MinAppKit/ViewSurface.swift (shared)', status: 'unified' },
     { name: 'ThemeManager', where: 'All 4 apps', desc: 'All 4 apps conform to MinTheme. WatchedIt uses typealias, Cyclismo extends with duotone, PodLink and YourTube bridge via AppTheme. Shared: MinTheme protocol, ThemeColorData, ThemeFontStyle, CustomThemeDefinition, CustomTheme, ThemeAdaptedPalette (with shared palette generator), ThemeFontResolver, UIColor extensions.', dsFile: 'themes/ (light + dark)', swift: 'MinAppKit/Theme/ (shared base) → ThemeManager.swift (per-app managers)', status: 'unified' },
     { name: 'Onboarding Flow', where: 'PodLink, YourTube, Cyclismo', desc: 'Shared OnboardingPagerView (paged TabView + page dots + completion binding) in MinAppKit. Each app provides its own step content. WatchedIt uses a different model.', dsFile: 'OnboardingContainer + per-app configs', swift: 'MinAppKit/OnboardingPagerView.swift (shared) → per-app content', status: 'unified' },
-    { name: 'Notification Preferences', where: 'All 4 apps', desc: 'Shared CodablePreference protocol (load/save) and SettingsSheet chrome (grouped list + Done toolbar) in MinAppKit. Each app defines its own preference fields and sections.', dsFile: 'NotificationSettingsPage + per-app settings', swift: 'MinAppKit/CodablePreference.swift + SettingsSheet.swift (shared) → per-app fields', status: 'unified' },
+    { name: 'Notification Preferences', where: 'All 4 apps', desc: 'Shared CodablePreference protocol (load/save) and SettingsSheet chrome (grouped list + icon-only checkmark Done) in MinAppKit. Each app defines its own preference fields and sections.', dsFile: 'NotificationSettingsPage + per-app settings', swift: 'MinAppKit/CodablePreference.swift + SettingsSheet.swift (shared) → per-app fields', status: 'unified' },
     { name: 'Search Placement', where: 'PodLink, YourTube', desc: 'Shared NavigationSearchPlacement enum in MinAppKit. Each app provides its own display labels and persistence.', dsFile: '—', swift: 'MinAppKit/NavigationSearchPlacement.swift (shared)', status: 'unified' },
     { name: 'Art Tile Radius', where: 'All 4 apps', desc: `Poster/artwork corner radius: ${borders.radii.artTile}. Single source of truth via MinCornerRadius.artTile.`, dsFile: 'borders.radii.artTile', swift: 'MinAppKit/MinCornerRadius.artTile (shared)', status: 'unified' },
     { name: 'Deep Linking', where: 'All 4 apps', desc: 'Shared URL.queryValue(for:) extension in MinAppKit. Each app keeps its own scheme/route parsing since routes are app-specific.', dsFile: 'deepLinking/ (components + logic)', swift: 'MinAppKit/URLDeepLink.swift (shared helper) → per-app DeepLinkHandler', status: 'unified' },
@@ -846,7 +846,8 @@ function AppsPanel() {
           { file: 'Tokens/', from: 'MinSpacing, MinCornerRadius, MinOpacity, MinShadow, MinAnimation, MinIcon' },
           { file: 'Components/ScrollDismissButton.swift', from: 'Floating scroll-dismiss with configurable material' },
           { file: 'Components/OnboardingPagerView.swift', from: 'Paged TabView shell + page dots + completion' },
-          { file: 'Components/SettingsSheet.swift', from: 'Grouped List + Done toolbar chrome' },
+          { file: 'Components/SettingsSheet.swift', from: 'Grouped List + icon-only checkmark Done' },
+          { file: 'Components/MinSheetIconButton.swift', from: 'Icon-only sheet toolbar + glass body action buttons' },
           { file: 'Components/NavigationSearchPlacement.swift', from: 'Search bar position enum (PodLink + YourTube)' },
           { file: 'Components/PullToDismiss/', from: 'ScrollObserver + Introspector + Engine + edge-swipe dismiss' },
           { file: 'Components/CachedAsyncImage.swift', from: 'Remote image loading + memory/disk cache' },
@@ -921,19 +922,19 @@ const INSPECTOR_APPS = APPS.map(a => ({
     podlink: [
       { id: 'home', name: 'Podcast List', desc: '2-column grid with search placement toggle' },
       { id: 'detail', name: 'Show Detail', desc: 'Artwork, episode list, pull-to-dismiss' },
-      { id: 'account', name: 'Settings', desc: 'Notification preferences, appearance' },
+      { id: 'account', name: 'Account', desc: 'Notification preferences, appearance' },
       { id: 'onboarding', name: 'Onboarding', desc: 'OnboardingPagerView — 4 steps' },
     ],
     yourtube: [
       { id: 'home', name: 'Video Feed', desc: '2-column grid with subscriptions' },
       { id: 'detail', name: 'Channel Detail', desc: 'Banner, video list, subscribe button' },
-      { id: 'account', name: 'Settings', desc: 'Playback and notification preferences' },
+      { id: 'account', name: 'Account', desc: 'Playback and notification preferences' },
       { id: 'onboarding', name: 'Onboarding', desc: 'OnboardingPagerView — 3 steps' },
     ],
     cyclismo: [
       { id: 'home', name: 'Race List', desc: 'Vertical list with race cards, stages preview' },
       { id: 'detail', name: 'Race Detail', desc: 'Hero, stage profiles, classification tables' },
-      { id: 'account', name: 'Settings', desc: 'Notification preferences, appearance' },
+      { id: 'account', name: 'Account', desc: 'Notification preferences, appearance' },
       { id: 'onboarding', name: 'Onboarding', desc: 'OnboardingPagerView — 4 steps' },
     ],
   }[a.id],
@@ -1066,9 +1067,16 @@ function PhoneDetailScreen({ app }) {
 function PhoneAccountScreen({ app }) {
   return (
     <div className="app-phone-screen" style={{ background: 'var(--phone-bg)' }}>
-      <div className="ios-nav-bar" {...ds({ el: 'Navigation Bar', size: `393 × 44pt`, spacing: `padding-h: Spacing.lg (${S.lg}pt)` })}>
-        <div className="ios-nav-bar-trailing"><span style={{ color: 'var(--phone-accent)', fontSize: 15, fontWeight: 600 }}>Done</span></div>
-        Settings
+      <div className="app-phone-status-bar" {...ds({ el: 'Status Bar', size: '393 × 54pt', layout: 'HStack, space-between' })}>
+        <span className="app-phone-time">9:41</span>
+      </div>
+      <div className="ios-nav-bar" {...ds({ el: 'Sheet Navigation Bar', size: `393 × 44pt`, spacing: `padding-h: Spacing.lg (${S.lg}pt)`, layout: 'HStack, space-between' })}>
+        <div className="ios-nav-bar-leading">
+          <span className="app-sheet-icon-btn" aria-label="Close" {...ds({ el: 'Dismiss Button', type: 'icon-only MinSheetIconButton.close', icon: 'xmark', size: '28 × 28pt' })}>
+            <Ico name="x" size={14} />
+          </span>
+        </div>
+        Account
       </div>
       <div className="app-settings-body" {...ds({ el: 'Settings Body', layout: 'List(.insetGrouped)', spacing: `padding-h: ${S.xl}pt` })}>
         <div className="app-settings-group" {...ds({ el: 'Section', spacing: `margin-top: Spacing.xl (${S.xl}pt)` })}>

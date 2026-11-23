@@ -1,6 +1,8 @@
+import MinAppKit
 import SwiftUI
 
 struct MinCloudAccountView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
     @State private var email = MinCloudSettings.email ?? ""
     @State private var password = ""
@@ -14,8 +16,10 @@ struct MinCloudAccountView: View {
             Section {
                 if MinCloudSettings.isSignedIn {
                     LabeledContent("Signed in as", value: MinCloudSettings.handle.map { "@\($0)" } ?? MinCloudSettings.email ?? "account")
-                    Button("Sign out") {
+                    Button(role: .destructive) {
                         Task { await MinCloudClient.shared.logout() }
+                    } label: {
+                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                     .disabled(isWorking)
                 } else {
@@ -25,12 +29,16 @@ struct MinCloudAccountView: View {
                         .textInputAutocapitalization(.never)
                     SecureField("Password", text: $password)
                     TextField("Display name", text: $displayName)
-                    Button("Sign in") {
+                    Button {
                         Task { await signIn() }
+                    } label: {
+                        Label("Sign in", systemImage: "person.crop.circle")
                     }
                     .disabled(isWorking || email.isEmpty || password.count < 8)
-                    Button("Create account") {
+                    Button {
                         Task { await register() }
+                    } label: {
+                        Label("Create account", systemImage: "person.badge.plus")
                     }
                     .disabled(isWorking || email.isEmpty || password.count < 8)
                 }
@@ -60,6 +68,12 @@ struct MinCloudAccountView: View {
         }
         .podLinkSettingsListSurface()
         .navigationTitle("Min Cloud")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                MinSheetIconButton(.done) { dismiss() }
+            }
+        }
         .onChange(of: iCloudBackupEnabled) { _, enabled in
             MinCloudSettings.iCloudBackupEnabled = enabled
         }

@@ -13,8 +13,10 @@ struct MinCloudAccountView: View {
             Section {
                 if MinCloudSettings.isSignedIn {
                     LabeledContent("Signed in as", value: MinCloudSettings.handle.map { "@\($0)" } ?? MinCloudSettings.email ?? "account")
-                    Button("Sign out") {
+                    Button(role: .destructive) {
                         Task { await signOut() }
+                    } label: {
+                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                     .disabled(isWorking)
                 } else {
@@ -25,12 +27,16 @@ struct MinCloudAccountView: View {
                     SecureField("Password", text: $password)
                         .textContentType(.password)
                     TextField("Display name", text: $displayName)
-                    Button("Sign in") {
+                    Button {
                         Task { await signIn() }
+                    } label: {
+                        Label("Sign in", systemImage: "person.crop.circle")
                     }
                     .disabled(isWorking || email.isEmpty || password.count < 8)
-                    Button("Create account") {
+                    Button {
                         Task { await register() }
+                    } label: {
+                        Label("Create account", systemImage: "person.badge.plus")
                     }
                     .disabled(isWorking || email.isEmpty || password.count < 8)
                 }

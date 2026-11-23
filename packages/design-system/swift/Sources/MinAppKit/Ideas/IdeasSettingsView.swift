@@ -55,7 +55,7 @@ public struct IdeasListView: View {
                     ForEach(items) { item in
                         VStack(alignment: .leading, spacing: MinSpacing.xs) {
                             Text(item.title)
-                            Text("\(item.kind == "bug" ? "Bug" : "Idea") · \(item.publicStatusLabel)")
+                            Text("\(item.kind == "bug" ? "Bug" : "Idea")   \(item.publicStatusLabel)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -142,10 +142,10 @@ public struct FeedbackComposeSheet: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    MinSheetIconButton(.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") {
+                    MinSheetIconButton(.send) {
                         Task { await send() }
                     }
                     .disabled(busy || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

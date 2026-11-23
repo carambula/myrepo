@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct DownloadSettingsView: View {
@@ -43,15 +44,10 @@ struct DownloadSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
+                MinSheetIconButton(.done) {
                     DownloadRetentionEngine.runSweep()
                     dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
             }
         }
     }

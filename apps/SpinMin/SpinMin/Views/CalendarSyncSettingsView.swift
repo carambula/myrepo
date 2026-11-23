@@ -5,8 +5,9 @@
 //  Connect a training platform calendar feed (ICS) for workout sync
 //
 
-import SwiftUI
+import MinAppKit
 import SwiftData
+import SwiftUI
 
 struct CalendarSyncSettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -97,9 +98,7 @@ struct CalendarSyncSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    MinSheetIconButton(.done) { dismiss() }
                 }
             }
         }

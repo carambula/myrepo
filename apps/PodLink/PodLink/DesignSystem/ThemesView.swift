@@ -49,21 +49,14 @@ struct ThemesView: View {
 
             if !isOnboarding, let custom = previewedCustomTheme {
                 HStack(spacing: DesignSystem.Spacing.md) {
-                    Button {
+                    MinGlassIconButton(.edit, accessibilityLabel: "Edit theme") {
                         editingTheme = custom
                         isShowingThemeBuilder = true
-                    } label: {
-                        Label("Edit Theme", systemImage: DesignSystem.Icon.edit)
                     }
-                    .buttonStyle(.bordered)
-
-                    Button(role: .destructive) {
+                    MinGlassIconButton(.delete, accessibilityLabel: "Delete theme") {
                         themeManager.removeCustomTheme(custom)
                         previewThemeID = themeManager.currentTheme.id
-                    } label: {
-                        Label("Delete Theme", systemImage: DesignSystem.Icon.delete)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
 
@@ -83,25 +76,13 @@ struct ThemesView: View {
         .toolbar {
             if !isOnboarding {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
+                    MinSheetIconButton(.add, accessibilityLabel: "Create theme") {
                         editingTheme = nil
                         isShowingThemeBuilder = true
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.add)
-                            .viewControlIconStyle()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Create theme")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.checkmark)
-                            .viewControlIconStyle()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Done")
+                    MinSheetIconButton(.done) { dismiss() }
                 }
             }
         }

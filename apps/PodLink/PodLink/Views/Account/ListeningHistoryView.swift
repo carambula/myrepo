@@ -1,8 +1,10 @@
+import MinAppKit
 import SwiftUI
 
 struct ListeningHistoryView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(PlaybackService.self) private var playbackService
+    @Environment(\.dismiss) private var dismiss
 
     @State private var entries: [ListeningHistoryEntry] = []
     @State private var searchText = ""
@@ -51,7 +53,7 @@ struct ListeningHistoryView: View {
         .navigationTitle("Listening history")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .navigationBarLeading) {
                 Menu {
                     Picker("Filter", selection: $sort) {
                         ForEach(ListeningHistorySort.allCases, id: \.self) { mode in
@@ -59,12 +61,14 @@ struct ListeningHistoryView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 36, height: 36)
+                    Image(systemName: MinIcon.filter)
+                        .minSheetIconStyle()
                 }
-                .buttonStyle(.liquidGlassCompact)
+                .buttonStyle(.plain)
                 .accessibilityLabel("Filter")
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .themeBackground()

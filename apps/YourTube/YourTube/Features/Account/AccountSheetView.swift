@@ -24,23 +24,21 @@ struct AccountSheetView: View {
             List {
                 Section("Account") {
                     if authService.isSignedIn {
-                        HStack {
-                            Label("Google connected", systemImage: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
-                            Spacer()
-                            Button("Disconnect", role: .destructive) {
-                                authService.signOut()
-                            }
+                        Label("Google connected", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                        Button(role: .destructive) {
+                            authService.signOut()
+                        } label: {
+                            Label("Disconnect Google", systemImage: "xmark.circle")
                         }
                     } else {
                         Text("Connect Google to sync your subscriptions and load your feed.")
                             .foregroundStyle(DesignSystem.Color.textSecondary)
                             .font(DesignSystem.Typography.captionLarge)
 
-                        Button("Sign in with Google") {
-                            onSignInTapped()
+                        Button(action: onSignInTapped) {
+                            Label("Sign in with Google", systemImage: "person.badge.key")
                         }
-                        .buttonStyle(DesignSystemButtonStyle(variant: .primary, size: .medium))
                     }
                 }
                 .designSystemGroupedListRow()
@@ -158,14 +156,7 @@ struct AccountSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                            .viewControlIconStyle()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close")
+                    MinSheetIconButton(.close) { dismiss() }
                 }
             }
             .sheet(isPresented: $showsThemeSelection) {

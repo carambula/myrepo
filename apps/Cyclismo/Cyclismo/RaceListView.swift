@@ -2150,14 +2150,7 @@ private struct AccountSheetView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                            .viewControlIconStyle()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close")
+                    MinSheetIconButton(.close) { dismiss() }
                 }
             }
             .sheet(isPresented: $isShowingThemes) {

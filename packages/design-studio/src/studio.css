@@ -505,7 +505,10 @@
 
 /* ── iOS Nav Bar ── */
 .ios-nav-bar { height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 16px; font-size: 17px; font-weight: 600; flex-shrink: 0; position: relative; color: var(--phone-text-primary); border-bottom: 0.5px solid var(--phone-border-rule); }
+.ios-nav-bar-leading { position: absolute; left: 16px; display: flex; align-items: center; }
 .ios-nav-bar-trailing { position: absolute; right: 16px; display: flex; align-items: center; }
+.app-sheet-icon-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; color: var(--phone-text-primary); }
+.app-sheet-icon-btn svg { width: 14px; height: 14px; stroke-width: 2.25; }
 
 /* ── Flow Diagram ── */
 .app-flow-diagram { display: flex; align-items: flex-start; gap: 12px; margin-top: 16px; flex-wrap: wrap; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--ct-border); }

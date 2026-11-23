@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct TranscriptionSettingsView: View {
@@ -60,15 +61,8 @@ struct TranscriptionSettingsView: View {
         .navigationTitle("Transcription")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.close)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close")
+            ToolbarItem(placement: .confirmationAction) {
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .onAppear {

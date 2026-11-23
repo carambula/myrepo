@@ -5,6 +5,7 @@
 //  Theme Selection View
 //
 
+import MinAppKit
 import SwiftUI
 
 struct ThemesView: View {
@@ -49,21 +50,14 @@ struct ThemesView: View {
 
                 if let selectedCustomTheme = selectedCustomThemeDefinition {
                     HStack(spacing: DesignSystem.Spacing.md) {
-                        Button {
+                        MinGlassIconButton(.edit, accessibilityLabel: "Edit theme") {
                             editingTheme = selectedCustomTheme
                             isShowingThemeBuilder = true
-                        } label: {
-                            Label("Edit Theme", systemImage: DesignSystem.Icon.edit)
                         }
-                        .buttonStyle(.bordered)
-
-                        Button(role: .destructive) {
+                        MinGlassIconButton(.delete, accessibilityLabel: "Delete theme") {
                             themeManager.deleteCustomTheme(id: selectedCustomTheme.id)
                             previewThemeName = themeManager.currentTheme.name
-                        } label: {
-                            Label("Delete Theme", systemImage: DesignSystem.Icon.delete)
                         }
-                        .buttonStyle(.bordered)
                     }
                 }
 
@@ -77,21 +71,13 @@ struct ThemesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
+                    MinSheetIconButton(.add, accessibilityLabel: "Create theme") {
                         editingTheme = nil
                         isShowingThemeBuilder = true
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.add)
                     }
-                    .accessibilityLabel("Create theme")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.checkmark)
-                    }
-                    .accessibilityLabel("Done")
+                    MinSheetIconButton(.done) { dismiss() }
                 }
             }
             #endif
@@ -248,20 +234,15 @@ private struct ThemeBuilderView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                    }
-                    .accessibilityLabel("Cancel")
+                    MinSheetIconButton(.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
+                    MinSheetIconButton(
+                        .done,
+                        accessibilityLabel: editingTheme == nil ? "Save" : "Update"
+                    ) {
                         saveTheme()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.checkmark)
                     }
-                    .accessibilityLabel(editingTheme == nil ? "Save" : "Update")
                 }
             }
             #endif

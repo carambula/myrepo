@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct ThemeBuilderView: View {
@@ -97,12 +98,13 @@ struct ThemeBuilderView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
-                }
+                MinSheetIconButton(.cancel) { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button(editingTheme != nil ? "Save" : "Create") {
+                MinSheetIconButton(
+                    .done,
+                    accessibilityLabel: editingTheme != nil ? "Save" : "Create"
+                ) {
                     saveTheme()
                     dismiss()
                 }

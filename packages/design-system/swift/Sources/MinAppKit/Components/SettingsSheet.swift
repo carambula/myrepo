@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Shared settings/notification sheet chrome used by min apps.
 ///
-/// Wraps content in a grouped `List` with a "Done" toolbar button.
+/// Wraps content in a grouped `List` with an icon-only Done toolbar button.
 /// Each app provides its own sections as content.
 ///
 /// ```swift
@@ -30,13 +30,7 @@ public struct SettingsSheet<Content: View>: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: MinIcon.checkmark)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
     }

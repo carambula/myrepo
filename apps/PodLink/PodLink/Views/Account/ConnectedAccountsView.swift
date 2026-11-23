@@ -1,3 +1,4 @@
+import MinAppKit
 import SwiftUI
 
 struct ConnectedAccountsView: View {
@@ -46,14 +47,7 @@ struct ConnectedAccountsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
         .sheet(isPresented: $showAddPrivateFeed) {
@@ -63,14 +57,7 @@ struct ConnectedAccountsView: View {
                     .environment(playbackService)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
-                            Button {
-                                showAddPrivateFeed = false
-                            } label: {
-                                Image(systemName: DesignSystem.Icon.close)
-                                    .viewControlIconStyle()
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Cancel")
+                            MinSheetIconButton(.cancel) { showAddPrivateFeed = false }
                         }
                     }
             }

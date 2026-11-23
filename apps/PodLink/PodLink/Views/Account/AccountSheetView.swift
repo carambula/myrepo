@@ -148,14 +148,7 @@ struct AccountSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                            .viewControlIconStyle()
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close")
+                    MinSheetIconButton(.close) { dismiss() }
                 }
             }
             .sheet(isPresented: $showThemes) {
@@ -398,14 +391,7 @@ struct PerformancePreferencesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: DesignSystem.Icon.checkmark)
-                        .viewControlIconStyle()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Done")
+                MinSheetIconButton(.done) { dismiss() }
             }
         }
     }

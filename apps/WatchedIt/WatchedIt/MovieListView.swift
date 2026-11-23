@@ -5099,12 +5099,7 @@ struct AccountSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: DesignSystem.Icon.close)
-                    }
-                    .accessibilityLabel("Close")
+                    MinSheetIconButton(.close) { dismiss() }
                 }
             }
             #endif

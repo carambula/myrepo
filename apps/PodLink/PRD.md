@@ -193,8 +193,8 @@ struct Typography {
     static func headlineMedium() -> Font // 20pt
     static func headlineSmall() -> Font  // 17pt
     static func bodyLarge() -> Font      // 17pt, system default
-    static func bodyMedium() -> Font     // 15pt
-    static func bodySmall() -> Font      // 13pt
+    static func bodyMedium() -> Font     // 16pt (body copy / descriptions)
+    static func bodySmall() -> Font      // 15pt, compact UI only
     static func caption() -> Font        // 11pt
 }
 ```

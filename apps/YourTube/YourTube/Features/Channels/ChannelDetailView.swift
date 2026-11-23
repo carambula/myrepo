@@ -35,7 +35,7 @@ struct ChannelDetailView: View {
 
                     if !channel.summary.isEmpty {
                         Text(channel.summary.decodedHTMLEntities)
-                            .font(DesignSystem.Typography.bodyMedium)
+                            .bodyCopy()
                             .foregroundStyle(theme.secondaryText)
                     }
 

@@ -1450,7 +1450,7 @@ private struct StageDetailView: View {
                 if podcasts.isEmpty {
                     detailSection("Stage podcasts") {
                         Text("No stage-specific podcasts yet. Use the parent race podcasts for full coverage.")
-                            .bodyMedium()
+                            .bodyCopy()
                             .foregroundColor(DesignSystem.Color.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }

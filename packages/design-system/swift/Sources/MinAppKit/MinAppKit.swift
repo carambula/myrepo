@@ -8,6 +8,7 @@ import Foundation
 ///
 /// ## Tokens Provided
 /// - `MinSpacing`: Spacing scale and semantic spacing values
+/// - `MinTypography`: Body sizes and line spacing for paragraph / description copy
 /// - `MinCornerRadius`: Corner radius tokens for UI elements (follow `MinRadiusStyle`)
 /// - `MinRadiusStyle`: Appearance setting that scales rounded corners
 /// - `MinOpacity`: Opacity values for various states

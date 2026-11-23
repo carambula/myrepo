@@ -53,7 +53,7 @@ html {
 body {
   font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.65;
   color: var(--color-text-primary);
   background-color: var(--color-background-primary);
   transition: background-color 250ms ease-in-out, color 250ms ease-in-out;
@@ -207,6 +207,13 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Paragraph / description copy — one size, open leading (MinTypography.bodyCopy) */
+.min-body-copy {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.65;
 }
 
 .min-hidden {

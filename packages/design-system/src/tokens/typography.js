@@ -43,6 +43,8 @@ export const typography = {
     snug: 1.375,
     normal: 1.5,
     relaxed: 1.625,
+    /** Paragraph / description copy (movie overview, podcast notes, video summary) */
+    reading: 1.65,
     loose: 2,
   },
   
@@ -100,21 +102,27 @@ export const typography = {
       lineHeight: 1.4,
     },
     
-    // Body text
+    // Body text — paragraph / description copy uses `body` / `bodyCopy` only.
+    // Do not shrink podcast, movie, or video descriptions to bodySmall or caption.
     body: {
       fontSize: '16px',
       fontWeight: 400,
-      lineHeight: 1.5,
+      lineHeight: 1.65,
+    },
+    bodyCopy: {
+      fontSize: '16px',
+      fontWeight: 400,
+      lineHeight: 1.65,
     },
     bodyLarge: {
       fontSize: '18px',
       fontWeight: 400,
-      lineHeight: 1.5,
+      lineHeight: 1.65,
     },
     bodySmall: {
       fontSize: '14px',
       fontWeight: 400,
-      lineHeight: 1.5,
+      lineHeight: 1.65,
     },
     
     // UI text

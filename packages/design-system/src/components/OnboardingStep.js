@@ -91,7 +91,7 @@ export function OnboardingStep({
 
         .onboarding-step__description {
           font-size: 16px;
-          line-height: 1.5;
+          line-height: 1.65;
           color: var(--color-text-secondary);
           margin: 0 0 32px 0;
           max-width: 480px;
@@ -149,10 +149,6 @@ export function OnboardingStep({
         @media (max-width: 768px) {
           .onboarding-step__title {
             font-size: 24px;
-          }
-
-          .onboarding-step__description {
-            font-size: 14px;
           }
 
           .onboarding-step__actions {

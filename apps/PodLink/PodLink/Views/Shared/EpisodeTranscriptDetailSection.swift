@@ -39,9 +39,7 @@ struct EpisodeTranscriptDetailSection: View {
     }
 
     private var transcriptBodyFont: Font {
-        presentationContext == .player
-            ? DesignSystem.Typography.bodyMedium()
-            : DesignSystem.Typography.bodySmall()
+        DesignSystem.Typography.bodyCopy()
     }
 
     private var transcriptBodyColor: Color {
@@ -292,6 +290,7 @@ struct EpisodeTranscriptDetailSection: View {
         } label: {
             Text(fullTranscript.text)
                 .font(transcriptBodyFont)
+                .minBodyCopy()
                 .foregroundColor(transcriptBodyColor)
                 .lineLimit(showFullTranscript ? nil : 20)
                 .multilineTextAlignment(.leading)
@@ -320,6 +319,7 @@ struct EpisodeTranscriptDetailSection: View {
                         }
                         Text(segment.text)
                             .font(transcriptBodyFont)
+                            .minBodyCopy()
                             .foregroundColor(transcriptBodyColor)
                     }
                     .padding(.vertical, DesignSystem.Spacing.xs)

@@ -43,6 +43,7 @@ struct AddChannelView: View {
                                 .font(.headline)
                             if !channel.summary.isEmpty {
                                 Text(channel.summary)
+                                    .bodyCopy()
                                     .foregroundStyle(theme.secondaryText)
                                     .lineLimit(2)
                             }

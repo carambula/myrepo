@@ -407,7 +407,7 @@
 }
 .app-action-btn svg { width: 24px; height: 24px; stroke-width: 1.8; }
 .app-action-btn.active { color: var(--phone-accent); border-color: rgba(56,112,242,0.5); }
-.app-detail-overview { margin-top: 24px; }
+.app-detail-overview { margin-top: 24px; font-size: 16px; line-height: 1.65; }
 .app-placeholder-line { height: 10px; background: rgba(141,155,186,0.08); border-radius: 4px; margin-bottom: 6px; }
 .app-placeholder-line.w85 { width: 85%; }
 .app-placeholder-line.w70 { width: 70%; }

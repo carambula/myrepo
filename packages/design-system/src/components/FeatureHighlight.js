@@ -75,8 +75,8 @@ export function FeatureHighlight({
   `;
   
   const descriptionStyles = `
-    font-size: ${typography.styles.body.fontSize};
-    line-height: 1.5;
+    font-size: ${typography.styles.bodyCopy.fontSize};
+    line-height: ${typography.styles.bodyCopy.lineHeight};
     color: var(--color-text-secondary);
     margin: 0;
   `;

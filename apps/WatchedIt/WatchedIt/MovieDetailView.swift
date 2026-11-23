@@ -1331,9 +1331,8 @@ struct MovieDetailView: View {
                     if let overview = displayMovie.overview, !overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                             Text(overview)
-                                .bodyMedium()
+                                .bodyCopy()
                                 .foregroundColor(DesignSystem.Color.textSecondary)
-                                .lineSpacing(DesignSystem.Spacing.xs)
                         }
                     }
                     
@@ -2166,7 +2165,7 @@ struct SourceContentCardView: View {
                 ClosetPicksGuestSourceRows(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = sourceContent.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
-                    .captionMedium()
+                    .bodyCopy()
                     .foregroundColor(DesignSystem.Color.textSecondary)
                     .lineLimit(4)
             }
@@ -2297,7 +2296,7 @@ struct LegacySourceCardView: View {
                 ClosetPicksGuestSourceRows(guests: closetPicksGuests, onOpenGuest: onOpenGuest)
             } else if let description = legacySource.podcastEpisode?.description, !description.isEmpty {
                 Text(description)
-                    .captionMedium()
+                    .bodyCopy()
                     .foregroundColor(DesignSystem.Color.textSecondary)
                     .lineLimit(4)
             }

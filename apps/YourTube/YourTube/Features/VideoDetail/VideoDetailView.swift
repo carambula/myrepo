@@ -174,7 +174,7 @@ struct VideoDetailView: View {
 
                     if !video.summary.isEmpty {
                         Text(video.summary.decodedHTMLEntities)
-                    .font(DesignSystem.Typography.bodyMedium)
+                    .bodyCopy()
                     .foregroundStyle(theme.secondaryText)
             }
         }

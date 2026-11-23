@@ -111,9 +111,11 @@ enum DesignSystem {
         static let titleMedium = Font.system(size: 18, weight: .medium, design: .default)
         static let titleSmall = Font.system(size: 16, weight: .medium, design: .default)
 
-        static let bodyLarge = Font.system(size: 17, weight: .regular, design: .default)
-        static let bodyMedium = Font.system(size: 16, weight: .regular, design: .default)
-        static let bodySmall = Font.system(size: 15, weight: .regular, design: .default)
+        static let bodyLarge = Font.system(size: MinTypography.bodyLargeSize, weight: .regular, design: .default)
+        static let bodyMedium = Font.system(size: MinTypography.bodyMediumSize, weight: .regular, design: .default)
+        /// Paragraph / description copy. Always `bodyCopySize`.
+        static let bodyCopy = bodyMedium
+        static let bodySmall = Font.system(size: MinTypography.bodySmallSize, weight: .regular, design: .default)
 
         static let labelLarge = Font.system(size: 15, weight: .medium, design: .default)
         static let labelMedium = Font.system(size: 14, weight: .medium, design: .default)
@@ -258,6 +260,10 @@ extension View {
     func titleSmall() -> some View { self.font(DesignSystem.Typography.titleSmall) }
     func bodyLarge() -> some View { self.font(DesignSystem.Typography.bodyLarge) }
     func bodyMedium() -> some View { self.font(DesignSystem.Typography.bodyMedium) }
+    func bodyCopy() -> some View {
+        self.font(DesignSystem.Typography.bodyCopy)
+            .minBodyCopy()
+    }
     func bodySmall() -> some View { self.font(DesignSystem.Typography.bodySmall) }
     func labelLarge() -> some View { self.font(DesignSystem.Typography.labelLarge) }
     func labelMedium() -> some View { self.font(DesignSystem.Typography.labelMedium) }

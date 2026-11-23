@@ -41,7 +41,7 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
 
             Text("Track your subscriptions, catch new uploads, and stay focused on the channels you care about.")
-                .font(DesignSystem.Typography.bodyMedium)
+                .bodyCopy()
                 .foregroundStyle(themeManager.currentTheme.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
@@ -70,7 +70,7 @@ struct OnboardingView: View {
                 .foregroundStyle(themeManager.currentTheme.text)
 
             Text("Sign in with Google to load your YouTube subscriptions automatically and keep your feed up to date.")
-                .font(DesignSystem.Typography.bodyMedium)
+                .bodyCopy()
                 .foregroundStyle(themeManager.currentTheme.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, DesignSystem.Spacing.screenHorizontalPadding)
@@ -112,7 +112,7 @@ struct OnboardingView: View {
                     .padding(.top, DesignSystem.Spacing.xl)
 
                 Text("Choose where search appears and pick your default theme.")
-                    .font(DesignSystem.Typography.bodyMedium)
+                    .bodyCopy()
                     .foregroundStyle(themeManager.currentTheme.secondaryText)
 
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
@@ -213,7 +213,7 @@ struct OnboardingView: View {
                 .foregroundStyle(themeManager.currentTheme.accent)
                 .frame(width: 20)
             Text(text)
-                .font(DesignSystem.Typography.bodyMedium)
+                .bodyCopy()
                 .foregroundStyle(themeManager.currentTheme.secondaryText)
         }
     }

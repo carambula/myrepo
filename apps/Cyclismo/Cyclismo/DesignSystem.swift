@@ -197,11 +197,14 @@ enum DesignSystem {
         }
 
         static var bodyMedium: Font {
-            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: 16)
+            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: MinTypography.bodyMediumSize)
         }
 
+        /// Paragraph / description copy. Always `bodyCopySize`.
+        static var bodyCopy: Font { bodyMedium }
+
         static var bodySmall: Font {
-            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: 15)
+            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: MinTypography.bodySmallSize)
         }
 
         static let labelLarge = Font.system(size: 15, weight: .medium, design: .default)
@@ -333,6 +336,10 @@ extension View {
     func titleSmall() -> some View { self.font(DesignSystem.Typography.titleSmall) }
     func bodyLarge() -> some View { self.font(DesignSystem.Typography.bodyLarge) }
     func bodyMedium() -> some View { self.font(DesignSystem.Typography.bodyMedium) }
+    func bodyCopy() -> some View {
+        self.font(DesignSystem.Typography.bodyCopy)
+            .minBodyCopy()
+    }
     func bodySmall() -> some View { self.font(DesignSystem.Typography.bodySmall) }
     func labelLarge() -> some View { self.font(DesignSystem.Typography.labelLarge) }
     func labelMedium() -> some View { self.font(DesignSystem.Typography.labelMedium) }

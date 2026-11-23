@@ -147,7 +147,8 @@ export function OnboardingContainer({
     `;
     
     const descriptionStyles = `
-      font-size: ${typography.styles.body.fontSize};
+      font-size: ${typography.styles.bodyCopy.fontSize};
+      line-height: ${typography.styles.bodyCopy.lineHeight};
       color: var(--color-text-secondary);
       text-align: center;
       max-width: 400px;
@@ -196,7 +197,8 @@ export function OnboardingContainer({
     const infoStyles = `
       text-align: center;
       color: var(--color-text-secondary);
-      font-size: ${typography.styles.body.fontSize};
+      font-size: ${typography.styles.bodyCopy.fontSize};
+      line-height: ${typography.styles.bodyCopy.lineHeight};
       padding: ${spacing[6]};
     `;
     
@@ -252,7 +254,8 @@ export function OnboardingContainer({
     `;
     
     const settingDescStyles = `
-      font-size: ${typography.styles.bodySmall.fontSize};
+      font-size: ${typography.styles.bodyCopy.fontSize};
+      line-height: ${typography.styles.bodyCopy.lineHeight};
       color: var(--color-text-secondary);
       margin: 0;
     `;

@@ -158,7 +158,7 @@ function FeaturesStep({ appId, onNext, onBack, isFirstStep, isLastStep }) {
 
         .features-list__item {
           font-size: 16px;
-          line-height: 1.5;
+          line-height: 1.65;
           color: var(--color-text-primary);
           padding: 16px;
           background: var(--color-background);
@@ -168,7 +168,6 @@ function FeaturesStep({ appId, onNext, onBack, isFirstStep, isLastStep }) {
 
         @media (max-width: 768px) {
           .features-list__item {
-            font-size: 14px;
             padding: 12px;
           }
         }

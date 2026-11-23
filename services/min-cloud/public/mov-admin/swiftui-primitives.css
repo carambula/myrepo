@@ -56,6 +56,7 @@
   /* Standard iOS text sizes (for reference / fallback) */
   --ios-nav-title-size: 17px;
   --ios-body-size: 17px;
+  --ds-type-body-lh: 1.65;
   --ios-callout-size: 16px;
   --ios-subhead-size: 15px;
   --ios-footnote-size: 13px;
@@ -208,9 +209,10 @@
 .type-titleLarge     { font-size: var(--ds-type-titleLarge-size, 20px);    font-weight: var(--ds-type-titleLarge-weight, 600); }
 .type-titleMedium    { font-size: var(--ds-type-titleMedium-size, 18px);   font-weight: var(--ds-type-titleMedium-weight, 500); }
 .type-titleSmall     { font-size: var(--ds-type-titleSmall-size, 16px);    font-weight: var(--ds-type-titleSmall-weight, 500); }
-.type-bodyLarge      { font-size: var(--ds-type-bodyLarge-size, 16px);     font-weight: var(--ds-type-bodyLarge-weight, 400); }
-.type-bodyMedium     { font-size: var(--ds-type-bodyMedium-size, 16px);    font-weight: var(--ds-type-bodyMedium-weight, 400); }
-.type-bodySmall      { font-size: var(--ds-type-bodySmall-size, 15px);     font-weight: var(--ds-type-bodySmall-weight, 400); }
+.type-bodyLarge      { font-size: var(--ds-type-bodyLarge-size, 17px);     font-weight: var(--ds-type-bodyLarge-weight, 400); line-height: var(--ds-type-body-lh, 1.65); }
+.type-bodyMedium     { font-size: var(--ds-type-bodyMedium-size, 16px);    font-weight: var(--ds-type-bodyMedium-weight, 400); line-height: var(--ds-type-body-lh, 1.65); }
+.type-bodyCopy       { font-size: var(--ds-type-bodyMedium-size, 16px);    font-weight: var(--ds-type-bodyMedium-weight, 400); line-height: var(--ds-type-body-lh, 1.65); }
+.type-bodySmall      { font-size: var(--ds-type-bodySmall-size, 15px);     font-weight: var(--ds-type-bodySmall-weight, 400); line-height: var(--ds-type-body-lh, 1.65); }
 .type-labelLarge     { font-size: var(--ds-type-labelLarge-size, 15px);    font-weight: var(--ds-type-labelLarge-weight, 500); }
 .type-labelMedium    { font-size: var(--ds-type-labelMedium-size, 14px);   font-weight: var(--ds-type-labelMedium-weight, 500); }
 .type-labelSmall     { font-size: var(--ds-type-labelSmall-size, 13px);    font-weight: var(--ds-type-labelSmall-weight, 500); }

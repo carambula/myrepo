@@ -289,11 +289,14 @@ enum DesignSystem {
         }
         
         static var bodyMedium: Font {
-            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: 16)
+            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: MinTypography.bodyMediumSize)
         }
+
+        /// Paragraph / description copy — movie overviews, podcast notes. Always `bodyCopySize`.
+        static var bodyCopy: Font { bodyMedium }
         
         static var bodySmall: Font {
-            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: 15)
+            ThemeManager.shared.currentThemeBodyFontStyle().bodyFont(size: MinTypography.bodySmallSize)
         }
         
         // Label Styles
@@ -536,6 +539,11 @@ extension View {
     
     func bodyMedium() -> some View {
         self.font(DesignSystem.Typography.bodyMedium)
+    }
+
+    func bodyCopy() -> some View {
+        self.font(DesignSystem.Typography.bodyCopy)
+            .minBodyCopy()
     }
     
     func bodySmall() -> some View {

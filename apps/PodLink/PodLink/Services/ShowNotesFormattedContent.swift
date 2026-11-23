@@ -1,11 +1,12 @@
 import Foundation
 import UIKit
+import MinAppKit
 
 /// Rich show notes: HTML from feeds, optional Markdown, plain text with detected links.
-/// Typography matches `DesignSystem.Typography.bodyMedium` (15pt) with Dynamic Type scaling.
+/// Typography matches `MinTypography` body copy (16pt, open leading) with Dynamic Type scaling.
 enum ShowNotesFormattedContent {
 
-    private static let bodyPointSize: CGFloat = 15
+    private static let bodyPointSize: CGFloat = MinTypography.bodyCopySize
 
     static func attributedString(from raw: String, linkUIColor: UIColor) -> AttributedString {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -132,9 +133,8 @@ enum ShowNotesFormattedContent {
 
     private static func paragraphStyle() -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = 9
+        style.lineSpacing = MinTypography.bodyLineSpacing
         style.paragraphSpacing = 18
-        style.lineHeightMultiple = 1.14
         style.alignment = .natural
         return style
     }

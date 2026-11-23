@@ -107,7 +107,7 @@ struct OnboardingView: View {
                     .headlineSmall()
                     .foregroundColor(DesignSystem.Color.textPrimary)
                 Text(description)
-                    .bodySmall()
+                    .bodyCopy()
                     .foregroundColor(DesignSystem.Color.textSecondary)
             }
         }

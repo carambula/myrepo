@@ -48,15 +48,20 @@ struct DesignSystem {
         }
 
         static func bodyLarge() -> Font {
-            .system(size: 17)
+            .system(size: MinTypography.bodyLargeSize)
         }
 
         static func bodyMedium() -> Font {
-            .system(size: 15)
+            .system(size: MinTypography.bodyMediumSize)
+        }
+
+        /// Paragraph / description copy (show notes, episode descriptions). Always `bodyCopySize`.
+        static func bodyCopy() -> Font {
+            bodyMedium()
         }
 
         static func bodySmall() -> Font {
-            .system(size: 13)
+            .system(size: MinTypography.bodySmallSize)
         }
 
         /// Secondary line under a display title (matches Cyclismo `titleMedium`).
@@ -313,6 +318,12 @@ struct PodLinkSettingsListModifier: ViewModifier {
 }
 
 extension View {
+    /// Paragraph / description copy — 16pt with open line spacing.
+    func bodyCopy() -> some View {
+        font(DesignSystem.Typography.bodyCopy())
+            .minBodyCopy()
+    }
+
     /// Inset grouped list with hidden scroll background so theme tint reads through (WatchedIt-style settings).
     func podLinkSettingsListSurface() -> some View {
         modifier(PodLinkSettingsListModifier())

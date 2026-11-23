@@ -254,7 +254,7 @@ struct EpisodeDetailView: View {
                             withAnimation { showFullNotes.toggle() }
                         } label: {
                             Text(mergedEpisode.description.strippingHTML)
-                                .font(DesignSystem.Typography.bodyMedium())
+                                .bodyCopy()
                                 .foregroundColor(DesignSystem.Colors.textSecondary)
                                 .lineLimit(showFullNotes ? nil : 6)
                                 .multilineTextAlignment(.leading)

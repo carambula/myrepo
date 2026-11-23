@@ -56,6 +56,7 @@ const STYLE_TO_TIER_MAP = {
   h5: FONT_TIERS.HEADING,
   h6: FONT_TIERS.HEADING,
   body: FONT_TIERS.BODY,
+  bodyCopy: FONT_TIERS.BODY,
   bodyLarge: FONT_TIERS.BODY,
   bodySmall: FONT_TIERS.BODY,
   button: FONT_TIERS.UI,

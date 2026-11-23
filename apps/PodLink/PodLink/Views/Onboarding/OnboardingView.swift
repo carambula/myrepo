@@ -109,7 +109,7 @@ struct OnboardingView: View {
                     .font(DesignSystem.Typography.headlineSmall())
                     .foregroundColor(DesignSystem.Colors.textPrimary)
                 Text(description)
-                    .font(DesignSystem.Typography.bodySmall())
+                    .bodyCopy()
                     .foregroundColor(DesignSystem.Colors.textSecondary)
             }
         }
